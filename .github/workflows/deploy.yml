@@ -1,0 +1,37 @@
+name: Deploy via ftp
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency: 
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  deploy:
+    name: Deploy to FTP
+    runs-on: ubuntu-latest
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - name: Create MySQL secrets file
+        run: |
+          cd Src
+          echo "<?php" >> mySql.secrets.php
+          echo "\$mySqlHost     = \"127.0.0.1\";" >> mySql.secrets.php
+          echo "\$mySqlUser     = \"${{ secrets.MYSQL_USER }}\";" >> mySql.secrets.php
+          echo "\$mySqlPassword = \"${{ secrets.MYSQL_PASSWORD }}\";" >> mySql.secrets.php
+          echo "\$mySqlDatabase = \"${{ secrets.MYSQL_DATABASE }}\";" >> mySql.secrets.php
+
+      - name: Upload service
+        uses: sebastianpopp/ftp-action@releases/v2
+        with:
+          host: ${{ secrets.FTP_SERVER }}
+          user: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          localDir: "Src"
+          remoteDir: "/"
