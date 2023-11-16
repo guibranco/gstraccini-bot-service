@@ -2,9 +2,11 @@
 
 require_once("config.php");
 
-use Lcobucci\JWT\Configuration;
+use Lcobucci\JWT\Encoding\ChainedFormatter;
+use Lcobucci\JWT\Encoding\JoseEncoder;
 use Lcobucci\JWT\Signer\Key\InMemory;
-use Lcobucci\JWT\Signer\Rsa\Sha256 as RSA;
+use Lcobucci\JWT\Signer\Rsa\Sha256;
+use Lcobucci\JWT\Token\Builder;
 
 
 require 'vendor/autoload.php';
@@ -27,14 +29,17 @@ function generateToken()
 {
     global $gitHubAppId, $gitHubAppPrivateKey, $gitHubAppPublicKey;
 
-    $config = Configuration::forAsymmetricSigner(new RSA(), InMemory::plainText($gitHubAppPrivateKey), InMemory::plainText($gitHubAppPublicKey));
-    $now = new \DateTimeImmutable();
+    $tokenBuilder = (new Builder(new JoseEncoder(), ChainedFormatter::default()));
+    $algorithm = new Sha256();
+    $signingKey = InMemory::plainText($gitHubAppPrivateKey);
+    $base = new \DateTimeImmutable();
+    $now = $base->setTime(date('H'), date('i'), date('s'));
 
-    $token = $config->builder()
+    $token = $tokenBuilder
         ->issuedBy($gitHubAppId)
-        ->issuedAt($now->modify('-1 minute')
+        ->issuedAt($now->modify('-1 minute'))
         ->expiresAt($now->modify('+10 minutes'))
-        ->getToken($config->signer(), $config->signingKey());
+        ->getToken($algorithm, $signingKey);
 
     echo $token->toString();
 }
