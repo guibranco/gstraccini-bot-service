@@ -1,0 +1,20 @@
+{
+    "name": "guibranco/gstraccini-bot",
+    "description": "Guilherme Stracini`s Bot",
+    "type": "project",
+    "require": {
+        "lcobucci/jwt": "^4.0"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "GuiBranco\\GStracciniBot\\": "/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Guilherme Branco Stracini",
+            "email": "guilherme@guilhermebranco.com.br"
+        }
+    ]
+}
