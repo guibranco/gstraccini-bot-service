@@ -4,6 +4,9 @@ ini_set("default_charset", "UTF-8");
 ini_set("date.timezone", "America/Sao_Paulo");
 mb_internal_encoding("UTF-8");
 
+define("USER_AGENT", "gstraccini-bot (+https://github.com/apps/gstraccini-bot/)");
+
+
 $mySqlSecretsFile = "mySql.secrets.php";
 if (file_exists($mySqlSecretsFile)) {
     require_once $mySqlSecretsFile;

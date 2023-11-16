@@ -1,6 +1,7 @@
 <?php
 
 require_once("config.php");
+require_once("functions.php");
 
 use Lcobucci\JWT\Encoding\ChainedFormatter;
 use Lcobucci\JWT\Encoding\JoseEncoder;
@@ -41,7 +42,57 @@ function generateToken()
         ->expiresAt($now->modify('+10 minutes'))
         ->getToken($algorithm, $signingKey);
 
-    echo $token->toString();
+    return $token->toString();
 }
 
-generateToken();
+function requestGitHub($url)
+{
+    $gitHubToken = generateToken();
+
+    $baseUrl = "https://api.github.com/";
+
+    $headers = array();
+    $headers[] = "User-Agent: " . USER_AGENT;
+    $headers[] = "Content-type: application/json";
+    if (isset($gitHubToken)) {
+        $headers[] = "Authorization: Bearer " . $gitHubToken;
+    }
+
+    $curl = curl_init();
+
+    curl_setopt_array(
+        $curl,
+        array(
+            CURLOPT_URL => $baseUrl . $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HEADER => 1,
+            CURLOPT_ENCODING => "",
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 0,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_SSL_VERIFYHOST => 0,
+            CURLOPT_SSL_VERIFYPEER => 0,
+            CURLOPT_HTTPHEADER => $headers
+        )
+    );
+
+    $response = curl_exec($curl);
+
+    if ($response === false) {
+        echo $url;
+        echo "\r\n";
+        die(curl_error($curl));
+    }
+
+    $headerSize = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
+    $header = substr($response, 0, $headerSize);
+    $headers = getHeaders($header);
+    $body = substr($response, $headerSize);
+    $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    curl_close($curl);
+
+    return array("headers" => $headers, "body" => $body);
+}
+
+print_r(requestGitHub('app'));
