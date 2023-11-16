@@ -1,2 +1,2 @@
-﻿Src/mySql.secrets.php
+﻿Src/*.secrets.php
 **/vendor/**

@@ -1,10 +1,13 @@
 <?php
 
 require_once("config.php");
+require_once("functions.php");
 
-use Lcobucci\JWT\Configuration;
+use Lcobucci\JWT\Encoding\ChainedFormatter;
+use Lcobucci\JWT\Encoding\JoseEncoder;
 use Lcobucci\JWT\Signer\Key\InMemory;
-use Lcobucci\JWT\Signer\Rsa\Sha256 as RSA;
+use Lcobucci\JWT\Signer\Rsa\Sha256;
+use Lcobucci\JWT\Token\Builder;
 
 
 require 'vendor/autoload.php';
@@ -23,22 +26,73 @@ function readComments()
     $mysqli->query("SELECT * FROM github_comments WHERE Processed = 0");
 }
 
-function generateToken(){
-    global $gitHubAppId, $gitHubAppPrivateKey;
+function generateToken()
+{
+    global $gitHubAppId, $gitHubAppPrivateKey, $gitHubAppPublicKey;
 
-    $private = openssl_pkey_get_private($gitHubAppPrivateKey);
-    $public = openssl_pkey_get_public($private);
+    $tokenBuilder = (new Builder(new JoseEncoder(), ChainedFormatter::default()));
+    $algorithm = new Sha256();
+    $signingKey = InMemory::plainText($gitHubAppPrivateKey);
+    $base = new \DateTimeImmutable();
+    $now = $base->setTime(date('H'), date('i'), date('s'));
 
-    $config = Configuration::forAsymmetricSigner(new RSA(), InMemory::plainText($private), InMemory::plainText($public));
-    $now   = new \DateTimeImmutable();
+    $token = $tokenBuilder
+        ->issuedBy($gitHubAppId)
+        ->issuedAt($now->modify('-1 minute'))
+        ->expiresAt($now->modify('+10 minutes'))
+        ->getToken($algorithm, $signingKey);
 
-    $token = $config->builder()
-    ->issuedBy($gitHubAppId)
-    ->issuedAt($now)
-    ->expiresAt($now->modify('+10 minutes'))
-    ->getToken($config->signer(), $config->signingKey());
-
-    echo $token;
+    return $token->toString();
 }
 
-generateToken();
+function requestGitHub($url)
+{
+    $gitHubToken = generateToken();
+
+    $baseUrl = "https://api.github.com/";
+
+    $headers = array();
+    $headers[] = "User-Agent: " . USER_AGENT;
+    $headers[] = "Content-type: application/json";
+    if (isset($gitHubToken)) {
+        $headers[] = "Authorization: Bearer " . $gitHubToken;
+    }
+
+    $curl = curl_init();
+
+    curl_setopt_array(
+        $curl,
+        array(
+            CURLOPT_URL => $baseUrl . $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HEADER => 1,
+            CURLOPT_ENCODING => "",
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 0,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_SSL_VERIFYHOST => 0,
+            CURLOPT_SSL_VERIFYPEER => 0,
+            CURLOPT_HTTPHEADER => $headers
+        )
+    );
+
+    $response = curl_exec($curl);
+
+    if ($response === false) {
+        echo $url;
+        echo "\r\n";
+        die(curl_error($curl));
+    }
+
+    $headerSize = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
+    $header = substr($response, 0, $headerSize);
+    $headers = getHeaders($header);
+    $body = substr($response, $headerSize);
+    $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    curl_close($curl);
+
+    return array("headers" => $headers, "body" => $body);
+}
+
+print_r(requestGitHub('app'));
