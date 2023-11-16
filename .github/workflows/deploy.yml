@@ -18,6 +18,19 @@ jobs:
 
       - uses: actions/checkout@v4
 
+      - name: Cache Composer dependencies
+        uses: actions/cache@v3
+        with:
+          path: /tmp/composer-cache
+          key: ${{ runner.os }}-${{ hashFiles('**/composer.lock') }}
+
+      - name: Install dependencies
+        uses: "php-actions/composer@v6"
+        with:
+          dev: no
+          progress: yes
+          working_dir: "./Src/"
+
       - name: Create MySQL secrets file
         run: |
           cd Src
@@ -26,6 +39,13 @@ jobs:
           echo "\$mySqlUser     = \"${{ secrets.MYSQL_USER }}\";" >> mySql.secrets.php
           echo "\$mySqlPassword = \"${{ secrets.MYSQL_PASSWORD }}\";" >> mySql.secrets.php
           echo "\$mySqlDatabase = \"${{ secrets.MYSQL_DATABASE }}\";" >> mySql.secrets.php
+
+      - name: Generate GitHub App secrets file
+        run: |
+          cd Src
+          echo "<?php" >> gitHubApp.secrets.php
+          echo "\$gitHubAppId         = \"${{ secrets.APP_ID }}\";" >> gitHubApp.secrets.php
+          echo "\$gitHubAppPrivateKey = \"${{ secrets.APP_PRIVATE_KEY}}\";" >> gitHubApp.secrets.php
 
       - name: Upload service
         uses: sebastianpopp/ftp-action@releases/v2
