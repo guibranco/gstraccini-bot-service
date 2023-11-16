@@ -1,3 +1,3 @@
 # GStraccini-bot
 
-A GitHub bot for my projects
+🤖 :octocat: A GitHub bot for my projects
