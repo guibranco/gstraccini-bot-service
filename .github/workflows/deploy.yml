@@ -2,20 +2,18 @@ name: Deploy via ftp
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
-concurrency: 
+concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-
   deploy:
     name: Deploy to FTP
     runs-on: ubuntu-latest
     steps:
-
       - uses: actions/checkout@v4
 
       - name: Cache Composer dependencies
@@ -46,7 +44,6 @@ jobs:
           echo "<?php" >> gitHubApp.secrets.php
           echo "\$gitHubAppId         = \"${{ secrets.APP_ID }}\";" >> gitHubApp.secrets.php
           echo "\$gitHubAppPrivateKey = \"${{ secrets.APP_PRIVATE_KEY}}\";" >> gitHubApp.secrets.php
-          echo "\$gitHubAppPublicKey  = \"${{ secrets.APP_PUBLIC_KEY }}\";" >> gitHubApp.secrets.php
 
       - name: Upload service
         uses: sebastianpopp/ftp-action@releases/v2

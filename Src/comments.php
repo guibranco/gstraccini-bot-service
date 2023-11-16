@@ -9,9 +9,7 @@ use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Signer\Rsa\Sha256;
 use Lcobucci\JWT\Token\Builder;
 
-
 require 'vendor/autoload.php';
-
 
 function readComments()
 {
@@ -28,7 +26,7 @@ function readComments()
 
 function generateToken()
 {
-    global $gitHubAppId, $gitHubAppPrivateKey, $gitHubAppPublicKey;
+    global $gitHubAppId, $gitHubAppPrivateKey;
 
     $tokenBuilder = (new Builder(new JoseEncoder(), ChainedFormatter::default()));
     $algorithm = new Sha256();
@@ -94,5 +92,3 @@ function requestGitHub($url)
 
     return array("headers" => $headers, "body" => $body);
 }
-
-print_r(requestGitHub('app'));
