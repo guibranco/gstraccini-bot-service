@@ -46,6 +46,7 @@ jobs:
           echo "<?php" >> gitHubApp.secrets.php
           echo "\$gitHubAppId         = \"${{ secrets.APP_ID }}\";" >> gitHubApp.secrets.php
           echo "\$gitHubAppPrivateKey = \"${{ secrets.APP_PRIVATE_KEY}}\";" >> gitHubApp.secrets.php
+          echo "\$gitHubAppPublicKey  = \"${{ secrets.APP_PUBLIC_KEY }}\";" >> gitHubApp.secrets.php
 
       - name: Upload service
         uses: sebastianpopp/ftp-action@releases/v2

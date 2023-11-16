@@ -23,22 +23,20 @@ function readComments()
     $mysqli->query("SELECT * FROM github_comments WHERE Processed = 0");
 }
 
-function generateToken(){
-    global $gitHubAppId, $gitHubAppPrivateKey;
+function generateToken()
+{
+    global $gitHubAppId, $gitHubAppPrivateKey, $gitHubAppPublicKey;
 
-    $private = openssl_pkey_get_private($gitHubAppPrivateKey);
-    $public = openssl_pkey_get_public($private);
-
-    $config = Configuration::forAsymmetricSigner(new RSA(), InMemory::plainText($private), InMemory::plainText($public));
-    $now   = new \DateTimeImmutable();
+    $config = Configuration::forAsymmetricSigner(new RSA(), InMemory::plainText($gitHubAppPrivateKey), InMemory::plainText($gitHubAppPublicKey));
+    $now = new \DateTimeImmutable();
 
     $token = $config->builder()
-    ->issuedBy($gitHubAppId)
-    ->issuedAt($now)
-    ->expiresAt($now->modify('+10 minutes'))
-    ->getToken($config->signer(), $config->signingKey());
+        ->issuedBy($gitHubAppId)
+        ->issuedAt($now->modify('-1 minute')
+        ->expiresAt($now->modify('+10 minutes'))
+        ->getToken($config->signer(), $config->signingKey());
 
-    echo $token;
+    echo $token->toString();
 }
 
 generateToken();
