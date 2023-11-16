@@ -1,0 +1,13 @@
+{
+    "name": "guibranco/gstraccini-bot",
+    "description": "Guilherme Straccini`s Bot",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Guilherme Branco Stracini",
+            "email": "guilherme@guilhermebranco.com.br"
+        }
+    ],
+    "require": {}
+}
