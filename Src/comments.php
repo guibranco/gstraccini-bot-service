@@ -159,18 +159,18 @@ function handleComment($comment)
         "commentUrl" => "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName . "/issues/" . $comment->IssueNumber . "/comments"
     );
 
-    if (!in_array($comment->CommentUser, $config["allowedInvokers"])) {
+    if (!in_array($comment->CommentUser, $config->allowedInvokers)) {
         requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"));
         return;
     }
 
     $executedAtLeastOne = false;
 
-    foreach ($config["commands"] as $command) {
-        $commandExpression = "@" . $config["botName"] . " " . $command["command"];
+    foreach ($config->commands as $command) {
+        $commandExpression = "@" . $config->botName . " " . $command->command;
         if (strpos($commandExpression, strtolower($comment->CommentBody)) !== false) {
             $executedAtLeastOne = true;
-            $method = "execute_" . toCamelCase($command["command"]);
+            $method = "execute_" . toCamelCase($command->command);
             $method($config, $metadata, $comment);
         }
     }
@@ -197,8 +197,8 @@ function execute_help($config, $metadata, $comment)
 {
     requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"));
     $helpComment = "That's what I can do:\r\n";
-    foreach ($config["commands"] as $command) {
-        $helpComment .= "- `@" . $config["botName"] . " " . $command["command"] . "`: " . $command["description"] . "\r\n";
+    foreach ($config->commands as $command) {
+        $helpComment .= "- `@" . $config->botName . " " . $command->command . "`: " . $command->description . "\r\n";
     }
     $helpComment .= "\r\nIf you aren't allowed to use this bot, a reaction with thumbs down will be added to your comment.\r\n";
     requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $$helpComment));
