@@ -153,26 +153,40 @@ function handleComment($comment)
         return;
     }
 
-    requestGitHub($token, $reactionUrl, array("content" => "eyes"));
-
     if ($commentBody == "@gstraccini hello world") {
-        requestGitHub($token, $commentUrl, array("body" => "Hello @" . $comment->CommentUser . "!"));
         requestGitHub($token, $reactionUrl, array("content" => "heart"));
+        requestGitHub($token, $commentUrl, array("body" => "Hello @" . $comment->CommentUser . "!"));
         return;
     }
 
     if ($commentBody == "@gstraccini thank you") {
-        requestGitHub($token, $commentUrl, array("body" => "You're welcome @" . $comment->CommentUser . "!"));
         requestGitHub($token, $reactionUrl, array("content" => "+1"));
+        requestGitHub($token, $commentUrl, array("body" => "You're welcome @" . $comment->CommentUser . "!"));
         return;
     }
 
-    if ($commentBody == "@gstraccini help"){
-        requestGitHub($token, $commentUrl, array("body"=> "That's what I can do: \r\n - @gstraccini hello world \r\n - @gstraccini thank you \r\n - @gstraccini help"));
-        requestGitHub($token, $reactionUrl, array("content"=> "rocker"));
+    if ($commentBody == "@gstraccini fix csproj") {
+        requestGitHub($token, $reactionUrl, array("content" => "eyes"));
         return;
     }
-    
+
+    if ($commentBody == "@gstraccini csharpier") {
+        requestGitHub($token, $reactionUrl, array("content" => "eyes"));
+        return;
+    }
+
+    if ($commentBody == "@gstraccini help") {
+        requestGitHub($token, $reactionUrl, array("content" => "rocket"));
+        $helpTemplate = "That's what I can do:\r\n" . 
+            "- `@gstraccini hello world` replies  with welcome message.\r\n" .
+            "- `@gstraccini thank you` replies  with thank you message \r\n" .
+            "- `@gstraccini help` displays this help message.\r\n" .
+            "- `@gstraccini fix csproj` fixes csproj files (only for .NET projects).\r\n" .
+            "- `@gstraccini csharpier` runs csharpier (only for .NET projects).\r\n";
+        requestGitHub($token, $commentUrl, array("body" => $helpTemplate));
+        return;
+    }
+
     requestGitHub($token, $commentUrl, array("body" => "I'm sorry @" . $comment->CommentUser . ", I can't do that."));
     requestGitHub($token, $reactionUrl, array("content" => "+1"));
     return;
