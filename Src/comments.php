@@ -11,16 +11,6 @@ use Lcobucci\JWT\Token\Builder;
 
 require 'vendor/autoload.php';
 
-function loadConfig()
-{
-    if (!file_exists("config.json")) {
-        return array();
-    }
-
-    $rawConfig = file_get_contents("config.json");
-    return json_decode($rawConfig);
-}
-
 function connectToDatabase()
 {
 
@@ -205,7 +195,7 @@ function execute_help($config, $metadata, $comment)
     foreach ($config->commands as $command) {
         $helpComment .= "- `@" . $config->botName . " " . $command->command . "`: " . $command->description . "\r\n";
     }
-    $helpComment .= "\r\n\r\nMultiple commands can be issued at same time, just respect each command pattern (with bot name prefix + command).\r\nIf you aren't allowed to use this bot, a reaction with thumbs down will be added to your comment.\r\n";
+    $helpComment .= "\r\n\r\nMultiple commands can be issued at same time, just respect each command pattern (with bot name prefix + command).\r\nIf you aren't allowed to use this bot, a reaction with a thumbs down will be added to your comment.\r\n";
     requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $helpComment));
 }
 
