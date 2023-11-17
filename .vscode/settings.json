@@ -27,9 +27,11 @@
         "CURLOPT",
         "FOLLOWLOCATION",
         "gstraccini",
+        "guibranco",
         "HTTPHEADER",
         "Lcobucci",
         "MAXREDIRS",
+        "POSTFIELDS",
         "RETURNTRANSFER",
         "VERIFYHOST",
         "VERIFYPEER"

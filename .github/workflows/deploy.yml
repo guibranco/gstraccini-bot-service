@@ -45,6 +45,12 @@ jobs:
           echo "\$gitHubAppId         = \"${{ secrets.APP_ID }}\";" >> gitHubApp.secrets.php
           echo "\$gitHubAppPrivateKey = \"${{ secrets.APP_PRIVATE_KEY}}\";" >> gitHubApp.secrets.php
 
+      - name: Generate HealthChecksIo secrets file
+        run: |
+          cd Src
+          echo "<?php" >> healthChecksIo.secrets.php
+          echo "\$healthChecksIoUuid = \"${{ secrets.HEALTHCHECKSIO_UUID }}\";" >> healthChecksIo.secrets.php
+
       - name: Upload service
         uses: sebastianpopp/ftp-action@releases/v2
         with:
