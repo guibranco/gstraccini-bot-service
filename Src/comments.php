@@ -201,7 +201,7 @@ function execute_help($config, $metadata, $comment)
         $helpComment .= "- `@" . $config->botName . " " . $command->command . "`: " . $command->description . "\r\n";
     }
     $helpComment .= "\r\nIf you aren't allowed to use this bot, a reaction with thumbs down will be added to your comment.\r\n";
-    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $$helpComment));
+    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $helpComment));
 }
 
 function execute_fixCsproj($config, $metadata, $comment)
