@@ -154,7 +154,7 @@ function handleComment($comment)
 {
     $config = loadConfig();
 
-    if ($comment->CommentUser !== $config->botName . "[bot]") {
+    if ($comment->CommentUser === $config->botName . "[bot]") {
         return;
     }
 
