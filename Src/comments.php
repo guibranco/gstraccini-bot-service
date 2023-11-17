@@ -11,6 +11,16 @@ use Lcobucci\JWT\Token\Builder;
 
 require 'vendor/autoload.php';
 
+function loadConfig()
+{
+    if (!file_exists("config.json")) {
+        return array();
+    }
+
+    $rawConfig = file_get_contents("config.json");
+    return json_decode($rawConfig);
+}
+
 function connectToDatabase()
 {
 
@@ -142,56 +152,67 @@ function requestGitHub($gitHubToken, $url, $data = null)
 
 function handleComment($comment)
 {
-    $commentBody = strtolower($comment->CommentBody);
-    $token = generateInstallationToken($comment->InstallationId, $comment->RepositoryName);
+    $config = loadConfig();
+    $metadata = array(
+        "token" => generateInstallationToken($comment->InstallationId, $comment->RepositoryName),
+        "reactionUrl" => "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName . "/issues/comments/" . $comment->CommentId . "/reactions",
+        "commentUrl" => "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName . "/issues/" . $comment->IssueNumber . "/comments"
+    );
 
-    $reactionUrl = "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName . "/issues/comments/" . $comment->CommentId . "/reactions";
-    $commentUrl = "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName . "/issues/" . $comment->IssueNumber . "/comments";
-
-    if ($comment->CommentUser !== "guibranco") {
-        requestGitHub($token, $reactionUrl, array("content" => "-1"));
+    if (!in_array($comment->CommentUser, $config["allowedInvokers"])) {
+        requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"));
         return;
     }
 
-    if ($commentBody == "@gstraccini hello world") {
-        requestGitHub($token, $reactionUrl, array("content" => "heart"));
-        requestGitHub($token, $commentUrl, array("body" => "Hello @" . $comment->CommentUser . "!"));
-        return;
+    $executedAtLeastOne = false;
+
+    foreach ($config["commands"] as $command) {
+        $commandExpression = "@" . $config["botName"] . " " . $command["command"];
+        if (strpos($commandExpression, strtolower($comment->CommentBody)) !== false) {
+            $executedAtLeastOne = true;
+            $method = "execute_" . toCamelCase($command["command"]);
+            $method($config, $metadata, $comment);
+        }
     }
 
-    if ($commentBody == "@gstraccini thank you") {
-        requestGitHub($token, $reactionUrl, array("content" => "+1"));
-        requestGitHub($token, $commentUrl, array("body" => "You're welcome @" . $comment->CommentUser . "!"));
-        return;
+    if (!$executedAtLeastOne) {
+        requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "I'm sorry @" . $comment->CommentUser . ", I can't do that."));
+        requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"));
     }
-
-    if ($commentBody == "@gstraccini fix csproj") {
-        requestGitHub($token, $reactionUrl, array("content" => "eyes"));
-        return;
-    }
-
-    if ($commentBody == "@gstraccini csharpier") {
-        requestGitHub($token, $reactionUrl, array("content" => "eyes"));
-        return;
-    }
-
-    if ($commentBody == "@gstraccini help") {
-        requestGitHub($token, $reactionUrl, array("content" => "rocket"));
-        $helpTemplate = "That's what I can do:\r\n" . 
-            "- `@gstraccini hello world` replies  with welcome message.\r\n" .
-            "- `@gstraccini thank you` replies  with thank you message \r\n" .
-            "- `@gstraccini help` displays this help message.\r\n" .
-            "- `@gstraccini fix csproj` fixes csproj files (only for .NET projects).\r\n" .
-            "- `@gstraccini csharpier` runs csharpier (only for .NET projects).\r\n";
-        requestGitHub($token, $commentUrl, array("body" => $helpTemplate));
-        return;
-    }
-
-    requestGitHub($token, $commentUrl, array("body" => "I'm sorry @" . $comment->CommentUser . ", I can't do that."));
-    requestGitHub($token, $reactionUrl, array("content" => "+1"));
-    return;
 }
 
+function execute_helloWorld($config, $metadata, $comment)
+{
+    requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "heart"));
+    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Hello @" . $comment->CommentUser . "!"));
+}
+
+function execute_thankYou($config, $metadata, $comment)
+{
+    requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"));
+    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "You're welcome @" . $comment->CommentUser . "!"));
+}
+
+function execute_help($config, $metadata, $comment)
+{
+    requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"));
+    $helpComment = "That's what I can do:\r\n";
+    foreach ($config["commands"] as $command) {
+        $helpComment .= "- `@" . $config["botName"] . " " . $command["command"] . "`: " . $command["description"] . "\r\n";
+    }
+    $helpComment .= "\r\nIf you aren't allowed to use this bot, a reaction with thumbs down will be added to your comment.\r\n";
+    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $$helpComment));
+}
+
+function execute_fixCsproj($config, $metadata, $comment)
+{
+    requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"));
+}
+
+function execute_csharpier($config, $metadata, $comment)
+{
+    requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"));
+}
 
 function main()
 {
