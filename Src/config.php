@@ -57,3 +57,13 @@ function toCamelCase($inputString) {
         $inputString
     );
 }
+
+function loadConfig()
+{
+    if (!file_exists("config.json")) {
+        return array();
+    }
+
+    $rawConfig = file_get_contents("config.json");
+    return json_decode($rawConfig);
+}
