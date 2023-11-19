@@ -15,33 +15,39 @@ on:
         description: "The pull request number"
         required: true
         default: "-1"
+      installationId:
+        description: "The installation id"
+        required: true
+        default: "-1"
+
 jobs:
   csharpier:
     permissions: write-all
     runs-on: ubuntu-latest
     steps:
-
-    - name: Generate a token
-      id: generate_token
-      uses: tibdex/github-app-token@v2.1.0
-      with:
-        app_id: ${{ secrets.APP_ID }}
-        private_key: ${{ secrets.APP_PRIVATE_KEY }}
-        repositories: >-
+      - name: Generate a token
+        id: generate_token
+        uses: tibdex/github-app-token@v2.1.0
+        with:
+          app_id: ${{ secrets.APP_ID }}
+          private_key: ${{ secrets.APP_PRIVATE_KEY }}
+          installation_retrieval_mode: id
+          installation_retrieval_payload: ${{ github.event.inputs.installationId }}
+          repositories: >-
             ["${{ github.event.inputs.repository }}"]
 
-    - name: Checkout repo
-      uses: actions/checkout@v4
-      with:
-        repository: ${{ github.event.inputs.repository }}
-        ref: ${{ github.event.inputs.branch }}
-        token: ${{ steps.generate_token.outputs.token }}
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.inputs.repository }}
+          ref: ${{ github.event.inputs.branch }}
+          token: ${{ steps.generate_token.outputs.token }}
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
 
-    - name: Dotnet restore
-      run: dotnet tool restore
+      - name: Dotnet restore
+        run: dotnet tool restore
 
-    - name: CSharpier format check
-      run: dotnet csharpier . --check
+      - name: CSharpier format check
+        run: dotnet csharpier . --check
