@@ -33,8 +33,6 @@ jobs:
           private_key: ${{ secrets.APP_PRIVATE_KEY }}
           installation_retrieval_mode: id
           installation_retrieval_payload: ${{ github.event.inputs.installationId }}
-          repositories: >-
-            ["${{ github.event.inputs.repository }}"]
 
       - name: Checkout repo
         uses: actions/checkout@v4
