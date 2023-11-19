@@ -54,7 +54,7 @@ jobs:
       - name: CSharpier format check
         continue-on-error: true
         id: check
-        run: echo "check=$(dotnet csharpier . --check)" | Out-File -FilePath $env:GITHUB_ENV -Append
+        run: echo "check=$(dotnet csharpier . --check)" >> $GITHUB_ENV
 
       - name: Update PR with comment
         uses: mshick/add-pr-comment@v2
@@ -83,5 +83,5 @@ jobs:
         run: |
           git add .
           git commit -m "CSharpier format"
-          echo "sha1=$(git rev-parse HEAD)" | Out-File -FilePath $env:GITHUB_ENV -Append
-          git push
+          echo "sha1=$(git rev-parse HEAD)" >> $GITHUB_ENV
+          git push origin ${{ github.event.inputs.branch }}
