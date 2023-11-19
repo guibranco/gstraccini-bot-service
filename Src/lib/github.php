@@ -8,7 +8,6 @@ use Lcobucci\JWT\Token\Builder;
 
 function requestGitHub($gitHubToken, $url, $data = null)
 {
-
     $baseUrl = "https://api.github.com/";
 
     $headers = array();

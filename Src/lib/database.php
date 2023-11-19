@@ -2,7 +2,6 @@
 
 function connectToDatabase()
 {
-
     global $mySqlHost, $mySqlUser, $mySqlPassword, $mySqlDatabase;
 
     $mysqli = new mysqli($mySqlHost, $mySqlUser, $mySqlPassword, $mySqlDatabase);

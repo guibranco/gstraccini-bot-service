@@ -72,7 +72,6 @@ function execute_fixCsproj($config, $metadata, $comment)
 
 function execute_csharpier($config, $metadata, $comment)
 {
-    global $config;
     requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"));
 
     $pullRequest = requestGitHub($metadata["token"], "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName . "/pulls/" . $comment->IssueNumber);
@@ -90,6 +89,7 @@ function execute_csharpier($config, $metadata, $comment)
             "repository" => $comment->RepositoryOwner . "/" . $comment->RepositoryName,
             "branch" => $branch,
             "pull_request" => $comment->IssueNumber,
+            "installationId" => $comment->InstallationId
         )
     );
     requestGitHub($tokenBot, $url, $data);

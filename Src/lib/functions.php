@@ -18,7 +18,6 @@ function getHeaders($header)
     return $headers;
 }
 
-
 function sendHealthCheck($type=null)
 {
     if (isset($_SERVER['REQUEST_METHOD'])) {
