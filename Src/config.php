@@ -23,41 +23,6 @@ if (file_exists($healthChecksIoSecretsFile)) {
     require_once $healthChecksIoSecretsFile;
 }
 
-function sendHealthCheck($type=null)
-{
-    if (isset($_SERVER['REQUEST_METHOD'])) {
-        return;
-    }
-    global $healthChecksIoUuid;
-
-    $curl = curl_init();
-    curl_setopt_array(
-        $curl,
-        array(
-            CURLOPT_URL => "https://hc-ping.com/" . $healthChecksIoUuid . ($type == null ? "" : $type),
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => "",
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 0,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_SSL_VERIFYPEER => false
-        )
-    );
-    curl_exec($curl);
-    curl_close($curl);
-}
-
-function toCamelCase($inputString) {
-    return preg_replace_callback(
-        '/(?:^|_| )(\w)/',
-        function ($matches) {
-            return strtoupper($matches[1]);
-        },
-        $inputString
-    );
-}
-
 function loadConfig()
 {
     if (!file_exists("config.json")) {
