@@ -86,7 +86,8 @@ function execute_csharpier($config, $metadata, $comment)
     $data = array(
         "ref" => "main",
         "inputs" => array(
-            "repository" => $comment->RepositoryOwner . "/" . $comment->RepositoryName,
+            "owner" => $comment->RepositoryOwner,
+            "repository" => $comment->RepositoryName,
             "branch" => $branch,
             "pull_request" => $comment->IssueNumber,
             "installationId" => $comment->InstallationId

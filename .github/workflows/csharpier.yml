@@ -3,10 +3,14 @@ name: CSharpier
 on:
   workflow_dispatch:
     inputs:
+      owner:
+        description: "The owner of the repository to run"
+        required: true
+        default: "guibranco"
       repository:
         description: "The repository to run"
         required: true
-        default: "guibranco/gstraccini-bot"
+        default: "gstraccini-bot"
       branch:
         description: "The branch to run"
         required: true
@@ -37,7 +41,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          repository: ${{ github.event.inputs.repository }}
+          repository: "${{ github.event.inputs.owner}}/${{ github.event.inputs.repository }}"
           ref: ${{ github.event.inputs.branch }}
           token: ${{ steps.generate_token.outputs.token }}
 
@@ -48,4 +52,35 @@ jobs:
         run: dotnet tool restore
 
       - name: CSharpier format check
-        run: dotnet csharpier . --check
+        id: check
+        run: echo "check=$(dotnet csharpier . --check)" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Update PR with comment
+        uses: mshick/add-pr-comment@v2
+        with:
+          repo-token: ${{ steps.generate_token.outputs.token }}
+          repo-owner: ${{ github.event.inputs.owner }}
+          repo-name: ${{ github.event.inputs.repository }}
+          issue: ${{ github.event.inputs.pull_request }}
+          message: |
+            CSharpeir result:
+            
+            ```
+            ${{ steps.check.outputs.check }}
+            ```
+
+      - name: CSharpier format
+        run: dotnet csharpier .
+
+      - name: Config git
+        run: |
+          git config --local user.email "${{ github.event.inputs.installationId }}+gstraccini[bot]@users.noreply.github.com"
+          git config --local user.name "gstraccini[bot]"
+          git config --global --add --bool push.autoSetupRemote true
+      
+      - name: Commit files
+        run: |
+          git add .
+          git commit -m "CSharpier format"
+          echo "sha1=$(git rev-parse HEAD)" | Out-File -FilePath $env:GITHUB_ENV -Append
+          git push
