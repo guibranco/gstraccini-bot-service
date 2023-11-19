@@ -1,0 +1,32 @@
+name: CSharpier
+
+on:
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: "The repository to run"
+        required: true
+        default: "guibranco/gstraccini-bot"
+      branch:
+        description: "The branch to run"
+        required: true
+        default: "main"
+jobs:
+  csharpier:
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Checkout repo
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ github.event.inputs.repository }}
+        ref: ${{ github.event.inputs.branch }}
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+
+    - name: Dotnet restore
+      run: dotnet tool restore
+
+    - name: CSharpier format check
+      run: dotnet csharpier . --check
