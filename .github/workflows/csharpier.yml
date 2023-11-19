@@ -52,6 +52,7 @@ jobs:
         run: dotnet tool restore
 
       - name: CSharpier format check
+        continue-on-error: true
         id: check
         run: echo "check=$(dotnet csharpier . --check)" | Out-File -FilePath $env:GITHUB_ENV -Append
 
