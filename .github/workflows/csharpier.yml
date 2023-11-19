@@ -11,17 +11,31 @@ on:
         description: "The branch to run"
         required: true
         default: "main"
+      pull_request:
+        description: "The pull request number"
+        required: true
+        default: "-1"
 jobs:
   csharpier:
     permissions: write-all
     runs-on: ubuntu-latest
     steps:
 
+    - name: Generate a token
+      id: generate_token
+      uses: tibdex/github-app-token@v2.1.0
+      with:
+        app_id: ${{ secrets.APP_ID }}
+        private_key: ${{ secrets.APP_PRIVATE_KEY }}
+        repositories: >-
+            ["${{ github.event.inputs.repository }}"]
+
     - name: Checkout repo
       uses: actions/checkout@v4
       with:
         repository: ${{ github.event.inputs.repository }}
         ref: ${{ github.event.inputs.branch }}
+        token: ${{ steps.generate_token.outputs.token }}
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v3

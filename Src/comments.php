@@ -1,144 +1,10 @@
 <?php
 
-require_once("config.php");
-require_once("functions.php");
-
-use Lcobucci\JWT\Encoding\ChainedFormatter;
-use Lcobucci\JWT\Encoding\JoseEncoder;
-use Lcobucci\JWT\Signer\Key\InMemory;
-use Lcobucci\JWT\Signer\Rsa\Sha256;
-use Lcobucci\JWT\Token\Builder;
-
-require 'vendor/autoload.php';
-
-function connectToDatabase()
-{
-
-    global $mySqlHost, $mySqlUser, $mySqlPassword, $mySqlDatabase;
-
-    $mysqli = new mysqli($mySqlHost, $mySqlUser, $mySqlPassword, $mySqlDatabase);
-    if ($mysqli->connect_errno) {
-        die("Failed to connect to MySQL: " . $mysqli->connect_error);
-    }
-
-    $mysqli->set_charset("utf8mb4");
-
-    return $mysqli;
-}
-
-function readComments()
-{
-    $mysqli = connectToDatabase();
-    $result = $mysqli->query("SELECT * FROM github_comments WHERE Processed = 0 LIMIT 10");
-
-    if (!$result) {
-        return null;
-    }
-
-    $comments = array();
-
-    while ($obj = $result->fetch_object()) {
-        $comments[] = $obj;
-    }
-
-    $result->close();
-    $mysqli->close();
-
-    return $comments;
-}
-
-function updateComment($commentSequence)
-{
-    $mysqli = connectToDatabase();
-    $sql = "UPDATE github_comments SET Processed = 1, ProcessedDate = NOW() WHERE Sequence = ?";
-    $stmt = $mysqli->prepare($sql);
-    $stmt->bind_param("i", $commentSequence);
-
-    $stmt->execute();
-    $stmt->close();
-    $mysqli->close();
-}
-
-function generateAppToken()
-{
-    global $gitHubAppId, $gitHubAppPrivateKey;
-
-    $tokenBuilder = new Builder(new JoseEncoder(), ChainedFormatter::default());
-    $algorithm = new Sha256();
-    $signingKey = InMemory::plainText($gitHubAppPrivateKey);
-    $base = new \DateTimeImmutable();
-    $now = $base->setTime(date('H'), date('i'), date('s'));
-
-    $token = $tokenBuilder
-        ->issuedBy($gitHubAppId)
-        ->issuedAt($now->modify('-1 minute'))
-        ->expiresAt($now->modify('+5 minutes'))
-        ->getToken($algorithm, $signingKey);
-
-    return $token->toString();
-}
-
-function generateInstallationToken($installationId, $repositoryName)
-{
-    $gitHubAppToken = generateAppToken();
-
-    $data = new \stdClass();
-    $data->repository = $repositoryName;
-    $response = requestGitHub($gitHubAppToken, "app/installations/" . $installationId . "/access_tokens", $data);
-
-    $json = json_decode($response["body"]);
-    return $json->token;
-}
-
-function requestGitHub($gitHubToken, $url, $data = null)
-{
-
-    $baseUrl = "https://api.github.com/";
-
-    $headers = array();
-    $headers[] = "User-Agent: " . USER_AGENT;
-    $headers[] = "Content-type: application/json";
-    $headers[] = "Authorization: Bearer " . $gitHubToken;
-
-    $fields = array(
-        CURLOPT_URL => $baseUrl . $url,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HEADER => 1,
-        CURLOPT_ENCODING => "",
-        CURLOPT_MAXREDIRS => 10,
-        CURLOPT_TIMEOUT => 0,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-        CURLOPT_SSL_VERIFYHOST => 0,
-        CURLOPT_SSL_VERIFYPEER => 0,
-        CURLOPT_HTTPHEADER => $headers
-    );
-
-    if ($data !== null) {
-        $fields[CURLOPT_POST] = true;
-        $fields[CURLOPT_POSTFIELDS] = json_encode($data);
-    }
-
-    $curl = curl_init();
-
-    curl_setopt_array($curl, $fields);
-
-    $response = curl_exec($curl);
-
-    if ($response === false) {
-        echo htmlspecialchars($url);
-        echo "\r\n";
-        die(curl_error($curl));
-    }
-
-    $headerSize = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
-    $header = substr($response, 0, $headerSize);
-    $headers = getHeaders($header);
-    $body = substr($response, $headerSize);
-    curl_close($curl);
-
-    return array("headers" => $headers, "body" => $body);
-}
+require_once "vendor/autoload.php";
+require_once "config.php";
+require_once "lib/functions.php";
+require_once "lib/database.php";
+require_once "lib/github.php";
 
 function handleComment($comment)
 {
@@ -206,23 +72,27 @@ function execute_fixCsproj($config, $metadata, $comment)
 
 function execute_csharpier($config, $metadata, $comment)
 {
+    global $config;
     requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"));
 
     $pullRequest = requestGitHub($metadata["token"], "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName . "/pulls/" . $comment->IssueNumber);
+
     $pullRequestBody = json_decode($pullRequest["body"]);
     $branch = $pullRequestBody->head->ref;
 
-    $tokenBot = generateInstallationToken($comment->InstallationId, "guibranco/gstraccini-bot");
-    $url = "repos/guibranco/gstraccini-bot/actions/workflows/csharpier/dispatches";
+    $permissions =  array("metadata" => "read", "contents" => "write", "pull_requests" => "write", "actions" => "write");
+
+    $tokenBot = generateInstallationToken($config->botRepositoryInstallationId, $config->botRepository, $permissions);
+    $url = "repos/" . $config->botRepository . "/actions/workflows/csharpier.yml/dispatches";
     $data = array(
-        "ref" => "main", 
+        "ref" => "main",
         "inputs" => array(
-            "repository" => $comment->RepositoryOwner . "/" .$comment->RepositoryName,
+            "repository" => $comment->RepositoryOwner . "/" . $comment->RepositoryName,
             "branch" => $branch,
-            "issueNumber" => $comment->IssueNumber
+            "pull_request" => $comment->IssueNumber,
         )
     );
-    print_r(requestGitHub($tokenBot, $url, $data));
+    requestGitHub($tokenBot, $url, $data);
 }
 
 function main()
