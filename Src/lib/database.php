@@ -18,7 +18,7 @@ function connectToDatabase()
 function readComments()
 {
     $mysqli = connectToDatabase();
-    $result = $mysqli->query("SELECT * FROM github_comments WHERE Processed = 1 AND CommentBody LIKE '%csharpier%' LIMIT 1");
+    $result = $mysqli->query("SELECT * FROM github_comments WHERE Processed = 0 LIMIT 10");
 
     if (!$result) {
         return null;
