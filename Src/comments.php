@@ -207,6 +207,22 @@ function execute_fixCsproj($config, $metadata, $comment)
 function execute_csharpier($config, $metadata, $comment)
 {
     requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"));
+
+    $pullRequest = requestGitHub($metadata["token"], "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName . "/pulls/" . $comment->IssueNumber);
+    $pullRequestBody = json_decode($pullRequest["body"]);
+    $branch = $pullRequestBody->head->ref;
+
+    $tokenBot = generateInstallationToken($comment->InstallationId, "guibranco/gstraccini-bot");
+    $url = "repos/guibranco/gstraccini-bot/actions/workflows/csharpier/dispatches";
+    $data = array(
+        "ref" => "main", 
+        "inputs" => array(
+            "repository" => $comment->RepositoryOwner . "/" .$comment->RepositoryName,
+            "branch" => $branch,
+            "issueNumber" => $comment->IssueNumber
+        )
+    );
+    print_r(requestGitHub($tokenBot, $url, $data));
 }
 
 function main()
