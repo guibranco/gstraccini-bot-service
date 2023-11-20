@@ -79,7 +79,7 @@ function execute_csharpier($config, $metadata, $comment)
     $pullRequestBody = json_decode($pullRequest["body"]);
     $branch = $pullRequestBody->head->ref;
 
-    $permissions =  array("metadata" => "read", "contents" => "write", "pull_requests" => "write", "actions" => "write");
+    $permissions = array("metadata" => "read", "contents" => "write", "pull_requests" => "write", "actions" => "write");
 
     $tokenBot = generateInstallationToken($config->botRepositoryInstallationId, $config->botRepository, $permissions);
     $url = "repos/" . $config->botRepository . "/actions/workflows/csharpier.yml/dispatches";
@@ -105,6 +105,6 @@ function main()
     }
 }
 
-sendHealthCheck("/start");
+sendHealthCheck($healthChecksIoComments, "/start");
 main();
-sendHealthCheck();
+sendHealthCheck($healthChecksIoComments);
