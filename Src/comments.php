@@ -98,10 +98,10 @@ function execute_csharpier($config, $metadata, $comment)
 
 function main()
 {
-    $comments = readComments();
+    $comments = readTable("github_comments");
     foreach ($comments as $comment) {
         handleComment($comment);
-        updateComment($comment->Sequence);
+        updateTable("github_comments", $comment->Sequence);
     }
 }
 
