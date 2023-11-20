@@ -14,33 +14,38 @@ function connectToDatabase()
     return $mysqli;
 }
 
-function readComments()
-{
+function readTable($tableName, $where = null){
     $mysqli = connectToDatabase();
-    $result = $mysqli->query("SELECT * FROM github_comments WHERE Processed = 0 LIMIT 10");
+    $defaultWhere = "Processed = 0 LIMIT 1";
+    $sql = "SELECT * FROM " . $tableName . " WHERE ";
+    if($where == null){
+        $sql .= $defaultWhere;
+    } else {
+        $sql .= $where;
+    }
+    $result = $mysqli->query($sql);
 
     if (!$result) {
         return null;
     }
 
-    $comments = array();
+    $data = array();
 
     while ($obj = $result->fetch_object()) {
-        $comments[] = $obj;
+        $data[] = $obj;
     }
 
     $result->close();
     $mysqli->close();
 
-    return $comments;
+    return $data;
 }
 
-function updateComment($commentSequence)
-{
+function updateTable($tableName, $sequence) {
     $mysqli = connectToDatabase();
-    $sql = "UPDATE github_comments SET Processed = 1, ProcessedDate = NOW() WHERE Sequence = ?";
+    $sql = "UPDATE " . $tableName . " SET Processed = 1, ProcessedDate = NOW() WHERE Sequence = ?";
     $stmt = $mysqli->prepare($sql);
-    $stmt->bind_param("i", $commentSequence);
+    $stmt->bind_param("i", $sequence);
 
     $stmt->execute();
     $stmt->close();
