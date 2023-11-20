@@ -1,30 +1,32 @@
 {
-    "botName": "gstraccini",
-    "botRepository": "guibranco/gstraccini-bot",
-    "botRepositoryInstallationId": "44061807",
-    "allowedInvokers": [
-        "guibranco"
-    ],
-    "commands":[
-        {
-            "command": "help",
-            "description": "Shows the help message with available commands."
-        },
-        {
-            "command": "hello world",
-            "description": "Says hello to the invoker."
-        },
-        {
-            "command": "thank you",
-            "description": "Replies with you are welcome message to the invoker."
-        },
-        {
-            "command": "fix csproj",
-            "description": "Fixes the csproj file with packages.config version of NuGet packages (only for **.NET Framework** projects)."
-        },
-        {
-            "command": "csharpier",
-            "description": "Formats the C# code using CSharpier (only for **.NET** projects)."
-        }
-    ]
+  "botName": "gstraccini",
+  "botRepository": "guibranco/gstraccini-bot",
+  "botRepositoryInstallationId": "44061807",
+  "allowedInvokers": ["guibranco"],
+  "commands": [
+    {
+      "command": "help",
+      "description": "Shows the help message with available commands."
+    },
+    {
+      "command": "hello world",
+      "description": "Says hello to the invoker."
+    },
+    {
+      "command": "thank you",
+      "description": "Replies with you are welcome message to the invoker."
+    },
+    {
+      "command": "fix csproj",
+      "description": "Fixes the csproj file with packages.config version of NuGet packages (only for **.NET Framework** projects)."
+    },
+    {
+      "command": "csharpier",
+      "description": "Formats the C# code using CSharpier (only for **.NET** projects)."
+    }
+  ],
+  "pullRequests": {
+    "autoReviewSubmitters": ["dependabot[bot]"],
+    "autoMergeSubmitters": ["dependabot[bot]", "guibranco"]
+  }
 }

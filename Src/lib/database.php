@@ -16,7 +16,7 @@ function connectToDatabase()
 
 function readTable($tableName, $where = null){
     $mysqli = connectToDatabase();
-    $defaultWhere = "Processed = 0 LIMIT 1";
+    $defaultWhere = "Processed = 0 ORDER BY Sequence ASC LIMIT 10";
     $sql = "SELECT * FROM " . $tableName . " WHERE ";
     if($where == null){
         $sql .= $defaultWhere;

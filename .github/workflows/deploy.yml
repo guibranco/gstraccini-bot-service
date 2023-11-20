@@ -42,6 +42,7 @@ jobs:
         run: |
           cd Src
           echo "<?php" >> gitHubApp.secrets.php
+          echo "\$gitHubUserToken     = \"${{ secrets.USER_TOKEN }}\";" >> gitHubApp.secrets.php
           echo "\$gitHubAppId         = \"${{ secrets.APP_ID }}\";" >> gitHubApp.secrets.php
           echo "\$gitHubAppPrivateKey = \"${{ secrets.APP_PRIVATE_KEY}}\";" >> gitHubApp.secrets.php
 
@@ -49,7 +50,8 @@ jobs:
         run: |
           cd Src
           echo "<?php" >> healthChecksIo.secrets.php
-          echo "\$healthChecksIoUuid = \"${{ secrets.HEALTHCHECKSIO_UUID }}\";" >> healthChecksIo.secrets.php
+          echo "\$healthChecksIoComments     = \"${{ secrets.HEALTHCHECKSIO_COMMENTS }}\";" >> healthChecksIo.secrets.php
+          echo "\$healthChecksIoPullRequests = \"${{ secrets.HEALTHCHECKSIO_PULL_REQUESTS }}\";" >> healthChecksIo.secrets.php
 
       - name: Upload service
         uses: sebastianpopp/ftp-action@releases/v2

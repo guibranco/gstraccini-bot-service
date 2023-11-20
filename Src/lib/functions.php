@@ -18,18 +18,17 @@ function getHeaders($header)
     return $headers;
 }
 
-function sendHealthCheck($type=null)
+function sendHealthCheck($token, $type=null)
 {
     if (isset($_SERVER['REQUEST_METHOD'])) {
         return;
     }
-    global $healthChecksIoUuid;
 
     $curl = curl_init();
     curl_setopt_array(
         $curl,
         array(
-            CURLOPT_URL => "https://hc-ping.com/" . $healthChecksIoUuid . ($type == null ? "" : $type),
+            CURLOPT_URL => "https://hc-ping.com/" . $token . ($type == null ? "" : $type),
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_ENCODING => "",
             CURLOPT_MAXREDIRS => 10,
