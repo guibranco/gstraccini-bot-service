@@ -54,7 +54,9 @@ jobs:
       - name: CSharpier format check
         continue-on-error: true
         id: check
-        run: echo "check=$(dotnet csharpier . --check)" >> $GITHUB_ENV
+        run: |
+          set -e
+          echo "check=$(dotnet csharpier . --check)" >> $GITHUB_ENV
 
       - name: Update PR with comment
         uses: mshick/add-pr-comment@v2
