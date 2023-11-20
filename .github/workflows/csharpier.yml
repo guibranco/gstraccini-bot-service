@@ -69,7 +69,7 @@ jobs:
           repo-name: ${{ github.event.inputs.repository }}
           issue: ${{ github.event.inputs.pull_request }}
           message: |
-            [CSharpeir](${{ env.GHA_URL }}) result:
+            :white_check_mark: [CSharpier](${{ env.GHA_URL }}) result:
             
             ```
             ${{ steps.check.outputs.check }}
@@ -83,7 +83,7 @@ jobs:
           repo-name: ${{ github.event.inputs.repository }}
           issue: ${{ github.event.inputs.pull_request }}
           message: |
-            [CSharpeir](${{ env.GHA_URL }}) executed! No changes are needed.
+           :warning: [CSharpier](${{ env.GHA_URL }}) executed! No changes are needed.
 
       - name: CSharpier format
         run: dotnet csharpier .
@@ -106,3 +106,14 @@ jobs:
           git commit -m "CSharpier format"
           echo "sha1=$(git rev-parse HEAD)" >> $GITHUB_ENV
           git push origin ${{ github.event.inputs.branch }}
+
+      - name: Update PR with comment
+        uses: mshick/add-pr-comment@v2
+        if: failure()
+        with:
+          repo-token: ${{ steps.generate_token.outputs.token }}
+          repo-owner: ${{ github.event.inputs.owner }}
+          repo-name: ${{ github.event.inputs.repository }}
+          issue: ${{ github.event.inputs.pull_request }}
+          message: |
+            :x: [CSharpier](${{ env.GHA_URL }}) failed!
