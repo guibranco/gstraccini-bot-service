@@ -57,7 +57,7 @@ jobs:
         continue-on-error: true
         run: |
           set -e
-          echo "check=$(dotnet csharpier . --check 2>&1)" >> $GITHUB_ENV
+          echo "check=$(dotnet csharpier . --check 2>&1 > /dev/null)" >> $GITHUB_ENV
 
       - name: Update PR with comment
         uses: mshick/add-pr-comment@v2
@@ -67,6 +67,8 @@ jobs:
           repo-owner: ${{ github.event.inputs.owner }}
           repo-name: ${{ github.event.inputs.repository }}
           issue: ${{ github.event.inputs.pull_request }}
+          refresh-message-position: true
+          allow-repeats: true
           message: |
             :white_check_mark: [CSharpier](${{ env.GHA_URL }}) result:
             
@@ -81,6 +83,8 @@ jobs:
           repo-owner: ${{ github.event.inputs.owner }}
           repo-name: ${{ github.event.inputs.repository }}
           issue: ${{ github.event.inputs.pull_request }}
+          refresh-message-position: true
+          allow-repeats: true
           message: |
            :warning: [CSharpier](${{ env.GHA_URL }}) executed! No changes are needed.
 
@@ -114,5 +118,7 @@ jobs:
           repo-owner: ${{ github.event.inputs.owner }}
           repo-name: ${{ github.event.inputs.repository }}
           issue: ${{ github.event.inputs.pull_request }}
+          refresh-message-position: true
+          allow-repeats: true
           message: |
             :x: [CSharpier](${{ env.GHA_URL }}) failed!
