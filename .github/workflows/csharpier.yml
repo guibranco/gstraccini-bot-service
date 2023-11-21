@@ -55,14 +55,13 @@ jobs:
 
       - name: CSharpier format check
         continue-on-error: true
-        id: check
         run: |
           set -e
           echo "check=$(dotnet csharpier . --check)" >> $GITHUB_ENV
 
       - name: Update PR with comment
         uses: mshick/add-pr-comment@v2
-        if: ${{ steps.check.outputs.check }} != ""
+        if: ${{ env.check }} != ""
         with:
           repo-token: ${{ steps.generate_token.outputs.token }}
           repo-owner: ${{ github.event.inputs.owner }}
@@ -72,11 +71,11 @@ jobs:
             :white_check_mark: [CSharpier](${{ env.GHA_URL }}) result:
             
             ```
-            ${{ steps.check.outputs.check }}
+            ${{ env.check }}
             ```
       - name: Update PR with comment
         uses: mshick/add-pr-comment@v2
-        if: ${{ steps.check.outputs.check }} == ""
+        if: ${{ env.check }} == ""
         with:
           repo-token: ${{ steps.generate_token.outputs.token }}
           repo-owner: ${{ github.event.inputs.owner }}
