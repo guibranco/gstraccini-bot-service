@@ -26,7 +26,7 @@
     }
   ],
   "pullRequests": {
-    "autoReviewSubmitters": ["dependabot[bot]"],
-    "autoMergeSubmitters": ["dependabot[bot]", "guibranco"]
+    "autoReviewSubmitters": ["dependabot[bot]", "net-framework-updater[bot]"],
+    "autoMergeSubmitters": ["dependabot[bot]", "guibranco", "net-framework-updater[bot]"]
   }
 }
