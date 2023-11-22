@@ -38,7 +38,7 @@ function handleComment($comment)
 
     if (!$executedAtLeastOne) {
         requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "I'm sorry @" . $comment->CommentUser . ", I can't do that."));
-        requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"));
+        requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"));
     }
 }
 
@@ -69,29 +69,36 @@ function execute_bumpVersion($config, $metadata, $comment)
 {
     requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"));
     requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Bumping .NET version on this branch!\r\n\r\n:warning: Experimental - Not working!"));
+    callWorkflow($config, $metadata, $comment, "bump-version.yml");
 }
 
 function execute_csharpier($config, $metadata, $comment)
 {
     requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"));
     requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Running CSharpier on this branch!"));
-    callWorkflow($config, $comment, "csharpier.yml");
+    callWorkflow($config, $metadata, $comment, "csharpier.yml");
 }
 
 function execute_fixCsproj($config, $metadata, $comment)
 {
     requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"));
     requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Bumping .NET version on this branch!\r\n\r\n:warning: Experimental - Not working!"));
+    callWorkflow($config, $metadata, $comment, "fix-csproj.yml");
 }
 
-function callWorkflow($config, $comment, $workflow)
+function execute_track($config, $metadata, $comment)
+{
+    requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"));
+    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Tracking this pull request!\r\n\r\n:warning: Experimental - Not working!"));
+    callWorkflow($config, $metadata, $comment, "track.yml");
+}
+
+function callWorkflow($config, $metadata, $comment, $workflow)
 {
     $pullRequestResponse = requestGitHub($metadata["token"], "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName . "/pulls/" . $comment->IssueNumber);
     $pullRequest = json_decode($pullRequestResponse["body"]);
-    
-    $permissions = array("metadata" => "read", "contents" => "write", "pull_requests" => "write", "actions" => "write");
 
-    $tokenBot = generateInstallationToken($config->botRepositoryInstallationId, $config->botRepository, $permissions);
+    $tokenBot = generateInstallationToken($config->botRepositoryInstallationId, $config->botRepository);
     $url = "repos/" . $config->botRepository . "/actions/workflows/" . $workflow . "/dispatches";
     $data = array(
         "ref" => "main",

@@ -27,6 +27,10 @@
     {
       "command": "fix csproj",
       "description": "Fixes the csproj file with packages.config version of NuGet packages (only for **.NET Framework** projects)."
+    },
+    {
+      "command": "track",
+      "description": "Tracks the specified pull request. Queue a build, raise `[dependabot](https://github.com/dependabot) recreate` comment to resolve conflicts and synchronize merge branches."
     }
   ],
   "pullRequests": {

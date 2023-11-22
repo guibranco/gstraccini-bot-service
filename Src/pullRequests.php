@@ -11,7 +11,6 @@ function handlePullRequest($pullRequest)
     global $gitHubUserToken;
     $config = loadConfig();
 
-
     $token = generateInstallationToken($pullRequest->InstallationId, $pullRequest->RepositoryName);
 
     $pullRequestResponse = requestGitHub($token, "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/pulls/" . $pullRequest->PullRequestNumber);
@@ -54,8 +53,6 @@ function handlePullRequest($pullRequest)
         );
         requestGitHub($gitHubUserToken, "graphql", $body);
     }
-
-
 }
 
 function main()
