@@ -17,12 +17,16 @@
       "description": "Replies with you are welcome message to the invoker."
     },
     {
-      "command": "fix csproj",
-      "description": "Fixes the csproj file with packages.config version of NuGet packages (only for **.NET Framework** projects)."
-    },
+      "command": "bump version",
+      "description": "Bumps the .NET version in .csproj files."
+    }
     {
       "command": "csharpier",
       "description": "Formats the C# code using CSharpier (only for **.NET** projects)."
+    },
+    {
+      "command": "fix csproj",
+      "description": "Fixes the csproj file with packages.config version of NuGet packages (only for **.NET Framework** projects)."
     }
   ],
   "pullRequests": {
