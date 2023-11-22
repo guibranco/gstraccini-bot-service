@@ -20,7 +20,27 @@ function handlePullRequest($pullRequest)
         return;
     }
 
-    if ($pullRequestUpdated->assignee == null){
+    $reviewsResponse = requestGitHub($token, "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/pulls/" . $pullRequest->PullRequestNumber . "/reviews");
+    $reviews = json_decode($reviewsResponse["body"]);
+
+    $botReviewed = false;
+    $invokerReviewed = false;
+
+    foreach ($reviews as $review) {
+        if ($review->user->login == $config->botName . "[bot]") {
+            $botReviewed = true;
+            continue;
+        }
+
+        if (in_array($review->user->login, $config->allowedInvokers)) {
+            $invokerReviewed = true;
+            if ($botReviewed) {
+                break;
+            }
+        }
+    }
+
+    if ($pullRequestUpdated->assignee == null) {
         $urlAssignees = "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/issues/" . $pullRequest->PullRequestNumber . "/assignees";
         $body = array(
             "assignees" => array("guibranco")
@@ -28,11 +48,13 @@ function handlePullRequest($pullRequest)
         requestGitHub($token, $urlAssignees, $body);
     }
 
-    $urlReview = "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/pulls/" . $pullRequest->PullRequestNumber . "/reviews";
-    $body = array("event" => "APPROVE");
-    requestGitHub($token, $urlReview, $body);
+    if (!$botReviewed) {
+        $urlReview = "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/pulls/" . $pullRequest->PullRequestNumber . "/reviews";
+        $body = array("event" => "APPROVE");
+        requestGitHub($token, $urlReview, $body);
+    }
 
-    if (in_array($pullRequest->PullRequestSubmitter, $config->pullRequests->autoReviewSubmitters)) {
+    if (!$invokerReviewed && in_array($pullRequest->PullRequestSubmitter, $config->pullRequests->autoReviewSubmitters)) {
         $body = array(
             "event" => "APPROVE",
             "body" => "Automatically approved by [" . $config->botName . "\[bot\]](https://github.com/apps/" . $config->botName . ")"
@@ -40,7 +62,7 @@ function handlePullRequest($pullRequest)
         requestGitHub($gitHubUserToken, $urlReview, $body);
     }
 
-    if (in_array($pullRequest->PullRequestSubmitter, $config->pullRequests->autoMergeSubmitters)) {
+    if ($pullRequestUpdated->auto_merge == null && in_array($pullRequest->PullRequestSubmitter, $config->pullRequests->autoMergeSubmitters)) {
         $body = array(
             "query" => "mutation MyMutation {
             enablePullRequestAutoMerge(input: {pullRequestId: \"" . $pullRequest->NodeId . "\", mergeMethod: SQUASH}) {
@@ -51,10 +73,24 @@ function handlePullRequest($pullRequest)
         requestGitHub($gitHubUserToken, "graphql", $body);
     }
 
-    if ($pullRequest->PullRequestSubmitter == "dependabot[bot]") {
-        $urlComment = "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/issues/" . $pullRequest->PullRequestNumber . "/comments";
-        $comment = array("body" => "@dependabot squash and merge");
-        requestGitHub($gitHubUserToken, $urlComment, $comment);
+    if ($pullRequest->PullRequestSubmitter == "dependabot[bot]" && in_array($pullRequest->RepositoryOwner, $config->pullRequests->allowedSquashAndMergeOwners)) {
+        $commentsRequest = requestGitHub($token, "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/issues/" . $pullRequest->PullRequestNumber . "/comments");
+        $comments = json_decode($commentsRequest["body"]);
+
+        $found = false;
+
+        foreach ($comments as $comment) {
+            if ($comment->body == "@dependabot squash and merge") {
+                $found = true;
+                break;
+            }
+        }
+
+        if (!$found) {
+            $urlComment = "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/issues/" . $pullRequest->PullRequestNumber . "/comments";
+            $comment = array("body" => "@dependabot squash and merge");
+            requestGitHub($gitHubUserToken, $urlComment, $comment);
+        }
     }
 }
 
