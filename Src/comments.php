@@ -65,30 +65,40 @@ function execute_help($config, $metadata, $comment)
     requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $helpComment));
 }
 
-function execute_fixCsproj($config, $metadata, $comment)
+function execute_bumpVersion($config, $metadata, $comment)
 {
     requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"));
+    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Bumping .NET version on this branch!\r\n\r\n:warning: Experimental - Not working!"));
 }
 
 function execute_csharpier($config, $metadata, $comment)
 {
     requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"));
+    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Running CSharpier on this branch!"));
+    callWorkflow($config, $comment, "csharpier.yml");
+}
 
-    $pullRequest = requestGitHub($metadata["token"], "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName . "/pulls/" . $comment->IssueNumber);
+function execute_fixCsproj($config, $metadata, $comment)
+{
+    requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"));
+    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Bumping .NET version on this branch!\r\n\r\n:warning: Experimental - Not working!"));
+}
 
-    $pullRequestBody = json_decode($pullRequest["body"]);
-    $branch = $pullRequestBody->head->ref;
-
+function callWorkflow($config, $comment, $workflow)
+{
+    $pullRequestResponse = requestGitHub($metadata["token"], "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName . "/pulls/" . $comment->IssueNumber);
+    $pullRequest = json_decode($pullRequestResponse["body"]);
+    
     $permissions = array("metadata" => "read", "contents" => "write", "pull_requests" => "write", "actions" => "write");
 
     $tokenBot = generateInstallationToken($config->botRepositoryInstallationId, $config->botRepository, $permissions);
-    $url = "repos/" . $config->botRepository . "/actions/workflows/csharpier.yml/dispatches";
+    $url = "repos/" . $config->botRepository . "/actions/workflows/" . $workflow . "/dispatches";
     $data = array(
         "ref" => "main",
         "inputs" => array(
             "owner" => $comment->RepositoryOwner,
             "repository" => $comment->RepositoryName,
-            "branch" => $branch,
+            "branch" => $pullRequest->head->ref,
             "pull_request" => $comment->IssueNumber,
             "installationId" => $comment->InstallationId
         )
