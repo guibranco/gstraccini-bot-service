@@ -7,18 +7,20 @@
 
 ---
 
-# Commands
+## Commands
 
 That's what I can do:
 - `@gstraccini help`: Shows the help message with available commands.
 - `@gstraccini hello world`: Says hello to the invoker.
 - `@gstraccini thank you`: Replies with you are welcome message to the invoker.
-- `@gstraccini fix csproj`: Fixes the csproj file with packages.config version of NuGet packages (only for **.NET Framework** projects).
+- `@gstraccini bump version`: Bumps the .NET version in .csproj files.
 - `@gstraccini csharpier`: Formats the C# code using CSharpier (only for **.NET** projects).
+- `@gstraccini fix csproj`: Fixes the csproj file with packages.config version of NuGet packages (only for **.NET Framework** projects).
+- `@gstraccini track`: Tracks the specified pull request. Queue a build, raise **[dependabot](https://github.com/dependabot) recreate** comment to resolve conflicts and synchronize merge branches.
 
-Multiple commands can be issued at same time, just respect each command pattern (with bot name prefix + command).
+Multiple commands can be issued at the same time, just respect each command pattern (with bot name prefix + command).
 
 > **Warning**
 > 
 > If you aren't allowed to use this bot, a reaction with a thumbs down will be added to your comment.
-> The allowed invokers are configurable via `config.json` file.
+> The allowed invokers are configurable via the `config.json` file.
