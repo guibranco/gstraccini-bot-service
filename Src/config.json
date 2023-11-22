@@ -30,7 +30,7 @@
     },
     {
       "command": "track",
-      "description": "Tracks the specified pull request. Queue a build, raise `[dependabot](https://github.com/dependabot) recreate` comment to resolve conflicts and synchronize merge branches."
+      "description": "Tracks the specified pull request. Queue a build, raise **[dependabot](https://github.com/dependabot) recreate** comment to resolve conflicts and synchronize merge branches."
     }
   ],
   "pullRequests": {
