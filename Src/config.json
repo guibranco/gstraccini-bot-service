@@ -17,7 +17,7 @@
       "description": "Replies with you are welcome message to the invoker."
     },
     {
-      "command": "bump .NET version",
+      "command": "bump version",
       "description": "Bumps the .NET version in .csproj files."
     }
     {
