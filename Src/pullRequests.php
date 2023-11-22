@@ -20,7 +20,7 @@ function handlePullRequest($pullRequest)
         return;
     }
 
-    if($pullRequestUpdated->assignee != null){
+    if ($pullRequestUpdated->assignee == null){
         $urlAssignees = "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/issues/" . $pullRequest->PullRequestNumber . "/assignees";
         $body = array(
             "assignees" => array("guibranco")
