@@ -13,8 +13,23 @@ jobs:
   deploy:
     name: Deploy to FTP
     runs-on: ubuntu-latest
+    outputs:
+      semVer: ${{ steps.gitversion.outputs.semVer }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v0
+        with:
+          versionSpec: '5.x'
+
+      - name: Determine Version
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@v0
+        with:
+          useConfigFile: true
 
       - name: Cache Composer dependencies
         uses: actions/cache@v3
@@ -61,3 +76,22 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           localDir: "Src"
           remoteDir: "/"
+
+  create_release:
+    name: Create release
+    needs: deploy
+    env:
+      SEMVER: ${{ needs.deploy.outputs.semVer }}
+    runs-on: ubuntu-latest
+    steps:
+    
+      - name: Create Release
+        uses: ncipollo/release-action@v1.13.0
+        with:
+          allowUpdates: false
+          draft: false
+          makeLatest: true
+          tag: v${{ env.SEMVER }}
+          name: Release v${{ env.SEMVER }}
+          generateReleaseNotes: true
+          body: Release${{ env.SEMVER }} of GStraccini-bot
