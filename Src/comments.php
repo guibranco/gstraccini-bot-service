@@ -62,7 +62,7 @@ function execute_help($config, $metadata, $comment)
     foreach ($config->commands as $command) {
         $parameters = "";
         $parametersHelp = "";
-        if (isset($comman->parameters)) {
+        if (isset($command->parameters)) {
             foreach ($command->parameters as $parameter) {
                 $parameters .= " <" . $parameter->name . ">";
                 $parametersHelp .= "\t- `" . $parameter->parameter . "`: `[" . ($parameter->required ? "required" : "optional") . "]` " . $parameter->description . "\r\n";
