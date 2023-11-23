@@ -95,12 +95,12 @@ function execute_review($config, $metadata, $comment)
     $pullRequestUpdated = json_decode($pullRequestResponse["body"]);
 
     $pullRequest = new \stdClass();
-    $pullRequest->HookId = $comment->HookId;
-    $pullRequest->HookInstallationTargetId = $comment->HookInstallationTargetId;
+    $pullRequest->GitHubHookId = $comment->GitHubHookId;
+    $pullRequest->GitHubHookInstallationTargetId = $comment->GitHubHookInstallationTargetId;
     $pullRequest->RepositoryOwner = $pullRequestUpdated->head->repo->owner->login;
     $pullRequest->RepositoryName = $pullRequestUpdated->head->repo->name;
     $pullRequest->Id = $pullRequestUpdated->id;
-    $pullRequest->PullRequestSubmitter = $pullRequestUpdated->user->login;
+    $pullRequest->Submitter = $pullRequestUpdated->user->login;
     $pullRequest->Number = $pullRequestUpdated->number;
     $pullRequest->NodeId = $pullRequestUpdated->node_id;
     $pullRequest->Title = $pullRequestUpdated->title;
