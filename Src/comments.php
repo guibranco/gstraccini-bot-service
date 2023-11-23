@@ -61,7 +61,7 @@ function execute_help($config, $metadata, $comment)
     $helpComment = "That's what I can do ::neckbeard::\r\n";
     foreach ($config->commands as $command) {
         $helpComment .= "- `@" . $config->botName . " " . $command->command . "`: " . $command->description . "\r\n";
-        if (isset($command->parameters) {
+        if (isset($command->parameters)) {
             $helpComment .= "\t- Command parameters:\r\n";
             foreach ($command->paramters as $parameter) {
             
