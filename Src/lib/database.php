@@ -80,8 +80,8 @@ function upsertPullRequest($pullRequest)
         $stmt = $mysqli->prepare($sql);
         $stmt->bind_param('iissiissssi', $githubId, $gitHubInstallationId, $repositoryOwner, $repositoryName, $pullRequestId, $pullRequestNumber, $pullRequestSubmitter, $nodeId, $title, $ref, $installationId);
 
-        $githubId = $pullRequest->HookId;
-        $gitHubInstallationId = $pullRequest->HookInstallationTargetId;
+        $githubId = $pullRequest->GitHubHookIdHookId;
+        $gitHubInstallationId = $pullRequest->GitHubHookInstallationTargetId;
         $repositoryOwner = $pullRequest->RepositoryOwner;
         $repositoryName = $pullRequest->RepositoryName;
         $pullRequestId = $pullRequest->Id;
