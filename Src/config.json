@@ -39,7 +39,6 @@
   ],
   "pullRequests": {
     "autoReviewSubmitters": ["dependabot[bot]", "depfu[bot]", "net-framework-updater[bot]"],
-    "autoMergeSubmitters": ["dependabot[bot]", "guibranco", "net-framework-updater[bot]"],
-    "allowedSquashAndMergeOwners": ["guibranco"]
+    "autoMergeSubmitters": ["dependabot[bot]", "guibranco", "net-framework-updater[bot]"]
   }
 }
