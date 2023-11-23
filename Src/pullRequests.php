@@ -73,7 +73,7 @@ function handlePullRequest($pullRequest)
         requestGitHub($gitHubUserToken, "graphql", $body);
     }
 
-    if ($pullRequest->PullRequestSubmitter == "dependabot[bot]" && in_array($pullRequest->RepositoryOwner, $config->pullRequests->allowedSquashAndMergeOwners)) {
+    if ($pullRequest->PullRequestSubmitter == "dependabot[bot]") {
         $commentsRequest = requestGitHub($token, "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/issues/" . $pullRequest->PullRequestNumber . "/comments");
         $comments = json_decode($commentsRequest["body"]);
 
