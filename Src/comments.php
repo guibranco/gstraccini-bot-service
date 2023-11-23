@@ -58,7 +58,7 @@ function execute_thankYou($config, $metadata, $comment)
 function execute_help($config, $metadata, $comment)
 {
     requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"));
-    $helpComment = "That's what I can do ::neckbeard::\r\n";
+    $helpComment = "That's what I can do :neckbeard::\r\n";
     foreach ($config->commands as $command) {
         $helpComment .= "- `@" . $config->botName . " " . $command->command . "`: " . $command->description . "\r\n";
         if (isset($command->parameters)) {
