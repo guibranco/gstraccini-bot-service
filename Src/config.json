@@ -30,7 +30,7 @@
     },
     {
       "command": "review",
-      "description": "Enable review for a given pull request. This is useful when the PR submitter wasn't in the watch list or the webhook was not captured."
+      "description": "Enable review for the target pull request. This is useful when the PR submitter wasn't in the watch list before or the webhook was not captured or some failed scenario occurred."
     },
     {
       "command": "track",
