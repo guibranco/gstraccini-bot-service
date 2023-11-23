@@ -17,6 +17,7 @@ function handleComment($comment)
     $metadata = array(
         "token" => generateInstallationToken($comment->InstallationId, $comment->RepositoryName),
         "reactionUrl" => "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName . "/issues/comments/" . $comment->CommentId . "/reactions",
+        "pullRequestUrl" => "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName . "/pulls/" . $comment->IssueNumber,
         "commentUrl" => "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName . "/issues/" . $comment->IssueNumber . "/comments"
     );
 
@@ -84,6 +85,29 @@ function execute_fixCsproj($config, $metadata, $comment)
     requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"));
     requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Bumping .NET version on this branch!\r\n\r\n:warning: Experimental - Not working!"));
     callWorkflow($config, $metadata, $comment, "fix-csproj.yml");
+}
+
+function execute_review($config, $metadata, $comment)
+{
+    requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"));
+    
+    $pullRequestResponse = requestGitHub($metadata["token"], $metadata["pullRequestUrl"]);
+    $pullRequestUpdated = json_decode($pullRequestResponse["body"]);
+
+    $pullRequest = new \stdClass();
+    $pullRequest->HookId = $comment->HookId;
+    $pullRequest->HookInstallationTargetId = $comment->HookInstallationTargetId;
+    $pullRequest->RepositoryOwner = $pullRequestUpdated->head->repo->owner->login;
+    $pullRequest->RepositoryName = $pullRequestUpdated->head->repo->name;
+    $pullRequest->Id = $pullRequestUpdated->id;
+    $pullRequest->PullRequestSubmitter = $pullRequestUpdated->user->login;
+    $pullRequest->Number = $pullRequestUpdated->number;
+    $pullRequest->NodeId = $pullRequestUpdated->node_id;
+    $pullRequest->Title = $pullRequestUpdated->title;
+    $pullRequest->Ref = $pullRequestUpdated->head->ref;
+    $pullRequest->InstallationId = $comment->InstallationId;
+    upsertPullRequest($pullRequest);
+    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Review enabled!"));
 }
 
 function execute_track($config, $metadata, $comment)
