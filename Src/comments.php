@@ -62,10 +62,9 @@ function execute_help($config, $metadata, $comment)
     foreach ($config->commands as $command) {
         $helpComment .= "- `@" . $config->botName . " " . $command->command . "`: " . $command->description . "\r\n";
         if (isset($command->parameters)) {
-            $helpComment .= "\t- Parameters:\r\n";
             foreach ($command->parameters as $parameter) {
             
-                $helpComment .= "\t- **[" . ($paramter->required ? "Required" : "Optional") . "]** `" . $parameter->parameter . "`: " . $parameter->description . "\r\n";
+                $helpComment .= "\t- `[" . ($paramter->required ? "Required" : "Optional") . " " . $parameter->parameter . "`: " . $parameter->description . "\r\n";
             }
         }
     }
