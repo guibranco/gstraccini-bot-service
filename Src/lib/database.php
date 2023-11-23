@@ -30,7 +30,12 @@ function readTable($tableName, $where = null)
         return null;
     }
 
-    $data = $result->fetch_all(MYSQLI_ASSOC);
+    $data = array();
+
+    while ($obj = $result->fetch_object()) {
+        $data[] = $obj;
+    }
+    
     $result->close();
     $mysqli->close();
 
