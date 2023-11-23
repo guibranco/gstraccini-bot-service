@@ -64,7 +64,7 @@ function execute_help($config, $metadata, $comment)
         if (isset($command->parameters)) {
             foreach ($command->parameters as $parameter) {
             
-                $helpComment .= "\t- `[" . ($paramter->required ? "Required" : "Optional") . " " . $parameter->parameter . "`: " . $parameter->description . "\r\n";
+                $helpComment .= "\t- `[" . ($paramter->required ? "Required" : "Optional") . "] " . $parameter->parameter . "`: " . $parameter->description . "\r\n";
             }
         }
     }
