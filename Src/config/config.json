@@ -29,7 +29,7 @@
                 },
                 {
                     "parameter": "project",
-                    "description": "The .csproj file to update. Suppressing this parameter will run the command in all .csprojs in the repository/branch",
+                    "description": "The .csproj file to update. Suppressing this parameter will run the command in all .csproj in the repository/branch",
                     "required": false
                 }
             ]

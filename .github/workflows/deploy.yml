@@ -10,12 +10,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  
   deploy:
     name: Deploy to FTP
     runs-on: ubuntu-latest
     outputs:
       semVer: ${{ steps.gitversion.outputs.semVer }}
+
     steps:
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -23,7 +26,7 @@ jobs:
       - name: Install GitVersion
         uses: gittools/actions/gitversion/setup@v0
         with:
-          versionSpec: '5.x'
+          versionSpec: "5.x"
 
       - name: Determine Version
         id: gitversion
@@ -44,9 +47,18 @@ jobs:
           progress: yes
           working_dir: "./Src/"
 
+      - name: Create .htaccess secrets file
+        run: |
+          cd Src
+          mkdir -p secrets
+          cd secrets
+          echo "<?php" >> .htaccess
+
       - name: Create MySQL secrets file
         run: |
           cd Src
+          mkdir -p secrets
+          cd secrets
           echo "<?php" >> mySql.secrets.php
           echo "\$mySqlHost     = \"127.0.0.1\";" >> mySql.secrets.php
           echo "\$mySqlUser     = \"${{ secrets.MYSQL_USER }}\";" >> mySql.secrets.php
@@ -56,6 +68,8 @@ jobs:
       - name: Generate GitHub App secrets file
         run: |
           cd Src
+          mkdir -p secrets
+          cd secrets
           echo "<?php" >> gitHubApp.secrets.php
           echo "\$gitHubUserToken     = \"${{ secrets.USER_TOKEN }}\";" >> gitHubApp.secrets.php
           echo "\$gitHubAppId         = \"${{ secrets.APP_ID }}\";" >> gitHubApp.secrets.php
@@ -64,6 +78,8 @@ jobs:
       - name: Generate HealthChecksIo secrets file
         run: |
           cd Src
+          mkdir -p secrets
+          cd secrets
           echo "<?php" >> healthChecksIo.secrets.php
           echo "\$healthChecksIoComments     = \"${{ secrets.HEALTHCHECKSIO_COMMENTS }}\";" >> healthChecksIo.secrets.php
           echo "\$healthChecksIoPullRequests = \"${{ secrets.HEALTHCHECKSIO_PULL_REQUESTS }}\";" >> healthChecksIo.secrets.php
@@ -84,7 +100,6 @@ jobs:
       SEMVER: ${{ needs.deploy.outputs.semVer }}
     runs-on: ubuntu-latest
     steps:
-    
       - name: Create Release
         uses: ncipollo/release-action@v1.13.0
         with:
