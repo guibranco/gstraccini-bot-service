@@ -116,7 +116,7 @@ function execute_review($config, $metadata, $comment)
     $pullRequest->Ref = $pullRequestUpdated->head->ref;
     $pullRequest->InstallationId = $comment->InstallationId;
     upsertPullRequest($pullRequest);
-    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Review enabled! :guide_dog:"));
+    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Review enabled! :eyes:"));
 }
 
 function execute_track($config, $metadata, $comment)
