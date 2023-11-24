@@ -1,10 +1,7 @@
 <?php
 
 require_once "vendor/autoload.php";
-require_once "config.php";
-require_once "lib/functions.php";
-require_once "lib/database.php";
-require_once "lib/github.php";
+require_once "config/config.php";
 
 function handlePullRequest($pullRequest)
 {

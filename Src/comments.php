@@ -1,10 +1,7 @@
 <?php
 
 require_once "vendor/autoload.php";
-require_once "config.php";
-require_once "lib/functions.php";
-require_once "lib/database.php";
-require_once "lib/github.php";
+require_once "config/config.php";
 
 function handleComment($comment)
 {
@@ -100,14 +97,17 @@ function execute_review($config, $metadata, $comment)
 {
     requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"));
     
+    // TODO: remove this workaround when https://github.com/guibranco/webhooks/issues/77 is done
     $pullRequestResponse = requestGitHub($metadata["token"], $metadata["pullRequestUrl"]);
     $pullRequestUpdated = json_decode($pullRequestResponse["body"]);
 
     $pullRequest = new \stdClass();
-    $pullRequest->GitHubHookId = $comment->GitHubHookId;
-    $pullRequest->GitHubHookInstallationTargetId = $comment->GitHubHookInstallationTargetId;
-    $pullRequest->RepositoryOwner = $pullRequestUpdated->head->repo->owner->login;
-    $pullRequest->RepositoryName = $pullRequestUpdated->head->repo->name;
+    $pullRequest->DeliveryId = $comment->DeliveryIdText;
+    $pullRequest->HookId = $comment->HookId;
+    $pullRequest->TargetId = $comment->TargetId;
+    $pullRequest->TargetType = $comment->TargetType;    
+    $pullRequest->RepositoryOwner = $comment->RepositoryOwner;
+    $pullRequest->RepositoryName = $comment->RepositoryName;
     $pullRequest->Id = $pullRequestUpdated->id;
     $pullRequest->Submitter = $pullRequestUpdated->user->login;
     $pullRequest->Number = $pullRequestUpdated->number;
@@ -128,6 +128,7 @@ function execute_track($config, $metadata, $comment)
 
 function callWorkflow($config, $metadata, $comment, $workflow)
 {
+    // TODO: remove this workaround when https://github.com/guibranco/webhooks/issues/76 is done
     $pullRequestResponse = requestGitHub($metadata["token"], "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName . "/pulls/" . $comment->IssueNumber);
     $pullRequest = json_decode($pullRequestResponse["body"]);
 
@@ -138,7 +139,7 @@ function callWorkflow($config, $metadata, $comment, $workflow)
         "inputs" => array(
             "owner" => $comment->RepositoryOwner,
             "repository" => $comment->RepositoryName,
-            "branch" => $pullRequest->head->ref,
+            "branch" => $pullRequest->head->ref, //$comment->Branch,
             "pull_request" => $comment->IssueNumber,
             "installationId" => $comment->InstallationId
         )

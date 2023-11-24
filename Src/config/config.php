@@ -8,27 +8,32 @@ mb_internal_encoding("UTF-8");
 
 define("USER_AGENT", "gstraccini-bot (+https://github.com/apps/gstraccini-bot/)");
 
-$mySqlSecretsFile = "mySql.secrets.php";
+$mySqlSecretsFile = "secrets/mySql.secrets.php";
 if (file_exists($mySqlSecretsFile)) {
     require_once $mySqlSecretsFile;
 }
 
-$gitHubAppSecretsFile = "gitHubApp.secrets.php";
+$gitHubAppSecretsFile = "secrets/gitHubApp.secrets.php";
 if (file_exists($gitHubAppSecretsFile)) {
     require_once $gitHubAppSecretsFile;
 }
 
-$healthChecksIoSecretsFile = "healthChecksIo.secrets.php";
+$healthChecksIoSecretsFile = "secrets/healthChecksIo.secrets.php";
 if (file_exists($healthChecksIoSecretsFile)) {
     require_once $healthChecksIoSecretsFile;
 }
 
 function loadConfig()
 {
-    if (!file_exists("config.json")) {
+    $fileName = "config/config.json";
+    if (!file_exists($fileName)) {
         return array();
     }
 
-    $rawConfig = file_get_contents("config.json");
+    $rawConfig = file_get_contents($fileName);
     return json_decode($rawConfig);
 }
+
+require_once "lib/functions.php";
+require_once "lib/database.php";
+require_once "lib/github.php";

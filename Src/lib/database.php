@@ -35,7 +35,7 @@ function readTable($tableName, $where = null)
     while ($obj = $result->fetch_object()) {
         $data[] = $obj;
     }
-    
+
     $result->close();
     $mysqli->close();
 
@@ -76,12 +76,46 @@ function upsertPullRequest($pullRequest)
         $sequence = $row;
         $stmt->execute();
     } else {
-        $sql = "INSERT INTO github_pull_requests (GitHubHookId, GitHubHookInstallationTargetId, RepositoryOwner, RepositoryName, PullRequestId, PullRequestNumber, PullRequestSubmitter, NodeId, Title, Ref, InstallationId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        $stmt = $mysqli->prepare($sql);
-        $stmt->bind_param('iissiissssi', $githubId, $gitHubInstallationId, $repositoryOwner, $repositoryName, $pullRequestId, $pullRequestNumber, $pullRequestSubmitter, $nodeId, $title, $ref, $installationId);
+        $fields = array(
+            "DeliveryId",
+            "HookId",
+            "TargetId",
+            "TargetType",
+            "RepositoryOwner",
+            "RepositoryName",
+            "PullRequestId",
+            "PullRequestNumber",
+            "PullRequestSubmitter",
+            "NodeId",
+            "Title",
+            "Ref",
+            "InstallationId",
+        );
 
-        $githubId = $pullRequest->GitHubHookId;
-        $gitHubInstallationId = $pullRequest->GitHubHookInstallationTargetId;
+        $sql = "INSERT INTO github_pull_requests (`" . implode("`,`", $fields) . "`) ";
+        $sql .= "VALUES (unhex(replace(?, '-', '')), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $stmt = $mysqli->prepare($sql);
+        $stmt->bind_param(
+            'siisssiissssi',
+            $deliveryId,
+            $hookId,
+            $targetId,
+            $targetType,
+            $repositoryOwner,
+            $repositoryName,
+            $pullRequestId,
+            $pullRequestNumber,
+            $pullRequestSubmitter,
+            $nodeId,
+            $title,
+            $ref,
+            $installationId
+        );
+
+        $deliveryId = $pullRequest->DeliveryId;
+        $hookId = $pullRequest->HookId;
+        $targetId = $pullRequest->TargetId;
+        $targetType = $pullRequest->TargetType;
         $repositoryOwner = $pullRequest->RepositoryOwner;
         $repositoryName = $pullRequest->RepositoryName;
         $pullRequestId = $pullRequest->Id;

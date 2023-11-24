@@ -24,6 +24,9 @@ function sendHealthCheck($token, $type=null)
         return;
     }
 
+    $headers = array();
+    $headers[] = "User-Agent: " . USER_AGENT;
+
     $curl = curl_init();
     curl_setopt_array(
         $curl,
@@ -35,7 +38,10 @@ function sendHealthCheck($token, $type=null)
             CURLOPT_TIMEOUT => 0,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_SSL_VERIFYPEER => false
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false,
+            CURLOPT_HTTPHEADER => $headers
+
         )
     );
     curl_exec($curl);
