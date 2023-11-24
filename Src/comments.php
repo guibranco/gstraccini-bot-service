@@ -82,7 +82,7 @@ function execute_bumpVersion($config, $metadata, $comment)
 function execute_csharpier($config, $metadata, $comment)
 {
     requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"));
-    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Running CSharpier on this branch! :wrench:"));
+    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Running [CSharpier](https://csharpier.com/) on this branch! :wrench:"));
     callWorkflow($config, $metadata, $comment, "csharpier.yml");
 }
 
