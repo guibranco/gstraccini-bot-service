@@ -57,11 +57,20 @@ jobs:
         continue-on-error: true
         run: |
           set -e
-          echo "check=$(dotnet csharpier . --check 2>&1 > /dev/null)" >> $GITHUB_ENV
+          echo "check=$(dotnet csharpier . --check 2>&1 > /dev/null)" >> csharpier.log
+
+      - name: Read csharpier.log
+        uses: guibranco/github-file-reader-action-v2@latest
+        id: log
+        with:
+         path: csharpier.log
+
+      - name: Delete csharpier.log
+        run: rm csharpier.log 2> /dev/null         
 
       - name: Update PR with comment
         uses: mshick/add-pr-comment@v2
-        if: ${{ env.check != '' }}
+        if: ${{ steps.log.outputs.contents != '' }}
         with:
           repo-token: ${{ steps.generate_token.outputs.token }}
           repo-owner: ${{ github.event.inputs.owner }}
@@ -73,11 +82,11 @@ jobs:
             :white_check_mark: [CSharpier](${{ env.GHA_URL }}) result:
             
             ```
-            ${{ env.check }}
+            ${{ steps.log.outputs.contents }}
             ```
       - name: Update PR with comment
         uses: mshick/add-pr-comment@v2
-        if: ${{ env.check == '' }}
+        if: ${{ steps.log.outputs.contents == '' }}
         with:
           repo-token: ${{ steps.generate_token.outputs.token }}
           repo-owner: ${{ github.event.inputs.owner }}
