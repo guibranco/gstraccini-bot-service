@@ -27,7 +27,7 @@ function handleComment($comment)
 
     foreach ($config->commands as $command) {
         $commandExpression = "@" . $config->botName . " " . $command->command;
-        if (strpos($commandExpression, strtolower($comment->CommentBody)) !== false) {
+        if (stripos($comment->CommentBody, $commandExpression) !== false) {
             $executedAtLeastOne = true;
             $method = "execute_" . toCamelCase($command->command);
             $method($config, $metadata, $comment);
