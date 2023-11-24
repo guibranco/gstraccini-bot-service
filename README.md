@@ -9,14 +9,22 @@
 
 ## Commands
 
-That's what I can do:
+That's what I can do :neckbeard::
 - `@gstraccini help`: Shows the help message with available commands.
 - `@gstraccini hello world`: Says hello to the invoker.
 - `@gstraccini thank you`: Replies with you are welcome message to the invoker.
-- `@gstraccini bump version`: Bumps the .NET version in .csproj files.
+- `@gstraccini bump version <version> <project>`: Bumps the .NET version in .csproj files.
+	- `version`: `[required]` The .NET version
+	- `project`: `[optional]` The .csproj file to update. Suppressing this parameter will run the command in all .csproj in the repository/branch
+- `@gstraccini change runner <runner> <workflow> <jobs>`: Changes the GitHub action runner in a workflow file (.yml)
+	- `runner`: `[required]` The runner's name
+	- `workflow`: `[required]` The workflow filename (with or without the .yml/.yaml extension)
+	- `jobs`: `[optional]` The job's to apply this command. Suppressing this parameter will run the command in all jobs within the workflow
 - `@gstraccini csharpier`: Formats the C# code using CSharpier (only for **.NET** projects).
 - `@gstraccini fix csproj`: Fixes the csproj file with packages.config version of NuGet packages (only for **.NET Framework** projects).
+- `@gstraccini review`: Enable review for the target pull request. This is useful when the PR submitter wasn't in the watch list before or the webhook was not captured or some failed scenario occurred.
 - `@gstraccini track`: Tracks the specified pull request. Queue a build, raise **[dependabot](https://github.com/dependabot) recreate** comment to resolve conflicts and synchronize merge branches.
+
 
 Multiple commands can be issued at the same time, just respect each command pattern (with bot name prefix + command).
 
