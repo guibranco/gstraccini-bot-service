@@ -11,7 +11,7 @@
             "description": "Shows the help message with available commands."
         },
         {
-            "command": "hello world",
+            "command": "hello",
             "description": "Says hello to the invoker."
         },
         {
@@ -32,7 +32,8 @@
                     "description": "The .csproj file to update. Suppressing this parameter will run the command in all .csproj in the repository/branch",
                     "required": false
                 }
-            ]
+            ],
+            "dev": true
         },
         {
             "command": "change runner",
@@ -53,7 +54,8 @@
                     "description": "The job's to apply this command. Suppressing this parameter will run the command in all jobs within the workflow",
                     "required": false
                 }
-            ]
+            ],
+            "dev": true
         },
         {
             "command": "csharpier",
@@ -61,7 +63,8 @@
         },
         {
             "command": "fix csproj",
-            "description": "Fixes the csproj file with packages.config version of NuGet packages (only for **.NET Framework** projects)."
+            "description": "Fixes the csproj file with packages.config version of NuGet packages (only for **.NET Framework** projects).",
+            "dev": true
         },
         {
             "command": "review",
@@ -69,7 +72,8 @@
         },
         {
             "command": "track",
-            "description": "Tracks the specified pull request. Queue a build, raise **[dependabot](https://github.com/dependabot) recreate** comment to resolve conflicts and synchronize merge branches."
+            "description": "Tracks the specified pull request. Queue a build, raise **[dependabot](https://github.com/dependabot) recreate** comment to resolve conflicts and synchronize merge branches.",
+            "dev": true
         }
     ],
     "pullRequests": {
@@ -79,7 +83,6 @@
             "net-framework-updater[bot]"
         ],
         "autoMergeSubmitters": [
-            "dependabot[bot]",
             "guibranco",
             "net-framework-updater[bot]"
         ]

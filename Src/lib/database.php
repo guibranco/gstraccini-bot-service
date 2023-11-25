@@ -83,15 +83,14 @@ function upsertPullRequest($pullRequest)
             "TargetType",
             "RepositoryOwner",
             "RepositoryName",
-            "PullRequestId",
-            "PullRequestNumber",
-            "PullRequestSubmitter",
+            "Id",
+            "Number",
+            "Sender",
             "NodeId",
             "Title",
             "Ref",
-            "InstallationId",
+            "InstallationId"
         );
-
         $sql = "INSERT INTO github_pull_requests (`" . implode("`,`", $fields) . "`) ";
         $sql .= "VALUES (unhex(replace(?, '-', '')), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $mysqli->prepare($sql);
@@ -103,9 +102,9 @@ function upsertPullRequest($pullRequest)
             $targetType,
             $repositoryOwner,
             $repositoryName,
-            $pullRequestId,
-            $pullRequestNumber,
-            $pullRequestSubmitter,
+            $id,
+            $number,
+            $sender,
             $nodeId,
             $title,
             $ref,
@@ -118,9 +117,9 @@ function upsertPullRequest($pullRequest)
         $targetType = $pullRequest->TargetType;
         $repositoryOwner = $pullRequest->RepositoryOwner;
         $repositoryName = $pullRequest->RepositoryName;
-        $pullRequestId = $pullRequest->Id;
-        $pullRequestNumber = $pullRequest->Number;
-        $pullRequestSubmitter = $pullRequest->Submitter;
+        $id = $pullRequest->Id;
+        $number = $pullRequest->Number;
+        $sender = $pullRequest->Sender;
         $nodeId = $pullRequest->NodeId;
         $title = $pullRequest->Title;
         $ref = $pullRequest->Ref;
