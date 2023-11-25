@@ -29,5 +29,7 @@ Comments=$(mysql -h "$MYSQL_HOST" --protocol tcp "--user=$MYSQL_USER" "--databas
 if [[ $PullRequets -eq 0 && $Comments -eq 0 ]]; then
     echo "::error file=$0,line=$LINENO::The github_pull_requests and github_pull_requests_comments tables does not exists."
     mysql -h "$MYSQL_HOST" --protocol tcp "--user=$MYSQL_USER" "--database=$MYSQL_DB" -e "SHOW TABLES;"
+    mysql -h "$MYSQL_HOST" --protocol tcp "--user=$MYSQL_USER" "--database=$MYSQL_DB" -e \
+        "SELECT COUNT(*) FROM information_schema.tables;"
     exit 1
 fi
