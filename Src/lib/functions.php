@@ -18,7 +18,7 @@ function getHeaders($header)
     return $headers;
 }
 
-function sendHealthCheck($token, $type=null)
+function sendHealthCheck($token, $type = null)
 {
     if (isset($_SERVER['REQUEST_METHOD'])) {
         return;
@@ -48,7 +48,8 @@ function sendHealthCheck($token, $type=null)
     curl_close($curl);
 }
 
-function toCamelCase($inputString) {
+function toCamelCase($inputString)
+{
     return preg_replace_callback(
         '/(?:^|_| )(\w)/',
         function ($matches) {

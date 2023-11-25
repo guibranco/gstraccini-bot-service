@@ -1,0 +1,57 @@
+name: Build
+
+on: pull_request
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v3
+        with:
+          path: /tmp/composer-cache
+          key: ${{ runner.os }}-${{ hashFiles('**/composer.lock') }}
+  
+      - name: Install dependencies
+        uses: "php-actions/composer@v6"
+        with:
+          dev: no
+          progress: yes
+          working_dir: "./Src/"
+
+      - name: Create MySQL secrets file
+        run: |
+          cd Src
+          mkdir -p secrets
+          cd secrets
+          echo "<?php" >> mySql.secrets.php
+          echo "\$mySqlHost     = \"database\";" >> mySql.secrets.php
+          echo "\$mySqlUser     = \"test\";" >> mySql.secrets.php
+          echo "\$mySqlPassword = \"test\";" >> mySql.secrets.php
+          echo "\$mySqlDatabase = \"test\";" >> mySql.secrets.php
+
+      - name: Docker compose up
+        run: docker-compose up -d
+
+      - name: Wait for database to start
+        run: sleep 10
+
+      - name: Check database
+        env:
+          MYSQL_PWD: test
+        run: |
+          chmod +x Tools/db-check.sh
+          Tools/db-check.sh "localhost" "test" "test"
+
+      - name: Test Comments handlers
+        run: |
+          curl --location 'http://localhost:8004/comments.php'
+
+      - name: Test Pull Request handlers
+        run: |
+          curl --location 'http://localhost:8004/pullRequests.php'
