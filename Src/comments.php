@@ -7,7 +7,7 @@ function handleComment($comment)
 {
     $config = loadConfig();
 
-    if ($comment->CommentUser === $config->botName . "[bot]") {
+    if ($comment->CommentSender === $config->botName . "[bot]") {
         return;
     }
 
@@ -59,17 +59,21 @@ function execute_help($config, $metadata, $comment)
     foreach ($config->commands as $command) {
         $parameters = "";
         $parametersHelp = "";
-        $inDevelopment = isset($command->dev) && $command->dev ? ":warning: (in development - maybe not working as expected!)" : "";
+        $inDevelopment = isset($command->dev) && $command->dev ? " :warning: (in development - maybe not working as expected!)" : "";
         if (isset($command->parameters)) {
             foreach ($command->parameters as $parameter) {
                 $parameters .= " <" . $parameter->parameter . ">";
-                $parametersHelp .= "\t- `" . $parameter->parameter . "`: `[" . ($parameter->required ? "required" : "optional") . "]` " . $parameter->description . "\r\n";
+                $parametersHelp .= "\t- `" . $parameter->parameter . "`: `[" .
+                    ($parameter->required ? "required" : "optional") . "]` " .
+                    $parameter->description . $inDevelopment . "\r\n";
             }
         }
         $helpComment .= "- `@" . $config->botName . " " . $command->command . $parameters . "`: " . $command->description . "\r\n";
         $helpComment .= $parametersHelp;
     }
-    $helpComment .= "\r\n\r\nMultiple commands can be issued at the same time, just respect each command pattern (with bot name prefix + command).\r\n\r\n> **Warning**\r\n> \r\n> If you aren't allowed to use this bot, a reaction with a thumbs down will be added to your comment.\r\n> The allowed invokers are configurable via the `config.json` file.";
+    $helpComment .= "\r\n\r\nMultiple commands can be issued at the same time, just respect each command pattern (with bot name prefix + command).\r\n\r\n" .
+        "> **Warning**\r\n> \r\n> If you aren't allowed to use this bot, a reaction with a thumbs down will be added to your comment.\r\n" .
+        "> The allowed invokers are configurable via the `config.json` file.";
     requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $helpComment));
 }
 

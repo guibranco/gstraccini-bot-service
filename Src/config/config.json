@@ -29,7 +29,7 @@
                 },
                 {
                     "parameter": "project",
-                    "description": "The .csproj file to update. Suppressing this parameter will run the command in all .csproj in the repository/branch",
+                    "description": "The `.csproj` file to update. Suppressing this parameter will run the command in all `.csproj` in the repository/branch",
                     "required": false
                 }
             ],
@@ -37,7 +37,7 @@
         },
         {
             "command": "change runner",
-            "description": "Changes the GitHub action runner in a workflow file (.yml)",
+            "description": "Changes the `GitHub action runner` in a workflow file (.yml)",
             "parameters": [
                 {
                     "parameter": "runner",
@@ -63,7 +63,7 @@
         },
         {
             "command": "fix csproj",
-            "description": "Fixes the csproj file with packages.config version of NuGet packages (only for **.NET Framework** projects).",
+            "description": "Updates the `.csproj` file with `packages.config` version of `NuGet packages` (only for **.NET Framework** projects).",
             "dev": true
         },
         {
