@@ -20,11 +20,9 @@ if [ $CONNECT -eq 1 ]; then
 fi
 
 PullRequets= $(mysql -h "$MYSQL_HOST" --protocol tcp "--user=$MYSQL_USER" "--database=$MYSQL_DB" -sse \
-    "SELECT COUNT(*) FROM information_schema.tables WHERE \
-     table_schema='$MYSQL_DB' AND table_name='github_pull_requests';")
+    "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$MYSQL_DB' AND table_name='github_pull_requests';")
 Comments=$(mysql -h "$MYSQL_HOST" --protocol tcp "--user=$MYSQL_USER" "--database=$MYSQL_DB" -sse \
-    "SELECT COUNT(*) FROM information_schema.tables WHERE \
-     table_schema='$MYSQL_DB' AND table_name='github_pull_requests_comments';")
+    "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$MYSQL_DB' AND table_name='github_pull_requests_comments';")
 
 if [[ $PullRequets -eq 0 && $Comments -eq 0 ]]; then
     echo "::error file=$0,line=$LINENO::The github_pull_requests and github_pull_requests_comments tables does not exists."
