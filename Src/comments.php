@@ -65,10 +65,10 @@ function execute_help($config, $metadata, $comment)
                 $parameters .= " <" . $parameter->parameter . ">";
                 $parametersHelp .= "\t- `" . $parameter->parameter . "`: `[" .
                     ($parameter->required ? "required" : "optional") . "]` " .
-                    $parameter->description . $inDevelopment . "\r\n";
+                    $parameter->description . "\r\n";
             }
         }
-        $helpComment .= "- `@" . $config->botName . " " . $command->command . $parameters . "`: " . $command->description . "\r\n";
+        $helpComment .= "- `@" . $config->botName . " " . $command->command . $parameters . "`: " . $command->description . $inDevelopment . "\r\n";
         $helpComment .= $parametersHelp;
     }
     $helpComment .= "\r\n\r\nMultiple commands can be issued at the same time, just respect each command pattern (with bot name prefix + command).\r\n\r\n" .
