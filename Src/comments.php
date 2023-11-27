@@ -18,6 +18,7 @@ function handleComment($comment)
         "commentUrl" => "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName . "/issues/" . $comment->PullRequestNumber . "/comments"
     );
 
+    // TODO: Check for collaborators
     if (!in_array($comment->CommentSender, $config->allowedInvokers)) {
         requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"));
         return;
@@ -72,8 +73,7 @@ function execute_help($config, $metadata, $comment)
         $helpComment .= $parametersHelp;
     }
     $helpComment .= "\r\n\r\nMultiple commands can be issued at the same time, just respect each command pattern (with bot name prefix + command).\r\n\r\n" .
-        "> **Warning**\r\n> \r\n> If you aren't allowed to use this bot, a reaction with a thumbs down will be added to your comment.\r\n" .
-        "> The allowed invokers are configurable via the `config.json` file.";
+        "> **Warning**\r\n> \r\n> If you aren't allowed to use this bot, a reaction with a thumbs down will be added to your comment.\r\n";
     requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $helpComment));
 }
 
