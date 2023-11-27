@@ -39,6 +39,7 @@ function handlePullRequest($pullRequest)
             continue;
         }
 
+        // TODO: Check for collaborators
         if (in_array($review->user->login, $config->allowedInvokers)) {
             $invokerReviewed = true;
             if ($botReviewed) {
@@ -64,7 +65,7 @@ function handlePullRequest($pullRequest)
             "event" => "APPROVE",
             "body" => "Automatically approved by [" . $config->botName . "\[bot\]](https://github.com/apps/" . $config->botName . ")"
         );
-        requestGitHub($metadata["token"], $metadata["reviewsUrl"], $body);
+        requestGitHub($gitHubUserToken, $metadata["reviewsUrl"], $body);
     }
 
     if ($pullRequestUpdated->auto_merge == null && in_array($pullRequest->Sender, $config->pullRequests->autoMergeSubmitters)) {
@@ -85,7 +86,8 @@ function handlePullRequest($pullRequest)
         $found = false;
 
         foreach ($comments as $comment) {
-            if (stripos($comment->body, $metadata["squashAndMergeComment"]) !== false) {
+            // TODO: Check for comments of collaborators
+            if (stripos($comment->body, $metadata["squashAndMergeComment"]) !== false && $comment->user->login == "guibranco") {
                 $found = true;
                 break;
             }
@@ -93,7 +95,7 @@ function handlePullRequest($pullRequest)
 
         if (!$found) {
             $comment = array("body" => $metadata["squashAndMergeComment"]);
-            requestGitHub($metadata["token"], $metadata["commentsUrl"], $comment);
+            requestGitHub($gitHubUserToken, $metadata["commentsUrl"], $comment);
         }
     }
 }
