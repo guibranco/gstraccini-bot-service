@@ -144,7 +144,7 @@ function callWorkflow($config, $metadata, $comment, $workflow)
             "owner" => $comment->RepositoryOwner,
             "repository" => $comment->RepositoryName,
             "branch" => $pullRequest->head->ref,
-            "pull_request" => $comment->IssueNumber,
+            "pull_request" => $comment->PullRequestNumber,
             "installationId" => $comment->InstallationId
         )
     );
