@@ -17,7 +17,6 @@ function handlePullRequest($pullRequest)
         "pullRequestUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/pulls/" . $pullRequest->Number,
         "reviewsUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/pulls/" . $pullRequest->Number . "/reviews",
         "assigneesUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/issues/" . $pullRequest->Number . "/assignees"
-
     );
 
     $pullRequestResponse = requestGitHub($metadata["token"], $metadata["pullRequestUrl"]);

@@ -1,6 +1,6 @@
 <?php
 
-function getHeaders($header)
+function extractHeaders($header)
 {
     $headers = array();
     foreach (explode("\r\n", $header) as $i => $line) {
@@ -9,7 +9,7 @@ function getHeaders($header)
         } else {
             $explode = explode(": ", $line);
             if (count($explode) == 2) {
-                list($key, $value) = explode(': ', $line);
+                list($key, $value) = $explode;
                 $headers[$key] = $value;
             }
         }

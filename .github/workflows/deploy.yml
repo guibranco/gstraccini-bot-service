@@ -10,7 +10,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  
   deploy:
     name: Deploy to FTP
     runs-on: ubuntu-latest
@@ -18,7 +17,6 @@ jobs:
       semVer: ${{ steps.gitversion.outputs.semVer }}
 
     steps:
-
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -71,9 +69,11 @@ jobs:
           mkdir -p secrets
           cd secrets
           echo "<?php" >> gitHubApp.secrets.php
-          echo "\$gitHubUserToken     = \"${{ secrets.USER_TOKEN }}\";" >> gitHubApp.secrets.php
-          echo "\$gitHubAppId         = \"${{ secrets.APP_ID }}\";" >> gitHubApp.secrets.php
-          echo "\$gitHubAppPrivateKey = \"${{ secrets.APP_PRIVATE_KEY}}\";" >> gitHubApp.secrets.php
+          echo "\$gitHubUserToken        = \"${{ secrets.USER_TOKEN }}\";" >> gitHubApp.secrets.php
+          echo "\$gitHubAppId            = \"${{ secrets.APP_ID }}\";" >> gitHubApp.secrets.php
+          echo "\$gitHubAppPrivateKey    = \"${{ secrets.APP_PRIVATE_KEY}}\";" >> gitHubApp.secrets.php
+          echo "\$gitHubWebhookEndpoint  = \"${{ secrets.WEBHOOK_ENDPOINT }}\";" >> gitHubApp.secrets.php
+          echo "\$gitHubWebhookSignature = \"${{ secrets.WEBHOOK_SIGNATURE }}\";" >> gitHubApp.secrets.php
 
       - name: Generate HealthChecksIo secrets file
         run: |
@@ -83,6 +83,7 @@ jobs:
           echo "<?php" >> healthChecksIo.secrets.php
           echo "\$healthChecksIoComments     = \"${{ secrets.HEALTHCHECKSIO_COMMENTS }}\";" >> healthChecksIo.secrets.php
           echo "\$healthChecksIoPullRequests = \"${{ secrets.HEALTHCHECKSIO_PULL_REQUESTS }}\";" >> healthChecksIo.secrets.php
+          echo "\$healthChecksIoSignature    = \"${{ secrets.HEALTHCHECKSIO_SIGNATURE }}\";" >> healthChecksIo.secrets.php
 
       - name: Upload service
         uses: sebastianpopp/ftp-action@releases/v2
