@@ -77,6 +77,43 @@ function execute_help($config, $metadata, $comment)
     requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $helpComment));
 }
 
+function execute_appveyor($config, $metadata, $comment)
+{
+    $pullRequestResponse = requestGitHub($metadata["token"], $metadata["pullRequestUrl"]);
+    $pullRequest = json_decode($pullRequestResponse["body"]);
+
+    if ($pullRequest->status != "open") {
+        requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"));
+        requestGitHub($metadata["commentUrl"], array("body" => "This pull request is not open anymore! :no_entry:"));
+        return;
+    }
+
+    $account = strtolower($comment->RepositoryOwner);
+    $project = strtolower($comment->RepositoryName);
+    
+    
+    preg_match("@" . $config->botName . "\sappveyor(?:\s(commit|pull request))?", $comment->CommentBody, $matches);
+
+    $data = array(
+        "accountName" => $account,
+        "projectSlug" => $project
+    );
+
+    if (count($matches) === 1 && $matches[1] === "commit") {
+        requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"));
+        $data["branch"] = $pullRequest->head->ref;
+        $data["commitId"] = $pullRequest->head->sha;
+        requestAppVeyor("builds", $data);
+    } else if (count($matches) === 1 && $matches[1] === "pull request") {
+        requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"));
+        $data["pullRequestId"] = $comment->PullRequestNumber;
+        requestAppVeyor("builds", $data);
+    } else {
+        requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"));
+        requestGitHub($metadata["commentUrl"], array("body" => "I'm sorry @" . $comment->CommentSender . ", I can't do that, invalid type parameter. :pleading_face:"));
+    }
+}
+
 function execute_bumpVersion($config, $metadata, $comment)
 {
     requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"));

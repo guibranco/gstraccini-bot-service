@@ -51,17 +51,14 @@ jobs:
           mkdir -p secrets
           cd secrets
           echo "<?php" >> .htaccess
-
-      - name: Create MySQL secrets file
+      
+      - name: Generate AppVeyor secrets file
         run: |
           cd Src
           mkdir -p secrets
           cd secrets
-          echo "<?php" >> mySql.secrets.php
-          echo "\$mySqlHost     = \"127.0.0.1\";" >> mySql.secrets.php
-          echo "\$mySqlUser     = \"${{ secrets.MYSQL_USER }}\";" >> mySql.secrets.php
-          echo "\$mySqlPassword = \"${{ secrets.MYSQL_PASSWORD }}\";" >> mySql.secrets.php
-          echo "\$mySqlDatabase = \"${{ secrets.MYSQL_DATABASE }}\";" >> mySql.secrets.php
+          echo "<?php" >> appVeyor.secrets.php
+          echo "\$appVeyorKey = \"${{ secrets.APPVEYOR_KEY }}\";" >> appVeyor.secrets.php
 
       - name: Generate GitHub App secrets file
         run: |
@@ -84,6 +81,17 @@ jobs:
           echo "\$healthChecksIoComments     = \"${{ secrets.HEALTHCHECKSIO_COMMENTS }}\";" >> healthChecksIo.secrets.php
           echo "\$healthChecksIoPullRequests = \"${{ secrets.HEALTHCHECKSIO_PULL_REQUESTS }}\";" >> healthChecksIo.secrets.php
           echo "\$healthChecksIoSignature    = \"${{ secrets.HEALTHCHECKSIO_SIGNATURE }}\";" >> healthChecksIo.secrets.php
+
+      - name: Create MySQL secrets file
+        run: |
+          cd Src
+          mkdir -p secrets
+          cd secrets
+          echo "<?php" >> mySql.secrets.php
+          echo "\$mySqlHost     = \"127.0.0.1\";" >> mySql.secrets.php
+          echo "\$mySqlUser     = \"${{ secrets.MYSQL_USER }}\";" >> mySql.secrets.php
+          echo "\$mySqlPassword = \"${{ secrets.MYSQL_PASSWORD }}\";" >> mySql.secrets.php
+          echo "\$mySqlDatabase = \"${{ secrets.MYSQL_DATABASE }}\";" >> mySql.secrets.php
 
       - name: Upload service
         uses: sebastianpopp/ftp-action@releases/v2

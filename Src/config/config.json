@@ -1,90 +1,96 @@
 {
-    "botName": "gstraccini",
-    "botRepository": "guibranco/gstraccini-bot",
-    "botRepositoryInstallationId": "44061807",
-    "allowedInvokers": [
-        "guibranco"
-    ],
-    "commands": [
+  "botName": "gstraccini",
+  "botRepository": "guibranco/gstraccini-bot",
+  "botRepositoryInstallationId": "44061807",
+  "allowedInvokers": ["guibranco"],
+  "commands": [
+    {
+      "command": "help",
+      "description": "Shows the help message with available commands."
+    },
+    {
+      "command": "hello",
+      "description": "Says hello to the invoker."
+    },
+    {
+      "command": "thank you",
+      "description": "Replies with you are welcome message to the invoker."
+    },
+    {
+      "command": "appveyor",
+      "description": "Runs the AppVeyor build for the target commit and/or pull request",
+      "parameters": [
         {
-            "command": "help",
-            "description": "Shows the help message with available commands."
-        },
-        {
-            "command": "hello",
-            "description": "Says hello to the invoker."
-        },
-        {
-            "command": "thank you",
-            "description": "Replies with you are welcome message to the invoker."
-        },
-        {
-            "command": "bump version",
-            "description": "Bumps the .NET version in .csproj files.",
-            "parameters": [
-                {
-                    "parameter": "version",
-                    "description": "The .NET version",
-                    "required": true
-                },
-                {
-                    "parameter": "project",
-                    "description": "The `.csproj` file to update. Suppressing this parameter will run the command in all `.csproj` in the repository/branch",
-                    "required": false
-                }
-            ],
-            "dev": true
-        },
-        {
-            "command": "change runner",
-            "description": "Changes the `GitHub action runner` in a workflow file (.yml)",
-            "parameters": [
-                {
-                    "parameter": "runner",
-                    "description": "The runner's name",
-                    "required": true
-                },
-                {
-                    "parameter": "workflow",
-                    "description": "The workflow filename (with or without the .yml/.yaml extension)",
-                    "required": true
-                },
-                {
-                    "parameter": "jobs",
-                    "description": "The job's to apply this command. Suppressing this parameter will run the command in all jobs within the workflow",
-                    "required": false
-                }
-            ],
-            "dev": true
-        },
-        {
-            "command": "csharpier",
-            "description": "Formats the C# code using CSharpier (only for **.NET** projects)."
-        },
-        {
-            "command": "fix csproj",
-            "description": "Updates the `.csproj` file with `packages.config` version of `NuGet packages` (only for **.NET Framework** projects).",
-            "dev": true
-        },
-        {
-            "command": "review",
-            "description": "Enable review for the target pull request. This is useful when the PR submitter wasn't in the watch list before or the webhook was not captured or some failed scenario occurred."
-        },
-        {
-            "command": "track",
-            "description": "Tracks the specified pull request. Queue a build, raise **[dependabot](https://github.com/dependabot) recreate** comment to resolve conflicts and synchronize merge branches.",
-            "dev": true
+          "parameter": "type",
+          "description": "Specifies if should trigger a build in a `commit` or `pull request`.",
+          "required": true
         }
-    ],
-    "pullRequests": {
-        "autoReviewSubmitters": [
-            "dependabot[bot]",
-            "depfu[bot]",
-            "net-framework-updater[bot]"
-        ],
-        "autoMergeSubmitters": [
-            "guibranco",
-            "net-framework-updater[bot]"
-        ]
+      ]
+    },
+    {
+      "command": "bump version",
+      "description": "Bumps the .NET version in .csproj files.",
+      "parameters": [
+        {
+          "parameter": "version",
+          "description": "The .NET version",
+          "required": true
+        },
+        {
+          "parameter": "project",
+          "description": "The `.csproj` file to update. Suppressing this parameter will run the command in all `.csproj` in the repository/branch",
+          "required": false
+        }
+      ],
+      "dev": true
+    },
+    {
+      "command": "change runner",
+      "description": "Changes the `GitHub action runner` in a workflow file (.yml)",
+      "parameters": [
+        {
+          "parameter": "runner",
+          "description": "The runner's name",
+          "required": true
+        },
+        {
+          "parameter": "workflow",
+          "description": "The workflow filename (with or without the .yml/.yaml extension)",
+          "required": true
+        },
+        {
+          "parameter": "jobs",
+          "description": "The job's to apply this command. Suppressing this parameter will run the command in all jobs within the workflow",
+          "required": false
+        }
+      ],
+      "dev": true
+    },
+    {
+      "command": "csharpier",
+      "description": "Formats the C# code using CSharpier (only for **.NET** projects)."
+    },
+    {
+      "command": "fix csproj",
+      "description": "Updates the `.csproj` file with `packages.config` version of `NuGet packages` (only for **.NET Framework** projects).",
+      "dev": true
+    },
+    {
+      "command": "review",
+      "description": "Enable review for the target pull request. This is useful when the PR submitter wasn't in the watch list before or the webhook was not captured or some failed scenario occurred."
+    },
+    {
+      "command": "track",
+      "description": "Tracks the specified pull request. Queue a build, raise **[dependabot](https://github.com/dependabot) recreate** comment to resolve conflicts and synchronize merge branches.",
+      "dev": true
     }
+  ],
+  "pullRequests": {
+    "autoReviewSubmitters": [
+      "dependabot[bot]",
+      "depfu[bot]",
+      "net-framework-updater[bot]"
+    ],
+    "autoMergeSubmitters": ["guibranco", "net-framework-updater[bot]"]
+  }
 }
