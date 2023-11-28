@@ -48,7 +48,7 @@ function requestGitHub($gitHubToken, $url, $data = null)
 
     $headerSize = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
     $header = substr($response, 0, $headerSize);
-    $headers = getHeaders($header);
+    $headers = extractHeaders($header);
     $body = substr($response, $headerSize);
     curl_close($curl);
 
