@@ -28,10 +28,10 @@ function installSignature($signature)
 
 function main()
 {
-    $signatures = readTable("github_signatures");
+    $signatures = readTable("github_signature");
     foreach ($signatures as $signature) {
         installSignature($signature);
-        updateTable("github_signatures", $signature->Sequence);
+        updateTable("github_signature", $signature->Sequence);
     }
 }
 
