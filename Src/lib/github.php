@@ -50,9 +50,10 @@ function requestGitHub($gitHubToken, $url, $data = null)
     $header = substr($response, 0, $headerSize);
     $headers = extractHeaders($header);
     $body = substr($response, $headerSize);
+    $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
     curl_close($curl);
 
-    return array("headers" => $headers, "body" => $body);
+    return array("status" => $http_code, "headers" => $headers, "body" => $body);
 }
 
 function generateAppToken()

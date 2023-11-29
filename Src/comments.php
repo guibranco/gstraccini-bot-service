@@ -18,9 +18,11 @@ function handleComment($comment)
         "commentUrl" => "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName . "/issues/" . $comment->PullRequestNumber . "/comments"
     );
 
-    // TODO: Check for collaborators
-    if (!in_array($comment->CommentSender, $config->allowedInvokers)) {
+    $collaboratorUrl = "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName . "/collaborators/" . $comment->CommentSender;
+    $collaboratorResponse = requestGitHub($metadata["token"], $collaboratorUrl);
+    if ($collaboratorResponse["status"] === 404) {
         requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"));
+        requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "I'm sorry @" . $comment->CommentSender . ", I can't do that, you aren't a collaborator. :pleading_face:"));
         return;
     }
 

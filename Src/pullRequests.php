@@ -16,7 +16,8 @@ function handlePullRequest($pullRequest)
         "commentsUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/issues/" . $pullRequest->Number . "/comments",
         "pullRequestUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/pulls/" . $pullRequest->Number,
         "reviewsUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/pulls/" . $pullRequest->Number . "/reviews",
-        "assigneesUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/issues/" . $pullRequest->Number . "/assignees"
+        "assigneesUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/issues/" . $pullRequest->Number . "/assignees",
+        "collaboratorsUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/collaborators"
     );
 
     $pullRequestResponse = requestGitHub($metadata["token"], $metadata["pullRequestUrl"]);
@@ -28,29 +29,31 @@ function handlePullRequest($pullRequest)
 
     $reviewsResponse = requestGitHub($metadata["token"], $metadata["reviewsUrl"]);
     $reviews = json_decode($reviewsResponse["body"]);
+    $reviewsLogins = array_map(function ($review) {
+        return $review->user->login;
+    }, $reviews);
+
+    $collaboratorsResponse = requestGitHub($metadata["token"], $metadata["collaboratorsUrl"]);
+    $collaborators = json_decode($collaboratorsResponse["body"]);
+    $collaboratorsLogins = array_map(function ($collaborator) {
+        return $collaborator->login;
+    }, $collaborators);
 
     $botReviewed = false;
     $invokerReviewed = false;
 
-    foreach ($reviews as $review) {
-        if ($review->user->login == $config->botName . "[bot]") {
-            $botReviewed = true;
-            continue;
-        }
+    if (in_array($config->botName . "[bot]", $reviewsLogins)) {
+        $botReviewed = true;
+    }
 
-        // TODO: Check for collaborators
-        if (in_array($review->user->login, $config->allowedInvokers)) {
-            $invokerReviewed = true;
-            if ($botReviewed) {
-                break;
-            }
-        }
+    $intersections = array_intersect($reviewsLogins, $collaboratorsLogins);
+
+    if (count($intersections) > 0) {
+        $invokerReviewed = true;
     }
 
     if ($pullRequestUpdated->assignee == null) {
-        $body = array(
-            "assignees" => $config->allowedInvokers
-        );
+        $body = array("assignees" => $collaboratorsLogins);
         requestGitHub($metadata["token"], $metadata["assigneesUrl"], $body);
     }
 
@@ -85,8 +88,7 @@ function handlePullRequest($pullRequest)
         $found = false;
 
         foreach ($comments as $comment) {
-            // TODO: Check for comments of collaborators
-            if (stripos($comment->body, $metadata["squashAndMergeComment"]) !== false && $comment->user->login == "guibranco") {
+            if (stripos($comment->body, $metadata["squashAndMergeComment"]) !== false && in_array($comment->user->login, $collaboratorsLogins)) {
                 $found = true;
                 break;
             }

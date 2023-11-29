@@ -2,7 +2,6 @@
   "botName": "gstraccini",
   "botRepository": "guibranco/gstraccini-bot",
   "botRepositoryInstallationId": "44061807",
-  "allowedInvokers": ["guibranco"],
   "commands": [
     {
       "command": "help",
