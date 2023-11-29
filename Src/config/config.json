@@ -18,7 +18,7 @@
     },
     {
       "command": "appveyor",
-      "description": "Runs the AppVeyor build for the target commit and/or pull request",
+      "description": "Runs the [AppVeyor](https://ci.appveyor.com) build for the target commit and/or pull request",
       "parameters": [
         {
           "parameter": "type",
@@ -29,7 +29,7 @@
     },
     {
       "command": "bump version",
-      "description": "Bumps the .NET version in .csproj files.",
+      "description": "Bumps the [.NET version](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core) in .csproj files.",
       "parameters": [
         {
           "parameter": "version",
@@ -46,7 +46,7 @@
     },
     {
       "command": "change runner",
-      "description": "Changes the `GitHub action runner` in a workflow file (.yml)",
+      "description": "Changes the [GitHub action runner](https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources) in a workflow file (.yml)",
       "parameters": [
         {
           "parameter": "runner",
@@ -68,11 +68,11 @@
     },
     {
       "command": "csharpier",
-      "description": "Formats the C# code using CSharpier (only for **.NET** projects)."
+      "description": "Formats the C# code using [CSharpier](https://csharpier.com) (only for **.NET** projects)."
     },
     {
       "command": "fix csproj",
-      "description": "Updates the `.csproj` file with `packages.config` version of `NuGet packages` (only for **.NET Framework** projects).",
+      "description": "Updates the `.csproj` file with `packages.config` version of [NuGet packages](https://nuget.org) (only for **.NET Framework** projects).",
       "dev": true
     },
     {
