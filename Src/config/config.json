@@ -75,6 +75,10 @@
       "dev": true
     },
     {
+      "command": "prettier",
+      "description": "Formats the code using [Pettier](https://prettier.io)."
+    },
+    {
       "command": "review",
       "description": "Enable review for the target pull request. This is useful when the PR submitter wasn't in the watch list before or the webhook was not captured or some failed scenario occurred."
     },
