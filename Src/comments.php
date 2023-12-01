@@ -136,6 +136,13 @@ function execute_fixCsproj($config, $metadata, $comment)
     callWorkflow($config, $metadata, $comment, "fix-csproj.yml");
 }
 
+function execute_prettier($config, $metadata, $comment)
+{
+    requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"));
+    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Running [Prettier](https://prettier.io/) on this branch! :wrench:"));
+    callWorkflow($config, $metadata, $comment, "prettier.yml");
+}
+
 function execute_review($config, $metadata, $comment)
 {
     requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"));
