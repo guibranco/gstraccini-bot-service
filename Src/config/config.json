@@ -76,7 +76,7 @@
     },
     {
       "command": "prettier",
-      "description": "Formats the code using [Pettier](https://prettier.io)."
+      "description": "Formats the code using [Prettier](https://prettier.io)."
     },
     {
       "command": "review",
