@@ -94,6 +94,6 @@
       "depfu[bot]",
       "net-framework-updater[bot]"
     ],
-    "autoMergeSubmitters": ["guibranco", "net-framework-updater[bot]"]
+    "autoMergeSubmitters": ["dependabot[bot]", "depfu[bot]", "guibranco", "net-framework-updater[bot]"]
   }
 }
