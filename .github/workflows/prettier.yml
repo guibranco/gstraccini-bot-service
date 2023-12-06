@@ -59,7 +59,7 @@ jobs:
       - name: Install & Test
         run: |
           npm ci
-          npm run test
+          npm run test --if-present
 
       - name: Run Prettier format check
         run: |
@@ -105,7 +105,9 @@ jobs:
            :warning: [Prettier](${{ env.GHA_URL }}) executed! No changes are needed.
 
       - name: Prettier format
-        run: npm run format
+        run: |
+          npm run format --if-present
+          npm run format:write --if-present
 
       - name: Verify Changed files
         uses: tj-actions/verify-changed-files@v16
