@@ -63,7 +63,7 @@ function handlePullRequest($pullRequest)
         requestGitHub($metadata["token"], $metadata["reviewsUrl"], $body);
     }
 
-    $autoReview = in_array($pullRequest->Sender, $config->pullRequests->autoReviewSubmitters));
+    $autoReview = in_array($pullRequest->Sender, $config->pullRequests->autoReviewSubmitters);
     
     if (!$invokerReviewed && $autoReview) {
         $body = array(
