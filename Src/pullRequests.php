@@ -73,7 +73,7 @@ function handlePullRequest($pullRequest)
         requestGitHub($gitHubUserToken, $metadata["reviewsUrl"], $body);
     }
 
-    if(!$invokerReviewed && !$autoRevew){
+    if(!$invokerReviewed && !$autoReview){
         $body = array("reviewers" => $collaboratorsLogins);
         requestGitHub($metadata["token"], $metadata["requestReviewUrl"], $body);
     }
