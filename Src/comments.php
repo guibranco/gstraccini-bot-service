@@ -90,14 +90,20 @@ function execute_appveyor($config, $metadata, $comment)
         return;
     }
 
-    $account = strtolower($comment->RepositoryOwner);
-    $project = strtolower($comment->RepositoryName);
-
     preg_match("/@" . $config->botName . "\sappveyor(?:\s(commit|pull request))?/", $comment->CommentBody, $matches);
 
+    $searchSlug = strtolower($comment->RepositoryOwner . "/" . $comment->RepositoryName);
+
+    $projectsResponse = requestAppVeyor("projects");
+    $projects = json_decode($projectsResponse["body"]);
+    $projects = array_filter($projects, function ($p) use ($searchSlug) {
+        return $searchSlug === strtolower($p->repositoryName);
+    });
+    $projects = array_values($projects);
+
     $data = array(
-        "accountName" => $account,
-        "projectSlug" => $project
+        "accountName" => $projects[0]->accountName,
+        "projectSlug" => $projects[0]->slug
     );
 
     if (count($matches) === 2 && $matches[1] === "commit") {
