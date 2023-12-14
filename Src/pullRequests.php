@@ -17,7 +17,8 @@ function handlePullRequest($pullRequest)
         "pullRequestUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/pulls/" . $pullRequest->Number,
         "reviewsUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/pulls/" . $pullRequest->Number . "/reviews",
         "assigneesUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/issues/" . $pullRequest->Number . "/assignees",
-        "collaboratorsUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/collaborators"
+        "collaboratorsUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/collaborators",
+        "requestReviewUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/issues/" . $pullRequest->Number . "/requested_reviewers",
     );
 
     $pullRequestResponse = requestGitHub($metadata["token"], $metadata["pullRequestUrl"]);
@@ -62,12 +63,19 @@ function handlePullRequest($pullRequest)
         requestGitHub($metadata["token"], $metadata["reviewsUrl"], $body);
     }
 
-    if (!$invokerReviewed && in_array($pullRequest->Sender, $config->pullRequests->autoReviewSubmitters)) {
+    $autoReview = in_array($pullRequest->Sender, $config->pullRequests->autoReviewSubmitters));
+    
+    if (!$invokerReviewed && $autoReview) {
         $body = array(
             "event" => "APPROVE",
             "body" => "Automatically approved by [" . $config->botName . "\[bot\]](https://github.com/apps/" . $config->botName . ")"
         );
         requestGitHub($gitHubUserToken, $metadata["reviewsUrl"], $body);
+    }
+
+    if(!$invokerReviewed && !$autoRevew){
+        $body = array("reviewers" => $collaboratorsLogins);
+        requestGitHub($metadata["token"], $metadata["requestReviewUrl"], $body);
     }
 
     if ($pullRequestUpdated->auto_merge == null && in_array($pullRequest->Sender, $config->pullRequests->autoMergeSubmitters)) {
