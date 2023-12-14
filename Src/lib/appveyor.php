@@ -42,6 +42,12 @@ function requestAppVeyor($url, $data = null)
         die(curl_error($curl));
     }
 
+    if(curl_getinfo($curl, CURLINFO_HTTP_CODE) != 200) {
+        echo htmlspecialchars($url);
+        echo "\r\n";
+        die($response);
+    }
+
     $headerSize = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
     $header = substr($response, 0, $headerSize);
     $headers = extractHeaders($header);
