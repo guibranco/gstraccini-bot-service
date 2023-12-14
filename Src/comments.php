@@ -110,15 +110,26 @@ function execute_appveyor($config, $metadata, $comment)
         requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"));
         $data["branch"] = $pullRequest->head->ref;
         $data["commitId"] = $pullRequest->head->sha;
-        requestAppVeyor("builds", $data);
     } else if (count($matches) === 2 && $matches[1] === "pull request") {
         requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"));
         $data["pullRequestId"] = $comment->PullRequestNumber;
-        requestAppVeyor("builds", $data);
     } else {
         requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"));
         requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "I'm sorry @" . $comment->CommentSender . ", I can't do that, invalid type parameter. :pleading_face:"));
+        return;
     }
+
+    $buildResponse = requestAppVeyor("builds", $data);
+    $build = json_decode($buildResponse["body"]);
+    $buildId = $build->buildId;
+    $version = $build->version;
+    $link = "https://ci.appveyor.com/project/" .
+        $projects[0]->accountName . "/" . $projects[0]->slug .
+        "/builds/" . $buildId;
+    $commentBody = "AppVeyor build started! :rocket:\r\n\r\n" .
+        "Build ID: [" . $buildId . "](" . $link . ")\r\n" .
+        "Version: " . $version . "\r\n";
+    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody));
 }
 
 function execute_bumpVersion($config, $metadata, $comment)
