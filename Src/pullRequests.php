@@ -58,6 +58,17 @@ function handlePullRequest($pullRequest)
         requestGitHub($metadata["token"], $metadata["assigneesUrl"], $body);
     }
 
+    if ($pullRequestUpdated->auto_merge == null && in_array($pullRequest->Sender, $config->pullRequests->autoMergeSubmitters)) {
+        $body = array(
+            "query" => "mutation MyMutation {
+            enablePullRequestAutoMerge(input: {pullRequestId: \"" . $pullRequest->NodeId . "\", mergeMethod: SQUASH}) {
+                clientMutationId
+                 }
+        }"
+        );
+        requestGitHub($gitHubUserToken, "graphql", $body);
+    }
+
     if (!$botReviewed) {
         $body = array("event" => "APPROVE");
         requestGitHub($metadata["token"], $metadata["reviewsUrl"], $body);
@@ -76,17 +87,6 @@ function handlePullRequest($pullRequest)
     if(!$invokerReviewed && !$autoReview){
         $body = array("reviewers" => $collaboratorsLogins);
         requestGitHub($metadata["token"], $metadata["requestReviewUrl"], $body);
-    }
-
-    if ($pullRequestUpdated->auto_merge == null && in_array($pullRequest->Sender, $config->pullRequests->autoMergeSubmitters)) {
-        $body = array(
-            "query" => "mutation MyMutation {
-            enablePullRequestAutoMerge(input: {pullRequestId: \"" . $pullRequest->NodeId . "\", mergeMethod: SQUASH}) {
-                clientMutationId
-                 }
-        }"
-        );
-        requestGitHub($gitHubUserToken, "graphql", $body);
     }
 
     if ($pullRequest->Sender == "dependabot[bot]") {
