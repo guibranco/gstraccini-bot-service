@@ -53,7 +53,7 @@ Currently, there is another (still private) repository that works with this one 
 
 Once you install the [GStraccini-bot GitHub app](https://github.com/apps/gstraccini), GitHub will start sending some webhooks to a registered endpoint for some events. Once these webhooks reach the handler, they will be stored in SQL database tables to be processed later by this bot.
 
-If you are interested in host your own instance, let me know, I will share with you (or if its is already public I need to remove this text from here) the database schemas and scripts and the procedure to create your own GitHub app to receive the events on your infrastructure.
+If you are interested in hosting your own instance, let me know, and I will share with you the database schemas and scripts and the procedure to create your own GitHub app to receive the events on your infrastructure.
 
 ### Cronjobs
 
