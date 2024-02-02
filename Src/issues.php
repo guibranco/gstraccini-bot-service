@@ -11,7 +11,7 @@ function handleIssue($issue)
 
     $metadata = array(
         "token" => $token,
-        "issuesUrl" => "repos/" . $issue->RepositoryOwner . "/" . $issue->RepositoryName . "/issues" . $issue->Number,
+        "issuesUrl" => "repos/" . $issue->RepositoryOwner . "/" . $issue->RepositoryName . "/issues/" . $issue->Number,
     );
 
     $issueResponse = requestGitHub($metadata["token"], $metadata["issuesUrl"]);
