@@ -41,9 +41,11 @@ fi
 
 echo "### Database migration summary (\`$DB_ENV\` environment) :rocket:" >>"$GITHUB_STEP_SUMMARY"
 if [ "$DRY_RUN" == "--dry-run" ]; then
-    echo "" >>"$GITHUB_STEP_SUMMARY"
-    echo ":warning: This is a dry run, no SQL will be executed." >>"$GITHUB_STEP_SUMMARY"
-    echo "" >>"$GITHUB_STEP_SUMMARY"
+    {
+        echo ""
+        echo ":warning: This is a dry run. No SQL will be executed."
+        echo ""
+    } >>"$GITHUB_STEP_SUMMARY"
 fi
 echo "" >>"$GITHUB_STEP_SUMMARY"
 
@@ -132,7 +134,9 @@ if [ "$FILES" != "" ]; then
     echo "The following database files were processed:"
     echo -e "$FILES"
 
-    echo "files<<EOF" >>"$GITHUB_OUTPUT"
-    echo -e "$FILES" >>"$GITHUB_OUTPUT"
-    echo "EOF" >>"$GITHUB_OUTPUT"
+    {
+        echo "files<<EOF"
+        echo -e "$FILES"
+        echo "EOF"
+    } >>"$GITHUB_OUTPUT"
 fi
