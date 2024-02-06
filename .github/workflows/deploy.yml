@@ -120,4 +120,4 @@ jobs:
           tag: v${{ env.SEMVER }}
           name: Release v${{ env.SEMVER }}
           generateReleaseNotes: true
-          body: Release ${{ env.SEMVER }} of GStraccini-bot
+          body: Release ${{ env.SEMVER }} of ${{ github.event.repository.name }}
