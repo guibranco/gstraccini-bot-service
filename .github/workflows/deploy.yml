@@ -48,6 +48,7 @@ jobs:
       - name: Install dependencies
         uses: "php-actions/composer@v6"
         with:
+          php_extensions: sockets
           dev: no
           progress: yes
           working_dir: "./Src/"
