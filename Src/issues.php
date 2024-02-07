@@ -21,7 +21,7 @@ function handleIssue($issue)
         return;
     }
 
-    echo "Issue " . $issue->Number . " is open\n";
+    echo "Issue " . $issueUpdated->number . " - " . $issue->title . " is open\n";
 }
 
 function main()
