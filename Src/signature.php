@@ -17,12 +17,12 @@ function installSignature($signature)
     $url = "";
     if ($signature->TargetType == "repository") {
         $url = "repos/" . $signature->RepositoryOwner . "/" . $signature->RepositoryName . "/hooks/" . $signature->HookId . "/config";
-    } else if ($signature->TargetType == "organization") {
+    } elseif ($signature->TargetType == "organization") {
         $url = "repos/" . $signature->RepositoryOwner . "/hooks/" . $signature->HookId . "/config";
     }
 
     if (!empty($url)) {
-       requestGitHub($gitHubUserToken, $url, $request);
+        requestGitHub($gitHubUserToken, $url, $request);
     }
 }
 
