@@ -110,7 +110,7 @@ function execute_appveyor($config, $metadata, $comment)
         requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"));
         $data["branch"] = $pullRequest->head->ref;
         $data["commitId"] = $pullRequest->head->sha;
-    } else if (count($matches) === 2 && $matches[1] === "pull request") {
+    } elseif (count($matches) === 2 && $matches[1] === "pull request") {
         requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"));
         $data["pullRequestId"] = $comment->PullRequestNumber;
     } else {

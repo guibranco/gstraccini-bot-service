@@ -57,7 +57,7 @@ function receiveQueue($queueName, $callback)
 function receiveByLib($queueName, $callback)
 {
     global $rabbitMqHost, $rabbitMqPort, $rabbitMqUser, $rabbitMqPassword, $rabbitMqVhost;
-    
+
     $startTime = time();
 
     try {

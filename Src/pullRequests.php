@@ -75,7 +75,7 @@ function handlePullRequest($pullRequest)
     }
 
     $autoReview = in_array($pullRequest->Sender, $config->pullRequests->autoReviewSubmitters);
-    
+
     if (!$invokerReviewed && $autoReview) {
         $body = array(
             "event" => "APPROVE",
@@ -84,7 +84,7 @@ function handlePullRequest($pullRequest)
         requestGitHub($gitHubUserToken, $metadata["reviewsUrl"], $body);
     }
 
-    if(!$invokerReviewed && !$autoReview){
+    if(!$invokerReviewed && !$autoReview) {
         $body = array("reviewers" => $collaboratorsLogins);
         requestGitHub($metadata["token"], $metadata["requestReviewUrl"], $body);
     }
