@@ -17,7 +17,7 @@
     },
     {
       "command": "appveyor",
-      "description": "Runs the [AppVeyor](https://ci.appveyor.com) build for the target commit and/or pull request",
+      "description": "Runs the [AppVeyor](https://ci.appveyor.com) build for the target commit and/or pull request.",
       "parameters": [
         {
           "parameter": "type",
@@ -37,7 +37,7 @@
         },
         {
           "parameter": "project",
-          "description": "The `.csproj` file to update. Suppressing this parameter will run the command in all `.csproj` in the repository/branch",
+          "description": "The `.csproj` file to update. Suppressing this parameter will run the command in all `.csproj` in the repository/branch.",
           "required": false
         }
       ],
@@ -45,7 +45,7 @@
     },
     {
       "command": "change runner",
-      "description": "Changes the [GitHub action runner](https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources) in a workflow file (.yml)",
+      "description": "Changes the [GitHub action runner](https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources) in a workflow file (.yml).",
       "parameters": [
         {
           "parameter": "runner",
@@ -54,12 +54,12 @@
         },
         {
           "parameter": "workflow",
-          "description": "The workflow filename (with or without the .yml/.yaml extension)",
+          "description": "The workflow filename (with or without the .yml/.yaml extension).",
           "required": true
         },
         {
           "parameter": "jobs",
-          "description": "The job's to apply this command. Suppressing this parameter will run the command in all jobs within the workflow",
+          "description": "The jobs to apply this command. Suppressing this parameter will run the command in all jobs within the workflow.",
           "required": false
         }
       ],
@@ -80,11 +80,11 @@
     },
     {
       "command": "review",
-      "description": "Enable review for the target pull request. This is useful when the PR submitter wasn't in the watch list before or the webhook was not captured or some failed scenario occurred."
+      "description": "Enable review for the target pull request. This is useful when the PR submitter wasn't in the watch list, the webhook was not captured, or some failed scenario occurred."
     },
     {
       "command": "track",
-      "description": "Tracks the specified pull request. Queue a build, raise **[dependabot](https://github.com/dependabot) recreate** comment to resolve conflicts and synchronize merge branches.",
+      "description": "Tracks the specified pull request. Queue a build, raise a **[dependabot](https://github.com/dependabot) recreate** comment to resolve conflicts, and synchronize merge branches.",
       "dev": true
     }
   ],
