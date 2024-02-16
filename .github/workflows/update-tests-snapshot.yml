@@ -27,12 +27,12 @@ env:
   GHA_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
 jobs:
-  prettier:
+  update-snapshot:
     permissions: write-all
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [18.x]
+        node-version: [20.x]
     steps:
       - name: Generate a token
         id: generate_token
@@ -120,7 +120,7 @@ jobs:
         if: steps.verify-changed-files.outputs.files_changed == 'true'
         run: |
           git add .
-          git commit -m "Prettier format"
+          git commit -m "Update test snapshot"
           echo "sha1=$(git rev-parse HEAD)" >> $GITHUB_ENV
           git push origin ${{ github.event.inputs.branch }}
 
