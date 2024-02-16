@@ -74,7 +74,7 @@ function execute_help($config, $metadata, $comment)
         $helpComment .= "- `@" . $config->botName . " " . $command->command . $parameters . "`: " . $command->description . $inDevelopment . "\r\n";
         $helpComment .= $parametersHelp;
     }
-    $helpComment .= "\r\n\r\nMultiple commands can be issued at the same time, just respect each command pattern (with bot name prefix + command).\r\n\r\n" .
+    $helpComment .= "\r\n\r\nMultiple commands can be issued at the same time. Just respect each command pattern (with bot name prefix + command).\r\n\r\n" .
         "> **Warning**\r\n> \r\n> If you aren't allowed to use this bot, a reaction with a thumbs down will be added to your comment.\r\n";
     requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $helpComment));
 }
