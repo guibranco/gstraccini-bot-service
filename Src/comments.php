@@ -197,7 +197,7 @@ function execute_updateSnapshot($config, $metadata, $comment)
 {
     requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"));
     requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Updating test snapshots"));
-    callWorkflow($config, $metadata, $comment, "update-tests-snapshot.yml");
+    callWorkflow($config, $metadata, $comment, "update-test-snapshot.yml");
 }
 
 function callWorkflow($config, $metadata, $comment, $workflow)
