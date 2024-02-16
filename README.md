@@ -36,7 +36,7 @@ That's what I can do :neckbeard::
 - `@gstraccini prettier`: Formats the code using [Prettier](https://prettier.io).
 - `@gstraccini review`: Enable review for the target pull request. This is useful when the PR submitter wasn't on the watch list, the webhook was not captured, or some failed scenario occurred.
 - `@gstraccini track`: Tracks the specified pull request. Queue a build, raise a **[dependabot](https://github.com/dependabot) recreate** comment to resolve conflicts, and synchronize merge branches. :warning: (in development - maybe not working as expected!)
-- `@gstraccini update snapshot`: Updaet tests snapshots (npm test -- -u) (only for **Node.js** projects).
+- `@gstraccini update snapshot`: Updaet tests snapshots (`npm test -- -u`) (only for **Node.js** projects).
 
 
 Multiple commands can be issued at the same time. Just respect each command pattern (with bot name prefix + command).
