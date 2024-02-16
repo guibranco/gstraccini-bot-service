@@ -56,6 +56,10 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
 
+      - name: Install
+        run: |
+          npm ci
+          
       - name: Run update snapshot
         run: |
           set -e
