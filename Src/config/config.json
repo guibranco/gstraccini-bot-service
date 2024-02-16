@@ -80,7 +80,7 @@
     },
     {
       "command": "review",
-      "description": "Enable review for the target pull request. This is useful when the PR submitter wasn't in the watch list, the webhook was not captured, or some failed scenario occurred."
+      "description": "Enable review for the target pull request. This is useful when the PR submitter wasn't on the watch list, the webhook was not captured, or some failed scenario occurred."
     },
     {
       "command": "track",
@@ -89,7 +89,7 @@
     },
     {
       "command": "update snapshot",
-      "description": "Updaet tests snapshots (npm test -- -u) (only for **Node.js** projects)."
+      "description": "Update test snapshots (`npm test -- -u`) (only for **Node.js** projects)."
     }
   ],
   "pullRequests": {
