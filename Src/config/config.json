@@ -86,6 +86,10 @@
       "command": "track",
       "description": "Tracks the specified pull request. Queue a build, raise a **[dependabot](https://github.com/dependabot) recreate** comment to resolve conflicts, and synchronize merge branches.",
       "dev": true
+    },
+    {
+      "command": "update snapshot",
+      "description": "Updaet tests snapshots (npm test -- -u) (only for **Node.js** projects)."
     }
   ],
   "pullRequests": {
