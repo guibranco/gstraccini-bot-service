@@ -1,6 +1,8 @@
-<?php 
+<?php
 
-function doRequest($url, $authorizationBearerToken, $data = null){
+
+function doRequest($url, $authorizationBearerToken, $data = null)
+{
     $headers = array();
     $headers[] = "User-Agent: " . USER_AGENT;
     $headers[] = "Content-type: application/json";
