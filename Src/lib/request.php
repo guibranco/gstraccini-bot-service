@@ -1,12 +1,14 @@
 <?php
 
 
-function doRequest($url, $authorizationBearerToken, $data = null)
+function doRequest($url, $authorizationBearerToken = null, $data = null)
 {
     $headers = array();
     $headers[] = "User-Agent: " . USER_AGENT;
-    $headers[] = "Content-type: application/json";
-    $headers[] = "Authorization: Bearer " . $authorizationBearerToken;
+    if ($authorizationBearerToken !== null) {
+        $headers[] = "Content-type: application/json";
+        $headers[] = "Authorization: Bearer " . $authorizationBearerToken;
+    }
 
     $fields = array(
         CURLOPT_URL => $url,

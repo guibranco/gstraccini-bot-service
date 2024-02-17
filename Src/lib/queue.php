@@ -34,7 +34,7 @@ function sendByLib($queueName, $payload)
         $channel->close();
         $connection->close();
     } catch (Exception $e) {
-        file_put_contents("rabbitmq.error_log", "[" . date("Y-m-d H:i:s") . "] ERROR sending: " . $e->getMessage() . "\n", FILE_APPEND);
+        file_put_contents("rabbitmq.error_log", "[" . date("Y-m-d H:i:s e") . "] ERROR sending " . $queueName . ": " . $e->getMessage() . "\n", FILE_APPEND);
         if (!is_dir("logs")) {
             mkdir("logs");
         }
@@ -79,6 +79,6 @@ function receiveByLib($queueName, $callback)
         $channel->close();
         $connection->close();
     } catch (Exception $e) {
-        file_put_contents("rabbitmq.error_log", "[" . date("Y-m-d H:i:s") . "] ERROR receiving: " . $e->getMessage() . "\n", FILE_APPEND);
+        file_put_contents("rabbitmq.error_log", "[" . date("Y-m-d H:i:s e") . "] ERROR receiving " . $queueName . ": " . $e->getMessage() . "\n", FILE_APPEND);
     }
 }
