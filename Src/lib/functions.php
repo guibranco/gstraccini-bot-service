@@ -24,28 +24,7 @@ function sendHealthCheck($token, $type = null)
         return;
     }
 
-    $headers = array();
-    $headers[] = "User-Agent: " . USER_AGENT;
-
-    $curl = curl_init();
-    curl_setopt_array(
-        $curl,
-        array(
-            CURLOPT_URL => "https://hc-ping.com/" . $token . ($type == null ? "" : $type),
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => "",
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 0,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => false,
-            CURLOPT_HTTPHEADER => $headers
-
-        )
-    );
-    curl_exec($curl);
-    curl_close($curl);
+    doRequest("https://hc-ping.com/" . $token . ($type == null ? "" : $type));
 }
 
 function toCamelCase($inputString)

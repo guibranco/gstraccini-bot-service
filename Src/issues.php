@@ -17,11 +17,7 @@ function handleIssue($issue)
     $issueResponse = requestGitHub($metadata["token"], $metadata["issuesUrl"]);
     $issueUpdated = json_decode($issueResponse["body"]);
 
-    if ($issueUpdated->state != "open") {
-        return;
-    }
-
-    echo "Issue " . $issueUpdated->number . " - " . $issueUpdated->title . " is open\n";
+    echo "Issue " . $issueUpdated->number . " - " . trim($issueUpdated->title) . " is " . $issueUpdated->state . "\n";
 }
 
 function main()
