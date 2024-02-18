@@ -85,12 +85,14 @@ function handlePullRequest($pullRequest)
 
     $referencedIssueResponse = requestGitHub($metadata["token"], "graphql", $referencedIssueQuery);
     $referencedIssue = json_decode($referencedIssueResponse["body"]);
-    print_r($referencedIssue);
+
     if (count($referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes) > 0) {
         $issueNumber = $referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes[0]->number;
         $issueResponse = requestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber);
 
         $labels = array_column(json_decode($issueResponse["body"])->labels, "name");
+        echo "Labels: \n";
+        print_r($labels);
         $body = array("labels" => array("WIP"));
         requestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber . "/labels", $labels);
         $body = array("labels" => $labels);
