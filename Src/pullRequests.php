@@ -36,9 +36,7 @@ function handlePullRequest($pullRequest)
 
     $collaboratorsResponse = requestGitHub($metadata["token"], $metadata["collaboratorsUrl"]);
     $collaborators = json_decode($collaboratorsResponse["body"]);
-    $collaboratorsLogins = array_map(function ($collaborator) {
-        return $collaborator->login;
-    }, $collaborators);
+    $collaboratorsLogins = array_column($collaborators, "login");
 
     $botReviewed = false;
     $invokerReviewed = false;
