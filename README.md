@@ -33,11 +33,11 @@ That's what I can do :neckbeard::
 	- `workflow`: `[required]` The workflow filename (with or without the .yml/.yaml extension).
 	- `jobs`: `[optional]` The jobs to apply this command. Suppressing this parameter will run the command in all jobs within the workflow.
 - `@gstraccini csharpier`: Formats the C# code using [CSharpier](https://csharpier.com) (only for **.NET** projects).
-- `@gstraccini fix csproj`: Updates the `.csproj` file with `packages.config` version of [NuGet packages](https://nuget.org) (only for **.NET Framework** projects). :warning: (in development - maybe not working as expected!)
+- `@gstraccini fix csproj`: Updates the `.csproj` file with the `packages.config` version of [NuGet packages](https://nuget.org) (only for **.NET Framework** projects). :warning: (in development - maybe not working as expected!)
 - `@gstraccini prettier`: Formats the code using [Prettier](https://prettier.io).
 - `@gstraccini review`: Enable review for the target pull request. This is useful when the PR submitter wasn't on the watch list, the webhook was not captured, or some failed scenario occurred.
 - `@gstraccini track`: Tracks the specified pull request. Queue a build, raise a **[dependabot](https://github.com/dependabot) recreate** comment to resolve conflicts, and synchronize merge branches. :warning: (in development - maybe not working as expected!)
-- `@gstraccini update snapshot`: Updaet tests snapshots (`npm test -- -u`) (only for **Node.js** projects).
+- `@gstraccini update snapshot`: Update test snapshots (`npm test -- -u`) (only for **Node.js** projects).
 
 
 Multiple commands can be issued at the same time. Just respect each command pattern (with bot name prefix + command).
