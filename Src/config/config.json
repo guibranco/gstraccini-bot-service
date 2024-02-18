@@ -21,7 +21,7 @@
       "parameters": [
         {
           "parameter": "type",
-          "description": "Specifies if should trigger a build in a `commit` or `pull request`.",
+          "description": "Specifies if it should trigger a build in a `commit` or `pull request`.",
           "required": true
         }
       ]
