@@ -19,6 +19,8 @@ function handlePullRequest($pullRequest)
         "assigneesUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/issues/" . $pullRequest->Number . "/assignees",
         "collaboratorsUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/collaborators",
         "requestReviewUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/issues/" . $pullRequest->Number . "/requested_reviewers",
+        "issuesUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/issues",
+        "prLabelsUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/issues/" . $pullRequest->Number . "/labels"
     );
 
     $pullRequestResponse = requestGitHub($metadata["token"], $metadata["pullRequestUrl"]);
@@ -81,8 +83,19 @@ function handlePullRequest($pullRequest)
       }"
     );
 
-    $referencedIssue = requestGitHub($metadata["token"], "graphql", $referencedIssueQuery);
-    print_r($referencedIssue["body"]);
+    $referencedIssueResponse = requestGitHub($metadata["token"], "graphql", $referencedIssueQuery);
+    $referencedIssue = json_decode($referencedIssueResponse["body"]);
+    if (count($referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes) > 0) {
+        $issueNumber = $referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes[0]->number;
+        $issueResponse = requestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber);
+
+        $labels = array_column(json_decode($issueResponse["body"])->labels, "name");
+        $body = array("labels" => array("WIP"));
+        requestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber . "/labels", $labels);
+        $body = array("labels" => $labels);
+        requestGitHub($metadata["token"], $metadata["prLabelsUrl"] . "/labels", $labels);
+    }
+
 
     if (!$botReviewed) {
         $body = array("event" => "APPROVE");
