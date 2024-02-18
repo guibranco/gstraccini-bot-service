@@ -13,7 +13,7 @@ function requestGitHub($gitHubToken, $url, $data = null)
 
     $response = doRequest($url, $gitHubToken, $data);
 
-    if($response["status"] >= 300) {
+    if ($response["status"] >= 300) {
         sendQueue("github.error", array("url" => $url, "data" => $data), $response);
     }
 
