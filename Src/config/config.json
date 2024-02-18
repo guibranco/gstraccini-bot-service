@@ -71,7 +71,7 @@
     },
     {
       "command": "fix csproj",
-      "description": "Updates the `.csproj` file with `packages.config` version of [NuGet packages](https://nuget.org) (only for **.NET Framework** projects).",
+      "description": "Updates the `.csproj` file with the `packages.config` version of [NuGet packages](https://nuget.org) (only for **.NET Framework** projects).",
       "dev": true
     },
     {
