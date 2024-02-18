@@ -85,6 +85,7 @@ function handlePullRequest($pullRequest)
 
     $referencedIssueResponse = requestGitHub($metadata["token"], "graphql", $referencedIssueQuery);
     $referencedIssue = json_decode($referencedIssueResponse["body"]);
+    print_r($referencedIssue);
     if (count($referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes) > 0) {
         $issueNumber = $referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes[0]->number;
         $issueResponse = requestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber);
@@ -95,7 +96,6 @@ function handlePullRequest($pullRequest)
         $body = array("labels" => $labels);
         requestGitHub($metadata["token"], $metadata["prLabelsUrl"] . "/labels", $labels);
     }
-
 
     if (!$botReviewed) {
         $body = array("event" => "APPROVE");
