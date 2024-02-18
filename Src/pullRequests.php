@@ -10,16 +10,17 @@ function handlePullRequest($pullRequest)
 
     $token = generateInstallationToken($pullRequest->InstallationId, $pullRequest->RepositoryName);
 
+    $repoPrefix = "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName;
     $metadata = array(
         "token" => $token,
         "squashAndMergeComment" => "@dependabot squash and merge",
-        "commentsUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/issues/" . $pullRequest->Number . "/comments",
-        "pullRequestUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/pulls/" . $pullRequest->Number,
-        "reviewsUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/pulls/" . $pullRequest->Number . "/reviews",
-        "assigneesUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/issues/" . $pullRequest->Number . "/assignees",
-        "collaboratorsUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/collaborators",
-        "requestReviewUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/issues/" . $pullRequest->Number . "/requested_reviewers",
-        "issuesUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/issues"
+        "commentsUrl" => $repoPrefix . "/issues/" . $pullRequest->Number . "/comments",
+        "pullRequestUrl" => $repoPrefix . "/pulls/" . $pullRequest->Number,
+        "reviewsUrl" => $repoPrefix . "/pulls/" . $pullRequest->Number . "/reviews",
+        "assigneesUrl" => $repoPrefix . "/pulls/" . $pullRequest->Number . "/assignees",
+        "collaboratorsUrl" => $repoPrefix . "/collaborators",
+        "requestReviewUrl" => $repoPrefix . "/pulls/" . $pullRequest->Number . "/requested_reviewers",
+        "issuesUrl" => $repoPrefix . "/issues"
     );
 
     $pullRequestResponse = requestGitHub($metadata["token"], $metadata["pullRequestUrl"]);
