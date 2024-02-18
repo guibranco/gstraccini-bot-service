@@ -20,7 +20,7 @@ function handlePullRequest($pullRequest)
         "assigneesUrl" => $repoPrefix . "/pulls/" . $pullRequest->Number . "/assignees",
         "collaboratorsUrl" => $repoPrefix . "/collaborators",
         "requestReviewUrl" => $repoPrefix . "/pulls/" . $pullRequest->Number . "/requested_reviewers",
-        "issuesUrl" =>$repoPrefix . "/issues"
+        "issuesUrl" => $repoPrefix . "/issues"
     );
 
     $pullRequestResponse = requestGitHub($metadata["token"], $metadata["pullRequestUrl"]);
