@@ -12,6 +12,7 @@ function handleIssue($issue)
     $metadata = array(
         "token" => $token,
         "repoUrl" => "repos/" . $issue->RepositoryOwner . "/" . $issue->RepositoryName,
+        "assigneesUrl" => "repos/" . $issue->RepositoryOwner . "/" . $issue->RepositoryName . "/issues/" . $issue->Number . "/assignees",
         "collaboratorsUrl" => "repos/" . $issue->RepositoryOwner . "/" . $issue->RepositoryName . "/collaborators",
         "issuesUrl" => "repos/" . $issue->RepositoryOwner . "/" . $issue->RepositoryName . "/issues/" . $issue->Number,
     );
@@ -28,7 +29,7 @@ function handleIssue($issue)
         return;
     }
     $collaboratorsResponse = requestGitHub($metadata["token"], $metadata["collaboratorsUrl"]);
-    $collaborators = json_decode($collaboratorsResponse["body"]);
+    $collaborators = json_decode($collaboratorsResponse["body"], true);
     $collaboratorsLogins = array_column($collaborators, "login");
     $body = array("assignees" => $collaboratorsLogins);
     requestGitHub($metadata["token"], $metadata["assigneesUrl"], $body);

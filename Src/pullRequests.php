@@ -67,6 +67,22 @@ function handlePullRequest($pullRequest)
         requestGitHub($gitHubUserToken, "graphql", $body);
     }
 
+    $referencedIssueQuery = array("query {
+        repository(owner: \"" . $pullRequest->RepositoryOwner . "\", name: \"" . $pullRequest->RepositoryName . "\") {
+          pullRequest(number: " . $pullRequest->Number . ") {
+            closingIssuesReferences(first: 1) {
+              nodes {
+                  number
+              }
+            }
+          }
+        }
+      }"
+    );
+
+    $referencedIssue = requestGitHub($metadata["token"], "graphql", $referencedIssueQuery);
+    print_r($referencedIssue["body"]);
+
     if (!$botReviewed) {
         $body = array("event" => "APPROVE");
         requestGitHub($metadata["token"], $metadata["reviewsUrl"], $body);
@@ -82,7 +98,7 @@ function handlePullRequest($pullRequest)
         requestGitHub($gitHubUserToken, $metadata["reviewsUrl"], $body);
     }
 
-    if(!$invokerReviewed && !$autoReview) {
+    if (!$invokerReviewed && !$autoReview) {
         $body = array("reviewers" => $collaboratorsLogins);
         requestGitHub($metadata["token"], $metadata["requestReviewUrl"], $body);
     }
