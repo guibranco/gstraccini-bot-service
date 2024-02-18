@@ -28,6 +28,11 @@ if (file_exists($mySqlSecretsFile)) {
     require_once $mySqlSecretsFile;
 }
 
+$rabbitMqSecretsFile = "secrets/rabbitMq.secrets.php";
+if (file_exists($rabbitMqSecretsFile)) {
+    require_once $rabbitMqSecretsFile;
+}
+
 function loadConfig()
 {
     $fileName = "config/config.json";
