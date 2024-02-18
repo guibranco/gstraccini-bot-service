@@ -24,7 +24,7 @@ That's what I can do :neckbeard::
 - `@gstraccini hello`: Says hello to the invoker.
 - `@gstraccini thank you`: Replies with you are welcome message to the invoker.
 - `@gstraccini appveyor <type>`: Runs the [AppVeyor](https://ci.appveyor.com) build for the target commit and/or pull request.
-	- `type`: `[required]` Specifies if should trigger a build in a `commit` or `pull request`.
+	- `type`: `[required]` Specifies if it should trigger a build in a `commit` or `pull request`.
 - `@gstraccini bump version <version> <project>`: Bumps the [.NET version](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core) in .csproj files. :warning: (in development - maybe not working as expected!)
 	- `version`: `[required]` The .NET version
 	- `project`: `[optional]` The `.csproj` file to update. Suppressing this parameter will run the command in all `.csproj` in the repository/branch.
