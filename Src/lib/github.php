@@ -11,7 +11,13 @@ function requestGitHub($gitHubToken, $url, $data = null)
     $baseUrl = "https://api.github.com/";
     $url = $baseUrl . $url;
 
-    return doRequest($url, $gitHubToken, $data);
+    $response = doRequest($url, $gitHubToken, $data);
+
+    if ($response["status"] >= 300) {
+        sendQueue("github.error", array("url" => $url, "data" => $data), $response);
+    }
+
+    return $response;
 }
 
 function generateAppToken()

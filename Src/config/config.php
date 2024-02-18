@@ -44,3 +44,4 @@ require_once "lib/database.php";
 require_once "lib/request.php";
 require_once "lib/appveyor.php";
 require_once "lib/github.php";
+require_once "lib/queue.php";

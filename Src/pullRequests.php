@@ -91,12 +91,10 @@ function handlePullRequest($pullRequest)
         $issueResponse = requestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber);
 
         $labels = array_column(json_decode($issueResponse["body"])->labels, "name");
-        echo "Labels: \n";
-        print_r($labels);
         $body = array("labels" => array("WIP"));
-        requestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber . "/labels", $labels);
+        requestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber . "/labels", $body);
         $body = array("labels" => $labels);
-        requestGitHub($metadata["token"], $metadata["prLabelsUrl"] . "/labels", $labels);
+        requestGitHub($metadata["token"], $metadata["prLabelsUrl"] . "/labels", $body);
     }
 
     if (!$botReviewed) {
