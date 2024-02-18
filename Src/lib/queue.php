@@ -5,12 +5,7 @@ use PhpAmqpLib\Message\AMQPMessage;
 
 function sendQueue($queueName, $headers, $data)
 {
-    global $config;
     global $rabbitMqHost, $rabbitMqPort, $rabbitMqUser, $rabbitMqPassword, $rabbitMqVhost;
-
-    if (!$config->queue->enabled) {
-        return false;
-    }
 
     $payload = array(time(), $headers, $data);
     $payload = json_encode($payload);
@@ -44,12 +39,7 @@ function sendByLib($queueName, $payload)
 
 function receiveQueue($queueName, $callback)
 {
-    global $config;
     global $rabbitMqHost, $rabbitMqPort, $rabbitMqUser, $rabbitMqPassword, $rabbitMqVhost;
-
-    if (!$config->queue->enabled) {
-        return false;
-    }
 
     receiveByLib($queueName, $callback);
 }
