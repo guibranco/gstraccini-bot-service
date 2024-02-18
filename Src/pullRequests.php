@@ -19,8 +19,7 @@ function handlePullRequest($pullRequest)
         "assigneesUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/issues/" . $pullRequest->Number . "/assignees",
         "collaboratorsUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/collaborators",
         "requestReviewUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/issues/" . $pullRequest->Number . "/requested_reviewers",
-        "issuesUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/issues",
-        "prLabelsUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/issues/" . $pullRequest->Number . "/labels"
+        "issuesUrl" => "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . "/issues"
     );
 
     $pullRequestResponse = requestGitHub($metadata["token"], $metadata["pullRequestUrl"]);
@@ -94,7 +93,7 @@ function handlePullRequest($pullRequest)
         $body = array("labels" => array("WIP"));
         requestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber . "/labels", $body);
         $body = array("labels" => $labels);
-        requestGitHub($metadata["token"], $metadata["prLabelsUrl"] . "/labels", $body);
+        requestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $pullRequest->Number . "/labels", $body);
     }
 
     if (!$botReviewed) {
