@@ -67,7 +67,8 @@ function handlePullRequest($pullRequest)
         requestGitHub($gitHubUserToken, "graphql", $body);
     }
 
-    $referencedIssueQuery = array("query {
+    $referencedIssueQuery = array(
+        "query" => "query {
         repository(owner: \"" . $pullRequest->RepositoryOwner . "\", name: \"" . $pullRequest->RepositoryName . "\") {
           pullRequest(number: " . $pullRequest->Number . ") {
             closingIssuesReferences(first: 1) {
