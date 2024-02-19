@@ -17,7 +17,7 @@ function handlePullRequest($pullRequest)
         "commentsUrl" => $repoPrefix . "/issues/" . $pullRequest->Number . "/comments",
         "pullRequestUrl" => $repoPrefix . "/pulls/" . $pullRequest->Number,
         "reviewsUrl" => $repoPrefix . "/pulls/" . $pullRequest->Number . "/reviews",
-        "assigneesUrl" => $repoPrefix . "/pulls/" . $pullRequest->Number . "/assignees",
+        "assigneesUrl" => $repoPrefix . "/issues/" . $pullRequest->Number . "/assignees",
         "collaboratorsUrl" => $repoPrefix . "/collaborators",
         "requestReviewUrl" => $repoPrefix . "/pulls/" . $pullRequest->Number . "/requested_reviewers",
         "issuesUrl" => $repoPrefix . "/issues"
