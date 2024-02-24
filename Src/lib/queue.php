@@ -18,8 +18,13 @@ function sendByLib($queueName, $payload)
     global $rabbitMqHost, $rabbitMqPort, $rabbitMqUser, $rabbitMqPassword, $rabbitMqVhost;
 
     try {
-        $connection = new AMQPStreamConnection($rabbitMqHost, $rabbitMqPort, $rabbitMqUser, $rabbitMqPassword, $rabbitMqVhost);
-
+        $connection = new AMQPStreamConnection(
+            $rabbitMqHost,
+            $rabbitMqPort,
+            $rabbitMqUser,
+            $rabbitMqPassword,
+            $rabbitMqVhost
+        );
         $channel = $connection->channel();
         $channel->queue_declare($queueName, false, true, false, false);
 
@@ -29,11 +34,8 @@ function sendByLib($queueName, $payload)
         $channel->close();
         $connection->close();
     } catch (Exception $e) {
-        file_put_contents("rabbitmq.error_log", "[" . date("Y-m-d H:i:s e") . "] ERROR sending " . $queueName . ": " . $e->getMessage() . "\n", FILE_APPEND);
-        if (!is_dir("logs")) {
-            mkdir("logs");
-        }
-        file_put_contents("logs/" . $queueName . "_" . microtime(true) . "_" . uniqid() . ".json", $payload);
+        saveErrorLog("sending", $queueName, $e);
+        saveFailed($queueName, $payload);
     }
 }
 
@@ -54,7 +56,23 @@ function receiveByLib($queueName, $callback)
         $fn = function ($msg) use ($callback, $startTime) {
             $callback($startTime, $msg);
         };
-        $connection = new AMQPStreamConnection($rabbitMqHost, $rabbitMqPort, $rabbitMqUser, $rabbitMqPassword, $rabbitMqVhost);
+        $connection = new AMQPStreamConnection(
+            $rabbitMqHost,
+            $rabbitMqPort,
+            $rabbitMqUser,
+            $rabbitMqPassword,
+            $rabbitMqVhost,
+            false,
+            'AMQPLAIN',
+            null,
+            'en_US',
+            10.0,
+            10.0,
+            null,
+            false,
+            0,
+            5.0
+        );
         $channel = $connection->channel();
         $channel->queue_declare($queueName, false, true, false, false);
         $channel->basic_consume($queueName, '', false, false, false, false, $fn);
@@ -69,6 +87,24 @@ function receiveByLib($queueName, $callback)
         $channel->close();
         $connection->close();
     } catch (Exception $e) {
-        file_put_contents("rabbitmq.error_log", "[" . date("Y-m-d H:i:s e") . "] ERROR receiving " . $queueName . ": " . $e->getMessage() . "\n", FILE_APPEND);
+        saveErrorLog("receiving", $queueName, $e);
     }
+}
+
+function saveErrorLog($type, $queueName, $exception)
+{
+    $file = "rabbitmq.error_log";
+    $date = date("Y-m-d H:i:s e");
+    $error = "[" . $date . "] ERROR " . $type . " " . $queueName . ": " . $exception->getMessage() . "\n";
+    file_put_contents($file, $error, FILE_APPEND);
+}
+
+function saveFailed($queueName, $payload)
+{
+    $dir = "failed";
+    if (!is_dir($dir)) {
+        mkdir($dir);
+    }
+    $date = date("Y-m-d-H-i-s-e");
+    file_put_contents($dir . "/" . $queueName . "_" . $date . "_" . uniqid() . ".json", $payload);
 }
