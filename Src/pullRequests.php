@@ -41,7 +41,7 @@ function handlePullRequest($pullRequest)
     enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config);
     addLabels($metadata, $pullRequest);
 
-    
+
 
     $collaboratorsResponse = requestGitHub($metadata["token"], $metadata["collaboratorsUrl"]);
     $collaboratorsLogins = array_column(json_decode($collaboratorsResponse["body"]), "login");
