@@ -22,7 +22,8 @@ function handleComment($comment)
     $collaboratorResponse = requestGitHub($metadata["token"], $collaboratorUrl);
     if ($collaboratorResponse["status"] === 404) {
         requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"));
-        requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "I'm sorry @" . $comment->CommentSender . ", I can't do that, you aren't a collaborator. :pleading_face:"));
+        $body = "I'm sorry @" . $comment->CommentSender . ", I can't do that, you aren't a collaborator. :pleading_face:";
+        requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body));
         return;
     }
 
@@ -38,7 +39,8 @@ function handleComment($comment)
     }
 
     if (!$executedAtLeastOne) {
-        requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "I'm sorry @" . $comment->CommentSender . ", I can't do that. :pleading_face:"));
+        $body = "I'm sorry @" . $comment->CommentSender . ", I can't do that. :pleading_face:";
+        requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body));
         requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"));
     }
 }
@@ -46,13 +48,15 @@ function handleComment($comment)
 function execute_hello($config, $metadata, $comment)
 {
     requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "heart"));
-    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Hello @" . $comment->CommentSender . "! :wave:"));
+    $body = "Hello @" . $comment->CommentSender . "! :wave:";
+    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body));
 }
 
 function execute_thankYou($config, $metadata, $comment)
 {
     requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"));
-    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "You're welcome @" . $comment->CommentSender . "! :pray:"));
+    $body = "You're welcome @" . $comment->CommentSender . "! :pray:";
+    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body));
 }
 
 function execute_help($config, $metadata, $comment)
@@ -62,7 +66,9 @@ function execute_help($config, $metadata, $comment)
     foreach ($config->commands as $command) {
         $parameters = "";
         $parametersHelp = "";
-        $inDevelopment = isset($command->dev) && $command->dev ? " :warning: (in development - maybe not working as expected!)" : "";
+        $inDevelopment = isset($command->dev) && $command->dev
+            ? " :warning: (in development - maybe not working as expected!)"
+            : "";
         if (isset($command->parameters)) {
             foreach ($command->parameters as $parameter) {
                 $parameters .= " <" . $parameter->parameter . ">";
@@ -71,11 +77,14 @@ function execute_help($config, $metadata, $comment)
                     $parameter->description . "\r\n";
             }
         }
-        $helpComment .= "- `@" . $config->botName . " " . $command->command . $parameters . "`: " . $command->description . $inDevelopment . "\r\n";
+        $helpComment .= "- `@" . $config->botName . " " . $command->command . $parameters . "`: ";
+        $helpComment .= $command->description . $inDevelopment . "\r\n";
         $helpComment .= $parametersHelp;
     }
-    $helpComment .= "\r\n\r\nMultiple commands can be issued at the same time. Just respect each command pattern (with bot name prefix + command).\r\n\r\n" .
-        "> **Warning**\r\n> \r\n> If you aren't allowed to use this bot, a reaction with a thumbs down will be added to your comment.\r\n";
+    $helpComment .= "\r\n\r\nMultiple commands can be issued at the same time. " .
+        "Just respect each command pattern (with bot name prefix + command).\r\n\r\n" .
+        "> **Warning**\r\n> \r\n" .
+        "> If you aren't allowed to use this bot, a reaction with a thumbs down will be added to your comment.\r\n";
     requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $helpComment));
 }
 
@@ -86,7 +95,8 @@ function execute_appveyorBuild($config, $metadata, $comment)
 
     if ($pullRequest->state != "open") {
         requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"));
-        requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "This pull request is not open anymore! :no_entry:"));
+        $body = "This pull request is not open anymore! :no_entry:";
+        requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body));
         return;
     }
 
@@ -115,7 +125,8 @@ function execute_appveyorBuild($config, $metadata, $comment)
         $data["pullRequestId"] = $comment->PullRequestNumber;
     } else {
         requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"));
-        requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "I'm sorry @" . $comment->CommentSender . ", I can't do that, invalid type parameter. :pleading_face:"));
+        $body = "I'm sorry @" . $comment->CommentSender . ", I can't do that, invalid type parameter. :pleading_face:";
+        requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body));
         return;
     }
 
@@ -139,7 +150,8 @@ function execute_appveyorRegister($config, $metadata, $comment)
 
     if ($pullRequest->state != "open") {
         requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"));
-        requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "This pull request is not open anymore! :no_entry:"));
+        $body = "This pull request is not open anymore! :no_entry:";
+        requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body));
         return;
     }
 
@@ -158,31 +170,54 @@ function execute_appveyorRegister($config, $metadata, $comment)
     requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody));
 }
 
+function execute_appveyorReset($config, $metadata, $comment)
+{
+    $searchSlug = strtolower($comment->RepositoryOwner . "/" . $comment->RepositoryName);
+
+    $projectsResponse = requestAppVeyor("projects");
+    $projects = json_decode($projectsResponse["body"]);
+    $projects = array_filter($projects, function ($p) use ($searchSlug) {
+        return $searchSlug === strtolower($p->repositoryName);
+    });
+    $projects = array_values($projects);
+
+    $data = array("nextBuildNumber" => 0);
+    $url = "projects/" . $projects[0]->accountName . "/" . $projects[0]->slug . "/settings/build-number";
+    requestAppVeyor($url, $data);
+    $commentBody = "AppVeyor build reset! :rocket:";
+    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody));
+}
+
 function execute_bumpVersion($config, $metadata, $comment)
 {
     requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"));
-    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Bumping [.NET version](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core) on this branch! :arrow_heading_up:"));
+    $dotNetLink = "https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core";
+    $body = "Bumping [.NET version](" . $dotNetLink . ") on this branch! :arrow_heading_up:";
+    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body));
     callWorkflow($config, $metadata, $comment, "bump-version.yml");
 }
 
 function execute_csharpier($config, $metadata, $comment)
 {
     requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"));
-    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Running [CSharpier](https://csharpier.com/) on this branch! :wrench:"));
+    $body = "Running [CSharpier](https://csharpier.com/) on this branch! :wrench:";
+    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body));
     callWorkflow($config, $metadata, $comment, "csharpier.yml");
 }
 
 function execute_fixCsproj($config, $metadata, $comment)
 {
     requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"));
-    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Fixing [NuGet packages](https://nuget.org) references in .csproj files! :pill:"));
+    $body = "Fixing [NuGet packages](https://nuget.org) references in .csproj files! :pill:";
+    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body));
     callWorkflow($config, $metadata, $comment, "fix-csproj.yml");
 }
 
 function execute_prettier($config, $metadata, $comment)
 {
     requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"));
-    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Running [Prettier](https://prettier.io/) on this branch! :wrench:"));
+    $body = "Running [Prettier](https://prettier.io/) on this branch! :wrench:";
+    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body));
     callWorkflow($config, $metadata, $comment, "prettier.yml");
 }
 

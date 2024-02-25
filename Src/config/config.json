@@ -31,6 +31,10 @@
       "description": "Registers the repository in [AppVeyor](https://ci.appveyor.com)."
     },
     {
+      "command": "appveyor reset",
+      "description": "Resets the [AppVeyor](https://ci.appveyor.com) build number for the target repository."
+    },
+    {
       "command": "bump version",
       "description": "Bumps the [.NET version](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core) in .csproj files.",
       "parameters": [
