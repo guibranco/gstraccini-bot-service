@@ -43,7 +43,7 @@ function loadConfig()
         $rawConfig = file_get_contents($fileNameConfig);
         $config = json_decode($rawConfig);
     }
-    
+
     $config->commands = array();
     if(file_exists($fileNameCommands)) {
         $rawCommands = file_get_contents($fileNameCommands);
