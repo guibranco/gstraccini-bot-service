@@ -1,12 +1,13 @@
 <?php
 
-
-function doRequest($url, $authorizationBearerToken = null, $data = null)
+function doRequest($url, $authorizationBearerToken = null, $data = null, $isDeleteRequest = false)
 {
     $headers = array();
     $headers[] = "User-Agent: " . USER_AGENT;
     if ($authorizationBearerToken !== null) {
         $headers[] = "Content-type: application/json";
+        $headers[] = "Accept: application/json";
+        $headers[] = "X-GitHub-Api-Version: 2022-11-28";
         $headers[] = "Authorization: Bearer " . $authorizationBearerToken;
     }
 
@@ -27,6 +28,10 @@ function doRequest($url, $authorizationBearerToken = null, $data = null)
     if ($data !== null) {
         $fields[CURLOPT_POST] = true;
         $fields[CURLOPT_POSTFIELDS] = json_encode($data);
+    }
+
+    if($isDeleteRequest === true){
+        $fields[CURLOPT_CUSTOMREQUEST] = "DELETE";
     }
 
     $curl = curl_init();
