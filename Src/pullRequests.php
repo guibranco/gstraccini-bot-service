@@ -38,15 +38,18 @@ function handlePullRequest($pullRequest)
         return;
     }
 
-    $reviewsLogins = getReviewsLogins($metadata);
+    enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config);
+    addLabels($metadata, $pullRequest);
+
+
 
     $collaboratorsResponse = requestGitHub($metadata["token"], $metadata["collaboratorsUrl"]);
-    $collaborators = json_decode($collaboratorsResponse["body"]);
-    $collaboratorsLogins = array_column($collaborators, "login");
+    $collaboratorsLogins = array_column(json_decode($collaboratorsResponse["body"]), "login");
 
     $botReviewed = false;
     $invokerReviewed = false;
 
+    $reviewsLogins = getReviewsLogins($metadata);
     if (in_array($config->botName . "[bot]", $reviewsLogins)) {
         $botReviewed = true;
     }
@@ -61,22 +64,6 @@ function handlePullRequest($pullRequest)
         $body = array("assignees" => $collaboratorsLogins);
         requestGitHub($metadata["token"], $metadata["assigneesUrl"], $body);
     }
-
-    if (
-        $pullRequestUpdated->auto_merge == null &&
-        in_array($pullRequest->Sender, $config->pullRequests->autoMergeSubmitters)
-    ) {
-        $body = array(
-            "query" => "mutation MyMutation {
-            enablePullRequestAutoMerge(input: {pullRequestId: \"" . $pullRequest->NodeId . "\", mergeMethod: SQUASH}) {
-                clientMutationId
-                 }
-        }"
-        );
-        requestGitHub($metadata["userToken"], "graphql", $body);
-    }
-
-    addLabels($metadata, $pullRequest);
 
     if (!$botReviewed) {
         $body = array("event" => "APPROVE");
@@ -135,12 +122,23 @@ function commentToDependabot($metadata, $pullRequest, $collaboratorsLogins)
 
 function removeIssueWipLabel($metadata, $pullRequest)
 {
-    echo "Removing WIP label from pull request " . $pullRequest->Number . "\n";
+    $referencedIssue = getReferencedIssue($metadata, $pullRequest);
+
+    if (count($referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes) == 0) {
+        return;
+    }
+
+    $issueNumber = $referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes[0]->number;
+    $issueResponse = requestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber);
+
+    $labels = array_column(json_decode($issueResponse["body"])->labels, "name");
+    if (in_array("WIP", $labels)) {
+        requestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber . "/labels/WIP", null, true);
+    }
 }
 
 function getReviewsLogins($metadata)
 {
-
     $reviewsResponse = requestGitHub($metadata["token"], $metadata["reviewsUrl"]);
     $reviews = json_decode($reviewsResponse["body"]);
     return array_map(function ($review) {
@@ -185,6 +183,29 @@ function addLabels($metadata, $pullRequest)
 
     $body = array("labels" => $labels);
     requestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $pullRequest->Number . "/labels", $body);
+}
+
+function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
+{
+    if (
+        $pullRequestUpdated->auto_merge == null &&
+        in_array($pullRequest->Sender, $config->pullRequests->autoMergeSubmitters)
+    ) {
+        $body = array(
+            "query" => "mutation MyMutation {
+            enablePullRequestAutoMerge(input: {pullRequestId: \"" . $pullRequest->NodeId . "\", mergeMethod: SQUASH}) {
+                clientMutationId
+                 }
+        }"
+        );
+        requestGitHub($metadata["userToken"], "graphql", $body);
+    }
+
+    // if ($pullRequestUpdated->mergeable_state == "clean" && $pullRequestUpdated->mergeable) {
+    //     $body = array("merge_method" => "squash", "commit_title" => $pullRequest->Title);
+    //     requestGitHub($metadata["token"], $metadata["pullRequestUrl"] . "/merge", $body);
+    // }
+
 }
 
 function main()
