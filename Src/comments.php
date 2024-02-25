@@ -79,7 +79,7 @@ function execute_help($config, $metadata, $comment)
     requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $helpComment));
 }
 
-function execute_appveyor($config, $metadata, $comment)
+function execute_appveyorBuild($config, $metadata, $comment)
 {
     $pullRequestResponse = requestGitHub($metadata["token"], $metadata["pullRequestUrl"]);
     $pullRequest = json_decode($pullRequestResponse["body"]);
@@ -129,6 +129,32 @@ function execute_appveyor($config, $metadata, $comment)
     $commentBody = "AppVeyor build started! :rocket:\r\n\r\n" .
         "Build ID: [" . $buildId . "](" . $link . ")\r\n" .
         "Version: " . $version . "\r\n";
+    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody));
+}
+
+function execute_appveyorRegister($config, $metadata, $comment)
+{
+    $pullRequestResponse = requestGitHub($metadata["token"], $metadata["pullRequestUrl"]);
+    $pullRequest = json_decode($pullRequestResponse["body"]);
+
+    if ($pullRequest->state != "open") {
+        requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"));
+        requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "This pull request is not open anymore! :no_entry:"));
+        return;
+    }
+
+    $data = array(
+        "repositoryProvider" => "gitHub",
+        "repositoryName" => $comment->RepositoryOwner . "/" . $comment->RepositoryName,
+    );
+    $registerResponse = requestAppVeyor("projects", $data);
+    $register = json_decode($registerResponse["body"]);
+
+    $link = "https://ci.appveyor.com/project/" .
+        $register->accountName . "/" . $register->slug;
+    $commentBody = "AppVeyor registered! :rocket:\r\n\r\n" .
+        "Project ID: [" . $register->projectId . "](" . $link . ")\r\n" .
+        "Slug: " . $register->slug . "\r\n";
     requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody));
 }
 

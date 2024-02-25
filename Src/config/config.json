@@ -16,7 +16,7 @@
       "description": "Replies with you are welcome message to the invoker."
     },
     {
-      "command": "appveyor",
+      "command": "appveyor build",
       "description": "Runs the [AppVeyor](https://ci.appveyor.com) build for the target commit and/or pull request.",
       "parameters": [
         {
@@ -25,6 +25,10 @@
           "required": true
         }
       ]
+    },
+    {
+      "command": "appveyor register",
+      "description": "Registers the repository in [AppVeyor](https://ci.appveyor.com)."
     },
     {
       "command": "bump version",
