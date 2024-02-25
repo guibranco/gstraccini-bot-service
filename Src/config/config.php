@@ -35,13 +35,23 @@ if (file_exists($rabbitMqSecretsFile)) {
 
 function loadConfig()
 {
-    $fileName = "config/config.json";
-    if (!file_exists($fileName)) {
-        return array();
+    $fileNameConfig = "config/config.json";
+    $fileNameCommands = "config/commands.json";
+    $config = new \stdClass();
+
+    if(file_exists($fileNameConfig)) {
+        $rawConfig = file_get_contents($fileNameConfig);
+        $config = json_decode($rawConfig);
     }
 
-    $rawConfig = file_get_contents($fileName);
-    return json_decode($rawConfig);
+    $config->commands = array();
+    if(file_exists($fileNameCommands)) {
+        $rawCommands = file_get_contents($fileNameCommands);
+        $commands = json_decode($rawCommands);
+        $config->commands = $commands;
+    }
+
+    return $config;
 }
 
 require_once "lib/functions.php";

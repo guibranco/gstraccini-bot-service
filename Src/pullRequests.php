@@ -94,7 +94,7 @@ function handlePullRequest($pullRequest)
     if (!$invokerReviewed && !$autoReview) {
         $reviewers = $collaboratorsLogins;
         if (in_array($pullRequest->Sender, $reviewers)) {
-            $reviewers = array_diff($reviewers, array($pullRequest->Sender));
+            $reviewers = array_values(array_diff($reviewers, array($pullRequest->Sender)));
         }
         if (count($reviewers) > 0) {
             $body = array("reviewers" => $reviewers);
