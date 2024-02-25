@@ -30,7 +30,7 @@ function doRequest($url, $authorizationBearerToken = null, $data = null, $isDele
         $fields[CURLOPT_POSTFIELDS] = json_encode($data);
     }
 
-    if($isDeleteRequest === true){
+    if($isDeleteRequest === true) {
         $fields[CURLOPT_CUSTOMREQUEST] = "DELETE";
     }
 
