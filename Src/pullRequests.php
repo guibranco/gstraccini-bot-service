@@ -105,7 +105,7 @@ function commentToDependabot($metadata, $pullRequest, $collaboratorsLogins)
 
     foreach ($comments as $comment) {
         if (
-            stripos($comment->body, $metadata["botNameMarkdown"]) !== false &&
+            stripos($comment->body, $metadata["squashAndMergeComment"]) !== false &&
             in_array($comment->user->login, $collaboratorsLogins)
         ) {
             $found = true;
@@ -114,7 +114,7 @@ function commentToDependabot($metadata, $pullRequest, $collaboratorsLogins)
     }
 
     if (!$found) {
-        $comment = array("body" => "Thanks for the pull request, " . $metadata["botNameMarkdown"]);
+        $comment = array("body" => $metadata["squashAndMergeComment"]);
         requestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment);
     }
 
