@@ -6,7 +6,7 @@ if (!isset($_SERVER['REQUEST_METHOD'])) {
 }
 mb_internal_encoding("UTF-8");
 
-define("USER_AGENT", "gstraccini-bot (+https://github.com/apps/gstraccini-bot/)");
+define("USER_AGENT", "gstraccini-bot/1.0 (+https://github.com/apps/gstraccini-bot/)");
 
 $appVeyorSecretsFile = "secrets/appVeyor.secrets.php";
 if (file_exists($appVeyorSecretsFile)) {
