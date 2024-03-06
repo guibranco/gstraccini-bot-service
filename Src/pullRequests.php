@@ -212,8 +212,7 @@ function updateBranch($metadata, $pullRequestUpdated)
     if ($pullRequestUpdated->mergeable_state == "behind") {
         $url = $metadata["pullRequestUrl"] . "/update-branch";
         $body = array("expected_head_sha" => $pullRequestUpdated->head->sha);
-        $response = requestGitHub($metadata["token"], $url, $body, false, true);
-        print_r($response);
+        requestGitHub($metadata["token"], $url, $body, false, true);
     }
 }
 
