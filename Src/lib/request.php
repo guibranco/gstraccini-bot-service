@@ -1,7 +1,12 @@
 <?php
 
-function doRequest($url, $authorizationBearerToken = null, $data = null, $isDeleteRequest = false)
-{
+function doRequest(
+    $url,
+    $authorizationBearerToken = null,
+    $data = null,
+    $isDeleteRequest = false,
+    $isPutRequest = false
+) {
     $headers = array();
     $headers[] = "User-Agent: " . USER_AGENT;
     if ($authorizationBearerToken !== null) {
@@ -25,13 +30,18 @@ function doRequest($url, $authorizationBearerToken = null, $data = null, $isDele
         CURLOPT_HTTPHEADER => $headers
     );
 
-    if ($data !== null) {
+    if ($data !== null && !$isPutRequest) {
         $fields[CURLOPT_POST] = true;
         $fields[CURLOPT_POSTFIELDS] = json_encode($data);
     }
 
-    if($isDeleteRequest === true) {
+    if ($isDeleteRequest === true) {
         $fields[CURLOPT_CUSTOMREQUEST] = "DELETE";
+    }
+
+    if ($isPutRequest === true) {
+        $fields[CURLOPT_CUSTOMREQUEST] = "PUT";
+        $fields[CURLOPT_POSTFIELDS] = json_encode($data);
     }
 
     $curl = curl_init();

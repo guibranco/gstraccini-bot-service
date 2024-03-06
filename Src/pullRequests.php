@@ -40,8 +40,7 @@ function handlePullRequest($pullRequest)
 
     enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config);
     addLabels($metadata, $pullRequest);
-
-
+    updateBranch($metadata, $pullRequestUpdated);
 
     $collaboratorsResponse = requestGitHub($metadata["token"], $metadata["collaboratorsUrl"]);
     $collaboratorsLogins = array_column(json_decode($collaboratorsResponse["body"]), "login");
@@ -117,7 +116,6 @@ function commentToDependabot($metadata, $pullRequest, $collaboratorsLogins)
         $comment = array("body" => $metadata["squashAndMergeComment"]);
         requestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment);
     }
-
 }
 
 function removeIssueWipLabel($metadata, $pullRequest)
@@ -201,11 +199,22 @@ function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
         requestGitHub($metadata["userToken"], "graphql", $body);
     }
 
-    // if ($pullRequestUpdated->mergeable_state == "clean" && $pullRequestUpdated->mergeable) {
-    //     $body = array("merge_method" => "squash", "commit_title" => $pullRequest->Title);
-    //     requestGitHub($metadata["token"], $metadata["pullRequestUrl"] . "/merge", $body);
-    // }
+    if ($pullRequestUpdated->mergeable_state == "clean" && $pullRequestUpdated->mergeable) {
+        echo "Pull request " . $pullRequestUpdated->number . " of " .
+            $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . " is mergeable\n";
+        //     $body = array("merge_method" => "squash", "commit_title" => $pullRequest->Title);
+        //     requestGitHub($metadata["token"], $metadata["pullRequestUrl"] . "/merge", $body);
+    }
+}
 
+function updateBranch($metadata, $pullRequestUpdated)
+{
+    if ($pullRequestUpdated->mergeable_state == "behind") {
+        $url = $metadata["pullRequestUrl"] . "/update-branch";
+        $body = array("expected_head_sha" => $pullRequestUpdated->head->sha);
+        $response = requestGitHub($metadata["token"], $url, $body, false, true);
+        print_r($response);
+    }
 }
 
 function main()
