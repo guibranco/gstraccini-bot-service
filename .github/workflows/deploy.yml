@@ -11,13 +11,14 @@ concurrency:
 
 jobs:
   deploy:
-    name: Deploy to FTP
+    name: Deploy service to FTP
     runs-on: ubuntu-latest
     outputs:
       semVer: ${{ steps.gitversion.outputs.semVer }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -59,7 +60,7 @@ jobs:
           cd Src
           mkdir -p secrets
           cd secrets
-          echo "<?php" >> .htaccess
+          echo "Deny from all" >> .htaccess
       
       - name: Generate AppVeyor secrets file
         if: ${{ steps.changes.outputs.src == 'true' }}
