@@ -49,10 +49,18 @@ jobs:
           chmod +x Tools/db-check.sh
           Tools/db-check.sh "localhost" "test" "test"
 
-      - name: Test Comments handlers
+      - name: Test Comments handler
         run: |
-          curl --location 'http://localhost:8004/comments.php'
+          curl --location http://localhost:8007/comments.php
 
-      - name: Test Pull Request handlers
+      - name: Test Issues handler
         run: |
-          curl --location 'http://localhost:8004/pullRequests.php'
+          curl --location http://localhost:8007/issues.php
+
+      - name: Test Pull Request handler
+        run: |
+          curl --location http://localhost:8007/pullRequests.php
+
+      - name: Test Signature handler
+        run: |
+          curl --location http://localhost:8007/signature.php
