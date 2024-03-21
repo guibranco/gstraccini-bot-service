@@ -4,6 +4,7 @@
   "botRepositoryInstallationId": "44061807",
   "pullRequests": {
     "autoReviewSubmitters": [
+      "deepsource-autofix[bot]",
       "dependabot[bot]",
       "depfu[bot]",
       "net-framework-updater[bot]"
