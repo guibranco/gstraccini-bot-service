@@ -9,6 +9,7 @@
       "net-framework-updater[bot]"
     ],
     "autoMergeSubmitters": [
+      "deepsource-autofix[bot]",
       "dependabot[bot]",
       "depfu[bot]",
       "guibranco",
