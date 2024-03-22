@@ -23,6 +23,7 @@ function handlePullRequest($pullRequest)
         "assigneesUrl" => $repoPrefix . ISSUES . $pullRequest->Number . "/assignees",
         "collaboratorsUrl" => $repoPrefix . "/collaborators",
         "requestReviewUrl" => $repoPrefix . PULLS . $pullRequest->Number . "/requested_reviewers",
+        "checkRunUrl" => $repoPrefix . "/check-runs",
         "issuesUrl" => $repoPrefix . "/issues",
         "botNameMarkdown" => "[" . $config->botName . "\[bot\]](https://github.com/apps/" . $config->botName . ")"
     );
@@ -38,6 +39,7 @@ function handlePullRequest($pullRequest)
         return;
     }
 
+    setCheckRun($metadata, $pullRequest, $pullRequestUpdated);
     enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config);
     addLabels($metadata, $pullRequest);
     updateBranch($metadata, $pullRequestUpdated);
@@ -89,6 +91,22 @@ function handlePullRequest($pullRequest)
     }
 
     commentToDependabot($metadata, $pullRequest, $collaboratorsLogins);
+}
+
+function setCheckRun($metadata, $pullRequest, $pullRequestUpdated){
+
+    $checkRunBody = array(
+        "name" => "GStraccini Checks",
+        "head_sha" => $pullRequestUpdated->head->sha,
+        "status" => "in_progress",        
+        "output" => array(
+            "title" => "Running checks...",
+            "summary" => "",
+            "text" => ""
+        )
+    );
+
+    requestGitHub($metadata["token"], $metadata["checkRunUrl"], $checkRunBody);
 }
 
 function commentToDependabot($metadata, $pullRequest, $collaboratorsLogins)
