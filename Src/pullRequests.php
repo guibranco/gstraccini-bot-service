@@ -93,12 +93,13 @@ function handlePullRequest($pullRequest)
     commentToDependabot($metadata, $pullRequest, $collaboratorsLogins);
 }
 
-function setCheckRun($metadata, $pullRequest, $pullRequestUpdated){
+function setCheckRun($metadata, $pullRequest, $pullRequestUpdated)
+{
 
     $checkRunBody = array(
         "name" => "GStraccini Checks",
         "head_sha" => $pullRequestUpdated->head->sha,
-        "status" => "in_progress",        
+        "status" => "in_progress",
         "output" => array(
             "title" => "Running checks...",
             "summary" => "",
