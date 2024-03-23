@@ -39,7 +39,7 @@ function handlePullRequest($pullRequest)
         return;
     }
 
-    setCheckRunInProgress($metadata, $pullRequestUpdated);
+    $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated);
     enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config);
     addLabels($metadata, $pullRequest);
     updateBranch($metadata, $pullRequestUpdated);
@@ -91,6 +91,7 @@ function handlePullRequest($pullRequest)
     }
 
     commentToDependabot($metadata, $pullRequest, $collaboratorsLogins);
+    setCheckRunCompleted($metadata, $checkRunId);
 }
 
 function setCheckRunInProgress($metadata, $pullRequestUpdated)
@@ -107,7 +108,26 @@ function setCheckRunInProgress($metadata, $pullRequestUpdated)
         )
     );
 
-    requestGitHub($metadata["token"], $metadata["checkRunUrl"], $checkRunBody);
+    $response = requestGitHub($metadata["token"], $metadata["checkRunUrl"], $checkRunBody);
+    $result = json_decode($response["body"]);
+    return $result->id;
+}
+
+function setCheckRunCompleted($metadata, $checkRunId)
+{
+    $checkRunBody = array(
+        "name" => "GStraccini Checks",
+        "status" => "completed",
+        "conclusion" => "success",
+        "output" => array(
+            "title" => "Checks completed",
+            "summary" => "GStraccini checked this PR successfully!",
+            "text" => "No issues found."
+        )
+    );
+
+    requestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody);
+
 }
 
 function commentToDependabot($metadata, $pullRequest, $collaboratorsLogins)
