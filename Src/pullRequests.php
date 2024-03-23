@@ -105,7 +105,7 @@ function setCheckRunInProgress($metadata, $pullRequestUpdated)
 {
 
     $checkRunBody = array(
-        "name" => "GStraccini Checks",
+        "name" => "GStraccini Checks: Pull Request",
         "head_sha" => $pullRequestUpdated->head->sha,
         "status" => "in_progress",
         "output" => array(
@@ -123,7 +123,7 @@ function setCheckRunInProgress($metadata, $pullRequestUpdated)
 function setCheckRunCompleted($metadata, $checkRunId)
 {
     $checkRunBody = array(
-        "name" => "GStraccini Checks",
+        "name" => "GStraccini Checks: Pull Request",
         "details_url" => $metadata["dashboardUrl"],
         "status" => "completed",
         "conclusion" => "success",
