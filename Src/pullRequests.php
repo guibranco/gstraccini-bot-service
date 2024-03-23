@@ -39,7 +39,7 @@ function handlePullRequest($pullRequest)
         return;
     }
 
-    setCheckRun($metadata, $pullRequest, $pullRequestUpdated);
+    setCheckRunInProgress($metadata, $pullRequestUpdated);
     enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config);
     addLabels($metadata, $pullRequest);
     updateBranch($metadata, $pullRequestUpdated);
@@ -93,7 +93,7 @@ function handlePullRequest($pullRequest)
     commentToDependabot($metadata, $pullRequest, $collaboratorsLogins);
 }
 
-function setCheckRun($metadata, $pullRequest, $pullRequestUpdated)
+function setCheckRunInProgress($metadata, $pullRequestUpdated)
 {
 
     $checkRunBody = array(
