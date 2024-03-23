@@ -128,7 +128,7 @@ function setCheckRunCompleted($metadata, $checkRunId)
         "status" => "completed",
         "conclusion" => "success",
         "output" => array(
-            "title" => "Checks completed",
+            "title" => "Checks completed ✅",
             "summary" => "GStraccini checked this PR successfully!",
             "text" => "No issues found."
         )
