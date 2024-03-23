@@ -5,7 +5,8 @@ function doRequest(
     $authorizationBearerToken = null,
     $data = null,
     $isDeleteRequest = false,
-    $isPutRequest = false
+    $isPutRequest = false,
+    $isPatchRequest = false
 ) {
     $headers = array();
     $headers[] = "User-Agent: " . USER_AGENT;
@@ -37,10 +38,18 @@ function doRequest(
 
     if ($isDeleteRequest === true) {
         $fields[CURLOPT_CUSTOMREQUEST] = "DELETE";
+        if ($data !== null) {
+            $fields[CURLOPT_POSTFIELDS] = json_encode($data);
+        }
     }
 
     if ($isPutRequest === true) {
         $fields[CURLOPT_CUSTOMREQUEST] = "PUT";
+        $fields[CURLOPT_POSTFIELDS] = json_encode($data);
+    }
+
+    if ($isPatchRequest === true) {
+        $fields[CURLOPT_CUSTOMREQUEST] = "PATCH";
         $fields[CURLOPT_POSTFIELDS] = json_encode($data);
     }
 

@@ -6,12 +6,12 @@ use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Signer\Rsa\Sha256;
 use Lcobucci\JWT\Token\Builder;
 
-function requestGitHub($gitHubToken, $url, $data = null, $isDeleteRequest = false, $isPutRequest = false)
+function requestGitHub($gitHubToken, $url, $data = null, $isDeleteRequest = false, $isPutRequest = false, $isPatchRequest = false)
 {
     $baseUrl = "https://api.github.com/";
     $url = $baseUrl . $url;
 
-    $response = doRequest($url, $gitHubToken, $data, $isDeleteRequest, $isPutRequest);
+    $response = doRequest($url, $gitHubToken, $data, $isDeleteRequest, $isPutRequest, $isPatchRequest);
 
     if ($response["status"] >= 300) {
         sendQueue("github.error", array("url" => $url, "data" => $data), $response);
