@@ -11,6 +11,12 @@ function handlePullRequest($pullRequest)
     global $gitHubUserToken;
     $config = loadConfig();
 
+    $botDashboardUrl = "https://bot.straccini.com/dashboard";
+    $prQueryString =
+        "?owner=" . $pullRequest->RepositoryOwner .
+        "&repo=" . $pullRequest->RepositoryName .
+        "&pullRequest=" . $pullRequest->Number;
+
     $token = generateInstallationToken($pullRequest->InstallationId, $pullRequest->RepositoryName);
     $repoPrefix = "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName;
     $metadata = array(
@@ -25,7 +31,8 @@ function handlePullRequest($pullRequest)
         "requestReviewUrl" => $repoPrefix . PULLS . $pullRequest->Number . "/requested_reviewers",
         "checkRunUrl" => $repoPrefix . "/check-runs",
         "issuesUrl" => $repoPrefix . "/issues",
-        "botNameMarkdown" => "[" . $config->botName . "\[bot\]](https://github.com/apps/" . $config->botName . ")"
+        "botNameMarkdown" => "[" . $config->botName . "\[bot\]](https://github.com/apps/" . $config->botName . ")",
+        "dashboardUrl" => $botDashboardUrl . $prQueryString
     );
 
     $pullRequestResponse = requestGitHub($metadata["token"], $metadata["pullRequestUrl"]);
@@ -117,6 +124,7 @@ function setCheckRunCompleted($metadata, $checkRunId)
 {
     $checkRunBody = array(
         "name" => "GStraccini Checks",
+        "details_url" => $metadata["dashboardUrl"],
         "status" => "completed",
         "conclusion" => "success",
         "output" => array(
