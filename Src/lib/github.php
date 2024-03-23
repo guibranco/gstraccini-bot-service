@@ -45,7 +45,7 @@ function generateInstallationToken($installationId, $repositoryName, $permission
 
     $data = new \stdClass();
     $data->repository = $repositoryName;
-    if (!is_null($permissions) && !empty ($permissions)) {
+    if (!is_null($permissions) && !empty($permissions)) {
         $data->permissions = $permissions;
     }
     $response = requestGitHub($gitHubAppToken, "app/installations/" . $installationId . "/access_tokens", $data);
