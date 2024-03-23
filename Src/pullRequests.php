@@ -134,7 +134,7 @@ function setCheckRunCompleted($metadata, $checkRunId)
         )
     );
 
-    requestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody);
+    requestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, false, false, true);
 
 }
 
