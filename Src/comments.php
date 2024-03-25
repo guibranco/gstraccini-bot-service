@@ -33,7 +33,7 @@ function handleComment($comment)
         $commandExpression = "@" . $config->botName . " " . $command->command;
         if (stripos($comment->CommentBody, $commandExpression) !== false) {
             $executedAtLeastOne = true;
-            $method = "execute_" . toCamelCase($command->command);
+            $method = "execute_" . str_replace(" ", "", toCamelCase($command->command));
             $method($config, $metadata, $comment);
         }
     }
