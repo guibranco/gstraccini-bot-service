@@ -100,7 +100,7 @@ function execute_appveyorBuild($config, $metadata, $comment)
         return;
     }
 
-    preg_match("/@" . $config->botName . "\sappveyor(?:\s(commit|pull request))?/", $comment->CommentBody, $matches);
+    preg_match("/@" . $config->botName . "\sappveyor\sbuild(?:\s(commit|pull request))?/", $comment->CommentBody, $matches);
 
     $searchSlug = strtolower($comment->RepositoryOwner . "/" . $comment->RepositoryName);
 
