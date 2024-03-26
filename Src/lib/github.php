@@ -26,13 +26,13 @@ function requestGitHub($gitHubToken, $url, $data = null, $isDeleteRequest = fals
 
     if ($isDeleteRequest && $data == null) {
         $response = $request->delete($url, $headers);
-    } else if ($isDeleteRequest && $data != null) {
+    } elseif ($isDeleteRequest && $data != null) {
         $response = $request->delete($url, $data, $headers);
-    } else if ($isPutRequest) {
+    } elseif ($isPutRequest) {
         $response = $request->put($url, $data, $headers);
-    } else if ($isPatchRequest) {
+    } elseif ($isPatchRequest) {
         $response = $request->patch($url, $data, $headers);
-    } else if ($data != null) {
+    } elseif ($data != null) {
         $response = $request->post($url, $data, $headers);
     } else {
         $response = $request->get($url, $headers);

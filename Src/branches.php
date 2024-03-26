@@ -16,19 +16,19 @@ function handleBranch($branch)
     $data = requestGitHub($metadata["token"], $branch);
     $nodes = $data->data->repository->issues->nodes;
 
-    foreach($nodes as $node){
+    foreach($nodes as $node) {
         $linkedBranches = $node->linkedBranches->nodes;
-        foreach($linkedBranches as $linkedBranch){
-            if($linkedBranch->ref->name == $branch->BranchName){
+        foreach($linkedBranches as $linkedBranch) {
+            if($linkedBranch->ref->name == $branch->BranchName) {
                 $found = false;
-                foreach($node->labels as $label){
-                    if($label->name == "WIP"){
+                foreach($node->labels as $label) {
+                    if($label->name == "WIP") {
                         $found = true;
                         break;
                     }
                 }
-               
-                if(!$found){
+
+                if(!$found) {
                     $body = array("labels" => ["WIP"]);
                     requestGitHub($metadata["token"], $metadata["repoUrl"] . "/issues/" . $node->number . "/labels", $body);
                 }

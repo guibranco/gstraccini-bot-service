@@ -1,4 +1,5 @@
 <?php
+
 use GuiBranco\Pancake\Request;
 
 function extractHeaders($header)
