@@ -1,6 +1,6 @@
 <?php
+use GuiBranco\GStracciniBot\lib\HealthChecks;
 
-require_once "vendor/autoload.php";
 require_once "config/config.php";
 
 function installSignature($signature)
@@ -35,6 +35,7 @@ function main()
     }
 }
 
-sendHealthCheck($healthChecksIoSignature, "/start");
+$healthCheck = new HealthChecks($healthChecksIoSignature);
+$healthCheck->start();
 main();
-sendHealthCheck($healthChecksIoSignature);
+$healthCheck->end();

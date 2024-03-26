@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0718e96aaf920270577d9aa23f73f297",
+    "content-hash": "e30c3d682ce8ac0f9d6e51be40061a5b",
     "packages": [
         {
             "name": "guibranco/pancake",
-            "version": "v0.1.17",
+            "version": "v0.2.15",
             "source": {
                 "type": "git",
-                "url": "https://github.com/guibranco/Pancake.git",
-                "reference": "c8b4804fb5d6a251a3fecac801a273117e5673be"
+                "url": "https://github.com/guibranco/pancake.git",
+                "reference": "9abca5c7d9b0c989063889fe00d74cd115bca2bc"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/guibranco/Pancake/zipball/c8b4804fb5d6a251a3fecac801a273117e5673be",
-                "reference": "c8b4804fb5d6a251a3fecac801a273117e5673be",
+                "url": "https://api.github.com/repos/guibranco/pancake/zipball/9abca5c7d9b0c989063889fe00d74cd115bca2bc",
+                "reference": "9abca5c7d9b0c989063889fe00d74cd115bca2bc",
                 "shasum": ""
             },
             "require-dev": {
@@ -41,10 +41,10 @@
             ],
             "description": "The Pancake project, a toolkit for PHP projects",
             "support": {
-                "issues": "https://github.com/guibranco/Pancake/issues",
-                "source": "https://github.com/guibranco/Pancake/tree/v0.1.17"
+                "issues": "https://github.com/guibranco/pancake/issues",
+                "source": "https://github.com/guibranco/pancake/tree/v0.2.15"
             },
-            "time": "2024-03-19T02:37:28+00:00"
+            "time": "2024-03-25T23:51:09+00:00"
         },
         {
             "name": "lcobucci/jwt",

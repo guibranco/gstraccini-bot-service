@@ -1,7 +1,8 @@
 <?php
 
-require_once "vendor/autoload.php";
 require_once "config/config.php";
+
+use GuiBranco\GStracciniBot\lib\HealthChecks;
 
 define("ISSUES", "/issues/");
 define("PULLS", "/pulls/");
@@ -36,7 +37,7 @@ function handlePullRequest($pullRequest)
     );
 
     $pullRequestResponse = requestGitHub($metadata["token"], $metadata["pullRequestUrl"]);
-    $pullRequestUpdated = json_decode($pullRequestResponse["body"]);
+    $pullRequestUpdated = json_decode($pullRequestResponse->body);
 
     if ($pullRequestUpdated->state == "closed") {
         removeIssueWipLabel($metadata, $pullRequest);
@@ -52,7 +53,7 @@ function handlePullRequest($pullRequest)
     updateBranch($metadata, $pullRequestUpdated);
 
     $collaboratorsResponse = requestGitHub($metadata["token"], $metadata["collaboratorsUrl"]);
-    $collaboratorsLogins = array_column(json_decode($collaboratorsResponse["body"]), "login");
+    $collaboratorsLogins = array_column(json_decode($collaboratorsResponse->body), "login");
 
     $botReviewed = false;
     $invokerReviewed = false;
@@ -116,7 +117,7 @@ function setCheckRunInProgress($metadata, $pullRequestUpdated)
     );
 
     $response = requestGitHub($metadata["token"], $metadata["checkRunUrl"], $checkRunBody);
-    $result = json_decode($response["body"]);
+    $result = json_decode($response->body);
     return $result->id;
 }
 
@@ -145,7 +146,7 @@ function commentToDependabot($metadata, $pullRequest, $collaboratorsLogins)
     }
 
     $commentsRequest = requestGitHub($metadata["token"], $metadata["commentsUrl"]);
-    $comments = json_decode($commentsRequest["body"]);
+    $comments = json_decode($commentsRequest->body);
 
     $found = false;
 
@@ -176,7 +177,7 @@ function removeIssueWipLabel($metadata, $pullRequest)
     $issueNumber = $referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes[0]->number;
     $issueResponse = requestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber);
 
-    $labels = array_column(json_decode($issueResponse["body"])->labels, "name");
+    $labels = array_column(json_decode($issueResponse->body)->labels, "name");
     if (in_array("WIP", $labels)) {
         requestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber . "/labels/WIP", null, true);
     }
@@ -185,7 +186,7 @@ function removeIssueWipLabel($metadata, $pullRequest)
 function getReviewsLogins($metadata)
 {
     $reviewsResponse = requestGitHub($metadata["token"], $metadata["reviewsUrl"]);
-    $reviews = json_decode($reviewsResponse["body"]);
+    $reviews = json_decode($reviewsResponse->body);
     return array_map(function ($review) {
         return $review->user->login;
     }, $reviews);
@@ -208,7 +209,7 @@ function getReferencedIssue($metadata, $pullRequest)
     );
 
     $referencedIssueResponse = requestGitHub($metadata["token"], "graphql", $referencedIssueQuery);
-    return json_decode($referencedIssueResponse["body"]);
+    return json_decode($referencedIssueResponse->body);
 }
 
 function addLabels($metadata, $pullRequest)
@@ -222,7 +223,7 @@ function addLabels($metadata, $pullRequest)
     $issueNumber = $referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes[0]->number;
     $issueResponse = requestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber);
 
-    $labels = array_column(json_decode($issueResponse["body"])->labels, "name");
+    $labels = array_column(json_decode($issueResponse->body)->labels, "name");
     $body = array("labels" => array("WIP"));
     requestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber . "/labels", $body);
 
@@ -272,6 +273,7 @@ function main()
     }
 }
 
-sendHealthCheck($healthChecksIoPullRequests, "/start");
+$healthCheck = new HealthChecks($healthChecksIoPullRequests);
+$healthCheck->start();
 main();
-sendHealthCheck($healthChecksIoPullRequests);
+$healthCheck->end();

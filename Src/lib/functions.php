@@ -1,4 +1,5 @@
 <?php
+use GuiBranco\Pancake\Request;
 
 function extractHeaders($header)
 {
@@ -16,15 +17,6 @@ function extractHeaders($header)
     }
 
     return $headers;
-}
-
-function sendHealthCheck($token, $type = null)
-{
-    if (isset($_SERVER['REQUEST_METHOD'])) {
-        return;
-    }
-
-    doRequest("https://hc-ping.com/" . $token . ($type == null ? "" : $type));
 }
 
 function toCamelCase($inputString)

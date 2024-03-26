@@ -5,8 +5,9 @@ if (!isset($_SERVER['REQUEST_METHOD'])) {
     ini_set("date.timezone", "America/Sao_Paulo");
 }
 mb_internal_encoding("UTF-8");
-
 define("USER_AGENT", "gstraccini-bot/1.0 (+https://github.com/apps/gstraccini-bot/)");
+
+require_once "vendor/autoload.php";
 
 $appVeyorSecretsFile = "secrets/appVeyor.secrets.php";
 if (file_exists($appVeyorSecretsFile)) {
@@ -56,7 +57,7 @@ function loadConfig()
 
 require_once "lib/functions.php";
 require_once "lib/database.php";
-require_once "lib/request.php";
 require_once "lib/appveyor.php";
 require_once "lib/github.php";
+require_once "lib/logger.php";
 require_once "lib/queue.php";

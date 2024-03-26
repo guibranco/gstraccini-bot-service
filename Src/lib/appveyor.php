@@ -1,5 +1,7 @@
 <?php
 
+use GuiBranco\Pancake\Request;
+
 function requestAppVeyor($url, $data = null)
 {
     global $appVeyorKey;
@@ -7,5 +9,12 @@ function requestAppVeyor($url, $data = null)
     $baseUrl = "https://ci.appveyor.com/api/";
     $url = $baseUrl . $url;
 
-    return doRequest($url, $appVeyorKey, $data);
+    $headers = array(
+        "Authorization: Bearer " . $appVeyorKey,
+        "Content-Type: application/json",
+        "User-Agent: " . USER_AGENT
+    );
+
+    $request = new Request();
+    return $request->post($url, $data, $headers);
 }
