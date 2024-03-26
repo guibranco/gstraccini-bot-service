@@ -1,5 +1,6 @@
 <?php
 
+use GuiBranco\Pancake\Request;
 use Lcobucci\JWT\Encoding\ChainedFormatter;
 use Lcobucci\JWT\Encoding\JoseEncoder;
 use Lcobucci\JWT\Signer\Key\InMemory;
@@ -11,9 +12,33 @@ function requestGitHub($gitHubToken, $url, $data = null, $isDeleteRequest = fals
     $baseUrl = "https://api.github.com/";
     $url = $baseUrl . $url;
 
-    $response = doRequest($url, $gitHubToken, $data, $isDeleteRequest, $isPutRequest, $isPatchRequest);
+    $request = new Request();
 
-    if ($response["status"] >= 300) {
+    $headers = array(
+        "User-Agent: " . USER_AGENT,
+        "Content-type: application/json",
+        "Accept: application/json",
+        "X-GitHub-Api-Version: 2022-11-28",
+        "Authorization: Bearer " . $gitHubToken
+    );
+
+    $request = new Request();
+
+    if ($isDeleteRequest && $data == null) {
+        $response = $request->delete($url, $headers);
+    } elseif ($isDeleteRequest && $data != null) {
+        $response = $request->delete($url, $data, $headers);
+    } elseif ($isPutRequest) {
+        $response = $request->put($url, $data, $headers);
+    } elseif ($isPatchRequest) {
+        $response = $request->patch($url, $data, $headers);
+    } elseif ($data != null) {
+        $response = $request->post($url, $data, $headers);
+    } else {
+        $response = $request->get($url, $headers);
+    }
+
+    if ($response->statusCode >= 300) {
         sendQueue("github.error", array("url" => $url, "data" => $data), $response);
     }
 
@@ -50,6 +75,6 @@ function generateInstallationToken($installationId, $repositoryName, $permission
     }
     $response = requestGitHub($gitHubAppToken, "app/installations/" . $installationId . "/access_tokens", $data);
 
-    $json = json_decode($response["body"]);
+    $json = json_decode($response->body);
     return $json->token;
 }

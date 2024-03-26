@@ -1,7 +1,8 @@
 <?php
 
-require_once "vendor/autoload.php";
 require_once "config/config.php";
+
+use GuiBranco\GStracciniBot\lib\HealthChecks;
 
 function handleComment($comment)
 {
@@ -91,7 +92,7 @@ function execute_help($config, $metadata, $comment)
 function execute_appveyorBuild($config, $metadata, $comment)
 {
     $pullRequestResponse = requestGitHub($metadata["token"], $metadata["pullRequestUrl"]);
-    $pullRequest = json_decode($pullRequestResponse["body"]);
+    $pullRequest = json_decode($pullRequestResponse->body);
 
     if ($pullRequest->state != "open") {
         requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"));
@@ -105,7 +106,7 @@ function execute_appveyorBuild($config, $metadata, $comment)
     $searchSlug = strtolower($comment->RepositoryOwner . "/" . $comment->RepositoryName);
 
     $projectsResponse = requestAppVeyor("projects");
-    $projects = json_decode($projectsResponse["body"]);
+    $projects = json_decode($projectsResponse->body);
     $projects = array_filter($projects, function ($p) use ($searchSlug) {
         return $searchSlug === strtolower($p->repositoryName);
     });
@@ -131,7 +132,7 @@ function execute_appveyorBuild($config, $metadata, $comment)
     }
 
     $buildResponse = requestAppVeyor("builds", $data);
-    $build = json_decode($buildResponse["body"]);
+    $build = json_decode($buildResponse->body);
     $buildId = $build->buildId;
     $version = $build->version;
     $link = "https://ci.appveyor.com/project/" .
@@ -146,7 +147,7 @@ function execute_appveyorBuild($config, $metadata, $comment)
 function execute_appveyorRegister($config, $metadata, $comment)
 {
     $pullRequestResponse = requestGitHub($metadata["token"], $metadata["pullRequestUrl"]);
-    $pullRequest = json_decode($pullRequestResponse["body"]);
+    $pullRequest = json_decode($pullRequestResponse->body);
 
     if ($pullRequest->state != "open") {
         requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"));
@@ -160,7 +161,7 @@ function execute_appveyorRegister($config, $metadata, $comment)
         "repositoryName" => $comment->RepositoryOwner . "/" . $comment->RepositoryName,
     );
     $registerResponse = requestAppVeyor("projects", $data);
-    $register = json_decode($registerResponse["body"]);
+    $register = json_decode($registerResponse->body);
 
     $link = "https://ci.appveyor.com/project/" .
         $register->accountName . "/" . $register->slug;
@@ -175,7 +176,7 @@ function execute_appveyorReset($config, $metadata, $comment)
     $searchSlug = strtolower($comment->RepositoryOwner . "/" . $comment->RepositoryName);
 
     $projectsResponse = requestAppVeyor("projects");
-    $projects = json_decode($projectsResponse["body"]);
+    $projects = json_decode($projectsResponse->body);
     $projects = array_filter($projects, function ($p) use ($searchSlug) {
         return $searchSlug === strtolower($p->repositoryName);
     });
@@ -226,7 +227,7 @@ function execute_review($config, $metadata, $comment)
     requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"));
 
     $pullRequestResponse = requestGitHub($metadata["token"], $metadata["pullRequestUrl"]);
-    $pullRequestUpdated = json_decode($pullRequestResponse["body"]);
+    $pullRequestUpdated = json_decode($pullRequestResponse->body);
 
     $pullRequest = new \stdClass();
     $pullRequest->DeliveryId = $comment->DeliveryIdText;
@@ -264,7 +265,7 @@ function execute_updateSnapshot($config, $metadata, $comment)
 function callWorkflow($config, $metadata, $comment, $workflow)
 {
     $pullRequestResponse = requestGitHub($metadata["token"], $metadata["pullRequestUrl"]);
-    $pullRequest = json_decode($pullRequestResponse["body"]);
+    $pullRequest = json_decode($pullRequestResponse->body);
 
     $tokenBot = generateInstallationToken($config->botRepositoryInstallationId, $config->botRepository);
     $url = "repos/" . $config->botRepository . "/actions/workflows/" . $workflow . "/dispatches";
@@ -290,6 +291,7 @@ function main()
     }
 }
 
-sendHealthCheck($healthChecksIoComments, "/start");
+$healthCheck = new HealthChecks($healthChecksIoComments);
+$healthCheck->start();
 main();
-sendHealthCheck($healthChecksIoComments);
+$healthCheck->end();
