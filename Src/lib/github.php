@@ -13,6 +13,10 @@ function requestGitHub($gitHubToken, $url, $data = null, $isDeleteRequest = fals
     $url = $baseUrl . $url;
 
     $request = new Request();
+    
+    if($data != null){
+        $data = json_encode($data);
+    }
 
     $headers = array(
         "User-Agent: " . USER_AGENT,
