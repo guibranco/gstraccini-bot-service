@@ -13,7 +13,7 @@ function handleBranch($branch)
         "repoUrl" => "repos/" . $branch->RepositoryOwner . "/" . $branch->RepositoryName
     );
 
-    $data = doRequestGitHub($metadata["token"], $branch, null, "GET");
+    $data = getReferencedIssueByBranch($metadata, $branch);
     $nodes = $data->data->repository->issues->nodes;
 
     foreach($nodes as $node) {
