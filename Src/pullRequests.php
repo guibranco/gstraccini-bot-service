@@ -36,7 +36,7 @@ function handlePullRequest($pullRequest)
         "dashboardUrl" => $botDashboardUrl . $prQueryString
     );
 
-    $pullRequestResponse = requestGitHub($metadata["token"], $metadata["pullRequestUrl"]);
+    $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"]), "GET";
     $pullRequestUpdated = json_decode($pullRequestResponse->body);
 
     if ($pullRequestUpdated->state == "closed") {
@@ -52,7 +52,7 @@ function handlePullRequest($pullRequest)
     addLabels($metadata, $pullRequest);
     updateBranch($metadata, $pullRequestUpdated);
 
-    $collaboratorsResponse = requestGitHub($metadata["token"], $metadata["collaboratorsUrl"]);
+    $collaboratorsResponse = doRequestGitHub($metadata["token"], $metadata["collaboratorsUrl"], "GET");
     $collaboratorsLogins = array_column(json_decode($collaboratorsResponse->body), "login");
 
     $botReviewed = false;

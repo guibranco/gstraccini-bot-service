@@ -48,21 +48,21 @@ function handleComment($comment)
 
 function execute_hello($config, $metadata, $comment)
 {
-    requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "heart"));
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "heart"), "POST");
     $body = "Hello @" . $comment->CommentSender . "! :wave:";
-    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body));
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
 }
 
 function execute_thankYou($config, $metadata, $comment)
 {
-    requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"));
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"), "POST");
     $body = "You're welcome @" . $comment->CommentSender . "! :pray:";
-    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body));
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
 }
 
 function execute_help($config, $metadata, $comment)
 {
-    requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"));
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
     $helpComment = "That's what I can do :neckbeard::\r\n";
     foreach ($config->commands as $command) {
         $parameters = "";
@@ -86,7 +86,7 @@ function execute_help($config, $metadata, $comment)
         "Just respect each command pattern (with bot name prefix + command).\r\n\r\n" .
         "> **Warning**\r\n> \r\n" .
         "> If you aren't allowed to use this bot, a reaction with a thumbs down will be added to your comment.\r\n";
-    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $helpComment));
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $helpComment), "POST");
 }
 
 function execute_appveyorBuild($config, $metadata, $comment)
@@ -95,9 +95,9 @@ function execute_appveyorBuild($config, $metadata, $comment)
     $pullRequest = json_decode($pullRequestResponse->body);
 
     if ($pullRequest->state != "open") {
-        requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"));
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
         $body = "This pull request is not open anymore! :no_entry:";
-        requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body));
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
         return;
     }
 
