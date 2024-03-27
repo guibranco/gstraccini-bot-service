@@ -23,7 +23,7 @@ function installSignature($signature)
     }
 
     if (!empty($url)) {
-        requestGitHub($gitHubUserToken, $url, $request);
+        doRequestGitHub($gitHubUserToken, $url, $request, "POST");
     }
 }
 

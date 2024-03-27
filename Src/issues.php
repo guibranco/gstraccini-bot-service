@@ -16,22 +16,22 @@ function handleIssue($issue)
         "issuesUrl" => "repos/" . $issue->RepositoryOwner . "/" . $issue->RepositoryName . "/issues/" . $issue->Number,
     );
 
-    $issueResponse = requestGitHub($metadata["token"], $metadata["issuesUrl"]);
+    $issueResponse = doRequestGitHub($metadata["token"], $metadata["issuesUrl"], null, "GET");
     $issueUpdated = json_decode($issueResponse->body);
 
     if ($issueUpdated->assignee != null) {
         return;
     }
-    $repositoryResponse = requestGitHub($metadata["token"], $metadata["repoUrl"]);
+    $repositoryResponse = doRequestGitHub($metadata["token"], $metadata["repoUrl"], null, "GET");
     $repository = json_decode($repositoryResponse->body);
     if (!$repository->private) {
         return;
     }
-    $collaboratorsResponse = requestGitHub($metadata["token"], $metadata["collaboratorsUrl"]);
+    $collaboratorsResponse = doRequestGitHub($metadata["token"], $metadata["collaboratorsUrl"], null, "GET");
     $collaborators = json_decode($collaboratorsResponse->body, true);
     $collaboratorsLogins = array_column($collaborators, "login");
     $body = array("assignees" => $collaboratorsLogins);
-    requestGitHub($metadata["token"], $metadata["assigneesUrl"], $body);
+    doRequestGitHub($metadata["token"], $metadata["assigneesUrl"], $body, "POST");
 }
 
 function main()

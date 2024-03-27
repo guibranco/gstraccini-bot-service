@@ -13,7 +13,7 @@ function handleBranch($branch)
         "repoUrl" => "repos/" . $branch->RepositoryOwner . "/" . $branch->RepositoryName
     );
 
-    $data = requestGitHub($metadata["token"], $branch);
+    $data = doRequestGitHub($metadata["token"], $branch, null, "GET");
     $nodes = $data->data->repository->issues->nodes;
 
     foreach($nodes as $node) {
@@ -30,7 +30,7 @@ function handleBranch($branch)
 
                 if(!$found) {
                     $body = array("labels" => ["WIP"]);
-                    requestGitHub($metadata["token"], $metadata["repoUrl"] . "/issues/" . $node->number . "/labels", $body);
+                    doRequestGitHub($metadata["token"], $metadata["repoUrl"] . "/issues/" . $node->number . "/labels", $body, "POST");
                 }
 
                 break 2;
@@ -67,7 +67,7 @@ function getReferencedIssueByBranch($metadata, $branch)
           }"
     );
 
-    $referencedIssueResponse = requestGitHub($metadata["token"], "graphql", $referencedIssueQuery);
+    $referencedIssueResponse = doRequestGitHub($metadata["token"], "graphql", $referencedIssueQuery, "POST");
     return json_decode($referencedIssueResponse->body);
 }
 

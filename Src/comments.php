@@ -20,11 +20,11 @@ function handleComment($comment)
     );
 
     $collaboratorUrl = "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName . "/collaborators/" . $comment->CommentSender;
-    $collaboratorResponse = requestGitHub($metadata["token"], $collaboratorUrl);
-    if ($collaboratorResponse["status"] === 404) {
-        requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"));
+    $collaboratorResponse = doRequestGitHub($metadata["token"], $collaboratorUrl, null, "GET");
+    if ($collaboratorResponse->statusCode === 404) {
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
         $body = "I'm sorry @" . $comment->CommentSender . ", I can't do that, you aren't a collaborator. :pleading_face:";
-        requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body));
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
         return;
     }
 
@@ -41,28 +41,28 @@ function handleComment($comment)
 
     if (!$executedAtLeastOne) {
         $body = "I'm sorry @" . $comment->CommentSender . ", I can't do that. :pleading_face:";
-        requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body));
-        requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"));
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
     }
 }
 
 function execute_hello($config, $metadata, $comment)
 {
-    requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "heart"));
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "heart"), "POST");
     $body = "Hello @" . $comment->CommentSender . "! :wave:";
-    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body));
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
 }
 
 function execute_thankYou($config, $metadata, $comment)
 {
-    requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"));
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"), "POST");
     $body = "You're welcome @" . $comment->CommentSender . "! :pray:";
-    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body));
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
 }
 
 function execute_help($config, $metadata, $comment)
 {
-    requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"));
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
     $helpComment = "That's what I can do :neckbeard::\r\n";
     foreach ($config->commands as $command) {
         $parameters = "";
@@ -86,18 +86,18 @@ function execute_help($config, $metadata, $comment)
         "Just respect each command pattern (with bot name prefix + command).\r\n\r\n" .
         "> **Warning**\r\n> \r\n" .
         "> If you aren't allowed to use this bot, a reaction with a thumbs down will be added to your comment.\r\n";
-    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $helpComment));
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $helpComment), "POST");
 }
 
 function execute_appveyorBuild($config, $metadata, $comment)
 {
-    $pullRequestResponse = requestGitHub($metadata["token"], $metadata["pullRequestUrl"]);
+    $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     $pullRequest = json_decode($pullRequestResponse->body);
 
     if ($pullRequest->state != "open") {
-        requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"));
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
         $body = "This pull request is not open anymore! :no_entry:";
-        requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body));
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
         return;
     }
 
@@ -118,16 +118,16 @@ function execute_appveyorBuild($config, $metadata, $comment)
     );
 
     if (count($matches) === 2 && $matches[1] === "commit") {
-        requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"));
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
         $data["branch"] = $pullRequest->head->ref;
         $data["commitId"] = $pullRequest->head->sha;
     } elseif (count($matches) === 2 && $matches[1] === "pull request") {
-        requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"));
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
         $data["pullRequestId"] = $comment->PullRequestNumber;
     } else {
-        requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"));
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
         $body = "I'm sorry @" . $comment->CommentSender . ", I can't do that, invalid type parameter. :pleading_face:";
-        requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body));
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
         return;
     }
 
@@ -141,18 +141,18 @@ function execute_appveyorBuild($config, $metadata, $comment)
     $commentBody = "AppVeyor build started! :rocket:\r\n\r\n" .
         "Build ID: [" . $buildId . "](" . $link . ")\r\n" .
         "Version: " . $version . "\r\n";
-    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody));
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
 }
 
 function execute_appveyorRegister($config, $metadata, $comment)
 {
-    $pullRequestResponse = requestGitHub($metadata["token"], $metadata["pullRequestUrl"]);
+    $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     $pullRequest = json_decode($pullRequestResponse->body);
 
     if ($pullRequest->state != "open") {
-        requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"));
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
         $body = "This pull request is not open anymore! :no_entry:";
-        requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body));
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
         return;
     }
 
@@ -168,7 +168,7 @@ function execute_appveyorRegister($config, $metadata, $comment)
     $commentBody = "AppVeyor registered! :rocket:\r\n\r\n" .
         "Project ID: [" . $register->projectId . "](" . $link . ")\r\n" .
         "Slug: " . $register->slug . "\r\n";
-    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody));
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
 }
 
 function execute_appveyorReset($config, $metadata, $comment)
@@ -186,47 +186,47 @@ function execute_appveyorReset($config, $metadata, $comment)
     $url = "projects/" . $projects[0]->accountName . "/" . $projects[0]->slug . "/settings/build-number";
     requestAppVeyor($url, $data);
     $commentBody = "AppVeyor build reset! :rocket:";
-    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody));
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
 }
 
 function execute_bumpVersion($config, $metadata, $comment)
 {
-    requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"));
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
     $dotNetLink = "https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core";
     $body = "Bumping [.NET version](" . $dotNetLink . ") on this branch! :arrow_heading_up:";
-    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body));
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
     callWorkflow($config, $metadata, $comment, "bump-version.yml");
 }
 
 function execute_csharpier($config, $metadata, $comment)
 {
-    requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"));
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
     $body = "Running [CSharpier](https://csharpier.com/) on this branch! :wrench:";
-    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body));
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
     callWorkflow($config, $metadata, $comment, "csharpier.yml");
 }
 
 function execute_fixCsproj($config, $metadata, $comment)
 {
-    requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"));
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
     $body = "Fixing [NuGet packages](https://nuget.org) references in .csproj files! :pill:";
-    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body));
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
     callWorkflow($config, $metadata, $comment, "fix-csproj.yml");
 }
 
 function execute_prettier($config, $metadata, $comment)
 {
-    requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"));
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
     $body = "Running [Prettier](https://prettier.io/) on this branch! :wrench:";
-    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body));
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
     callWorkflow($config, $metadata, $comment, "prettier.yml");
 }
 
 function execute_review($config, $metadata, $comment)
 {
-    requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"));
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"), "POST");
 
-    $pullRequestResponse = requestGitHub($metadata["token"], $metadata["pullRequestUrl"]);
+    $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     $pullRequestUpdated = json_decode($pullRequestResponse->body);
 
     $pullRequest = new \stdClass();
@@ -245,26 +245,26 @@ function execute_review($config, $metadata, $comment)
     $pullRequest->InstallationId = $comment->InstallationId;
 
     upsertPullRequest($pullRequest);
-    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Review enabled! :eyes:"));
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Review enabled! :eyes:"), "POST");
 }
 
 function execute_track($config, $metadata, $comment)
 {
-    requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"));
-    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Tracking this pull request! :repeat:"));
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Tracking this pull request! :repeat:"), "POST");
     callWorkflow($config, $metadata, $comment, "track.yml");
 }
 
 function execute_updateSnapshot($config, $metadata, $comment)
 {
-    requestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"));
-    requestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Updating test snapshots"));
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Updating test snapshots"), "POST");
     callWorkflow($config, $metadata, $comment, "update-test-snapshot.yml");
 }
 
 function callWorkflow($config, $metadata, $comment, $workflow)
 {
-    $pullRequestResponse = requestGitHub($metadata["token"], $metadata["pullRequestUrl"]);
+    $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     $pullRequest = json_decode($pullRequestResponse->body);
 
     $tokenBot = generateInstallationToken($config->botRepositoryInstallationId, $config->botRepository);
@@ -279,7 +279,7 @@ function callWorkflow($config, $metadata, $comment, $workflow)
             "installationId" => $comment->InstallationId
         )
     );
-    requestGitHub($tokenBot, $url, $data);
+    doRequestGitHub($tokenBot, $url, $data, "POST");
 }
 
 function main()
