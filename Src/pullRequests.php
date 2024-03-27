@@ -232,7 +232,7 @@ function addLabels($metadata, $pullRequest)
         $body = array("labels" => array("WIP"));
         doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber . "/labels", $body, "POST");
     }
-    
+
     $body = array("labels" => $labels);
     doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $pullRequest->Number . "/labels", $body, "POST");
 }
