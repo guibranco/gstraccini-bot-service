@@ -7,9 +7,6 @@ use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Signer\Rsa\Sha256;
 use Lcobucci\JWT\Token\Builder;
 
-use DateTimeImmutable;
-use stdClass;
-
 function doRequestGitHub($token, $url, $data, $method)
 {
     $baseUrl = "https://api.github.com/";
@@ -66,7 +63,7 @@ function generateAppToken()
     $tokenBuilder = new Builder(new JoseEncoder(), ChainedFormatter::default());
     $algorithm = new Sha256();
     $signingKey = InMemory::plainText($gitHubAppPrivateKey);
-    $base = new DateTimeImmutable();
+    $base = new \DateTimeImmutable();
     $now = $base->setTime(date('H'), date('i'), date('s'));
 
     $token = $tokenBuilder
@@ -82,7 +79,7 @@ function generateInstallationToken($installationId, $repositoryName, $permission
 {
     $gitHubAppToken = generateAppToken();
 
-    $data = new stdClass();
+    $data = new \stdClass();
     $data->repository = $repositoryName;
     if (!is_null($permissions) && !empty($permissions)) {
         $data->permissions = $permissions;
