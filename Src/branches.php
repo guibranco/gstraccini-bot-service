@@ -22,7 +22,7 @@ function handleBranch($branch)
     foreach ($nodes as $node) {
         $linkedBranches = $node->linkedBranches->nodes;
         foreach ($linkedBranches as $linkedBranch) {
-            if ($linkedBranch->ref->name == $branch->BranchName) {
+            if ($linkedBranch->ref->name == $branch->Ref) {
                 $found = false;
                 foreach ($node->labels as $label) {
                     if ($label->name == "WIP") {
