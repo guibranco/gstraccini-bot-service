@@ -55,11 +55,15 @@ Multiple commands can be issued at the same time. Just respect each command patt
 This project is just part of the overall process.
 Currently, there is another (still private) repository that works with this one to provide all the necessary data and metadata for the actions.
 
+---
+
 ### Webhooks
 
 Once you install the [GStraccini-bot GitHub app](https://github.com/apps/gstraccini), GitHub will start sending some webhooks to a registered endpoint for some events. Once these webhooks reach the handler, they will be stored in SQL database tables to be processed later by this bot.
 
 If you are interested in hosting your own instance, let me know, and I will share with you the database schemas and scripts and the procedure to create your own GitHub app to receive the events on your infrastructure.
+
+---
 
 ### Cronjobs
 
