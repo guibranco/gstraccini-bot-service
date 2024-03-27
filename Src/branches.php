@@ -14,21 +14,24 @@ function handleBranch($branch)
     );
 
     $data = getReferencedIssueByBranch($metadata, $branch);
+    if (!isset($data->data)) {
+        return;
+    }
     $nodes = $data->data->repository->issues->nodes;
 
-    foreach($nodes as $node) {
+    foreach ($nodes as $node) {
         $linkedBranches = $node->linkedBranches->nodes;
-        foreach($linkedBranches as $linkedBranch) {
-            if($linkedBranch->ref->name == $branch->BranchName) {
+        foreach ($linkedBranches as $linkedBranch) {
+            if ($linkedBranch->ref->name == $branch->BranchName) {
                 $found = false;
-                foreach($node->labels as $label) {
-                    if($label->name == "WIP") {
+                foreach ($node->labels as $label) {
+                    if ($label->name == "WIP") {
                         $found = true;
                         break;
                     }
                 }
 
-                if(!$found) {
+                if (!$found) {
                     $body = array("labels" => ["WIP"]);
                     doRequestGitHub($metadata["token"], $metadata["repoUrl"] . "/issues/" . $node->number . "/labels", $body, "POST");
                 }
@@ -43,7 +46,7 @@ function getReferencedIssueByBranch($metadata, $branch)
 {
     $referencedIssueQuery = array(
         "query" => "query {
-            repository(owner: " . $branch->RepositoryOwner . ", name:" . $branch->RepositoryName . ") {
+            repository(owner: \"" . $branch->RepositoryOwner . "\", name: \"" . $branch->RepositoryName . "\") {
               issues(states: [OPEN], last: 100){
                 nodes {
                     id,
@@ -66,7 +69,6 @@ function getReferencedIssueByBranch($metadata, $branch)
             }
           }"
     );
-
     $referencedIssueResponse = doRequestGitHub($metadata["token"], "graphql", $referencedIssueQuery, "POST");
     return json_decode($referencedIssueResponse->body);
 }
