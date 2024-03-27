@@ -223,9 +223,16 @@ function addLabels($metadata, $pullRequest)
     $issueResponse = doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber, null, "GET");
 
     $labels = array_column(json_decode($issueResponse->body)->labels, "name");
-    $body = array("labels" => array("WIP"));
-    doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber . "/labels", $body, "POST");
 
+    $position = array_search("WIP", $labels);
+
+    if ($position !== false) {
+        unset($labels[$position]);
+    } else {
+        $body = array("labels" => array("WIP"));
+        doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber . "/labels", $body, "POST");
+    }
+    
     $body = array("labels" => $labels);
     doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $pullRequest->Number . "/labels", $body, "POST");
 }
