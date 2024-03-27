@@ -36,7 +36,7 @@ function handlePullRequest($pullRequest)
         "dashboardUrl" => $botDashboardUrl . $prQueryString
     );
 
-    $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"]), "GET";
+    $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     $pullRequestUpdated = json_decode($pullRequestResponse->body);
 
     if ($pullRequestUpdated->state == "closed") {
@@ -52,7 +52,7 @@ function handlePullRequest($pullRequest)
     addLabels($metadata, $pullRequest);
     updateBranch($metadata, $pullRequestUpdated);
 
-    $collaboratorsResponse = doRequestGitHub($metadata["token"], $metadata["collaboratorsUrl"], "GET");
+    $collaboratorsResponse = doRequestGitHub($metadata["token"], $metadata["collaboratorsUrl"], null, "GET");
     $collaboratorsLogins = array_column(json_decode($collaboratorsResponse->body), "login");
 
     $botReviewed = false;
@@ -71,12 +71,12 @@ function handlePullRequest($pullRequest)
 
     if ($pullRequestUpdated->assignee == null) {
         $body = array("assignees" => $collaboratorsLogins);
-        requestGitHub($metadata["token"], $metadata["assigneesUrl"], $body);
+        doRequestGitHub($metadata["token"], $metadata["assigneesUrl"], $body, "POST");
     }
 
     if (!$botReviewed) {
         $body = array("event" => "APPROVE");
-        requestGitHub($metadata["token"], $metadata["reviewsUrl"], $body);
+        doRequestGitHub($metadata["token"], $metadata["reviewsUrl"], $body, "POST");
     }
 
     $autoReview = in_array($pullRequest->Sender, $config->pullRequests->autoReviewSubmitters);
@@ -84,7 +84,7 @@ function handlePullRequest($pullRequest)
     if (!$invokerReviewed && $autoReview) {
         $bodyMsg = "Automatically approved by " . $metadata["botNameMarkdown"];
         $body = array("event" => "APPROVE", "body" => $bodyMsg);
-        requestGitHub($metadata["userToken"], $metadata["reviewsUrl"], $body);
+        doRequestGitHub($metadata["userToken"], $metadata["reviewsUrl"], $body, "POST");
     }
 
     if (!$invokerReviewed && !$autoReview) {
@@ -94,7 +94,7 @@ function handlePullRequest($pullRequest)
         }
         if (count($reviewers) > 0) {
             $body = array("reviewers" => $reviewers);
-            requestGitHub($metadata["token"], $metadata["requestReviewUrl"], $body);
+            doRequestGitHub($metadata["token"], $metadata["requestReviewUrl"], $body, "POST");
         }
     }
 
@@ -116,7 +116,7 @@ function setCheckRunInProgress($metadata, $pullRequestUpdated)
         )
     );
 
-    $response = requestGitHub($metadata["token"], $metadata["checkRunUrl"], $checkRunBody);
+    $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"], $checkRunBody, "POST");
     $result = json_decode($response->body);
     return $result->id;
 }
@@ -135,8 +135,7 @@ function setCheckRunCompleted($metadata, $checkRunId)
         )
     );
 
-    requestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, false, false, true);
-
+    doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
 }
 
 function commentToDependabot($metadata, $pullRequest, $collaboratorsLogins)
@@ -145,7 +144,7 @@ function commentToDependabot($metadata, $pullRequest, $collaboratorsLogins)
         return;
     }
 
-    $commentsRequest = requestGitHub($metadata["token"], $metadata["commentsUrl"]);
+    $commentsRequest = doRequestGitHub($metadata["token"], $metadata["commentsUrl"], null, "GET");
     $comments = json_decode($commentsRequest->body);
 
     $found = false;
@@ -162,7 +161,7 @@ function commentToDependabot($metadata, $pullRequest, $collaboratorsLogins)
 
     if (!$found) {
         $comment = array("body" => $metadata["squashAndMergeComment"]);
-        requestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment);
+        doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
     }
 }
 
@@ -175,17 +174,17 @@ function removeIssueWipLabel($metadata, $pullRequest)
     }
 
     $issueNumber = $referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes[0]->number;
-    $issueResponse = requestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber);
+    $issueResponse = doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber, null, "GET");
 
     $labels = array_column(json_decode($issueResponse->body)->labels, "name");
     if (in_array("WIP", $labels)) {
-        requestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber . "/labels/WIP", null, true);
+        doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber . "/labels/WIP", null, "DELETE");
     }
 }
 
 function getReviewsLogins($metadata)
 {
-    $reviewsResponse = requestGitHub($metadata["token"], $metadata["reviewsUrl"]);
+    $reviewsResponse = doRequestGitHub($metadata["token"], $metadata["reviewsUrl"], null, "GET");
     $reviews = json_decode($reviewsResponse->body);
     return array_map(function ($review) {
         return $review->user->login;
@@ -208,7 +207,7 @@ function getReferencedIssue($metadata, $pullRequest)
       }"
     );
 
-    $referencedIssueResponse = requestGitHub($metadata["token"], "graphql", $referencedIssueQuery);
+    $referencedIssueResponse = doRequestGitHub($metadata["token"], "graphql", $referencedIssueQuery, "POST");
     return json_decode($referencedIssueResponse->body);
 }
 
@@ -221,14 +220,14 @@ function addLabels($metadata, $pullRequest)
     }
 
     $issueNumber = $referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes[0]->number;
-    $issueResponse = requestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber);
+    $issueResponse = doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber, null, "GET");
 
     $labels = array_column(json_decode($issueResponse->body)->labels, "name");
     $body = array("labels" => array("WIP"));
-    requestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber . "/labels", $body);
+    doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber . "/labels", $body, "POST");
 
     $body = array("labels" => $labels);
-    requestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $pullRequest->Number . "/labels", $body);
+    doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $pullRequest->Number . "/labels", $body, "POST");
 }
 
 function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
@@ -244,7 +243,7 @@ function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
                  }
         }"
         );
-        requestGitHub($metadata["userToken"], "graphql", $body);
+        doRequestGitHub($metadata["userToken"], "graphql", $body, "POST");
     }
 
     if ($pullRequestUpdated->mergeable_state == "clean" && $pullRequestUpdated->mergeable) {
@@ -260,7 +259,7 @@ function updateBranch($metadata, $pullRequestUpdated)
     if ($pullRequestUpdated->mergeable_state == "behind") {
         $url = $metadata["pullRequestUrl"] . "/update-branch";
         $body = array("expected_head_sha" => $pullRequestUpdated->head->sha);
-        requestGitHub($metadata["token"], $url, $body, false, true);
+        doRequestGitHub($metadata["token"], $url, $body, "PUT");
     }
 }
 

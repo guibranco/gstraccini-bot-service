@@ -7,7 +7,10 @@ use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Signer\Rsa\Sha256;
 use Lcobucci\JWT\Token\Builder;
 
-function doRequestGitHub($token, $url, $data = null, $method = "GET")
+use DateTimeImmutable;
+use stdClass;
+
+function doRequestGitHub($token, $url, $data, $method)
 {
     $baseUrl = "https://api.github.com/";
     $url = $baseUrl . $url;
@@ -56,22 +59,6 @@ function doRequestGitHub($token, $url, $data = null, $method = "GET")
     return $response;
 }
 
-function requestGitHub($gitHubToken, $url, $data = null, $isDeleteRequest = false, $isPutRequest = false, $isPatchRequest = false)
-{
-    $method = "GET";
-    if ($isDeleteRequest) {
-        $method = "DELETE";
-    } elseif ($isPutRequest) {
-        $method = "PUT";
-    } elseif ($isPatchRequest) {
-        $method = "PATCH";
-    } else if ($data != null) {
-        $method = "POST";
-    }
-
-    doRequestGitHub($gitHubToken, $url, $data, $method);
-}
-
 function generateAppToken()
 {
     global $gitHubAppId, $gitHubAppPrivateKey;
@@ -79,7 +66,7 @@ function generateAppToken()
     $tokenBuilder = new Builder(new JoseEncoder(), ChainedFormatter::default());
     $algorithm = new Sha256();
     $signingKey = InMemory::plainText($gitHubAppPrivateKey);
-    $base = new \DateTimeImmutable();
+    $base = new DateTimeImmutable();
     $now = $base->setTime(date('H'), date('i'), date('s'));
 
     $token = $tokenBuilder
@@ -95,7 +82,7 @@ function generateInstallationToken($installationId, $repositoryName, $permission
 {
     $gitHubAppToken = generateAppToken();
 
-    $data = new \stdClass();
+    $data = new stdClass();
     $data->repository = $repositoryName;
     if (!is_null($permissions) && !empty($permissions)) {
         $data->permissions = $permissions;
