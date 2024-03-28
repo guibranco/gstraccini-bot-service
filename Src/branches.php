@@ -24,7 +24,7 @@ function handleBranch($branch)
         foreach ($linkedBranches as $linkedBranch) {
             if ($linkedBranch === null || $linkedBranch->ref === null) {
                 continue;
-            }            
+            }
             if ($linkedBranch->ref->name == $branch->Ref) {
                 $found = false;
                 foreach ($node->labels as $label) {
