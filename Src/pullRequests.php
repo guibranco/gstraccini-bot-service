@@ -24,6 +24,7 @@ function handlePullRequest($pullRequest)
         "token" => $token,
         "userToken" => $gitHubUserToken,
         "squashAndMergeComment" => "@dependabot squash and merge",
+        "mergeComment" => "@depfu merge",
         "commentsUrl" => $repoPrefix . ISSUES . $pullRequest->Number . "/comments",
         "pullRequestUrl" => $repoPrefix . PULLS . $pullRequest->Number,
         "reviewsUrl" => $repoPrefix . PULLS . $pullRequest->Number . "/reviews",
@@ -98,13 +99,13 @@ function handlePullRequest($pullRequest)
         }
     }
 
-    commentToDependabot($metadata, $pullRequest, $collaboratorsLogins);
+    commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["squashAndMergeComment"], "dependabot[bot]");
+    commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["mergeComment"], "depfu[bot]");
     setCheckRunCompleted($metadata, $checkRunId);
 }
 
 function setCheckRunInProgress($metadata, $pullRequestUpdated)
 {
-
     $checkRunBody = array(
         "name" => "GStraccini Checks: Pull Request",
         "head_sha" => $pullRequestUpdated->head->sha,
@@ -138,9 +139,9 @@ function setCheckRunCompleted($metadata, $checkRunId)
     doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
 }
 
-function commentToDependabot($metadata, $pullRequest, $collaboratorsLogins)
+function commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $commentToLookup, $senderToLookup)
 {
-    if ($pullRequest->Sender != "dependabot[bot]") {
+    if ($pullRequest->Sender != $senderToLookup) {
         return;
     }
 
@@ -151,7 +152,7 @@ function commentToDependabot($metadata, $pullRequest, $collaboratorsLogins)
 
     foreach ($comments as $comment) {
         if (
-            stripos($comment->body, $metadata["squashAndMergeComment"]) !== false &&
+            stripos($comment->body, $commentToLookup) !== false &&
             in_array($comment->user->login, $collaboratorsLogins)
         ) {
             $found = true;
@@ -160,7 +161,7 @@ function commentToDependabot($metadata, $pullRequest, $collaboratorsLogins)
     }
 
     if (!$found) {
-        $comment = array("body" => $metadata["squashAndMergeComment"]);
+        $comment = array("body" => $commentToLookup);
         doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
     }
 }
