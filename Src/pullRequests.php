@@ -99,8 +99,8 @@ function handlePullRequest($pullRequest)
         }
     }
 
-    commentToDependabot($metadata, $pullRequest, $collaboratorsLogins);
-    commentToDepfu($metadata, $pullRequest, $collaboratorsLogins);
+    commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["squashAndMergeComment"], "dependabot[bot]");
+    commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["mergeComment"], "depfu[bot]");
     setCheckRunCompleted($metadata, $checkRunId);
 }
 
@@ -139,9 +139,9 @@ function setCheckRunCompleted($metadata, $checkRunId)
     doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
 }
 
-function commentToDependabot($metadata, $pullRequest, $collaboratorsLogins)
+function commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $commentToLookup, $senderToLookup)
 {
-    if ($pullRequest->Sender != "dependabot[bot]") {
+    if ($pullRequest->Sender != $senderToLookup) {
         return;
     }
 
@@ -152,7 +152,7 @@ function commentToDependabot($metadata, $pullRequest, $collaboratorsLogins)
 
     foreach ($comments as $comment) {
         if (
-            stripos($comment->body, $metadata["squashAndMergeComment"]) !== false &&
+            stripos($comment->body, $commentToLookup) !== false &&
             in_array($comment->user->login, $collaboratorsLogins)
         ) {
             $found = true;
@@ -161,34 +161,7 @@ function commentToDependabot($metadata, $pullRequest, $collaboratorsLogins)
     }
 
     if (!$found) {
-        $comment = array("body" => $metadata["squashAndMergeComment"]);
-        doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
-    }
-}
-
-function commentToDepfu($metadata, $pullRequest, $collaboratorsLogins)
-{
-    if ($pullRequest->Sender != "depfu[bot]") {
-        return;
-    }
-
-    $commentsRequest = doRequestGitHub($metadata["token"], $metadata["commentsUrl"], null, "GET");
-    $comments = json_decode($commentsRequest->body);
-
-    $found = false;
-
-    foreach ($comments as $comment) {
-        if (
-            stripos($comment->body, $metadata["mergeComment"]) !== false &&
-            in_array($comment->user->login, $collaboratorsLogins)
-        ) {
-            $found = true;
-            break;
-        }
-    }
-
-    if (!$found) {
-        $comment = array("body" => $metadata["mergeComment"]);
+        $comment = array("body" => $commentToLookup);
         doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
     }
 }
