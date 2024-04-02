@@ -24,6 +24,7 @@ function handlePullRequest($pullRequest)
         "token" => $token,
         "userToken" => $gitHubUserToken,
         "squashAndMergeComment" => "@dependabot squash and merge",
+        "mergeComment" => "@depfu merge",
         "commentsUrl" => $repoPrefix . ISSUES . $pullRequest->Number . "/comments",
         "pullRequestUrl" => $repoPrefix . PULLS . $pullRequest->Number,
         "reviewsUrl" => $repoPrefix . PULLS . $pullRequest->Number . "/reviews",
@@ -99,12 +100,12 @@ function handlePullRequest($pullRequest)
     }
 
     commentToDependabot($metadata, $pullRequest, $collaboratorsLogins);
+    commentToDepfu($metadata, $pullRequest, $collaboratorsLogins);
     setCheckRunCompleted($metadata, $checkRunId);
 }
 
 function setCheckRunInProgress($metadata, $pullRequestUpdated)
 {
-
     $checkRunBody = array(
         "name" => "GStraccini Checks: Pull Request",
         "head_sha" => $pullRequestUpdated->head->sha,
@@ -163,6 +164,33 @@ function commentToDependabot($metadata, $pullRequest, $collaboratorsLogins)
         $comment = array("body" => $metadata["squashAndMergeComment"]);
         doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
     }
+}
+
+function commentToDepfu($metadata, $pullRequest, $collaboratorsLogins)
+{
+    if ($pullRequest->Sender != "depfu[bot]") {
+        return;
+    }
+
+    $commentsRequest = doRequestGitHub($metadata["token"], $metadata["commentsUrl"], null, "GET");
+    $comments = json_decode($commentsRequest->body);
+
+    $found = false;
+
+    foreach ($comments as $comment) {
+        if (
+            stripos($comment->body, $metadata["mergeComment"]) !== false &&
+            in_array($comment->user->login, $collaboratorsLogins)
+        ) {
+            $found = true;
+            break;
+        }
+    }
+
+    if (!$found) {
+        $comment = array("body" => $metadata["mergeComment"]);
+        doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
+    } 
 }
 
 function removeIssueWipLabel($metadata, $pullRequest)
