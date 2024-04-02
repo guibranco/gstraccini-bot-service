@@ -190,7 +190,7 @@ function commentToDepfu($metadata, $pullRequest, $collaboratorsLogins)
     if (!$found) {
         $comment = array("body" => $metadata["mergeComment"]);
         doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
-    } 
+    }
 }
 
 function removeIssueWipLabel($metadata, $pullRequest)
