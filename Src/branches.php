@@ -22,7 +22,11 @@ function handleBranch($branch)
     foreach ($nodes as $node) {
         $linkedBranches = $node->linkedBranches->nodes;
         foreach ($linkedBranches as $linkedBranch) {
-            if ($linkedBranch === null || $linkedBranch->ref === null) {
+            if (
+                $linkedBranch === null ||
+                $linkedBranch->ref === null ||
+                $linkedBranch->ref->name === null
+            ) {
                 continue;
             }
             if ($linkedBranch->ref->name == $branch->Ref) {
@@ -36,7 +40,8 @@ function handleBranch($branch)
 
                 if (!$found) {
                     $body = array("labels" => ["WIP"]);
-                    doRequestGitHub($metadata["token"], $metadata["repoUrl"] . "/issues/" . $node->number . "/labels", $body, "POST");
+                    $url = $metadata["repoUrl"] . "/issues/" . $node->number . "/labels";
+                    doRequestGitHub($metadata["token"], $url, $body, "POST");
                 }
 
                 break 2;
