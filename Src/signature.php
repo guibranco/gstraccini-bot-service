@@ -15,9 +15,10 @@ function installSignature($signature)
         "secret" => $gitHubWebhookSignature
     );
 
+    $repoPrefix = "repos/" . $signature->RepositoryOwner . "/" . $signature->RepositoryName;
     $url = "";
     if ($signature->TargetType == "repository") {
-        $url = "repos/" . $signature->RepositoryOwner . "/" . $signature->RepositoryName . "/hooks/" . $signature->HookId . "/config";
+        $url = $repoPrefix . "/hooks/" . $signature->HookId . "/config";
     } elseif ($signature->TargetType == "organization") {
         $url = "repos/" . $signature->RepositoryOwner . "/hooks/" . $signature->HookId . "/config";
     }

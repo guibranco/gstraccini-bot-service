@@ -99,7 +99,13 @@ function handlePullRequest($pullRequest)
         }
     }
 
-    commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["squashAndMergeComment"], "dependabot[bot]");
+    commentToMerge(
+        $metadata,
+        $pullRequest,
+        $collaboratorsLogins,
+        $metadata["squashAndMergeComment"],
+        "dependabot[bot]"
+    );
     commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["mergeComment"], "depfu[bot]");
     setCheckRunCompleted($metadata, $checkRunId);
 }
@@ -179,7 +185,8 @@ function removeIssueWipLabel($metadata, $pullRequest)
 
     $labels = array_column(json_decode($issueResponse->body)->labels, "name");
     if (in_array("WIP", $labels)) {
-        doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber . "/labels/WIP", null, "DELETE");
+        $url = $metadata["issuesUrl"] . "/" . $issueNumber . "/labels/WIP";
+        doRequestGitHub($metadata["token"], $url, null, "DELETE");
     }
 }
 

@@ -12,18 +12,30 @@ function handleComment($comment)
         return;
     }
 
+    $prefix = "I'm sorry @" . $comment->CommentSender;
+    $suffix = ", I can't do that.";
+    $emoji = " :pleading_face:";
+
+    $repoPrefix = "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName;
     $metadata = array(
         "token" => generateInstallationToken($comment->InstallationId, $comment->RepositoryName),
-        "reactionUrl" => "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName . "/issues/comments/" . $comment->CommentId . "/reactions",
-        "pullRequestUrl" => "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName . "/pulls/" . $comment->PullRequestNumber,
-        "commentUrl" => "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName . "/issues/" . $comment->PullRequestNumber . "/comments"
+        "reactionUrl" => $repoPrefix . "/issues/comments/" . $comment->CommentId . "/reactions",
+        "pullRequestUrl" => $repoPrefix . "/pulls/" . $comment->PullRequestNumber,
+        "commentUrl" => $repoPrefix . "/issues/" . $comment->PullRequestNumber . "/comments",
+        "errorMessages" => array(
+            "notCollaborator" => $prefix . $suffix . " You aren't a collaborator." . $emoji,
+            "invalidParameter" => $prefix . $suffix . " Invalid parameter." . $emoji,
+            "notOpen" => $prefix . $suffix . " This pull request is no longer open. :no_entry:",
+            "notAllowed" => $prefix . $suffix . " You aren't allowed to use this bot." . $emoji,
+            "commandNotFound" => $prefix . $suffix . " Command not found." . $emoji
+        )
     );
 
-    $collaboratorUrl = "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName . "/collaborators/" . $comment->CommentSender;
+    $collaboratorUrl = $repoPrefix . "/collaborators/" . $comment->CommentSender;
     $collaboratorResponse = doRequestGitHub($metadata["token"], $collaboratorUrl, null, "GET");
     if ($collaboratorResponse->statusCode === 404) {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
-        $body = "I'm sorry @" . $comment->CommentSender . ", I can't do that, you aren't a collaborator. :pleading_face:";
+        $body = $metadata["errorMessages"]["notCollaborator"];
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
         return;
     }
@@ -40,7 +52,7 @@ function handleComment($comment)
     }
 
     if (!$executedAtLeastOne) {
-        $body = "I'm sorry @" . $comment->CommentSender . ", I can't do that. :pleading_face:";
+        $body = $metadata["errorMessages"]["commandNotFound"];
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
     }
@@ -96,12 +108,16 @@ function execute_appveyorBuild($config, $metadata, $comment)
 
     if ($pullRequest->state != "open") {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
-        $body = "This pull request is not open anymore! :no_entry:";
+        $body = $metadata["errorMessages"]["notOpen"];
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
         return;
     }
 
-    preg_match("/@" . $config->botName . "\sappveyor\sbuild(?:\s(commit|pull request))?/", $comment->CommentBody, $matches);
+    preg_match(
+        "/@" . $config->botName . "\sappveyor\sbuild(?:\s(commit|pull request))?/",
+        $comment->CommentBody,
+        $matches
+    );
 
     $searchSlug = strtolower($comment->RepositoryOwner . "/" . $comment->RepositoryName);
 
@@ -126,7 +142,7 @@ function execute_appveyorBuild($config, $metadata, $comment)
         $data["pullRequestId"] = $comment->PullRequestNumber;
     } else {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
-        $body = "I'm sorry @" . $comment->CommentSender . ", I can't do that, invalid type parameter. :pleading_face:";
+        $body = $metadata["errorMessages"]["invalidParameter"];
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
         return;
     }
@@ -151,7 +167,7 @@ function execute_appveyorRegister($config, $metadata, $comment)
 
     if ($pullRequest->state != "open") {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
-        $body = "This pull request is not open anymore! :no_entry:";
+        $body = $metadata["errorMessages"]["notOpen"];
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
         return;
     }
@@ -251,7 +267,8 @@ function execute_review($config, $metadata, $comment)
 function execute_track($config, $metadata, $comment)
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
-    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Tracking this pull request! :repeat:"), "POST");
+    $body = array("body" => "Tracking this pull request! :repeat:");
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
     callWorkflow($config, $metadata, $comment, "track.yml");
 }
 
