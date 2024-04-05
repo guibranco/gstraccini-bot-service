@@ -8,12 +8,13 @@ function handleIssue($issue)
 {
     $token = generateInstallationToken($issue->InstallationId, $issue->RepositoryName);
 
+    $repoPrefix = "repos/" . $issue->RepositoryOwner . "/" . $issue->RepositoryName;
     $metadata = array(
         "token" => $token,
-        "repoUrl" => "repos/" . $issue->RepositoryOwner . "/" . $issue->RepositoryName,
-        "assigneesUrl" => "repos/" . $issue->RepositoryOwner . "/" . $issue->RepositoryName . "/issues/" . $issue->Number . "/assignees",
-        "collaboratorsUrl" => "repos/" . $issue->RepositoryOwner . "/" . $issue->RepositoryName . "/collaborators",
-        "issuesUrl" => "repos/" . $issue->RepositoryOwner . "/" . $issue->RepositoryName . "/issues/" . $issue->Number,
+        "repoUrl" => $repoPrefix,
+        "assigneesUrl" => $repoPrefix . "/issues/" . $issue->Number . "/assignees",
+        "collaboratorsUrl" => $repoPrefix . "/collaborators",
+        "issuesUrl" => $repoPrefix . "/issues/" . $issue->Number,
     );
 
     $issueResponse = doRequestGitHub($metadata["token"], $metadata["issuesUrl"], null, "GET");
