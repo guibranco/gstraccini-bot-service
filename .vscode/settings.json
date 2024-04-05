@@ -20,7 +20,7 @@
     },
     "peacock.color": "#007fff",
     "sonarlint.connectedMode.project": {
-        "connectionId": "guibranco-github",
+        "connectionId": "guibranco",
         "projectKey": "guibranco_gstraccini-bot"
     },
     "cSpell.words": [
