@@ -20,38 +20,56 @@ function handleBranch($branch)
     $nodes = $data->data->repository->issues->nodes;
 
     foreach ($nodes as $node) {
-        $linkedBranches = $node->linkedBranches->nodes;
-        foreach ($linkedBranches as $linkedBranch) {
-            if (
-                $linkedBranch === null ||
-                $linkedBranch->ref === null ||
-                $linkedBranch->ref->name === null
-            ) {
-                continue;
-            }
-            if ($linkedBranch->ref->name == $branch->Ref) {
-                $metadata["issueUrl"] = $metadata["repoUrl"] . "/issues/" . $node->number;
-                $found = false;
-                foreach ($node->labels as $label) {
-                    if ($label->name == "WIP") {
-                        $found = true;
-                        break;
-                    }
-                }
-
-                if (!$found && $branch->Event == "create") {
-                    $body = array("labels" => ["WIP"]);
-                    doRequestGitHub($metadata["token"], $metadata["issueUrl"] . "/labels", $body, "POST");
-                }
-
-                if ($found && $branch->Event == "delete") {
-                    doRequestGitHub($metadata["token"], $metadata["issueUrl"] . "/labels/WIP", null, "DELETE");
-                }
-
-                break 2;
-            }
+        if (processNode($node, $branch, $metadata)) {
+            break;
         }
     }
+}
+
+function processNode($node, $branch, $metadata)
+{
+    $linkedBranches = $node->linkedBranches->nodes;
+    foreach ($linkedBranches as $linkedBranch) {
+        if (processLinkedBranch($linkedBranch, $node, $branch, $metadata)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function processLinkedBranch($linkedBranch, $node, $branch, $metadata)
+{
+    if (
+        $linkedBranch === null ||
+        $linkedBranch->ref === null ||
+        $linkedBranch->ref->name === null
+    ) {
+        return false;
+    }
+    if ($linkedBranch->ref->name == $branch->Ref) {
+        $metadata["issueUrl"] = $metadata["repoUrl"] . "/issues/" . $node->number;
+        $found = false;
+        foreach ($node->labels as $label) {
+            if ($label->name == "WIP") {
+                $found = true;
+                break;
+            }
+        }
+
+        if (!$found && $branch->Event == "create") {
+            $body = array("labels" => ["WIP"]);
+            doRequestGitHub($metadata["token"], $metadata["issueUrl"] . "/labels", $body, "POST");
+        }
+
+        if ($found && $branch->Event == "delete") {
+            doRequestGitHub($metadata["token"], $metadata["issueUrl"] . "/labels/WIP", null, "DELETE");
+        }
+
+        return true;
+    }
+
+    return false;
 }
 
 function getReferencedIssueByBranch($metadata, $branch)
@@ -63,6 +81,7 @@ function getReferencedIssueByBranch($metadata, $branch)
                 nodes {
                     id,
                     number,
+                    status,
                     title,
                     labels (first: 100) {
                         nodes {
