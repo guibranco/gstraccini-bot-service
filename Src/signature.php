@@ -1,8 +1,8 @@
 <?php
 
-use GuiBranco\GStracciniBot\lib\HealthChecks;
-
 require_once "config/config.php";
+
+use GuiBranco\GStracciniBot\Library\HealthChecks;
 
 function installSignature($signature)
 {

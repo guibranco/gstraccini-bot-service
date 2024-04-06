@@ -97,6 +97,17 @@ jobs:
           echo "\$healthChecksIoPullRequests = \"${{ secrets.HEALTHCHECKSIO_PULL_REQUESTS }}\";" >> healthChecksIo.secrets.php
           echo "\$healthChecksIoSignature    = \"${{ secrets.HEALTHCHECKSIO_SIGNATURE }}\";" >> healthChecksIo.secrets.php
 
+      - name: Create Logger secrets file
+        if: ${{ steps.changes.outputs.src == 'true' }}
+        run: |
+          cd Src
+          mkdir -p secrets
+          cd secrets
+          echo "<?php" >> logger.secrets.php
+          echo "\$loggerUrl      = \"${{ secrets.LOGGER_URL }}\";" >> logger.secrets.php
+          echo "\$loggerApiKey   = \"${{ secrets.LOGGER_APIKEY }}\";" >> logger.secrets.php
+          echo "\$loggerApiToken = \"${{ secrets.LOGGER_APITOKEN }}\";" >> logger.secrets.php
+      
       - name: Create MySQL secrets file
         if: ${{ steps.changes.outputs.src == 'true' }}
         run: |
