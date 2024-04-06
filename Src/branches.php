@@ -57,6 +57,10 @@ function processLabels($issue, $branch, $metadata)
 {
     $found = false;
     foreach ($issue->labels as $label) {
+        if($label == null || $label->name == null) {
+            continue;
+        }
+
         if ($label->name == "WIP") {
             $found = true;
             break;
@@ -83,7 +87,7 @@ function processAddAssignee($issue, $branch, $metadata)
         return;
     }
 
-    $body = array("assignees" => [$branch->User]);
+    $body = array("assignees" => [$branch->SenderLogin]);
     doRequestGitHub($metadata["token"], $metadata["issueUrl"] . "/assignees", $body, "POST");
 }
 
@@ -97,7 +101,7 @@ function processRemoveAssignee($issue, $branch, $metadata)
         return;
     }
 
-    $body = array("assignees" => [$branch->User]);
+    $body = array("assignees" => [$branch->SenderLogin]);
     doRequestGitHub($metadata["token"], $metadata["issueUrl"] . "/assignees", $body, "DELETE");
 }
 
