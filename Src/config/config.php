@@ -19,11 +19,6 @@ if (file_exists($gitHubAppSecretsFile)) {
     require_once $gitHubAppSecretsFile;
 }
 
-$healthChecksIoSecretsFile = "secrets/healthChecksIo.secrets.php";
-if (file_exists($healthChecksIoSecretsFile)) {
-    require_once $healthChecksIoSecretsFile;
-}
-
 $mySqlSecretsFile = "secrets/mySql.secrets.php";
 if (file_exists($mySqlSecretsFile)) {
     require_once $mySqlSecretsFile;

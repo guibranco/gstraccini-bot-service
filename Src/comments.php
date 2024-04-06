@@ -2,7 +2,7 @@
 
 require_once "config/config.php";
 
-use GuiBranco\GStracciniBot\lib\HealthChecks;
+use GuiBranco\GStracciniBot\Library\HealthChecks;
 
 function handleComment($comment)
 {

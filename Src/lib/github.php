@@ -12,8 +12,6 @@ function doRequestGitHub($token, $url, $data, $method)
     $baseUrl = "https://api.github.com/";
     $url = $baseUrl . $url;
 
-    $request = new Request();
-
     if ($data != null) {
         $data = json_encode($data);
     }
@@ -46,6 +44,9 @@ function doRequestGitHub($token, $url, $data, $method)
                 break;
             }
             $response = $request->delete($url, $data, $headers);
+            break;
+        default:
+            sendQueue("github.error", array("url" => $url, "method" => $method, "data" => $data), "Invalid method");
             break;
     }
 
@@ -85,7 +86,8 @@ function generateInstallationToken($installationId, $repositoryName, $permission
         $data->permissions = $permissions;
     }
 
-    $response = doRequestGitHub($gitHubAppToken, "app/installations/" . $installationId . "/access_tokens", $data, "POST");
+    $url = "app/installations/" . $installationId . "/access_tokens";
+    $response = doRequestGitHub($gitHubAppToken, $url, $data, "POST");
     $json = json_decode($response->body);
     return $json->token;
 }
