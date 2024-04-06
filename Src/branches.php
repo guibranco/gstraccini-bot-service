@@ -30,6 +30,7 @@ function handleBranch($branch)
                 continue;
             }
             if ($linkedBranch->ref->name == $branch->Ref) {
+                $metadata["issueUrl"] = $metadata["repoUrl"] . "/issues/" . $node->number;
                 $found = false;
                 foreach ($node->labels as $label) {
                     if ($label->name == "WIP") {
@@ -38,10 +39,13 @@ function handleBranch($branch)
                     }
                 }
 
-                if (!$found) {
+                if (!$found && $branch->Event == "create") {
                     $body = array("labels" => ["WIP"]);
-                    $url = $metadata["repoUrl"] . "/issues/" . $node->number . "/labels";
-                    doRequestGitHub($metadata["token"], $url, $body, "POST");
+                    doRequestGitHub($metadata["token"], $metadata["issueUrl"] . "/labels", $body, "POST");
+                }
+
+                if ($found && $branch->Event == "delete") {
+                    doRequestGitHub($metadata["token"], $metadata["issueUrl"] . "/labels/WIP", null, "DELETE");
                 }
 
                 break 2;
