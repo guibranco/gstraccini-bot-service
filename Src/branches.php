@@ -17,20 +17,20 @@ function handleBranch($branch)
     if (!isset($data->data)) {
         return;
     }
-    $nodes = $data->data->repository->issues->nodes;
+    $issues = $data->data->repository->issues->nodes;
 
-    foreach ($nodes as $node) {
-        if (processNode($node, $branch, $metadata)) {
+    foreach ($issues as $issue) {
+        if (processIssue($issue, $branch, $metadata)) {
             break;
         }
     }
 }
 
-function processNode($node, $branch, $metadata)
+function processIssue($issue, $branch, $metadata)
 {
-    $linkedBranches = $node->linkedBranches->nodes;
+    $linkedBranches = $issue->linkedBranches->nodes;
     foreach ($linkedBranches as $linkedBranch) {
-        if (processLinkedBranch($linkedBranch, $node, $branch, $metadata)) {
+        if (processLinkedBranch($linkedBranch, $issue, $branch, $metadata)) {
             return true;
         }
     }
@@ -38,7 +38,7 @@ function processNode($node, $branch, $metadata)
     return false;
 }
 
-function processLinkedBranch($linkedBranch, $node, $branch, $metadata)
+function processLinkedBranch($linkedBranch, $issue, $branch, $metadata)
 {
     if (
         $linkedBranch === null ||
@@ -48,28 +48,57 @@ function processLinkedBranch($linkedBranch, $node, $branch, $metadata)
         return false;
     }
     if ($linkedBranch->ref->name == $branch->Ref) {
-        $metadata["issueUrl"] = $metadata["repoUrl"] . "/issues/" . $node->number;
-        $found = false;
-        foreach ($node->labels as $label) {
-            if ($label->name == "WIP") {
-                $found = true;
-                break;
-            }
-        }
+        $metadata["issueUrl"] = $metadata["repoUrl"] . "/issues/" . $issue->number;
+        return processLabels($issue, $branch, $metadata);
+    }
+}
 
-        if (!$found && $branch->Event == "create") {
-            $body = array("labels" => ["WIP"]);
-            doRequestGitHub($metadata["token"], $metadata["issueUrl"] . "/labels", $body, "POST");
+function processLabels($issue, $branch, $metadata)
+{
+    $found = false;
+    foreach ($issue->labels as $label) {
+        if ($label->name == "WIP") {
+            $found = true;
+            break;
         }
-
-        if ($found && $branch->Event == "delete") {
-            doRequestGitHub($metadata["token"], $metadata["issueUrl"] . "/labels/WIP", null, "DELETE");
-        }
-
-        return true;
     }
 
-    return false;
+    if (!$found && $branch->Event == "create") {
+        $body = array("labels" => ["WIP"]);
+        doRequestGitHub($metadata["token"], $metadata["issueUrl"] . "/labels", $body, "POST");
+        processAddAssignee($issue, $branch, $metadata);
+    }
+
+    if ($found && $branch->Event == "delete") {
+        doRequestGitHub($metadata["token"], $metadata["issueUrl"] . "/labels/WIP", null, "DELETE");
+        processRemoveAssignee($issue, $branch, $metadata);
+    }
+
+    return true;
+}
+
+function processAddAssignee($issue, $branch, $metadata)
+{
+    if ($issue->assignees != null && count($issue->assignees->nodes) > 0) {
+        return;
+    }
+
+    $body = array("assignees" => [$branch->User]);
+    doRequestGitHub($metadata["token"], $metadata["issueUrl"] . "/assignees", $body, "POST");
+}
+
+function processRemoveAssignee($issue, $branch, $metadata)
+{
+    if ($issue->state != "OPEN") {
+        return;
+    }
+
+    if ($issue->assignees == null || count($issue->assignees->nodes) == 0) {
+        return;
+    }
+
+    $body = array("assignees" => [$branch->User]);
+    doRequestGitHub($metadata["token"], $metadata["issueUrl"] . "/assignees", $body, "DELETE");
 }
 
 function getReferencedIssueByBranch($metadata, $branch)
@@ -81,8 +110,13 @@ function getReferencedIssueByBranch($metadata, $branch)
                 nodes {
                     id,
                     number,
-                    status,
+                    state,
                     title,
+                    assignees (first: 1) {
+                        nodes {
+                            login
+                        }
+                    },
                     labels (first: 100) {
                         nodes {
                             name
