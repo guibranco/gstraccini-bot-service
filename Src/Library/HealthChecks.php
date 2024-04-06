@@ -6,7 +6,7 @@ use GuiBranco\Pancake\Request;
 
 class HealthChecks
 {
-    const BASE_URL = "https://hc-ping.com/";
+    public const BASE_URL = "https://hc-ping.com/";
 
     private $token;
 
