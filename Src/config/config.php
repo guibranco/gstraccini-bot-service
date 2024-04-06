@@ -14,6 +14,11 @@ if (file_exists($appVeyorSecretsFile)) {
     require_once $appVeyorSecretsFile;
 }
 
+$healthChecksIoSecretsFile = "secrets/healthChecksIo.secrets.php";
+if (file_exists($healthChecksIoSecretsFile)) {
+    require_once $healthChecksIoSecretsFile;
+}
+
 $gitHubAppSecretsFile = "secrets/gitHubApp.secrets.php";
 if (file_exists($gitHubAppSecretsFile)) {
     require_once $gitHubAppSecretsFile;
