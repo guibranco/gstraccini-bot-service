@@ -17,7 +17,7 @@ function doRequestGitHub($token, $url, $data, $method)
     }
 
     $headers = array(
-        "User-Agent: " . USER_AGENT,
+        USER_AGENT,
         "Content-type: application/json",
         "Accept: application/json",
         "X-GitHub-Api-Version: 2022-11-28",
