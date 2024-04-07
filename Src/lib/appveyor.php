@@ -12,7 +12,7 @@ function requestAppVeyor($url, $data = null)
     $headers = array(
         "Authorization: Bearer " . $appVeyorKey,
         "Content-Type: application/json",
-        "User-Agent: " . USER_AGENT
+        USER_AGENT
     );
 
     $request = new Request();

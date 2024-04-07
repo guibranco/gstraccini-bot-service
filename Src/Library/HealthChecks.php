@@ -24,7 +24,7 @@ class HealthChecks
     {
         $this->token = $token;
         $this->request = new Request();
-        $this->headers = array("User-Agent: " . USER_AGENT);
+        $this->headers = array(USER_AGENT);
     }
 
     public function start()

@@ -5,7 +5,7 @@ if (!isset($_SERVER['REQUEST_METHOD'])) {
     ini_set("date.timezone", "America/Sao_Paulo");
 }
 mb_internal_encoding("UTF-8");
-define("USER_AGENT", "gstraccini-bot/1.0 (+https://github.com/apps/gstraccini-bot/)");
+define("USER_AGENT", "User-Agent: gstraccini-bot/1.0 (+https://github.com/apps/gstraccini-bot/)");
 
 require_once "vendor/autoload.php";
 
