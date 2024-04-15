@@ -123,6 +123,9 @@ function execute_appveyorBuild($config, $metadata, $comment)
 
     $projectsResponse = requestAppVeyor("projects");
     $projects = json_decode($projectsResponse->body);
+    if (count($projects) == 0) {
+        echo json_encode($projectsResponse);
+    }
     $projects = array_filter($projects, function ($p) use ($searchSlug) {
         return $searchSlug === strtolower($p->repositoryName);
     });
