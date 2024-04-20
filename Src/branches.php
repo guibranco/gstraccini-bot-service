@@ -56,8 +56,9 @@ function processLinkedBranch($linkedBranch, $issue, $branch, $metadata)
 function processLabels($issue, $branch, $metadata)
 {
     $found = false;
-    foreach ($issue->labels as $label) {
-        if($label == null || $label->name == null) {
+    foreach ($issue->labels->nodes as $label) {
+
+        if ($label == null || $label->name == null) {
             continue;
         }
 
