@@ -94,6 +94,7 @@ jobs:
           echo "\$healthChecksIoBranches     = \"${{ secrets.HEALTHCHECKSIO_BRANCHES }}\";" >> healthChecksIo.secrets.php
           echo "\$healthChecksIoIssues       = \"${{ secrets.HEALTHCHECKSIO_ISSUES }}\";" >> healthChecksIo.secrets.php
           echo "\$healthChecksIoComments     = \"${{ secrets.HEALTHCHECKSIO_COMMENTS }}\";" >> healthChecksIo.secrets.php
+          echo "\$healthChecksIoCPushes      = \"${{ secrets.HEALTHCHECKSIO_PUSHES }}\";" >> healthChecksIo.secrets.php
           echo "\$healthChecksIoPullRequests = \"${{ secrets.HEALTHCHECKSIO_PULL_REQUESTS }}\";" >> healthChecksIo.secrets.php
           echo "\$healthChecksIoSignature    = \"${{ secrets.HEALTHCHECKSIO_SIGNATURE }}\";" >> healthChecksIo.secrets.php
 
