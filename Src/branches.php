@@ -57,7 +57,6 @@ function processLabels($issue, $branch, $metadata)
 {
     $found = false;
     foreach ($issue->labels->nodes as $label) {
-
         if ($label == null || $label->name == null) {
             continue;
         }
