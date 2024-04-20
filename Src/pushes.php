@@ -22,43 +22,8 @@ function handlePush($push)
         "dashboardUrl" => $botDashboardUrl . $commitQueryString
     );
 
-    $checkRunId = setCheckRunInProgress($metadata, $push);
-    setCheckRunCompleted($metadata, $checkRunId);
-}
-
-function setCheckRunInProgress($metadata, $push)
-{
-    $checkRunBody = array(
-        "name" => "GStraccini Checks: Commit",
-        "head_sha" => $push->HeadCommitId,
-        "status" => "in_progress",
-        "output" => array(
-            "title" => "Running checks...",
-            "summary" => "",
-            "text" => ""
-        )
-    );
-
-    $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"], $checkRunBody, "POST");
-    $result = json_decode($response->body);
-    return $result->id;
-}
-
-function setCheckRunCompleted($metadata, $checkRunId)
-{
-    $checkRunBody = array(
-        "name" => "GStraccini Checks: Commit",
-        "details_url" => $metadata["dashboardUrl"],
-        "status" => "completed",
-        "conclusion" => "success",
-        "output" => array(
-            "title" => "Checks completed ✅",
-            "summary" => "GStraccini checked this commit successfully!",
-            "text" => "No issues found."
-        )
-    );
-
-    doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
+    $checkRunId = setCheckRunInProgress($metadata, $push->HeadCommitId, "commit");
+    setCheckRunCompleted($metadata, $checkRunId, "commit");
 }
 
 function main()

@@ -48,7 +48,7 @@ function handlePullRequest($pullRequest)
         return;
     }
 
-    $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated);
+    $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, "pull request");
     enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config);
     addLabels($metadata, $pullRequest);
     updateBranch($metadata, $pullRequestUpdated);
@@ -107,42 +107,7 @@ function handlePullRequest($pullRequest)
         "dependabot[bot]"
     );
     commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["mergeComment"], "depfu[bot]");
-    setCheckRunCompleted($metadata, $checkRunId);
-}
-
-function setCheckRunInProgress($metadata, $pullRequestUpdated)
-{
-    $checkRunBody = array(
-        "name" => "GStraccini Checks: Pull Request",
-        "head_sha" => $pullRequestUpdated->head->sha,
-        "status" => "in_progress",
-        "output" => array(
-            "title" => "Running checks...",
-            "summary" => "",
-            "text" => ""
-        )
-    );
-
-    $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"], $checkRunBody, "POST");
-    $result = json_decode($response->body);
-    return $result->id;
-}
-
-function setCheckRunCompleted($metadata, $checkRunId)
-{
-    $checkRunBody = array(
-        "name" => "GStraccini Checks: Pull Request",
-        "details_url" => $metadata["dashboardUrl"],
-        "status" => "completed",
-        "conclusion" => "success",
-        "output" => array(
-            "title" => "Checks completed ✅",
-            "summary" => "GStraccini checked this PR successfully!",
-            "text" => "No issues found."
-        )
-    );
-
-    doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
+    setCheckRunCompleted($metadata, $checkRunId, "pull request");
 }
 
 function commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $commentToLookup, $senderToLookup)

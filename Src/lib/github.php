@@ -93,3 +93,38 @@ function generateInstallationToken($installationId, $repositoryName, $permission
     $json = json_decode($response->body);
     return $json->token;
 }
+
+function setCheckRunInProgress($metadata, $commitId, $type)
+{
+    $checkRunBody = array(
+        "name" => "GStraccini Checks: " . ucwords($type),
+        "head_sha" => $commitId,
+        "status" => "in_progress",
+        "output" => array(
+            "title" => "Running checks...",
+            "summary" => "",
+            "text" => ""
+        )
+    );
+
+    $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"], $checkRunBody, "POST");
+    $result = json_decode($response->body);
+    return $result->id;
+}
+
+function setCheckRunCompleted($metadata, $checkRunId, $type)
+{
+    $checkRunBody = array(
+        "name" => "GStraccini Checks: " . ucwords($type),
+        "details_url" => $metadata["dashboardUrl"],
+        "status" => "completed",
+        "conclusion" => "success",
+        "output" => array(
+            "title" => "Checks completed ✅",
+            "summary" => "GStraccini checked this " . strtolower($type) ." successfully!",
+            "text" => "No issues found."
+        )
+    );
+
+    doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
+}
