@@ -1,12 +1,11 @@
 <?php
 
+use GuiBranco\GStracciniBot\Library\Logger;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
 function sendQueue($queueName, $headers, $data)
 {
-    global $rabbitMqHost, $rabbitMqPort, $rabbitMqUser, $rabbitMqPassword, $rabbitMqVhost;
-
     $payload = array(time(), $headers, $data);
     $payload = json_encode($payload);
 
@@ -34,15 +33,14 @@ function sendByLib($queueName, $payload)
         $channel->close();
         $connection->close();
     } catch (Exception $e) {
-        saveErrorLog("sending", $queueName, $e);
         saveFailed($queueName, $payload);
+        $logger = new Logger();
+        $logger->log("Error on sending queue", array("queue" => $queueName, "error" => $e->getMessage()));
     }
 }
 
 function receiveQueue($queueName, $callback)
 {
-    global $rabbitMqHost, $rabbitMqPort, $rabbitMqUser, $rabbitMqPassword, $rabbitMqVhost;
-
     receiveByLib($queueName, $callback);
 }
 
@@ -87,16 +85,9 @@ function receiveByLib($queueName, $callback)
         $channel->close();
         $connection->close();
     } catch (Exception $e) {
-        saveErrorLog("receiving", $queueName, $e);
+        $logger = new Logger();
+        $logger->log("Error on receiving queue", array("queue" => $queueName, "error" => $e->getMessage()));
     }
-}
-
-function saveErrorLog($type, $queueName, $exception)
-{
-    $file = "rabbitmq.error_log";
-    $date = date("Y-m-d H:i:s e");
-    $error = "[" . $date . "] ERROR " . $type . " " . $queueName . ": " . $exception->getMessage() . "\n";
-    file_put_contents($file, $error, FILE_APPEND);
 }
 
 function saveFailed($queueName, $payload)
