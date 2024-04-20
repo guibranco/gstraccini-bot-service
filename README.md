@@ -19,20 +19,21 @@ The commands this bot can do are listed below, or you can always comment in a pu
 ## Commands
 
 That's what I can do :neckbeard::
+
 - `@gstraccini help`: Shows the help message with available commands.
 - `@gstraccini hello`: Says hello to the invoker.
 - `@gstraccini thank you`: Replies with you are welcome message to the invoker.
 - `@gstraccini appveyor build <type>`: Runs the [AppVeyor](https://ci.appveyor.com) build for the target commit and/or pull request.
-	- `type`: `[required]` Specifies if it should trigger a build in a `commit` or `pull request`.
+  - `type`: `[required]` Specifies if it should trigger a build in a `commit` or `pull request`.
 - `@gstraccini appveyor register`: Registers the repository in [AppVeyor](https://ci.appveyor.com).
 - `@gstraccini appveyor reset`: Resets the [AppVeyor](https://ci.appveyor.com) build number for the target repository.
 - `@gstraccini bump version <version> <project>`: Bumps the [.NET version](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core) in .csproj files.
-	- `version`: `[required]` The .NET version
-	- `project`: `[optional]` The `.csproj` file to update. Suppressing this parameter will run the command in all `.csproj` in the repository/branch.
+  - `version`: `[required]` The .NET version
+  - `project`: `[optional]` The `.csproj` file to update. Suppressing this parameter will run the command in all `.csproj` in the repository/branch.
 - `@gstraccini change runner <runner> <workflow> <jobs>`: Changes the [GitHub action runner](https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources) in a workflow file (.yml).
-	- `runner`: `[required]` The runner's name
-	- `workflow`: `[required]` The workflow filename (with or without the .yml/.yaml extension).
-	- `jobs`: `[optional]` The jobs to apply this command. Suppressing this parameter will run the command in all jobs within the workflow.
+  - `runner`: `[required]` The runner's name
+  - `workflow`: `[required]` The workflow filename (with or without the .yml/.yaml extension).
+  - `jobs`: `[optional]` The jobs to apply this command. Suppressing this parameter will run the command in all jobs within the workflow.
 - `@gstraccini csharpier`: Formats the C# code using [CSharpier](https://csharpier.com) (only for **.NET** projects).
 - `@gstraccini fix csproj`: Updates the `.csproj` file with the `packages.config` version of [NuGet packages](https://nuget.org) (only for **.NET Framework** projects).
 - `@gstraccini prettier`: Formats the code using [Prettier](https://prettier.io).
@@ -40,11 +41,10 @@ That's what I can do :neckbeard::
 - `@gstraccini track`: Tracks the specified pull request. Queue a build, raise a **[dependabot](https://github.com/dependabot) recreate** comment to resolve conflicts, and synchronize merge branches.
 - `@gstraccini update snapshot`: Update test snapshots (`npm test -- -u`) (only for **Node.js** projects).
 
-
 Multiple commands can be issued at the same time. Just respect each command pattern (with bot name prefix + command).
 
 > **Warning**
-> 
+>
 > If you aren't allowed to use this bot, a reaction with a thumbs down will be added to your comment.
 
 ---
@@ -72,4 +72,5 @@ The bot handlers on this repository run on my own infrastructure with the follow
 - ![GStraccini Bot - Comments](https://healthchecks.io/b/2/31b38cb0-f8bd-42b1-b662-d5905b22cd94.svg) - 🕐 every 1 minute
 - ![GStraccini Bot - Issues](https://healthchecks.io/b/2/05666a6b-d35f-4cb8-abc8-25584cc9029b.svg) - 🕐 every 1 minute
 - ![GStraccini Bot - Pull Requests](https://healthchecks.io/b/2/05c48393-c700-45b4-880f-59cb7b9b9f25.svg) - 🕐 every 1 minute
+- ![GStraccini Bot - Pushes](https://healthchecks.io/b/2/1e8724fa-8361-47d7-a4f6-901e8d4ff265.svg) - 🕐 every 1 minute
 - ![GStraccini Bot - Signature](https://healthchecks.io/b/2/8303206b-2f4c-4300-ac64-5e9cd342c164.svg) - 🕐 every 5 minutes
