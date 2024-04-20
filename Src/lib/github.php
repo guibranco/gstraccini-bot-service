@@ -1,5 +1,6 @@
 <?php
 
+use GuiBranco\GStracciniBot\Library\Logger;
 use GuiBranco\Pancake\Request;
 use Lcobucci\JWT\Encoding\ChainedFormatter;
 use Lcobucci\JWT\Encoding\JoseEncoder;
@@ -24,6 +25,7 @@ function doRequestGitHub($token, $url, $data, $method)
         "Authorization: Bearer " . $token
     );
 
+    $logger = new Logger();
     $request = new Request();
     switch ($method) {
         case "GET":
@@ -46,12 +48,12 @@ function doRequestGitHub($token, $url, $data, $method)
             $response = $request->delete($url, $data, $headers);
             break;
         default:
-            sendQueue("github.error", array("url" => $url, "method" => $method, "data" => $data), "Invalid method");
+            $logger->log("Invalid method: " . $method, array("url" => $url, "method" => $method, "data" => $data));
             break;
     }
 
     if ($response->statusCode >= 300) {
-        sendQueue("github.error", array("url" => $url, "data" => $data), $response);
+        $logger->log("Error on GitHub request", array("url" => $url, "data" => $data, "response" => $response));
     }
 
     return $response;
