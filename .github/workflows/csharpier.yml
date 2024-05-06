@@ -101,7 +101,7 @@ jobs:
         run: dotnet csharpier .
 
       - name: Verify Changed files
-        uses: tj-actions/verify-changed-files@v19
+        uses: tj-actions/verify-changed-files@v20
         id: verify-changed-files
 
       - name: Config git
