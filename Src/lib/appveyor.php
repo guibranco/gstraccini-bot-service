@@ -16,10 +16,10 @@ function requestAppVeyor($url, $data = null)
     );
 
     $request = new Request();
-    
+
     if ($data != null) {
         return $request->post($url, $data, $headers);
     }
-    
+
     return $request->get($url, $headers);
 }
