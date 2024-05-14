@@ -123,7 +123,14 @@ function execute_appveyorBuild($config, $metadata, $comment)
 
     $projectsResponse = requestAppVeyor("projects");
     $projects = json_decode($projectsResponse->body);
-    echo json_encode($projects);
+
+    if (isset($projects->message) && !empty($projects->message)) {
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
+        $body = $projects->message;
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+        return;
+    }
+
     if (count($projects) == 0) {
         echo json_encode($projectsResponse);
     }
