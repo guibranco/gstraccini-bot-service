@@ -123,6 +123,7 @@ function execute_appveyorBuild($config, $metadata, $comment)
 
     $projectsResponse = requestAppVeyor("projects");
     $projects = json_decode($projectsResponse->body);
+    echo json_encode($projects);
     if (count($projects) == 0) {
         echo json_encode($projectsResponse);
     }
