@@ -130,7 +130,7 @@ function execute_appveyorBuild($config, $metadata, $comment)
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
         return;
     }
-    
+
     if (count($projects) == 0) {
         echo json_encode($projectsResponse);
     }
