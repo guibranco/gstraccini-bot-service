@@ -122,8 +122,13 @@ function execute_appveyorBuild($config, $metadata, $comment)
     $searchSlug = strtolower($comment->RepositoryOwner . "/" . $comment->RepositoryName);
 
     $projectsResponse = requestAppVeyor("projects");
-    $projects = json_decode($projectsResponse->body);
+    if($projectsResponse == null) {
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Response is null"), "POST");
+        return;
+    }
 
+    $projects = json_decode($projectsResponse->body);
     if (isset($projects->message) && !empty($projects->message)) {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
         $body = $projects->message;
@@ -203,7 +208,20 @@ function execute_appveyorReset($config, $metadata, $comment)
     $searchSlug = strtolower($comment->RepositoryOwner . "/" . $comment->RepositoryName);
 
     $projectsResponse = requestAppVeyor("projects");
+    if($projectsResponse == null) {
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Response is null"), "POST");
+        return;
+    }
+
     $projects = json_decode($projectsResponse->body);
+    if (isset($projects->message) && !empty($projects->message)) {
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
+        $body = $projects->message;
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+        return;
+    }
+
     $projects = array_filter($projects, function ($p) use ($searchSlug) {
         return $searchSlug === strtolower($p->repositoryName);
     });
