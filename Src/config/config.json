@@ -4,12 +4,14 @@
   "botRepositoryInstallationId": "44061807",
   "pullRequests": {
     "autoReviewSubmitters": [
+      "codefactor-io[bot]",
       "deepsource-autofix[bot]",
       "dependabot[bot]",
       "depfu[bot]",
       "net-framework-updater[bot]"
     ],
     "autoMergeSubmitters": [
+      "codefactor-io[bot]",
       "deepsource-autofix[bot]",
       "dependabot[bot]",
       "depfu[bot]",
