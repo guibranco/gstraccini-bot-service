@@ -83,6 +83,10 @@
     "description": "Formats the code using [Prettier](https://prettier.io)."
   },
   {
+    "command": "rerun failed checks",
+    "description": "Reruns the failed checks in the target pull request. Only available for GitHub Actions!"
+  },
+  {
     "command": "review",
     "description": "Enable review for the target pull request. This is useful when the PR submitter wasn't on the watch list, the webhook was not captured, or some failed scenario occurred."
   },

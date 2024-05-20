@@ -19,6 +19,7 @@ function handleComment($comment)
     $repoPrefix = "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName;
     $metadata = array(
         "token" => generateInstallationToken($comment->InstallationId, $comment->RepositoryName),
+        "repoPrefix" => $repoPrefix,
         "reactionUrl" => $repoPrefix . "/issues/comments/" . $comment->CommentId . "/reactions",
         "pullRequestUrl" => $repoPrefix . "/pulls/" . $comment->PullRequestNumber,
         "commentUrl" => $repoPrefix . "/issues/" . $comment->PullRequestNumber . "/comments",
@@ -265,6 +266,28 @@ function execute_prettier($config, $metadata, $comment)
     $body = "Running [Prettier](https://prettier.io/) on this branch! :wrench:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
     callWorkflow($config, $metadata, $comment, "prettier.yml");
+}
+
+function execute_rerunFailedChecks($config, $metadata, $comment)
+{
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
+    $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
+    $pullRequestUpdated = json_decode($pullRequestResponse->body);
+    $commitSha1 = $pullRequestUpdated->head->sha;
+    $body = "Rerunning failed checks on the commit `" . $commitSha1 . "`! :repeat:";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+
+    $checkRunsResponse = doRequestGitHub($metadata["token"], $metadata["repoPrefix"] . "/commits/" . $commitSha1 . "/check-runs?status=completed", null, "GET");
+    $checkRuns = json_decode($checkRunsResponse->body);
+    $failedCheckRuns = array_filter($checkRuns->check_runs, function ($checkRun) {
+        return $checkRun->conclusion === "failure" && $checkRun->status === "completed" && $checkRun->app->slug === "github-actions";
+    });
+
+    foreach ($failedCheckRuns as $failedCheckRun) {
+        $url = $failedCheckRun->url . "/retries";
+        doRequestGitHub($metadata["token"], $url, null, "POST");
+    }
+
 }
 
 function execute_review($config, $metadata, $comment)
