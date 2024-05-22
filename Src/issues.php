@@ -14,10 +14,10 @@ function handleIssue($issue)
         "repoUrl" => $repoPrefix,
         "assigneesUrl" => $repoPrefix . "/issues/" . $issue->Number . "/assignees",
         "collaboratorsUrl" => $repoPrefix . "/collaborators",
-        "issuesUrl" => $repoPrefix . "/issues/" . $issue->Number,
+        "issueUrl" => $repoPrefix . "/issues/" . $issue->Number,
     );
 
-    $issueResponse = doRequestGitHub($metadata["token"], $metadata["issuesUrl"], null, "GET");
+    $issueResponse = doRequestGitHub($metadata["token"], $metadata["issueUrl"], null, "GET");
     $issueUpdated = json_decode($issueResponse->body);
 
     if ($issueUpdated->assignee != null) {
@@ -25,14 +25,21 @@ function handleIssue($issue)
     }
     $repositoryResponse = doRequestGitHub($metadata["token"], $metadata["repoUrl"], null, "GET");
     $repository = json_decode($repositoryResponse->body);
-    if (!$repository->private) {
-        return;
-    }
+
     $collaboratorsResponse = doRequestGitHub($metadata["token"], $metadata["collaboratorsUrl"], null, "GET");
     $collaborators = json_decode($collaboratorsResponse->body, true);
     $collaboratorsLogins = array_column($collaborators, "login");
-    $body = array("assignees" => $collaboratorsLogins);
-    doRequestGitHub($metadata["token"], $metadata["assigneesUrl"], $body, "POST");
+
+    if ($repository->private) {
+        $body = array("assignees" => $collaboratorsLogins);
+        doRequestGitHub($metadata["token"], $metadata["assigneesUrl"], $body, "POST");
+        return;
+    }
+
+    if (!in_array($issueUpdated->user->login, $collaboratorsLogins)) {
+        $body = array("labels" => ["awaiting-triage"]);
+        doRequestGitHub($metadata["token"], $metadata["issueUrl"] . "/labels", $body, "POST");
+    }
 }
 
 function main()
