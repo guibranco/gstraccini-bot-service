@@ -43,7 +43,7 @@ That's what I can do :neckbeard::
 
 Multiple commands can be issued at the same time. Just respect each command pattern (with bot name prefix + command).
 
-> **Warning**
+> [!Warning]
 >
 > If you aren't allowed to use this bot, a reaction with a thumbs down will be added to your comment.
 
