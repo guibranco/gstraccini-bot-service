@@ -22,7 +22,7 @@ function requestAppVeyor($url, $data = null)
 
     $response = null;
 
-    
+
 
     if ($data != null) {
         $response = $request->post($url, $data, $headers);
