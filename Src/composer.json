@@ -17,6 +17,6 @@
     "require": {
         "lcobucci/jwt": "^5.1",
         "php-amqplib/php-amqplib": "^3.6",
-        "guibranco/pancake": "^0.2.15"
+        "guibranco/pancake": "^0.6.22"
     }
 }
