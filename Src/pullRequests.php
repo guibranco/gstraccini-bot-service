@@ -254,5 +254,11 @@ function main()
 
 $healthCheck = new HealthChecks($healthChecksIoPullRequests);
 $healthCheck->start();
-main();
+$time = time();
+while (true) {
+    main();
+    if ($time + 60 < time()) {
+        break;
+    }
+}
 $healthCheck->end();
