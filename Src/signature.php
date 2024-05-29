@@ -2,7 +2,8 @@
 
 require_once "config/config.php";
 
-use GuiBranco\GStracciniBot\Library\HealthChecks;
+use GuiBranco\Pancake\GUIDv4;
+use GuiBranco\Pancake\HealthChecks;
 
 function installSignature($signature)
 {
@@ -37,7 +38,7 @@ function main()
     }
 }
 
-$healthCheck = new HealthChecks($healthChecksIoSignature);
+$healthCheck = new HealthChecks($healthChecksIoSignature, GUIDv4::random());
 $healthCheck->start();
 main();
 $healthCheck->end();

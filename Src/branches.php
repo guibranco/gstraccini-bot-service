@@ -3,7 +3,7 @@
 require_once "config/config.php";
 
 use GuiBranco\Pancake\GUIDv4;
-use GuiBranco\GStracciniBot\Library\HealthChecks;
+use GuiBranco\Pancake\HealthChecks;
 
 function handleBranch($branch)
 {
