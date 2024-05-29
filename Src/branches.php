@@ -2,6 +2,7 @@
 
 require_once "config/config.php";
 
+use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\GStracciniBot\Library\HealthChecks;
 
 function handleBranch($branch)
@@ -151,12 +152,13 @@ function main()
     }
 }
 
-$healthCheck = new HealthChecks($healthChecksIoBranches);
+$healthCheck = new HealthChecks($healthChecksIoBranches, GUIDv4::random());
 $healthCheck->start();
 $time = time();
 while (true) {
     main();
-    if ($time + 60 < time()) {
+    $limit = $time + 60;
+    if ($limit < time()) {
         break;
     }
 }
