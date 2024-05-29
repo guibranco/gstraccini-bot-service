@@ -167,7 +167,7 @@ function execute_appveyorBuild($config, $metadata, $comment)
 
     $buildResponse = requestAppVeyor("builds", $data);
     if ($buildResponse->statusCode !== 200) {
-        $commentBody = "AppVeyor build failed: :x:\r\n\r\n```\r\n" . $buildResponse->body . "\r\n```\r\n";        
+        $commentBody = "AppVeyor build failed: :x:\r\n\r\n```\r\n" . $buildResponse->body . "\r\n```\r\n";
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
         return;
     }
@@ -201,7 +201,7 @@ function execute_appveyorRegister($config, $metadata, $comment)
     );
     $registerResponse = requestAppVeyor("projects", $data);
     if ($registerResponse->statusCode !== 200) {
-        $commentBody = "AppVeyor registration failed: :x:\r\n\r\n```\r\n" . $registerResponse->body . "\r\n```\r\n";        
+        $commentBody = "AppVeyor registration failed: :x:\r\n\r\n```\r\n" . $registerResponse->body . "\r\n```\r\n";
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
         return;
     }
@@ -244,11 +244,11 @@ function execute_appveyorReset($config, $metadata, $comment)
     $resetResponse = requestAppVeyor($url, $data);
 
     if ($resetResponse->statusCode !== 200) {
-        $commentBody = "AppVeyor registration failed: :x:\r\n\r\n```\r\n" . $resetResponse->body . "\r\n```\r\n";        
+        $commentBody = "AppVeyor registration failed: :x:\r\n\r\n```\r\n" . $resetResponse->body . "\r\n```\r\n";
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
         return;
     }
-    
+
     $commentBody = "AppVeyor build reset! :rocket:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
 }
