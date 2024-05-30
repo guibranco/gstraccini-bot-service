@@ -91,7 +91,7 @@ function receiveByLib($queueName, $callback)
 function sendToLogger($message, $queueName, $exception)
 {
     global $loggerUrl, $loggerApiKey, $loggerApiToken;
-    $logger = new Logger($loggerUrl, $loggerApiKey, $loggerApiToken);
+    $logger = new Logger($loggerUrl, $loggerApiKey, $loggerApiToken, USER_AGENT);
     $logger->log($message, array("queue" => $queueName, "error" => $exception->getMessage()));
 }
 
