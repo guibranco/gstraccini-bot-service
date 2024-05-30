@@ -166,6 +166,11 @@ function execute_appveyorBuild($config, $metadata, $comment)
     }
 
     $buildResponse = requestAppVeyor("builds", $data);
+    if ($buildResponse->statusCode !== 200) {
+        $commentBody = "AppVeyor build failed: :x:\r\n\r\n```\r\n" . $buildResponse->body . "\r\n```\r\n";
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
+        return;
+    }
     $build = json_decode($buildResponse->body);
     $buildId = $build->buildId;
     $version = $build->version;
@@ -195,6 +200,11 @@ function execute_appveyorRegister($config, $metadata, $comment)
         "repositoryName" => $comment->RepositoryOwner . "/" . $comment->RepositoryName,
     );
     $registerResponse = requestAppVeyor("projects", $data);
+    if ($registerResponse->statusCode !== 200) {
+        $commentBody = "AppVeyor registration failed: :x:\r\n\r\n```\r\n" . $registerResponse->body . "\r\n```\r\n";
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
+        return;
+    }
     $register = json_decode($registerResponse->body);
 
     $link = "https://ci.appveyor.com/project/" .
@@ -231,7 +241,14 @@ function execute_appveyorReset($config, $metadata, $comment)
 
     $data = array("nextBuildNumber" => 0);
     $url = "projects/" . $projects[0]->accountName . "/" . $projects[0]->slug . "/settings/build-number";
-    requestAppVeyor($url, $data);
+    $resetResponse = requestAppVeyor($url, $data);
+
+    if ($resetResponse->statusCode !== 200) {
+        $commentBody = "AppVeyor registration failed: :x:\r\n\r\n```\r\n" . $resetResponse->body . "\r\n```\r\n";
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
+        return;
+    }
+
     $commentBody = "AppVeyor build reset! :rocket:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
 }
@@ -288,7 +305,6 @@ function execute_rerunFailedChecks($config, $metadata, $comment)
         $url = $failedCheckRun->url . "/retries";
         doRequestGitHub($metadata["token"], $url, null, "POST");
     }
-
 }
 
 function execute_review($config, $metadata, $comment)
