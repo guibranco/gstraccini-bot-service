@@ -16,7 +16,7 @@ function requestAppVeyor($url, $data = null, $isPut = false)
         USER_AGENT
     );
 
-    $logger = new Logger($loggerUrl, $loggerApiKey, $loggerApiToken);
+    $logger = new Logger($loggerUrl, $loggerApiKey, $loggerApiToken, USER_AGENT);
     $request = new Request();
 
     $response = null;
