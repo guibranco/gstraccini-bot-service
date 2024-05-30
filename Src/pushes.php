@@ -41,7 +41,7 @@ $healthCheck->start();
 $time = time();
 while (true) {
     main();
-    $limit = $time + 60;
+    $limit = ($time + 55);
     if ($limit < time()) {
         break;
     }

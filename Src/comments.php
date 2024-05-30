@@ -124,7 +124,7 @@ function execute_appveyorBuild($config, $metadata, $comment)
     $searchSlug = strtolower($comment->RepositoryOwner . "/" . $comment->RepositoryName);
 
     $projectsResponse = requestAppVeyor("projects");
-    if($projectsResponse == null) {
+    if ($projectsResponse == null) {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Response is null"), "POST");
         return;
@@ -220,7 +220,7 @@ function execute_appveyorReset($config, $metadata, $comment)
     $searchSlug = strtolower($comment->RepositoryOwner . "/" . $comment->RepositoryName);
 
     $projectsResponse = requestAppVeyor("projects");
-    if($projectsResponse == null) {
+    if ($projectsResponse == null) {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Response is null"), "POST");
         return;
@@ -382,7 +382,7 @@ $healthCheck->start();
 $time = time();
 while (true) {
     main();
-    $limit = $time + 60;
+    $limit = ($time + 55);
     if ($limit < time()) {
         break;
     }

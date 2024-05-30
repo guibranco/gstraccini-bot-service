@@ -1,6 +1,6 @@
 <?php
 
-use GuiBranco\GStracciniBot\Library\Logger;
+use GuiBranco\Pancake\Logger;
 use GuiBranco\Pancake\Request;
 use Lcobucci\JWT\Encoding\ChainedFormatter;
 use Lcobucci\JWT\Encoding\JoseEncoder;
@@ -10,6 +10,8 @@ use Lcobucci\JWT\Token\Builder;
 
 function doRequestGitHub($token, $url, $data, $method)
 {
+    global $loggerUrl, $loggerApiKey, $loggerApiToken;
+
     $baseUrl = "https://api.github.com/";
     $url = $baseUrl . $url;
 
@@ -25,7 +27,7 @@ function doRequestGitHub($token, $url, $data, $method)
         "Authorization: Bearer " . $token
     );
 
-    $logger = new Logger();
+    $logger = new Logger($loggerUrl, $loggerApiKey, $loggerApiToken);
     $request = new Request();
     switch ($method) {
         case "GET":
@@ -121,7 +123,7 @@ function setCheckRunCompleted($metadata, $checkRunId, $type)
         "conclusion" => "success",
         "output" => array(
             "title" => "Checks completed ✅",
-            "summary" => "GStraccini checked this " . strtolower($type) ." successfully!",
+            "summary" => "GStraccini checked this " . strtolower($type) . " successfully!",
             "text" => "No issues found."
         )
     );

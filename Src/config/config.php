@@ -24,6 +24,11 @@ if (file_exists($gitHubAppSecretsFile)) {
     require_once $gitHubAppSecretsFile;
 }
 
+$loggerSecretsFile = "secrets/logger.secrets.php";
+if (file_exists($loggerSecretsFile)) {
+    require_once $loggerSecretsFile;
+}
+
 $mySqlSecretsFile = "secrets/mySql.secrets.php";
 if (file_exists($mySqlSecretsFile)) {
     require_once $mySqlSecretsFile;
@@ -40,13 +45,13 @@ function loadConfig()
     $fileNameCommands = "config/commands.json";
     $config = new \stdClass();
 
-    if(file_exists($fileNameConfig)) {
+    if (file_exists($fileNameConfig)) {
         $rawConfig = file_get_contents($fileNameConfig);
         $config = json_decode($rawConfig);
     }
 
     $config->commands = array();
-    if(file_exists($fileNameCommands)) {
+    if (file_exists($fileNameCommands)) {
         $rawCommands = file_get_contents($fileNameCommands);
         $commands = json_decode($rawCommands);
         $config->commands = $commands;
