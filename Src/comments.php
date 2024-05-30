@@ -241,7 +241,7 @@ function execute_appveyorReset($config, $metadata, $comment)
 
     $data = array("nextBuildNumber" => 0);
     $url = "projects/" . $projects[0]->accountName . "/" . $projects[0]->slug . "/settings/build-number";
-    $resetResponse = requestAppVeyor($url, $data);
+    $resetResponse = requestAppVeyor($url, $data, true);
 
     if ($resetResponse->statusCode !== 200) {
         $commentBody = "AppVeyor reset failed: :x:\r\n\r\n```\r\n" . $resetResponse->body . "\r\n```\r\n";
