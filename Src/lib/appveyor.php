@@ -22,8 +22,6 @@ function requestAppVeyor($url, $data = null, $isPut = false)
 
     $response = null;
 
-
-
     if ($data != null) {
         $response = $isPut ? $request->put($url, $data, $headers) : $request->post($url, $data, $headers);
     } else {
@@ -31,7 +29,8 @@ function requestAppVeyor($url, $data = null, $isPut = false)
     }
 
     if($response->statusCode >= 300) {
-        $logger->log("Error on AppVeyor request", array("url" => $url, "data" => $data, "response" => $response));
+        $info = json_encode(array("url" => $url, "data" => $data, "request" => json_encode($data, true), "response" => $response));
+        $logger->log("Error on AppVeyor request", $info);
     }
 
     return $response;
