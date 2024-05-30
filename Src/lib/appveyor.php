@@ -11,7 +11,7 @@ function requestAppVeyor($url, $data = null, $isPut = false)
     $url = $baseUrl . $url;
 
     $headers = array(
-        "Authorization: " . $appVeyorKey,
+        "Authorization: Bearer " . $appVeyorKey,
         "Content-Type: application/json",
         USER_AGENT
     );
