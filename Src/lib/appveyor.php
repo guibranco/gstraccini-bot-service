@@ -23,7 +23,7 @@ function requestAppVeyor($url, $data = null, $isPut = false)
 
     if ($data != null) {
         $response = $isPut
-            ? $request->put($url, jsos_encode($data), $headers)
+            ? $request->put($url, json_encode($data), $headers)
             : $request->post($url, json_encode($data), $headers);
     } else {
         $response = $request->get($url, $headers);
