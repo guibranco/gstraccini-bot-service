@@ -1,6 +1,6 @@
 <?php
 
-use GuiBranco\GStracciniBot\Library\Logger;
+use GuiBranco\Pancake\Logger;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
@@ -32,10 +32,9 @@ function sendByLib($queueName, $payload)
 
         $channel->close();
         $connection->close();
-    } catch (Exception $e) {
+    } catch (Exception $exception) {
         saveFailed($queueName, $payload);
-        $logger = new Logger();
-        $logger->log("Error on sending queue", array("queue" => $queueName, "error" => $e->getMessage()));
+        sendToLogger("Error on sending queue", $queueName, $exception);
     }
 }
 
@@ -84,11 +83,18 @@ function receiveByLib($queueName, $callback)
 
         $channel->close();
         $connection->close();
-    } catch (Exception $e) {
-        $logger = new Logger();
-        $logger->log("Error on receiving queue", array("queue" => $queueName, "error" => $e->getMessage()));
+    } catch (Exception $exception) {
+        sendToLogger("Error on receiving queue", $queueName, $exception);
     }
 }
+
+function sendToLogger($message, $queueName, $exception)
+{
+    global $loggerUrl, $loggerApiKey, $loggerApiToken;
+    $logger = new Logger($loggerUrl, $loggerApiKey, $loggerApiToken);
+    $logger->log($message, array("queue" => $queueName, "error" => $exception->getMessage()));
+}
+
 
 function saveFailed($queueName, $payload)
 {
