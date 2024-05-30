@@ -24,7 +24,7 @@ function requestAppVeyor($url, $data = null, $isPut = false)
 
 
 
-    if ($data != null) {        
+    if ($data != null) {
         $response = $isPut ? $request->put($url, $data, $headers) : $request->post($url, $data, $headers);
     } else {
         $response = $request->get($url, $headers);
