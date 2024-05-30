@@ -3,7 +3,7 @@
 use GuiBranco\Pancake\Logger;
 use GuiBranco\Pancake\Request;
 
-function requestAppVeyor($url, $data = null)
+function requestAppVeyor($url, $data = null, $isPut = false)
 {
     global $appVeyorKey;
     global $loggerUrl, $loggerApiKey, $loggerApiToken;
@@ -22,16 +22,15 @@ function requestAppVeyor($url, $data = null)
 
     $response = null;
 
-
-
     if ($data != null) {
-        $response = $request->post($url, $data, $headers);
+        $response = $isPut ? $request->put($url, $data, $headers) : $request->post($url, $data, $headers);
     } else {
         $response = $request->get($url, $headers);
     }
 
     if($response->statusCode >= 300) {
-        $logger->log("Error on AppVeyor request", array("url" => $url, "data" => $data, "response" => $response));
+        $info = json_encode(array("url" => $url, "data" => $data, "request" => json_encode($data, true), "response" => $response));
+        $logger->log("Error on AppVeyor request", $info);
     }
 
     return $response;
