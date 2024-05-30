@@ -177,7 +177,7 @@ function execute_appveyorBuild($config, $metadata, $comment)
     $link = "https://ci.appveyor.com/project/" .
         $projects[0]->accountName . "/" . $projects[0]->slug .
         "/builds/" . $buildId;
-    $commentBody = "AppVeyor build started! :rocket:\r\n\r\n" .
+    $commentBody = "AppVeyor build (" . $matches[1] . ") started! :rocket:\r\n\r\n" .
         "Build ID: [" . $buildId . "](" . $link . ")\r\n" .
         "Version: " . $version . "\r\n";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
