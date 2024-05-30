@@ -244,7 +244,7 @@ function execute_appveyorReset($config, $metadata, $comment)
     $resetResponse = requestAppVeyor($url, $data);
 
     if ($resetResponse->statusCode !== 200) {
-        $commentBody = "AppVeyor registration failed: :x:\r\n\r\n```\r\n" . $resetResponse->body . "\r\n```\r\n";
+        $commentBody = "AppVeyor reset failed: :x:\r\n\r\n```\r\n" . $resetResponse->body . "\r\n```\r\n";
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
         return;
     }
