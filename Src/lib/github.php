@@ -27,7 +27,7 @@ function doRequestGitHub($token, $url, $data, $method)
         "Authorization: Bearer " . $token
     );
 
-    $logger = new Logger($loggerUrl, $loggerApiKey, $loggerApiToken);
+    $logger = new Logger($loggerUrl, $loggerApiKey, $loggerApiToken, USER_AGENT);
     $request = new Request();
     switch ($method) {
         case "GET":
