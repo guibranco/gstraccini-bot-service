@@ -11,9 +11,9 @@ function requestAppVeyor($url, $data = null, $isPut = false)
     $url = $baseUrl . $url;
 
     $headers = array(
+        "User-Agent: " . USER_AGENT,
         "Authorization: Bearer " . $appVeyorKey,
-        "Content-Type: application/json",
-        USER_AGENT
+        "Content-Type: application/json"
     );
 
     $logger = new Logger($loggerUrl, $loggerApiKey, $loggerApiToken, USER_AGENT);
