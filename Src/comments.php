@@ -25,7 +25,7 @@ function handleComment($comment)
         "pullRequestUrl" => $repoPrefix . "/pulls/" . $comment->PullRequestNumber,
         "commentUrl" => $repoPrefix . "/issues/" . $comment->PullRequestNumber . "/comments",
         "errorMessages" => array(
-            "notCollaborator" => $prefix . $suffix . " You aren't a collaborator." . $emoji,
+            "notCollaborator" => $prefix . $suffix . " You aren't a collaborator in this repository." . $emoji,
             "invalidParameter" => $prefix . $suffix . " Invalid parameter." . $emoji,
             "notOpen" => $prefix . $suffix . " This pull request is no longer open. :no_entry:",
             "notAllowed" => $prefix . $suffix . " You aren't allowed to use this bot." . $emoji,
