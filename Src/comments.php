@@ -133,8 +133,8 @@ function execute_appveyorBuild($config, $metadata, $comment)
 
     if (count($matches) === 2 && $matches[1] === "commit") {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
-        $data["branch"] = $pullRequest->head->ref;
-        $data["commitId"] = $pullRequest->head->sha;
+        $data["branch"] = $metadata["headRef"];
+        $data["commitId"] = $metadata["headSha"];
     } elseif (count($matches) === 2 && $matches[1] === "pull request") {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
         $data["pullRequestId"] = $comment->PullRequestNumber;
@@ -341,6 +341,9 @@ function checkIfPullRequestIsOpen($metadata)
 {
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     $pullRequest = json_decode($pullRequestResponse->body);
+
+    $metadata["headRef"] = $pullRequest->head->ref;
+    $metadata["headSha"] = $pullRequest->head->sha;
 
     if ($pullRequest->state === "open") {
         return true;
