@@ -177,7 +177,7 @@ function execute_appveyorBumpVersion($config, $metadata, $comment)
 
     if (count($matches) === 2 && $matches[1] === "build") {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
-        updateNextBuildNumber($metadata, $project, $project->nextBuildNumber + 1);
+        updateNextBuildNumber($metadata, $project, $project->buildNumber + 1);
     } elseif (count($matches) === 2 && ($matches[1] === "minor" || $matches[1] === "major")) {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
         $body = $metadata["errorMessages"]["notImplemented"];
