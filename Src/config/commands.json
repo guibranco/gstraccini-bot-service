@@ -23,6 +23,17 @@
     ]
   },
   {
+    "command": "appveyor bump version",
+    "description": "Bumps the CI version in [AppVeyor](https://ci.appveyor.com).",
+    "parameters": [
+      {
+        "parameter": "component",
+        "description": "The semver component to bump (major, minor or build).",
+        "required": true
+      }
+    ]
+  },
+  {
     "command": "appveyor register",
     "description": "Registers the repository in [AppVeyor](https://ci.appveyor.com)."
   },

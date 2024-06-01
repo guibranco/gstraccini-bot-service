@@ -29,7 +29,8 @@ function handleComment($comment)
             "invalidParameter" => $prefix . $suffix . " Invalid parameter." . $emoji,
             "notOpen" => $prefix . $suffix . " This pull request is no longer open. :no_entry:",
             "notAllowed" => $prefix . $suffix . " You aren't allowed to use this bot." . $emoji,
-            "commandNotFound" => $prefix . $suffix . " Command not found." . $emoji
+            "commandNotFound" => $prefix . $suffix . " Command not found." . $emoji,
+            "notImplemented" => $prefix . $suffix . " Feature not implemented yet." . $emoji
         )
     );
 
@@ -121,34 +122,15 @@ function execute_appveyorBuild($config, $metadata, $comment)
         $matches
     );
 
-    $searchSlug = strtolower($comment->RepositoryOwner . "/" . $comment->RepositoryName);
+    $project = getAppVeyorProject($metadata, $comment);
 
-    $projectsResponse = requestAppVeyor("projects");
-    if ($projectsResponse == null) {
-        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
-        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Response is null"), "POST");
+    if ($project == null) {
         return;
     }
-
-    $projects = json_decode($projectsResponse->body);
-    if (isset($projects->message) && !empty($projects->message)) {
-        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
-        $body = $projects->message;
-        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-        return;
-    }
-
-    if (count($projects) == 0) {
-        echo json_encode($projectsResponse);
-    }
-    $projects = array_filter($projects, function ($p) use ($searchSlug) {
-        return $searchSlug === strtolower($p->repositoryName);
-    });
-    $projects = array_values($projects);
 
     $data = array(
-        "accountName" => $projects[0]->accountName,
-        "projectSlug" => $projects[0]->slug
+        "accountName" => $project->accountName,
+        "projectSlug" => $project->slug
     );
 
     if (count($matches) === 2 && $matches[1] === "commit") {
@@ -174,13 +156,50 @@ function execute_appveyorBuild($config, $metadata, $comment)
     $build = json_decode($buildResponse->body);
     $buildId = $build->buildId;
     $version = $build->version;
-    $link = "https://ci.appveyor.com/project/" .
-        $projects[0]->accountName . "/" . $projects[0]->slug .
-        "/builds/" . $buildId;
+    $link = "https://ci.appveyor.com/project/" . $project->accountName . "/" . $project->slug . "/builds/" . $buildId;
     $commentBody = "AppVeyor build (" . $matches[1] . ") started! :rocket:\r\n\r\n" .
         "Build ID: [" . $buildId . "](" . $link . ")\r\n" .
         "Version: " . $version . "\r\n";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
+}
+
+function execute_appveyorBumpVersion($config, $metadata, $comment)
+{
+    $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
+    $pullRequest = json_decode($pullRequestResponse->body);
+
+    if ($pullRequest->state != "open") {
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
+        $body = $metadata["errorMessages"]["notOpen"];
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+        return;
+    }
+
+    preg_match(
+        "/@" . $config->botName . "\sappveyor\bump version(?:\s(major|minor|build))?/",
+        $comment->CommentBody,
+        $matches
+    );
+
+    $project = getAppVeyorProject($metadata, $comment);
+
+    if ($project == null) {
+        return;
+    }
+
+    if (count($matches) === 2 && $matches[1] === "build") {
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
+        $data["branch"] = $pullRequest->head->ref;
+        $data["commitId"] = $pullRequest->head->sha;
+    } elseif (count($matches) === 2 && ($matches[1] === "minor" || $matches[1] === "major")) {
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
+        $body = $metadata["errorMessages"]["notImplemented"];
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    } else {
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
+        $body = $metadata["errorMessages"]["invalidParameter"];
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    }
 }
 
 function execute_appveyorRegister($config, $metadata, $comment)
@@ -217,39 +236,48 @@ function execute_appveyorRegister($config, $metadata, $comment)
 
 function execute_appveyorReset($config, $metadata, $comment)
 {
-    $searchSlug = strtolower($comment->RepositoryOwner . "/" . $comment->RepositoryName);
+    $project = getAppVeyorProject($metadata, $comment);
 
-    $projectsResponse = requestAppVeyor("projects");
-    if ($projectsResponse == null) {
+    if ($project == null) {
+        return;
+    }
+
+    updateNextBuildNumber($metadata, $project, 0);
+}
+
+function getAppVeyorProject($metadata, $comment)
+{
+    $project = findProjectByRepositorySlug($comment->RepositoryOwner . "/" . $comment->RepositoryName);
+
+    if ($project == null) {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Response is null"), "POST");
-        return;
+        return null;
     }
 
-    $projects = json_decode($projectsResponse->body);
-    if (isset($projects->message) && !empty($projects->message)) {
+    if ($project->error) {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
-        $body = $projects->message;
+        $body = $project->message;
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-        return;
+        return null;
     }
 
-    $projects = array_filter($projects, function ($p) use ($searchSlug) {
-        return $searchSlug === strtolower($p->repositoryName);
-    });
-    $projects = array_values($projects);
+    return $project;
+}
 
-    $data = array("nextBuildNumber" => 0);
-    $url = "projects/" . $projects[0]->accountName . "/" . $projects[0]->slug . "/settings/build-number";
-    $resetResponse = requestAppVeyor($url, $data, true);
+function updateNextBuildNumber($metadata, $project, $nextBuildNumber)
+{
+    $data = array("nextBuildNumber" => $nextBuildNumber);
+    $url = "projects/" . $project->accountName . "/" . $project->slug . "/settings/build-number";
+    $updateResponse = requestAppVeyor($url, $data, true);
 
-    if ($resetResponse->statusCode !== 204) {
-        $commentBody = "AppVeyor reset failed: :x:\r\n\r\n```\r\n" . $resetResponse->body . "\r\n```\r\n";
+    if ($updateResponse->statusCode !== 204) {
+        $commentBody = "AppVeyor update next build number failed: :x:\r\n\r\n```\r\n" . $updateResponse->body . "\r\n```\r\n";
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
         return;
     }
 
-    $commentBody = "AppVeyor build reset! :rocket:";
+    $commentBody = "AppVeyor next build number updated to " . $nextBuildNumber . "! :rocket:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
 }
 
