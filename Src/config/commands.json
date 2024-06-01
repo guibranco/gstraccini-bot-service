@@ -20,15 +20,30 @@
         "description": "Specifies if it should trigger a build in a `commit` or `pull request`.",
         "required": true
       }
-    ]
+    ],
+    "requiresPullRequestOpen": true
+  },
+  {
+    "command": "appveyor bump version",
+    "description": "Bumps the CI version in [AppVeyor](https://ci.appveyor.com).",
+    "parameters": [
+      {
+        "parameter": "component",
+        "description": "The semver component to bump (major, minor or build).",
+        "required": true
+      }
+    ],
+    "requiresPullRequestOpen": true
   },
   {
     "command": "appveyor register",
-    "description": "Registers the repository in [AppVeyor](https://ci.appveyor.com)."
+    "description": "Registers the repository in [AppVeyor](https://ci.appveyor.com).",
+    "requiresPullRequestOpen": true
   },
   {
     "command": "appveyor reset",
-    "description": "Resets the [AppVeyor](https://ci.appveyor.com) build number for the target repository."
+    "description": "Resets the [AppVeyor](https://ci.appveyor.com) build number for the target repository.",
+    "requiresPullRequestOpen": true
   },
   {
     "command": "bump version",
@@ -45,7 +60,8 @@
         "required": false
       }
     ],
-    "dev": true
+    "dev": true,
+    "requiresPullRequestOpen": true
   },
   {
     "command": "change runner",
@@ -67,36 +83,44 @@
         "required": false
       }
     ],
-    "dev": true
+    "dev": true,
+    "requiresPullRequestOpen": true
   },
   {
     "command": "csharpier",
-    "description": "Formats the C# code using [CSharpier](https://csharpier.com) (only for **.NET** projects)."
+    "description": "Formats the C# code using [CSharpier](https://csharpier.com) (only for **.NET** projects).",
+    "requiresPullRequestOpen": true
   },
   {
     "command": "fix csproj",
     "description": "Updates the `.csproj` file with the `packages.config` version of [NuGet packages](https://nuget.org) (only for **.NET Framework** projects).",
-    "dev": true
+    "dev": true,
+    "requiresPullRequestOpen": true
   },
   {
     "command": "prettier",
-    "description": "Formats the code using [Prettier](https://prettier.io)."
+    "description": "Formats the code using [Prettier](https://prettier.io).",
+    "requiresPullRequestOpen": true
   },
   {
     "command": "rerun failed checks",
-    "description": "Reruns the failed checks in the target pull request. Only available for GitHub Actions!"
+    "description": "Reruns the failed checks in the target pull request. Only available for GitHub Actions!",
+    "requiresPullRequestOpen": true
   },
   {
     "command": "review",
-    "description": "Enable review for the target pull request. This is useful when the PR submitter wasn't on the watch list, the webhook was not captured, or some failed scenario occurred."
+    "description": "Enable review for the target pull request. This is useful when the PR submitter wasn't on the watch list, the webhook was not captured, or some failed scenario occurred.",
+    "requiresPullRequestOpen": true
   },
   {
     "command": "track",
     "description": "Tracks the specified pull request. Queue a build, raise a **[dependabot](https://github.com/dependabot) recreate** comment to resolve conflicts, and synchronize merge branches.",
-    "dev": true
+    "dev": true,
+    "requiresPullRequestOpen": true
   },
   {
     "command": "update snapshot",
-    "description": "Update test snapshots (`npm test -- -u`) (only for **Node.js** projects)."
+    "description": "Update test snapshots (`npm test -- -u`) (only for **Node.js** projects).",
+    "requiresPullRequestOpen": true
   }
 ]
