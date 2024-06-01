@@ -175,7 +175,7 @@ function execute_appveyorBumpVersion($config, $metadata, $comment)
         return;
     }
 
-    $url = "projects/" . $project->accountName . "/" . $project->slug
+    $url = "projects/" . $project->accountName . "/" . $project->slug;
     $buildResponse = requestAppVeyor($url);
     if ($buildResponse->statusCode !== 200) {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
