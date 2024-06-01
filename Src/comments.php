@@ -164,7 +164,7 @@ function execute_appveyorBuild($config, $metadata, $comment)
 function execute_appveyorBumpVersion($config, $metadata, $comment)
 {
     preg_match(
-        "/@" . $config->botName . "\sappveyor\bump version(?:\s(major|minor|build))?/",
+        "/@" . $config->botName . "\sappveyor\sbump\sversion(?:\s(major|minor|build))?/",
         $comment->CommentBody,
         $matches
     );
