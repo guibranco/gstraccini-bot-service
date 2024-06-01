@@ -164,7 +164,7 @@ function execute_appveyorBuild($config, $metadata, $comment)
 function execute_appveyorBumpVersion($config, $metadata, $comment)
 {
     preg_match(
-        "/@" . $config->botName . "\sappveyor\bump version(?:\s(major|minor|build))?/",
+        "/@" . $config->botName . "\sappveyor\sbump\sversion(?:\s(major|minor|build))?/",
         $comment->CommentBody,
         $matches
     );
@@ -177,7 +177,7 @@ function execute_appveyorBumpVersion($config, $metadata, $comment)
 
     if (count($matches) === 2 && $matches[1] === "build") {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
-        updateNextBuildNumber($metadata, $project, $project->nextBuildNumber + 1);
+        updateNextBuildNumber($metadata, $project, $project->build->buildNumber + 1);
     } elseif (count($matches) === 2 && ($matches[1] === "minor" || $matches[1] === "major")) {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
         $body = $metadata["errorMessages"]["notImplemented"];
