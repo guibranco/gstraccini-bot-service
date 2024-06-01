@@ -175,20 +175,20 @@ function execute_appveyorBumpVersion($config, $metadata, $comment)
         return;
     }
 
-    $url = "projects/" . $project->accountName . "/" . $project->slug;
-    $buildResponse = requestAppVeyor($url);
-    if ($buildResponse->statusCode !== 200) {
+    $url = "projects/" . $project->accountName . "/" . $project->slug . "/settings";
+    $settingsResponse = requestAppVeyor($url);
+    if ($settingsResponse->statusCode !== 200) {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
-        $commentBody = "AppVeyor bump version failed: :x:\r\n\r\n```\r\n" . $buildResponse->body . "\r\n```\r\n";
+        $commentBody = "AppVeyor bump version failed: :x:\r\n\r\n```\r\n" . $settingsResponse->body . "\r\n```\r\n";
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
         return;
     }
 
-    $build = json_decode($buildResponse->body);
+    $settings = json_decode($settingsResponse->body);
 
     if (count($matches) === 2 && $matches[1] === "build") {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
-        updateNextBuildNumber($metadata, $project, $build->build->buildNumber + 1);
+        updateNextBuildNumber($metadata, $project, $settings->settings->nextBuildNumber + 1);
     } elseif (count($matches) === 2 && ($matches[1] === "minor" || $matches[1] === "major")) {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
         $body = $metadata["errorMessages"]["notImplemented"];
