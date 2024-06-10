@@ -108,6 +108,7 @@ function handlePullRequest($pullRequest)
         "dependabot[bot]"
     );
     commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["mergeComment"], "depfu[bot]");
+    resolveConflicts($metadata, $pullRequest, $pullRequestUpdated);
     setCheckRunCompleted($metadata, $checkRunId, "pull request");
 }
 
@@ -232,6 +233,20 @@ function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
             $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . " is mergeable\n";
         //     $body = array("merge_method" => "squash", "commit_title" => $pullRequest->Title);
         //     requestGitHub($metadata["token"], $metadata["pullRequestUrl"] . "/merge", $body);
+    }
+}
+
+function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
+{
+    if ($pullRequest->Sender != "dependabot[bot]") {
+        echo "Pull request " . $pullRequestUpdated->number . " of " .
+            $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . " is NOT mergeable\n";
+        return;
+    }
+
+    if ($pullRequestUpdated->mergeable_state != "clean" && !$pullRequestUpdated->mergeable) {
+        $comment = array("body" => "@dependabot recreate");
+        doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
     }
 }
 
