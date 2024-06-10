@@ -243,7 +243,7 @@ function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
             $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . " is NOT mergeable\n";
         return;
     }
-    
+
     if ($pullRequestUpdated->mergeable_state != "clean" && !$pullRequestUpdated->mergeable) {
         $comment = array("body" => "@dependabot recreate");
         doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
