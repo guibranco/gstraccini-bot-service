@@ -238,13 +238,12 @@ function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
 
 function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
 {
-    if ($pullRequest->Sender != "dependabot[bot]") {
-        echo "Pull request " . $pullRequestUpdated->number . " of " .
-            $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . " is NOT mergeable\n";
-        return;
-    }
-
     if ($pullRequestUpdated->mergeable_state != "clean" && !$pullRequestUpdated->mergeable) {
+        if ($pullRequest->Sender != "dependabot[bot]") {
+            echo "Pull request " . $pullRequestUpdated->number . " of " .
+                $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . " is NOT mergeable\n";
+            return;
+        }
         $comment = array("body" => "@dependabot recreate");
         doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
     }
