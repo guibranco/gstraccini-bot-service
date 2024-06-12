@@ -287,7 +287,7 @@ function execute_rerunFailedChecks($config, $metadata, $comment)
     });
 
     foreach ($failedCheckRuns as $failedCheckRun) {
-        $url = $failedCheckRun->url . "/retries";
+        $url = $metadata["repoPrefix"] . "/check-runs/" . $failedCheckRun->id . "/retries";
         doRequestGitHub($metadata["token"], $url, null, "POST");
     }
 }
