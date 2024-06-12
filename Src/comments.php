@@ -56,7 +56,7 @@ function handleComment($comment)
         $commandExpression = "@" . $config->botName . " " . $command->command;
         if (stripos($comment->CommentBody, $commandExpression) !== false) {
             $executedAtLeastOne = true;
-            if ($command->requiresPullRequestOpen && !$pullRequestIsOpen) {
+            if (isset($command->requiresPullRequestOpen) && $command->requiresPullRequestOpen && !$pullRequestIsOpen) {
                 doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
                 $body = $metadata["errorMessages"]["notOpen"];
                 doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
