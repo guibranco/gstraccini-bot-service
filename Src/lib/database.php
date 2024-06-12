@@ -74,7 +74,11 @@ function upsertPullRequest($pullRequest)
         $stmt = $mysqli->prepare($sql);
         $stmt->bind_param("i", $sequence);
         $sequence = $row;
-        $stmt->execute();
+        
+        if (!$stmt->execute()) {
+            die("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+        }
+        
     } else {
         $fields = array(
             "DeliveryId",
