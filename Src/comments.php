@@ -34,6 +34,11 @@ function handleComment($comment)
         )
     );
 
+    if ($comment->CommentSender === "github-actions[bot]") {
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
+        return;
+    }
+
     $collaboratorUrl = $repoPrefix . "/collaborators/" . $comment->CommentSender;
     $collaboratorResponse = doRequestGitHub($metadata["token"], $collaboratorUrl, null, "GET");
     if ($collaboratorResponse->statusCode === 404) {
