@@ -100,15 +100,17 @@ function handlePullRequest($pullRequest)
         }
     }
 
-    commentToMerge(
-        $metadata,
-        $pullRequest,
-        $collaboratorsLogins,
-        $metadata["squashAndMergeComment"],
-        "dependabot[bot]"
-    );
-    commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["mergeComment"], "depfu[bot]");
-    resolveConflicts($metadata, $pullRequest, $pullRequestUpdated);
+    if (in_array("guibranco", $collaboratorsLogins)) {
+        commentToMerge(
+            $metadata,
+            $pullRequest,
+            $collaboratorsLogins,
+            $metadata["squashAndMergeComment"],
+            "dependabot[bot]"
+        );
+        commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["mergeComment"], "depfu[bot]");
+        resolveConflicts($metadata, $pullRequest, $pullRequestUpdated);
+    }
     setCheckRunCompleted($metadata, $checkRunId, "pull request");
 }
 
