@@ -38,7 +38,7 @@ function handleIssue($issue)
     }
 
     if (!in_array($issueUpdated->user->login, $collaboratorsLogins)) {
-        $body = array("labels" => ["awaiting-triage"]);
+        $body = array("labels" => ["🚦awaiting triage"]);
         doRequestGitHub($metadata["token"], $metadata["issueUrl"] . "/labels", $body, "POST");
     }
 }
