@@ -62,20 +62,20 @@ function processLabels($issue, $branch, $metadata)
             continue;
         }
 
-        if ($label->name == "WIP") {
+        if ($label->name == "WIP" || $label->name == "🛠 WIP") {
             $found = true;
             break;
         }
     }
 
     if (!$found && $branch->Event == "create") {
-        $body = array("labels" => ["WIP"]);
+        $body = array("labels" => ["🛠 WIP"]);
         doRequestGitHub($metadata["token"], $metadata["issueUrl"] . "/labels", $body, "POST");
         processAddAssignee($issue, $branch, $metadata);
     }
 
     if ($found && $branch->Event == "delete") {
-        doRequestGitHub($metadata["token"], $metadata["issueUrl"] . "/labels/WIP", null, "DELETE");
+        doRequestGitHub($metadata["token"], $metadata["issueUrl"] . "/labels/🛠 WIP", null, "DELETE");
         processRemoveAssignee($issue, $branch, $metadata);
     }
 
