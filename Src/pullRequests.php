@@ -153,8 +153,8 @@ function removeIssueWipLabel($metadata, $pullRequest)
     $issueResponse = doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber, null, "GET");
 
     $labels = array_column(json_decode($issueResponse->body)->labels, "name");
-    if (in_array("WIP", $labels)) {
-        $url = $metadata["issuesUrl"] . "/" . $issueNumber . "/labels/WIP";
+    if (in_array("🛠 WIP", $labels)) {
+        $url = $metadata["issuesUrl"] . "/" . $issueNumber . "/labels/🛠 WIP";
         doRequestGitHub($metadata["token"], $url, null, "DELETE");
     }
 }
@@ -201,12 +201,12 @@ function addLabels($metadata, $pullRequest)
 
     $labels = array_column(json_decode($issueResponse->body)->labels, "name");
 
-    $position = array_search("WIP", $labels);
+    $position = array_search("🛠 WIP", $labels);
 
     if ($position !== false) {
         unset($labels[$position]);
     } else {
-        $body = array("labels" => array("WIP"));
+        $body = array("labels" => array("🛠 WIP"));
         doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber . "/labels", $body, "POST");
     }
 
