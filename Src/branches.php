@@ -62,7 +62,7 @@ function processLabels($issue, $branch, $metadata)
             continue;
         }
 
-        if ($label->name == "WIP" || $label->name == "🛠 WIP") {
+        if ($label->name == "🛠 WIP") {
             $found = true;
             break;
         }
