@@ -43,7 +43,7 @@ function handleIssue($issue)
     }
 
     if ($issueUpdated->user->type === "Bot") {
-        $labels[] = "🤖 bot";        
+        $labels[] = "🤖 bot";
     }
 
     if (count($labels) > 0) {
