@@ -37,8 +37,17 @@ function handleIssue($issue)
         return;
     }
 
+    $labels = [];
     if (!in_array($issueUpdated->user->login, $collaboratorsLogins)) {
-        $body = array("labels" => ["🚦awaiting triage"]);
+        $labels[] = "🚦awaiting triage";
+    }
+
+    if ($issueUpdated->user->type === "Bot") {
+        $labels[] = "🤖 bot";
+    }
+
+    if (count($labels) > 0) {
+        $body = array("labels" => $labels);
         doRequestGitHub($metadata["token"], $metadata["issueUrl"] . "/labels", $body, "POST");
     }
 }
