@@ -2,7 +2,7 @@
 
 require_once "config/config.php";
 
-use GuiBranco\Pancake\GUIDv4;1
+use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
 
 define("ISSUES", "/issues/");
