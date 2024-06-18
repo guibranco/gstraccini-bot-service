@@ -2,7 +2,7 @@
 
 require_once "config/config.php";
 
-use GuiBranco\Pancake\GUIDv4;
+use GuiBranco\Pancake\GUIDv4;1
 use GuiBranco\Pancake\HealthChecks;
 
 define("ISSUES", "/issues/");
@@ -210,7 +210,7 @@ function addLabels($metadata, $pullRequest)
         doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber . "/labels", $body, "POST");
     }
 
-    $body = array("labels" => $labels);
+    $body = array("labels" => qrray_values($labels));
     doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $pullRequest->Number . "/labels", $body, "POST");
 }
 
