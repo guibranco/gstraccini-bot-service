@@ -210,7 +210,7 @@ function addLabels($metadata, $pullRequest)
         doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber . "/labels", $body, "POST");
     }
 
-    $body = array("labels" => $labels);
+    $body = array("labels" => array_values($labels));
     doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $pullRequest->Number . "/labels", $body, "POST");
 }
 
