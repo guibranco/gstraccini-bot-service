@@ -38,7 +38,7 @@ That's what I can do :neckbeard::
 - `@gstraccini fix csproj`: Updates the `.csproj` file with the `packages.config` version of [NuGet packages](https://nuget.org) (only for **.NET Framework** projects).
 - `@gstraccini prettier`: Formats the code using [Prettier](https://prettier.io).
 - `@gstraccini review`: Enable review for the target pull request. This is useful when the PR submitter wasn't on the watch list, the webhook was not captured, or some failed scenario occurred.
-- `@gstraccini track`: Tracks the specified pull request. Queue a build, raise a **[dependabot](https://github.com/dependabot) recreate** comment to resolve conflicts, and synchronize merge branches.
+- `@gstraccini track`: Tracks the specified pull request. Queue a build, raise a **[dependabot](https://github.com/dependabot), recreate** comment to resolve conflicts, and synchronize merge branches.
 - `@gstraccini update snapshot`: Update test snapshots (`npm test -- -u`) (only for **Node.js** projects).
 
 Multiple commands can be issued at the same time. Just respect each command pattern (with bot name prefix + command).
@@ -58,15 +58,15 @@ Currently, another (still private) repository works with this one to provide all
 
 ### Webhooks
 
-Once you install the [GStraccini-bot GitHub app](https://github.com/apps/gstraccini), GitHub will start sending webhooks to a registered endpoint for some events. Once these webhooks reach the handler, they are stored in SQL database tables to be processed later by this bot.
+Once you install the [GStraccini-bot GitHub app](https://github.com/apps/gstraccini), GitHub will send webhooks to a registered endpoint for some events. Once these webhooks reach the handler, they are stored in SQL database tables for later processing by this bot.
 
-If you are interested in hosting your own instance, let me know, and I will share the database schemas and scripts and the procedure for creating your own GitHub app to receive events on your infrastructure.
+If you are interested in hosting your instance, let me know, and I will share the database schemas and scripts and the procedure for creating your own GitHub app to receive events on your infrastructure.
 
 ---
 
 ### Cronjobs
 
-The bot handlers on this repository run on my own infrastructure with the following intervals:
+The bot handlers on this repository run on my infrastructure at the following intervals:
 
 - ![GStraccini Bot - Branches](https://healthchecks.io/b/2/82d0dec5-3ec1-41cc-8a35-ef1da42899e5.svg) - 🕐 every 1 minute
 - ![GStraccini Bot - Comments](https://healthchecks.io/b/2/31b38cb0-f8bd-42b1-b662-d5905b22cd94.svg) - 🕐 every 1 minute
