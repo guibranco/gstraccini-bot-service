@@ -104,7 +104,7 @@
   },
   {
     "command": "rerun failed checks",
-    "description": "Reruns the failed checks in the target pull request. Only available for GitHub Actions!",
+    "description": "This option reruns the failed checks in the target pull request. It is only available for GitHub Actions!",
     "requiresPullRequestOpen": true
   },
   {
