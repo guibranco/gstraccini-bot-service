@@ -238,6 +238,24 @@ function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
     }
 }
 
+   $collaboratorsResponse = doRequestGitHub($metadata["token"], $metadata["collaboratorsUrl"], null, "GET");
+   $collaboratorsLogins = array_column(json_decode($collaboratorsResponse->body), "login");
+   $labels = [];
+   if (!in_array($pullRequest->Sender, $collaboratorsLogins)) {
+       $labels[] = "\ud83d\udea6awaiting triage";
+   }
+   $userResponse = doRequestGitHub($metadata["token"], "users/" . $pullRequest->Sender, null, "GET");
+   $userDetails = json_decode($userResponse->body);
+   if ($userDetails->type === "Bot") {
+       $labels[] = "\ud83e\udd16 bot";
+   }
+   if (in_array($pullRequest->Sender, $config->pullRequests->autoMergeSubmitters)) {
+       $labels[] = "\u2611\ufe0f auto-merge";
+   }
+   if (count($labels) > 0) {
+       $body = array("labels" => $labels);
+       doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $pullRequest->Number . "/labels", $body, "POST");
+   }
 function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
 {
     if ($pullRequestUpdated->mergeable_state != "clean" && !$pullRequestUpdated->mergeable) {
