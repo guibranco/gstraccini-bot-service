@@ -111,6 +111,8 @@ function handlePullRequest($pullRequest)
         );
         commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["mergeComment"], "depfu[bot]");
         resolveConflicts($metadata, $pullRequest, $pullRequestUpdated);
+        $body = array("labels" => array("☑️ auto-merge"));
+        doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $pullRequest->Number . "/labels", $body, "POST");
     }
 
     setCheckRunCompleted($metadata, $checkRunId, "pull request");
