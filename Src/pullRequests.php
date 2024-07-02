@@ -82,8 +82,9 @@ function handlePullRequest($pullRequest)
     }
 
     $autoReview = in_array($pullRequest->Sender, $config->pullRequests->autoReviewSubmitters);
+    $iAmTheOwner = in_array($config->ownerHandler, $collaboratorsLogins)
 
-    if (!$invokerReviewed && $autoReview) {
+    if (!$invokerReviewed && $autoReview && $iAmTheOwner) {
         $bodyMsg = "Automatically approved by " . $metadata["botNameMarkdown"];
         $body = array("event" => "APPROVE", "body" => $bodyMsg);
         doRequestGitHub($metadata["userToken"], $metadata["reviewsUrl"], $body, "POST");
@@ -100,7 +101,7 @@ function handlePullRequest($pullRequest)
         }
     }
 
-    if (in_array("guibranco", $collaboratorsLogins)) {
+    if ($iAmTheOwner) {
         commentToMerge(
             $metadata,
             $pullRequest,
