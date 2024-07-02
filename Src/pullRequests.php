@@ -112,7 +112,7 @@ function handlePullRequest($pullRequest)
         commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["mergeComment"], "depfu[bot]");
         resolveConflicts($metadata, $pullRequest, $pullRequestUpdated);
     }
-    
+
     setCheckRunCompleted($metadata, $checkRunId, "pull request");
 }
 
