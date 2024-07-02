@@ -34,6 +34,7 @@ function handlePullRequest($pullRequest)
         "requestReviewUrl" => $repoPrefix . PULLS . $pullRequest->Number . "/requested_reviewers",
         "checkRunUrl" => $repoPrefix . "/check-runs",
         "issuesUrl" => $repoPrefix . "/issues",
+        "labelsUrl" => $repoPrefix . ISSUES . $pullRequest->Number . "/labels",
         "botNameMarkdown" => "[" . $config->botName . "\[bot\]](https://github.com/apps/" . $config->botName . ")",
         "dashboardUrl" => $botDashboardUrl . $prQueryString
     );
@@ -112,7 +113,7 @@ function handlePullRequest($pullRequest)
         commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["mergeComment"], "depfu[bot]");
         resolveConflicts($metadata, $pullRequest, $pullRequestUpdated);
         $body = array("labels" => array("☑️ auto-merge"));
-        doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $pullRequest->Number . "/labels", $body, "POST");
+        doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $body, "POST");
     }
 
     setCheckRunCompleted($metadata, $checkRunId, "pull request");
@@ -158,7 +159,7 @@ function removeIssueWipLabel($metadata, $pullRequest)
 
     $labels = array_column(json_decode($issueResponse->body)->labels, "name");
     if (in_array("🛠 WIP", $labels)) {
-        $url = $metadata["issuesUrl"] . "/" . $issueNumber . "/labels/🛠 WIP";
+        $url = $metadata["labelsUrl"] . "/🛠 WIP";
         doRequestGitHub($metadata["token"], $url, null, "DELETE");
     }
 }
@@ -211,11 +212,11 @@ function addLabels($metadata, $pullRequest)
         unset($labels[$position]);
     } else {
         $body = array("labels" => array("🛠 WIP"));
-        doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber . "/labels", $body, "POST");
+        doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $body, "POST");
     }
 
     $body = array("labels" => array_values($labels));
-    doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $pullRequest->Number . "/labels", $body, "POST");
+    doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $body, "POST");
 }
 
 function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
