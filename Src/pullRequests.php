@@ -82,7 +82,7 @@ function handlePullRequest($pullRequest)
     }
 
     $autoReview = in_array($pullRequest->Sender, $config->pullRequests->autoReviewSubmitters);
-    $iAmTheOwner = in_array($config->ownerHandler, $collaboratorsLogins)
+    $iAmTheOwner = in_array($config->ownerHandler, $collaboratorsLogins);
 
     if (!$invokerReviewed && $autoReview && $iAmTheOwner) {
         $bodyMsg = "Automatically approved by " . $metadata["botNameMarkdown"];
@@ -112,6 +112,7 @@ function handlePullRequest($pullRequest)
         commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["mergeComment"], "depfu[bot]");
         resolveConflicts($metadata, $pullRequest, $pullRequestUpdated);
     }
+    
     setCheckRunCompleted($metadata, $checkRunId, "pull request");
 }
 
