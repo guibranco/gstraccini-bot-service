@@ -2,6 +2,7 @@
   "botName": "gstraccini",
   "botRepository": "guibranco/gstraccini-bot",
   "botRepositoryInstallationId": "51682906",
+  "ownerHandler": "guibranco",
   "pullRequests": {
     "autoReviewSubmitters": [
       "codefactor-io[bot]",
