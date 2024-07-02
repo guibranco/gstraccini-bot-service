@@ -73,7 +73,7 @@ function upsertPullRequest($pullRequest)
         $sql = "UPDATE github_pull_requests SET Processed = 0, ProcessedDate = NULL WHERE Sequence = ?";
         $stmt = $mysqli->prepare($sql);
         $stmt->bind_param("i", $sequence);
-        $sequence = $row;
+        $sequence = $row["Sequence"];
 
         if (!$stmt->execute()) {
             die("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
