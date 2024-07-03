@@ -284,7 +284,7 @@ function execute_rerunFailedChecks($config, $metadata, $comment)
     $checkRuns = json_decode($checkRunsResponse->body);
     $failedCheckRuns = array_filter($checkRuns->check_runs, $filter);
     $total = count($failedCheckRuns);
-    
+
     $body = "Rerunning " . count($total) . " failed check" . ($total === 1 ? "" : "s") . " on the commit `" . $commitSha1 . "`! :repeat:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
     if($total === 0) {
@@ -310,7 +310,7 @@ function execute_rerunFailedWorkflows($config, $metadata, $comment)
     $failedWorkflowRunsResponse = doRequestGitHub($metadata["token"], $metadata["repoPrefix"] . "actions/runs?head_sha=" . $commitSha1 . "&status=failed", null, "GET");
     $failedWorkflowRuns = json_decode($failedWorkflowRunsResponse->body);
     $total = count($failedWorkflowRuns->workflow_runs);
-    
+
     $body = "Rerunning " . count($total) . " failed workflow" . ($total === 1 ? "" : "s") . " on the commit `" . $commitSha1 . "`! :repeat:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
     if($total === 0) {
