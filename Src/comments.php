@@ -308,7 +308,7 @@ function execute_rerunFailedWorkflows($config, $metadata, $comment)
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     $pullRequestUpdated = json_decode($pullRequestResponse->body);
     $commitSha1 = $pullRequestUpdated->head->sha;
-    $failedWorkflowRunsResponse = doRequestGitHub($metadata["token"], $metadata["repoPrefix"] . "/actions/runs?head_sha=" . $commitSha1 . "&status=failed", null, "GET");
+    $failedWorkflowRunsResponse = doRequestGitHub($metadata["token"], $metadata["repoPrefix"] . "/actions/runs?head_sha=" . $commitSha1 . "&status=failure", null, "GET");
     $failedWorkflowRuns = json_decode($failedWorkflowRunsResponse->body);
     $total = $failedWorkflowRuns->total_count;
 
