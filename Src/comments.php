@@ -319,9 +319,10 @@ function fetchFailedCheckRuns($config, $metadata, $comment, $type, $filter)
     $commitSha1 = $pullRequestUpdated->head->sha;    
     $checkRunsResponse = doRequestGitHub($metadata["token"], $metadata["repoPrefix"] . "/commits/" . $commitSha1 . "/check-runs?status=completed", null, "GET");
     $checkRuns = json_decode($checkRunsResponse->body);
-    $failedCheckRuns array_filter($checkRuns->check_runs, $filter);
+    $failedCheckRuns = array_filter($checkRuns->check_runs, $filter);
     $body = "Rerunning " . count($failedCheckRuns) . " failed " . $type . " on the commit `" . $commitSha1 . "`! :repeat:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    return $failedCheckRuns;
 }
 
 function execute_review($config, $metadata, $comment)
