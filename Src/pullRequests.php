@@ -111,7 +111,7 @@ function handlePullRequest($pullRequest)
             "dependabot[bot]"
         );
         commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["mergeComment"], "depfu[bot]");
-        resolveConflicts($metadata, $pullRequest, $pullRequestUpdated);        
+        resolveConflicts($metadata, $pullRequest, $pullRequestUpdated);
     }
 
     setCheckRunCompleted($metadata, $checkRunId, "pull request");
