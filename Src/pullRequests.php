@@ -111,9 +111,7 @@ function handlePullRequest($pullRequest)
             "dependabot[bot]"
         );
         commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["mergeComment"], "depfu[bot]");
-        resolveConflicts($metadata, $pullRequest, $pullRequestUpdated);
-        $body = array("labels" => array("☑️ auto-merge"));
-        doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $body, "POST");
+        resolveConflicts($metadata, $pullRequest, $pullRequestUpdated);        
     }
 
     setCheckRunCompleted($metadata, $checkRunId, "pull request");
@@ -143,6 +141,9 @@ function commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $commentT
     if (!$found) {
         $comment = array("body" => $commentToLookup);
         doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
+
+        $label = array("labels" => array("☑️ auto-merge"));
+        doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $label, "POST");
     }
 }
 
