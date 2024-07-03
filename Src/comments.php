@@ -289,7 +289,7 @@ function execute_rerunFailedChecks($config, $metadata, $comment)
     if(count($failedCheckRuns) === 0) {
         return;
     }
-    
+
     $checksToRerun = "Reruning the following checks: ";
     foreach ($failedCheckRuns as $failedCheckRun) {
         $url = $metadata["repoPrefix"] . "/check-runs/" . $failedCheckRun->id . "/rerequest";
@@ -318,14 +318,14 @@ function execute_rerunFailedWorkflows($config, $metadata, $comment)
     if(count($failedCheckRuns) === 0) {
         return;
     }
-    
+
     $actionsToRerun = "Reruning the following workflows: ";
     foreach ($failedCheckRuns as $failedCheckRun) {
         $url = $metadata["repoPrefix"] . "/actions/runs/" . $failedCheckRun->id . "/rerun-failed-jobs";
         doRequestGitHub($metadata["token"], $url, null, "POST");
         $actionsToRerun .= "- [" . $failedCheckRun->name . "](" . $failedCheckRun->details_url . ")\n";
     }
-    
+
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $actionsToRerun), "POST");
 }
 
