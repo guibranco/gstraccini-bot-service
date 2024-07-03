@@ -101,10 +101,15 @@
     "command": "prettier",
     "description": "Formats the code using [Prettier](https://prettier.io).",
     "requiresPullRequestOpen": true
-  },
+  },  
   {
     "command": "rerun failed checks",
-    "description": "This option reruns the failed checks in the target pull request. It is only available for GitHub Actions!",
+    "description": "This option reruns the failed checks in the target pull request.",
+    "requiresPullRequestOpen": true
+  },
+  {
+    "command": "rerun failed workflows",
+    "description": "This option reruns the failed workflows (action) in the target pull request. It is only available for GitHub Actions!",
     "requiresPullRequestOpen": true
   },
   {
