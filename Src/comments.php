@@ -294,8 +294,9 @@ function execute_rerunFailedChecks($config, $metadata, $comment)
     $checksToRerun = "Reruning the following checks: \n";
     foreach ($failedCheckRuns as $failedCheckRun) {
         $url = $metadata["repoPrefix"] . "/check-runs/" . $failedCheckRun->id . "/rerequest";
-        doRequestGitHub($metadata["token"], $url, null, "POST");
-        $checksToRerun .= "- [" . $failedCheckRun->name . "](" . $failedCheckRun->details_url . ") ([" . $failedCheckRun->app->name . " ](" . $failedCheckRun->app->html_url . " ))\n";
+        $response = doRequestGitHub($metadata["token"], $url, null, "POST");
+        $status = $response->statusCode === 201 ? "🔄" : "❌";
+        $checksToRerun .= "- [" . $failedCheckRun->name . "](" . $failedCheckRun->details_url . ") ([" . $failedCheckRun->app->name . " ](" . $failedCheckRun->app->html_url . " )) - " . $status . "\n";
     }
 
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $checksToRerun), "POST");
@@ -307,9 +308,9 @@ function execute_rerunFailedWorkflows($config, $metadata, $comment)
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     $pullRequestUpdated = json_decode($pullRequestResponse->body);
     $commitSha1 = $pullRequestUpdated->head->sha;
-    $failedWorkflowRunsResponse = doRequestGitHub($metadata["token"], $metadata["repoPrefix"] . "actions/runs?head_sha=" . $commitSha1 . "&status=failed", null, "GET");
+    $failedWorkflowRunsResponse = doRequestGitHub($metadata["token"], $metadata["repoPrefix"] . "/actions/runs?head_sha=" . $commitSha1 . "&status=failed", null, "GET");
     $failedWorkflowRuns = json_decode($failedWorkflowRunsResponse->body);
-    $total = count($failedWorkflowRuns->workflow_runs);
+    $total = $failedWorkflowRuns->total_count;
 
     $body = "Rerunning " . count($total) . " failed workflow" . ($total === 1 ? "" : "s") . " on the commit `" . $commitSha1 . "`! :repeat:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
@@ -320,8 +321,9 @@ function execute_rerunFailedWorkflows($config, $metadata, $comment)
     $actionsToRerun = "Reruning the following workflows: \n";
     foreach ($failedWorkflowRuns->workflow_runs as $failedWorkflowRun) {
         $url = $metadata["repoPrefix"] . "/actions/runs/" . $failedWorkflowRun->id . "/rerun-failed-jobs";
-        doRequestGitHub($metadata["token"], $url, null, "POST");
-        $actionsToRerun .= "- [" . $failedWorkflowRun->name . "](" . $failedWorkflowRun->html_url . ")\n";
+        $response = doRequestGitHub($metadata["token"], $url, null, "POST");
+        $status = $response->statusCode === 201 ? "🔄" : "❌";
+        $actionsToRerun .= "- [" . $failedWorkflowRun->name . "](" . $failedWorkflowRun->html_url . ") - " . $status . "\n";
     }
 
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $actionsToRerun), "POST");
