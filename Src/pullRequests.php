@@ -243,7 +243,7 @@ function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
     if ($pullRequestUpdated->mergeable_state == "clean" && $pullRequestUpdated->mergeable) {
         echo "Pull request " . $pullRequestUpdated->number . " of " .
             $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . " is mergeable - Sender: " .
-            $pullRequest->Sender . " (Is sender auto merge: " . ($isSenderAutomerge ? "yes" : "no") . ")\n";
+            $pullRequest->Sender . " (Is sender auto merge: " . ($isSenderAutoMerge ? "✅" : "⛔") . ")\n";
         //     $body = array("merge_method" => "squash", "commit_title" => $pullRequest->Title);
         //     requestGitHub($metadata["token"], $metadata["pullRequestUrl"] . "/merge", $body);
     }
