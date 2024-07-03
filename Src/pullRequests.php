@@ -222,9 +222,10 @@ function addLabels($metadata, $pullRequest)
 
 function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
 {
+    $isSenderAutoMerge = in_array($pullRequest->Sender, $config->pullRequests->autoMergeSubmitters);
     if (
         $pullRequestUpdated->auto_merge == null &&
-        in_array($pullRequest->Sender, $config->pullRequests->autoMergeSubmitters)
+        $isSenderAutoMerge
     ) {
         $body = array(
             "query" => "mutation MyMutation {
@@ -234,11 +235,15 @@ function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
         }"
         );
         doRequestGitHub($metadata["userToken"], "graphql", $body, "POST");
+
+        $label = array("labels" => array("☑️ auto-merge"));
+        doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $label, "POST");
     }
 
     if ($pullRequestUpdated->mergeable_state == "clean" && $pullRequestUpdated->mergeable) {
         echo "Pull request " . $pullRequestUpdated->number . " of " .
-            $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . " is mergeable - Sender: " . $pullRequest->Sender . "\n";
+            $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . " is mergeable - Sender: " .
+            $pullRequest->Sender . " (Is sender auto merge: " . ($isSenderAutoMerge ? "✅" : "⛔") . ")\n";
         //     $body = array("merge_method" => "squash", "commit_title" => $pullRequest->Title);
         //     requestGitHub($metadata["token"], $metadata["pullRequestUrl"] . "/merge", $body);
     }
