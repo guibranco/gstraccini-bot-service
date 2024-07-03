@@ -276,7 +276,7 @@ function execute_rerunFailedChecks($config, $metadata, $comment)
     $filter = function ($checkRun) {
         return $checkRun->conclusion === "failure" && $checkRun->status === "completed" && $checkRun->app->slug !== "github-actions";
     };
-    $failedCheckRuns = fetchFailedCheckRuns($config, $metadata, $comment, "checks", $filter);
+    $failedCheckRuns = fetchFailedCheckRuns($metadata, "checks", $filter);
     if(count($failedCheckRuns) === 0) {
         return;
     }
@@ -296,7 +296,7 @@ function execute_rerunFailedWorkflows($config, $metadata, $comment)
     $filter = function ($checkRun) {
         return $checkRun->conclusion === "failure" && $checkRun->status === "completed" && $checkRun->app->slug === "github-actions";
     };
-    $failedCheckRuns = fetchFailedCheckRuns($config, $metadata, $comment, "workflows", $filter);
+    $failedCheckRuns = fetchFailedCheckRuns($metadata, "workflows", $filter);
     if(count($failedCheckRuns) === 0) {
         return;
     }
@@ -311,7 +311,7 @@ function execute_rerunFailedWorkflows($config, $metadata, $comment)
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $actionsToRerun), "POST");
 }
 
-function fetchFailedCheckRuns($config, $metadata, $comment, $type, $filter)
+function fetchFailedCheckRuns($metadata, $type, $filter)
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
