@@ -276,7 +276,7 @@ function execute_rerunFailedChecks($config, $metadata, $comment)
     $filter = function ($checkRun) {
         return $checkRun->conclusion === "failure" && $checkRun->status === "completed" && $checkRun->app->slug !== "github-actions";
     };
-    $failedCheckRuns = fetchFailedCheckRuns($config, $metadata, $comment, "checks", $filter);    
+    $failedCheckRuns = fetchFailedCheckRuns($config, $metadata, $comment, "checks", $filter);
     if(count($failedCheckRuns) === 0) {
         return;
     }
@@ -316,7 +316,7 @@ function fetchFailedCheckRuns($config, $metadata, $comment, $type, $filter)
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     $pullRequestUpdated = json_decode($pullRequestResponse->body);
-    $commitSha1 = $pullRequestUpdated->head->sha;    
+    $commitSha1 = $pullRequestUpdated->head->sha;
     $checkRunsResponse = doRequestGitHub($metadata["token"], $metadata["repoPrefix"] . "/commits/" . $commitSha1 . "/check-runs?status=completed", null, "GET");
     $checkRuns = json_decode($checkRunsResponse->body);
     $failedCheckRuns = array_filter($checkRuns->check_runs, $filter);
