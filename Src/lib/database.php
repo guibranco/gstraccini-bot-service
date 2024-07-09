@@ -140,7 +140,7 @@ function upsertPullRequest($pullRequest)
     $mysqli->close();
 }
 
-function upsertPush($commit) 
+function upsertPush($commit)
 {
     $mysqli = connectToDatabase();
     $sql = "SELECT Sequence FROM github_pull_requests WHERE HeadCommitId = ?";
@@ -185,7 +185,7 @@ function upsertPush($commit)
             "InstallationId"
         );
 
-                $mysqli = openDatabaseConnection();
+        $mysqli = openDatabaseConnection();
         $sql = "INSERT INTO github_pushes (`" . implode("`,`", $fields) . "`) ";
         $sql .= "VALUES (unhex(replace(?, '-', '')), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $mysqli->prepare($sql);
@@ -208,14 +208,14 @@ function upsertPush($commit)
             $headCommitCommitterEmail,
             $installationId
         );
-    
+
         $deliveryId = GUIDv4::random();
         $hookId = $commit->HookId;
         $targetId = $commit->TargetId;
         $targetType = $commit->TargetType;
         $repositoryOwner = $commit->RepositoryOwner;
         $repositoryName = $commit->RepositoryName;
-        $ref = $commit->Ref;       
+        $ref = $commit->Ref;
         $headCommitId = $commit->HeadCommitId;
         $headCommitTreeId = $commit->HeadCommitTreeId;
         $headCommitMessage = $commit->HeadCommitMessage;
@@ -225,10 +225,10 @@ function upsertPush($commit)
         $headCommitCommitterName = $commit->HeadCommitCommitterName;
         $headCommitCommitterEmail = $commit->HeadCommitCommiterEmail;
         $installationId = $pullRequest->InstallationId;
-    
+
         if (!$stmt->execute()) {
             die("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
-        } 
+        }
     }
 
     $stmt->close();
