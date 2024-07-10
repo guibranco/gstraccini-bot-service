@@ -338,7 +338,7 @@ function execute_review($config, $metadata, $comment)
 
     $commitsResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"] . "/commits?per_page=100", null, "GET");
     $commits = json_decode($commitsResponse->body);
-    
+
     $pullRequest = new \stdClass();
     $pullRequest->DeliveryId = $comment->DeliveryIdText;
     $pullRequest->HookId = $comment->HookId;
@@ -376,7 +376,7 @@ function execute_review($config, $metadata, $comment)
 
         upsertCommit($commit);
     }
-    
+
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Review enabled! :eyes:"), "POST");
 }
 
