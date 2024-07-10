@@ -336,6 +336,9 @@ function execute_review($config, $metadata, $comment)
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     $pullRequestUpdated = json_decode($pullRequestResponse->body);
 
+    $commitsResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"] . "/commits?per_page=100", null, "GET");
+    $commits = json_decode($commitsResponse->body);
+    
     $pullRequest = new \stdClass();
     $pullRequest->DeliveryId = $comment->DeliveryIdText;
     $pullRequest->HookId = $comment->HookId;
@@ -352,6 +355,28 @@ function execute_review($config, $metadata, $comment)
     $pullRequest->InstallationId = $comment->InstallationId;
 
     upsertPullRequest($pullRequest);
+
+    foreach ($commits as $commitItem) {
+        $commit = new \stdClass();
+        $commit->HookId = $comment->HookId;
+        $commit->TargetId = $comment->TargetId;
+        $commit->TargetType = $comment->TargetType;
+        $commit->RepositoryOwner = $comment->RepositoryOwner;
+        $commit->RepositoryName = $comment->RepositoryName;
+        $commit->Ref = $pullRequestUpdated->head->ref;
+        $commit->HeadCommitId = $commitItem->sha;
+        $commit->HeadCommitTreeId $commitItem->commit->tree->sha;
+        $commit->HeadCommitMessage = $commitItem->commit->message;
+        $commit->HeadCommitTimestamp date("Y-m-d H:i:s", strtotime($commitItem->commit->author->date));
+        $commit->HeadCommitAuthorName = $commitItem->commit->author->name;
+        $commit->HeadCommitAuthorEmail = $commitItem->commit->author->email;
+        $commit->HeadCommitCommitterName = $commitItem->commit->committer->name;
+        $commit->HeadCommitCommiterEmail = $commitItem->commit->committer->email;
+        $commit->InstallationId = $comment->InstallationId;
+
+        upsertCommit($commit);
+    }
+    
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Review enabled! :eyes:"), "POST");
 }
 
