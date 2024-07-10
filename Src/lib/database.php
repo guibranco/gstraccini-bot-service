@@ -224,7 +224,7 @@ function upsertPush($commit)
         $headCommitAuthorEmail = $commit->HeadCommitAuthorEmail;
         $headCommitCommitterName = $commit->HeadCommitCommitterName;
         $headCommitCommitterEmail = $commit->HeadCommitCommiterEmail;
-        $installationId = $pullRequest->InstallationId;
+        $installationId = $commit->InstallationId;
 
         if (!$stmt->execute()) {
             die("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
