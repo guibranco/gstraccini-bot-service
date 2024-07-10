@@ -365,9 +365,9 @@ function execute_review($config, $metadata, $comment)
         $commit->RepositoryName = $comment->RepositoryName;
         $commit->Ref = $pullRequestUpdated->head->ref;
         $commit->HeadCommitId = $commitItem->sha;
-        $commit->HeadCommitTreeId $commitItem->commit->tree->sha;
+        $commit->HeadCommitTreeId = $commitItem->commit->tree->sha;
         $commit->HeadCommitMessage = $commitItem->commit->message;
-        $commit->HeadCommitTimestamp date("Y-m-d H:i:s", strtotime($commitItem->commit->author->date));
+        $commit->HeadCommitTimestamp = date("Y-m-d H:i:s", strtotime($commitItem->commit->author->date));
         $commit->HeadCommitAuthorName = $commitItem->commit->author->name;
         $commit->HeadCommitAuthorEmail = $commitItem->commit->author->email;
         $commit->HeadCommitCommitterName = $commitItem->commit->committer->name;
