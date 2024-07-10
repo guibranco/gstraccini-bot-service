@@ -377,7 +377,7 @@ function execute_review($config, $metadata, $comment)
 
         $commitsList .= "SHA: `{$commitItem->sha}`\n";
 
-        upsertCommit($commit);
+        upsertPush($commit);
     }
 
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Reviewing this pull request.\n\n Commits included:\n {$commitsList}! :eyes:"), "POST");
