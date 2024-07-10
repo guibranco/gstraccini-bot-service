@@ -380,7 +380,7 @@ function execute_review($config, $metadata, $comment)
         upsertCommit($commit);
     }
 
-    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Reviewing this pull request.\n\n Commits included:\n {$commits}! :eyes:"), "POST");
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Reviewing this pull request.\n\n Commits included:\n {$commitsList}! :eyes:"), "POST");
 }
 
 function execute_track($config, $metadata, $comment)
