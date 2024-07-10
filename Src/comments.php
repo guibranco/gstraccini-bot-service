@@ -356,6 +356,7 @@ function execute_review($config, $metadata, $comment)
 
     upsertPullRequest($pullRequest);
 
+    $commitsList = "";
     foreach ($commits as $commitItem) {
         $commit = new \stdClass();
         $commit->HookId = $comment->HookId;
@@ -374,10 +375,12 @@ function execute_review($config, $metadata, $comment)
         $commit->HeadCommitCommiterEmail = $commitItem->commit->committer->email;
         $commit->InstallationId = $comment->InstallationId;
 
+        $commitsList .= "SHA: `{$commitItem->sha}`\n";
+
         upsertCommit($commit);
     }
 
-    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Review enabled! :eyes:"), "POST");
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Reviewing this pull request.\n\n Commits included:\n {$commits}! :eyes:"), "POST");
 }
 
 function execute_track($config, $metadata, $comment)
