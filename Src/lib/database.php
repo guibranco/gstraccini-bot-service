@@ -1,5 +1,7 @@
 <?php
 
+use GuiBranco\Pancake\GUIDv4;
+
 function connectToDatabase()
 {
     global $mySqlHost, $mySqlUser, $mySqlPassword, $mySqlDatabase;
@@ -128,6 +130,101 @@ function upsertPullRequest($pullRequest)
         $title = $pullRequest->Title;
         $ref = $pullRequest->Ref;
         $installationId = $pullRequest->InstallationId;
+
+        if (!$stmt->execute()) {
+            die("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+        }
+    }
+
+    $stmt->close();
+    $mysqli->close();
+}
+
+function upsertPush($commit)
+{
+    $mysqli = connectToDatabase();
+    $sql = "SELECT Sequence FROM github_pull_requests WHERE HeadCommitId = ?";
+    $stmt = $mysqli->prepare($sql);
+    $stmt->bind_param("s", $headCommitId);
+
+    $headCommitId = $commit->HeadCommitId;
+
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+
+    $stmt->close();
+
+    if ($row) {
+        $sql = "UPDATE github_pushes SET Processed = 0, ProcessedDate = NULL WHERE Sequence = ?";
+        $stmt = $mysqli->prepare($sql);
+        $stmt->bind_param("i", $sequence);
+        $sequence = $row["Sequence"];
+
+        if (!$stmt->execute()) {
+            die("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+        }
+
+    } else {
+        $fields = array(
+            "DeliveryId",
+            "HookId",
+            "TargetId",
+            "TargetType",
+            "RepositoryOwner",
+            "RepositoryName",
+            "Ref",
+            "HeadCommitId",
+            "HeadCommitTreeId",
+            "HeadCommitMessage",
+            "HeadCommitTimestamp",
+            "HeadCommitAuthorName",
+            "HeadCommitAuthorEmail",
+            "HeadCommitCommitterName",
+            "HeadCommitCommitterEmail",
+            "InstallationId"
+        );
+
+        $mysqli = openDatabaseConnection();
+        $sql = "INSERT INTO github_pushes (`" . implode("`,`", $fields) . "`) ";
+        $sql .= "VALUES (unhex(replace(?, '-', '')), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $stmt = $mysqli->prepare($sql);
+        $stmt->bind_param(
+            'siissssssssssssi',
+            $deliveryId,
+            $hookId,
+            $targetId,
+            $targetType,
+            $repositoryOwner,
+            $repositoryName,
+            $ref,
+            $headCommitId,
+            $headCommitTreeId,
+            $headCommitMessage,
+            $headCommitTimestamp,
+            $headCommitAuthorName,
+            $headCommitAuthorEmail,
+            $headCommitCommitterName,
+            $headCommitCommitterEmail,
+            $installationId
+        );
+
+        $deliveryId = GUIDv4::random();
+        $hookId = $commit->HookId;
+        $targetId = $commit->TargetId;
+        $targetType = $commit->TargetType;
+        $repositoryOwner = $commit->RepositoryOwner;
+        $repositoryName = $commit->RepositoryName;
+        $ref = $commit->Ref;
+        $headCommitId = $commit->HeadCommitId;
+        $headCommitTreeId = $commit->HeadCommitTreeId;
+        $headCommitMessage = $commit->HeadCommitMessage;
+        $headCommitTimestamp = $commit->HeadCommitTimestamp;
+        $headCommitAuthorName = $commit->HeadCommitAuthorName;
+        $headCommitAuthorEmail = $commit->HeadCommitAuthorEmail;
+        $headCommitCommitterName = $commit->HeadCommitCommitterName;
+        $headCommitCommitterEmail = $commit->HeadCommitCommiterEmail;
+        $installationId = $commit->InstallationId;
 
         if (!$stmt->execute()) {
             die("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
