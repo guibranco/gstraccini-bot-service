@@ -106,7 +106,7 @@ function handlePullRequest($pullRequest)
             doRequestGitHub($metadata["token"], $metadata["requestReviewUrl"], $body, "POST");
         }
 
-        if (!$iAmTheOwner){
+        if (!in_array($pullRequest->Sender, $collaboratorsLogins)){
             $labelsToAdd[] = "🚦awaiting triage";
         }
     }
