@@ -55,6 +55,11 @@ function handlePullRequest($pullRequest)
     addLabels($metadata, $pullRequest);
     updateBranch($metadata, $pullRequestUpdated);
 
+    $labelsToAdd = [];
+    if ($pullRequestUpdated->user->type == "bot") {
+         $labelsToAdd[] = "🤖 bot";
+    }
+
     $collaboratorsResponse = doRequestGitHub($metadata["token"], $metadata["collaboratorsUrl"], null, "GET");
     $collaboratorsLogins = array_column(json_decode($collaboratorsResponse->body), "login");
 
@@ -100,22 +105,29 @@ function handlePullRequest($pullRequest)
             $body = array("reviewers" => $reviewers);
             doRequestGitHub($metadata["token"], $metadata["requestReviewUrl"], $body, "POST");
         }
+
+        $labelsToAdd[] = "🚦awaiting triage";
     }
 
-    if ($iAmTheOwner) {
-        commentToMerge(
-            $metadata,
-            $pullRequest,
-            $collaboratorsLogins,
-            $metadata["squashAndMergeComment"],
-            "dependabot[bot]"
-        );
-        commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["mergeComment"], "depfu[bot]");
+    if (count($labelsToAdd) > 0) {
+        $body = array("labels" => $labelsToAdd);
+        doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $body, "POST");
+    }
+
+    if ($iAmTheOwner) {        
         resolveConflicts($metadata, $pullRequest, $pullRequestUpdated);
+        handleCOmmentToMerge($metadata, $pullRequest, $collaboratorsLogins);
     }
 
     setCheckRunCompleted($metadata, $checkRunId, "pull request");
 }
+
+function handleCommentToMerge($metadata, $pullRequest, $collaboratorsLogins)
+{
+    commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["squashAndMergeComment"], "dependabot[bot]");
+    commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["mergeComment"], "depfu[bot]");
+}
+
 
 function commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $commentToLookup, $senderToLookup)
 {
