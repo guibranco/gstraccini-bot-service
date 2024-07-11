@@ -185,7 +185,6 @@ function upsertPush($commit)
             "InstallationId"
         );
 
-        $mysqli = openDatabaseConnection();
         $sql = "INSERT INTO github_pushes (`" . implode("`,`", $fields) . "`) ";
         $sql .= "VALUES (unhex(replace(?, '-', '')), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $mysqli->prepare($sql);
