@@ -57,7 +57,7 @@ function handlePullRequest($pullRequest)
 
     $labelsToAdd = [];
     if ($pullRequestUpdated->user->type == "bot") {
-         $labelsToAdd[] = "🤖 bot";
+        $labelsToAdd[] = "🤖 bot";
     }
 
     $collaboratorsResponse = doRequestGitHub($metadata["token"], $metadata["collaboratorsUrl"], null, "GET");
@@ -114,7 +114,7 @@ function handlePullRequest($pullRequest)
         doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $body, "POST");
     }
 
-    if ($iAmTheOwner) {        
+    if ($iAmTheOwner) {
         resolveConflicts($metadata, $pullRequest, $pullRequestUpdated);
         handleCOmmentToMerge($metadata, $pullRequest, $collaboratorsLogins);
     }
