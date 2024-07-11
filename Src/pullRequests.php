@@ -116,7 +116,7 @@ function handlePullRequest($pullRequest)
 
     if ($iAmTheOwner) {
         resolveConflicts($metadata, $pullRequest, $pullRequestUpdated);
-        handleCOmmentToMerge($metadata, $pullRequest, $collaboratorsLogins);
+        handleCommentToMerge($metadata, $pullRequest, $collaboratorsLogins);
     }
 
     setCheckRunCompleted($metadata, $checkRunId, "pull request");
