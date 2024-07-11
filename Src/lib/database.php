@@ -143,7 +143,7 @@ function upsertPullRequest($pullRequest)
 function upsertPush($commit)
 {
     $mysqli = connectToDatabase();
-    $sql = "SELECT Sequence FROM github_pull_requests WHERE HeadCommitId = ?";
+    $sql = "SELECT Sequence FROM github_pull_pushes WHERE HeadCommitId = ?";
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param("s", $headCommitId);
 
