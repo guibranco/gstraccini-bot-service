@@ -28,7 +28,7 @@ function handlePullRequest($pullRequest)
         "mergeComment" => "@depfu merge",
         "commentsUrl" => $repoPrefix . ISSUES . $pullRequest->Number . "/comments",
         "pullRequestUrl" => $repoPrefix . PULLS . $pullRequest->Number,
-        "pullRequestsUrl" => $repoPrefix . PULL,
+        "pullRequestsUrl" => $repoPrefix . "/pulls",
         "reviewsUrl" => $repoPrefix . PULLS . $pullRequest->Number . "/reviews",
         "assigneesUrl" => $repoPrefix . ISSUES . $pullRequest->Number . "/assignees",
         "collaboratorsUrl" => $repoPrefix . "/collaborators",
