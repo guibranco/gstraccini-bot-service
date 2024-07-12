@@ -126,7 +126,7 @@ function handlePullRequest($pullRequest)
     setCheckRunCompleted($metadata, $checkRunId, "pull request");
 }
 
-function checkForOtherPullRequests($metadata, $pullRequest) 
+function checkForOtherPullRequests($metadata, $pullRequest)
 {
     echo "Checking for other pull requests in repository: " . $metadata["pullRequestsUrl"] . "\n\n";
     $pullRequestsOpenResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestsUrl"] . "?state=open&sort=created", null, "GET");
