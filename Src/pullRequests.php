@@ -56,7 +56,7 @@ function handlePullRequest($pullRequest)
     updateBranch($metadata, $pullRequestUpdated);
 
     $labelsToAdd = [];
-    if ($pullRequestUpdated->user->type == "bot") {
+    if (strtolower($pullRequestUpdated->user->type) === "bot") {
         $labelsToAdd[] = "🤖 bot";
     }
 
