@@ -28,6 +28,7 @@ function handlePullRequest($pullRequest)
         "mergeComment" => "@depfu merge",
         "commentsUrl" => $repoPrefix . ISSUES . $pullRequest->Number . "/comments",
         "pullRequestUrl" => $repoPrefix . PULLS . $pullRequest->Number,
+        "pullRequestsUrl" => $repoPrefix . "/pulls",
         "reviewsUrl" => $repoPrefix . PULLS . $pullRequest->Number . "/reviews",
         "assigneesUrl" => $repoPrefix . ISSUES . $pullRequest->Number . "/assignees",
         "collaboratorsUrl" => $repoPrefix . "/collaborators",
@@ -44,6 +45,7 @@ function handlePullRequest($pullRequest)
 
     if ($pullRequestUpdated->state == "closed") {
         removeIssueWipLabel($metadata, $pullRequest);
+        checkForOtherPullRequests($metadata, $pullRequest);
     }
 
     if ($pullRequestUpdated->state != "open") {
@@ -122,6 +124,17 @@ function handlePullRequest($pullRequest)
     }
 
     setCheckRunCompleted($metadata, $checkRunId, "pull request");
+}
+
+function checkForOtherPullRequests($metadata, $pullRequest)
+{
+    echo "Checking for other pull requests in repository: " . $metadata["pullRequestsUrl"] . "\n\n";
+    $pullRequestsOpenResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestsUrl"] . "?state=open&sort=created", null, "GET");
+    $pullRequestsOpen = json_decode($pullRequestsOpenResponse->body);
+
+    foreach($pullRequestsOpen as $pullRequestPending) {
+        echo $pullRequestPending->number . " " . $pullRequestPending->auto_merge . "\n";
+    }
 }
 
 function handleCommentToMerge($metadata, $pullRequest, $collaboratorsLogins)
