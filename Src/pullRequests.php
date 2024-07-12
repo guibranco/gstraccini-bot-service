@@ -133,7 +133,7 @@ function checkForOtherPullRequests($metadata, $pullRequest)
     $pullRequestsOpen = json_decode($pullRequestsOpenResponse->body);
 
     foreach($pullRequestsOpen as $pullRequestPending) {
-        echo $pullRequestPending->number . " " . $pullRequestPending->auto_merge . "\n";
+        echo $pullRequestPending->number . " " . json_encode($pullRequestPending->auto_merge) . "\n";
     }
 }
 
