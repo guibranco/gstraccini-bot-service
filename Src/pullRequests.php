@@ -151,7 +151,7 @@ function checkForOtherPullRequests($metadata, $pullRequest)
             upsertPullRequest($prUpsert);
             echo $pullRequestPending->number . " - Upsert!\n";
             break;
-        }        
+        }
     }
 }
 
