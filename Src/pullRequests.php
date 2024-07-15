@@ -13,7 +13,7 @@ function handlePullRequest($pullRequest)
     global $gitHubUserToken;
     $config = loadConfig();
 
-    $botDashboardUrl = "https://bot.straccini.com/dashboard";
+    $botDashboardUrl = "https://gstraccini.bot/dashboard";
     $prQueryString =
         "?owner=" . $pullRequest->RepositoryOwner .
         "&repo=" . $pullRequest->RepositoryName .
@@ -128,12 +128,11 @@ function handlePullRequest($pullRequest)
 
 function checkForOtherPullRequests($metadata, $pullRequest)
 {
-    echo "Checking for other pull requests in repository: " . $metadata["pullRequestsUrl"] . "\n\n";
     $pullRequestsOpenResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestsUrl"] . "?state=open&sort=created", null, "GET");
     $pullRequestsOpen = json_decode($pullRequestsOpenResponse->body);
 
-    foreach($pullRequestsOpen as $pullRequestPending) {
-        if($pullRequestPending->auto_merge !== null) {
+    foreach ($pullRequestsOpen as $pullRequestPending) {
+        if ($pullRequestPending->auto_merge !== null) {
             $prUpsert = new \stdClass();
             $prUpsert->DeliveryId = $pullRequest->DeliveryIdText;
             $prUpsert->HookId = $pullRequest->HookId;
@@ -149,7 +148,7 @@ function checkForOtherPullRequests($metadata, $pullRequest)
             $prUpsert->Ref = $pullRequestPending->head->ref;
             $prUpsert->InstallationId = $pullRequest->InstallationId;
             upsertPullRequest($prUpsert);
-            echo $pullRequestPending->number . " - Upsert!\n";
+            echo $pullRequestPending->html_url . " triggering review - Sender: " . $pullRequest->Sender . " ✅\n";
             break;
         }
     }
@@ -286,11 +285,9 @@ function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
     }
 
     if ($pullRequestUpdated->mergeable_state == "clean" && $pullRequestUpdated->mergeable) {
-        echo "Pull request " . $pullRequestUpdated->number . " of " .
-            $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . " is mergeable - Sender: " .
-            $pullRequest->Sender . " (Is sender auto merge: " . ($isSenderAutoMerge ? "✅" : "⛔") . ")\n";
-        //     $body = array("merge_method" => "squash", "commit_title" => $pullRequest->Title);
-        //     requestGitHub($metadata["token"], $metadata["pullRequestUrl"] . "/merge", $body);
+        echo $pullRequestUpdated->html_url . " is mergeable - Sender auto merge: " . ($isSenderAutoMerge ? "✅" : "⛔") . " - Sender: " . $pullRequest->Sender . " ✅\n";
+        //$body = array("merge_method" => "squash", "commit_title" => $pullRequest->Title);
+        //requestGitHub($metadata["token"], $metadata["pullRequestUrl"] . "/merge", $body);
     }
 }
 
@@ -298,10 +295,10 @@ function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
 {
     if ($pullRequestUpdated->mergeable_state != "clean" && !$pullRequestUpdated->mergeable) {
         if ($pullRequest->Sender != "dependabot[bot]") {
-            echo "Pull request " . $pullRequestUpdated->number . " of " .
-                $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName . " is NOT mergeable - Sender: " . $pullRequest->Sender . "\n";
+            echo $pullRequestUpdated->html_url . " is NOT mergeable - State: " . $pullRequestUpdated->mergeable_state . " - Sender: " . $pullRequest->Sender . " ⛔\n";
             return;
         }
+        echo $pullRequestUpdated->html_url . " dependabot recreate - State: " . $pullRequestUpdated->mergeable_state . " - Sender: " . $pullRequest->Sender . " ⚠️\n";
         $comment = array("body" => "@dependabot recreate");
         doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
     }
