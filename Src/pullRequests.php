@@ -133,7 +133,25 @@ function checkForOtherPullRequests($metadata, $pullRequest)
     $pullRequestsOpen = json_decode($pullRequestsOpenResponse->body);
 
     foreach($pullRequestsOpen as $pullRequestPending) {
-        echo $pullRequestPending->number . " - Auto merge: " . ($pullRequestPending->auto_merge !== null ? "true" : "false") . "\n";
+        if($pullRequestPending->auto_merge !== null) {
+            $prUpsert = new \stdClass();
+            $prUpsert->DeliveryId = $pullRequest->DeliveryIdText;
+            $prUpsert->HookId = $pullRequest->HookId;
+            $prUpsert->TargetId = $pullRequest->TargetId;
+            $prUpsert->TargetType = $pullRequest->TargetType;
+            $prUpsert->RepositoryOwner = $pullRequest->RepositoryOwner;
+            $prUpsert->RepositoryName = $pullRequest->RepositoryName;
+            $prUpsert->Id = $pullRequestPending->id;
+            $prUpsert->Sender = $pullRequestPending->user->login;
+            $prUpsert->Number = $pullRequestPending->number;
+            $prUpsert->NodeId = $pullRequestPending->node_id;
+            $prUpsert->Title = $pullRequestPending->title;
+            $prUpsert->Ref = $pullRequestPending->head->ref;
+            $prUpsert->InstallationId = $pullRequest->InstallationId;
+            upsertPullRequest($prUpsert);
+            echo $pullRequestPending->number . " - Upsert!\n";
+            break;
+        }        
     }
 }
 
