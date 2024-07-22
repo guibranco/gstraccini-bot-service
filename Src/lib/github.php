@@ -97,6 +97,12 @@ function generateInstallationToken($installationId, $repositoryName, $permission
     return $json->token;
 }
 
+function registerNewInstallation($installationId, $repositoryName, $permissions = null)
+{
+    $githubToken = generateInstallationToken($installationId, $repositoryName, $permissions);
+    $refreshToken = 'dummy_refresh_token'; // Placeholder for actual refresh token generation
+    saveInstallationData($installationId, $githubToken, $refreshToken);
+}
 function setCheckRunInProgress($metadata, $commitId, $type)
 {
     $checkRunBody = array(
