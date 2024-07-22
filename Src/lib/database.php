@@ -149,6 +149,15 @@ function upsertPush($commit)
 
     $headCommitId = $commit->HeadCommitId;
 
+function saveInstallationData($installationId, $githubToken, $refreshToken, $appveyorToken = null, $sonarcloudToken = null, $codeclimateToken = null, $snykToken = null)
+{
+    $mysqli = connectToDatabase();
+    $stmt = $mysqli->prepare("INSERT INTO installations (installation_id, github_token, refresh_token, appveyor_token, sonarcloud_token, codeclimate_token, snyk_token) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("issssss", $installationId, $githubToken, $refreshToken, $appveyorToken, $sonarcloudToken, $codeclimateToken, $snykToken);
+    $stmt->execute();
+    $stmt->close();
+    $mysqli->close();
+}
     $stmt->execute();
     $result = $stmt->get_result();
     $row = $result->fetch_assoc();
