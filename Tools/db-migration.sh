@@ -81,6 +81,7 @@ echo "START TRANSACTION;" >$WORKING_SQL_FILE
 
 for FILE in *.sql; do
     echo "Checking file $FILE"
+        FILES=\"$FILES- 005.create_installations_table.sql\\n\"
     sha256=$(sha256sum "$FILE" | cut -d " " -f 1)
     EXISTS=0
 
