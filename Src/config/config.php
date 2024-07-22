@@ -34,6 +34,8 @@ if (file_exists($mySqlSecretsFile)) {
     require_once $mySqlSecretsFile;
 }
 
+$encryptionKey = 'your_encryption_key'; // Placeholder for actual encryption key
+define("ENCRYPTION_KEY", $encryptionKey);
 $rabbitMqSecretsFile = "secrets/rabbitMq.secrets.php";
 if (file_exists($rabbitMqSecretsFile)) {
     require_once $rabbitMqSecretsFile;
