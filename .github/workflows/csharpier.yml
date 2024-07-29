@@ -61,7 +61,7 @@ jobs:
           echo "$(dotnet csharpier . --check 2>&1 > /dev/null)" >> csharpier.log
 
       - name: Read csharpier.log
-        uses: guibranco/github-file-reader-action-v2@v2.2.612
+        uses: guibranco/github-file-reader-action-v2@v2.2.620
         id: log
         with:
          path: csharpier.log
