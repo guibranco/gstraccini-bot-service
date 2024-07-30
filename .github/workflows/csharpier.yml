@@ -59,14 +59,14 @@ jobs:
           fi
 
       - name: Install CSharpier if missing
-        if: ${{ env.MANIFEST_EXISTS === "false" }}
+        if: ${{ env.MANIFEST_EXISTS == "false" }}
         run: |
           dotnet new tool-manifest
           dotnet tool install csharpier
           dotnet tool update csharpier
 
       - name: Dotnet restore
-        if: ${{ env.MANIFEST_EXISTS === "true" }}
+        if: ${{ env.MANIFEST_EXISTS == "true" }}
         run: dotnet tool restore
 
       - name: CSharpier format check
