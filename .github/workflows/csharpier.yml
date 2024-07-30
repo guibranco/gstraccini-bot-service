@@ -51,7 +51,22 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
 
+      - name: Check if manifest file exists
+        run: |
+          echo "MANIFEST_EXISTS=false" >> $GITHUB_ENV
+          if test -f ".config/dotnet-tools.json"; then
+            echo "MANIFEST_EXISTS=true" >> $GITHUB_ENV
+          fi
+
+      - name: Install CSharpier if missing
+        if: ${{ env.MANIFEST_EXISTS === "false" }}
+        run: |
+          dotnet new tool-manifest
+          dotnet tool install csharpier
+          dotnet tool update csharpier
+
       - name: Dotnet restore
+        if: ${{ env.MANIFEST_EXISTS === "true" }}
         run: dotnet tool restore
 
       - name: CSharpier format check
@@ -96,7 +111,7 @@ jobs:
           refresh-message-position: true
           allow-repeats: true
           message: |
-           :warning: [CSharpier](${{ env.GHA_URL }}) executed! No changes are needed.
+           :warning: [CSharpier](${{ env.GHA_URL }}) executed! There's no need for any changes.
 
       - name: CSharpier format
         run: dotnet csharpier .
