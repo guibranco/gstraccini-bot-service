@@ -34,7 +34,8 @@ function handleComment($comment)
         )
     );
 
-    if ($comment->CommentSender === "github-actions[bot]") {
+    if ($comment->CommentSender === "github-actions[bot]" ||
+        $comment->CommentSender === "AppVeyorBot") {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
         return;
     }
