@@ -107,14 +107,19 @@ function execute_help($config, $metadata, $comment)
                     $parameter->description . "\r\n";
             }
         }
-        $helpComment .= "- `@" . $config->botName . " " . $command->command . $parameters . "`: ";
+        $helpComment .= "-[ ] `@" . $config->botName . " " . $command->command . $parameters . "`: ";
         $helpComment .= $command->description . $inDevelopment . "\r\n";
         $helpComment .= $parametersHelp;
     }
-    $helpComment .= "\r\n\r\nMultiple commands can be issued at the same time. " .
-        "Just respect each command pattern (with bot name prefix + command).\r\n\r\n" .
-        "> **Warning**\r\n> \r\n" .
-        "> If you aren't allowed to use this bot, a reaction with a thumbs down will be added to your comment.\r\n";
+    $helpComment .= "\n\nMultiple commands can be issued at the same time. " .
+        "Just respect each command pattern (with bot name prefix + command).\n\n" .
+        "> [!Warning]\n" .
+        "> \n" .
+        "> If you aren't allowed to use this bot, a reaction with a thumbs down will be added to your comment.\r\n" .
+        "\n\n" .
+        "> [!Important]\n" .
+        "> \n" .
+        "> You can tick (✅) one item from the above list, and it will be triggered! (In beta).\n";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $helpComment), "POST");
 }
 
