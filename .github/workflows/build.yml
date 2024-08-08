@@ -42,10 +42,7 @@ jobs:
           echo "\$mySqlDatabase = \"test\";" >> mySql.secrets.php
 
       - name: Docker compose up
-        run: docker-compose up -d
-
-      - name: Wait for database to start
-        run: sleep 10
+        run: docker compose up -d && sleep 10
 
       - name: Check database
         env:
