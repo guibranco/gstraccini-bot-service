@@ -284,7 +284,7 @@ function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
         doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $label, "POST");
     }
 
-    if ($pullRequestUpdated->mergeable_state == "clean" && $pullRequestUpdated->mergeable) {
+    if ($pullRequestUpdated->mergeable_state === "clean" && $pullRequestUpdated->mergeable) {
         echo $pullRequestUpdated->html_url . " is mergeable - Sender auto merge: " . ($isSenderAutoMerge ? "✅" : "⛔") . " - Sender: " . $pullRequest->Sender . " ✅\n";
         //$body = array("merge_method" => "squash", "commit_title" => $pullRequest->Title);
         //requestGitHub($metadata["token"], $metadata["pullRequestUrl"] . "/merge", $body);
@@ -294,7 +294,7 @@ function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
 function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
 {
     if ($pullRequestUpdated->mergeable_state != "clean" && !$pullRequestUpdated->mergeable) {
-        if ($pullRequest->Sender != "dependabot[bot]") {
+        if ($pullRequest->Sender !== "dependabot[bot]") {
             echo $pullRequestUpdated->html_url . " is NOT mergeable - State: " . $pullRequestUpdated->mergeable_state . " - Sender: " . $pullRequest->Sender . " ⛔\n";
             return;
         }
@@ -306,7 +306,9 @@ function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
 
 function updateBranch($metadata, $pullRequestUpdated)
 {
-    if ($pullRequestUpdated->mergeable_state == "behind") {
+    if ($pullRequestUpdated->mergeable_state === "behind" ||
+        $pullRequestUpdated->mergeable_state === "unknown ") {
+        echo $pullRequestUpdated->html_url . " is in state: " . $pullRequestUpdated->mergeable_state." - Sender: " . $pullRequestUpdated->user->login . " ⚠️\n";
         $url = $metadata["pullRequestUrl"] . "/update-branch";
         $body = array("expected_head_sha" => $pullRequestUpdated->head->sha);
         doRequestGitHub($metadata["token"], $url, $body, "PUT");
