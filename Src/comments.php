@@ -107,7 +107,7 @@ function execute_help($config, $metadata, $comment)
                     $parameter->description . "\r\n";
             }
         }
-        $helpComment .= "-[ ] `@" . $config->botName . " " . $command->command . $parameters . "`: ";
+        $helpComment .= "- [ ] `@" . $config->botName . " " . $command->command . $parameters . "`: ";
         $helpComment .= $command->description . $inDevelopment . "\r\n";
         $helpComment .= $parametersHelp;
     }
