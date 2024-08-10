@@ -308,7 +308,7 @@ function updateBranch($metadata, $pullRequestUpdated)
 {
     if ($pullRequestUpdated->mergeable_state === "behind" ||
         $pullRequestUpdated->mergeable_state === "unknown ") {
-        echo $pullRequestUpdated->html_url . " is in state: " . $pullRequestUpdated->mergeable_state." - Sender: " . $pullRequestUpdated->user->login . " ⚠️\n";
+        echo $pullRequestUpdated->html_url . " updating branch - State: " . $pullRequestUpdated->mergeable_state." - Sender: " . $pullRequestUpdated->user->login . " ⚠️\n";
         $url = $metadata["pullRequestUrl"] . "/update-branch";
         $body = array("expected_head_sha" => $pullRequestUpdated->head->sha);
         doRequestGitHub($metadata["token"], $url, $body, "PUT");
