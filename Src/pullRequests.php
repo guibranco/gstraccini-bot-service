@@ -286,6 +286,8 @@ function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
 
     if ($pullRequestUpdated->mergeable_state === "clean" && $pullRequestUpdated->mergeable) {
         echo $pullRequestUpdated->html_url . " is mergeable - Sender auto merge: " . ($isSenderAutoMerge ? "✅" : "⛔") . " - Sender: " . $pullRequest->Sender . " ✅\n";
+        $comment = array("body" => "This pull request is ready ✅ for merge/squash.");
+        doRequestGitHub($metadata["token"], $metadata["commentsUrl"], $comment, "POST");
         //$body = array("merge_method" => "squash", "commit_title" => $pullRequest->Title);
         //requestGitHub($metadata["token"], $metadata["pullRequestUrl"] . "/merge", $body);
     }
