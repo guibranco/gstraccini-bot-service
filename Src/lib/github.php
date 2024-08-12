@@ -97,7 +97,7 @@ function generateInstallationToken($installationId, $repositoryName, $permission
     if ($response->statusCode >= 300) {
         die("Invalid GitHub response.\n".json_encode($response));
     }
-    
+
     $json = json_decode($response->body);
     return $json->token;
 }
