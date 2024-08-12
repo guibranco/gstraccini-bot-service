@@ -2,7 +2,7 @@
 
 use GuiBranco\Pancake\GUIDv4;
 
-function connectToDatabase($isRetry=false)
+function connectToDatabase($isRetry = false)
 {
     global $mySqlHost, $mySqlUser, $mySqlPassword, $mySqlDatabase;
 
@@ -13,7 +13,7 @@ function connectToDatabase($isRetry=false)
         }
     } catch(Exception $e) {
         if ($isRetry) {
-           throw $e; 
+            throw $e;
         }
         sleep(10);
         connectToDatabase(true);
