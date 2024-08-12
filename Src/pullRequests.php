@@ -303,13 +303,13 @@ function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
             return;
         }
         echo $pullRequestUpdated->html_url . " recreate - State: " . $pullRequestUpdated->mergeable_state . " - Sender: " . $pullRequest->Sender . " ☢️\n";
-        
+
         if ($pullRequest->Sender !== "dependabot[bot]") {
             $comment = array("body" => "@dependabot recreate");
         } else {
             $comment = array("body" => "@depfu recreate");
         }
-        
+
         doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
     } else {
         echo $pullRequestUpdated->html_url . " no conflicts - State: " . $pullRequestUpdated->mergeable_state . " - Sender: " . $pullRequest->Sender . " ⚠️\n";
