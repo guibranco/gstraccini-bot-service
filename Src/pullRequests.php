@@ -290,19 +290,29 @@ function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
         doRequestGitHub($metadata["token"], $metadata["commentsUrl"], $comment, "POST");
         //$body = array("merge_method" => "squash", "commit_title" => $pullRequest->Title);
         //requestGitHub($metadata["token"], $metadata["pullRequestUrl"] . "/merge", $body);
+    } else {
+        echo $pullRequestUpdated->html_url . " is NOT mergeable - State: " . $pullRequestUpdated->mergeable_state . " - Sender auto merge: " . ($isSenderAutoMerge ? "✅" : "⛔") . " - Sender: " . $pullRequest->Sender . " ⛔\n";
     }
 }
 
 function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
 {
     if ($pullRequestUpdated->mergeable_state != "clean" && !$pullRequestUpdated->mergeable) {
-        if ($pullRequest->Sender !== "dependabot[bot]") {
+        if ($pullRequest->Sender !== "dependabot[bot]" && $pullRequest->Sender !== "depfu[bot]") {
             echo $pullRequestUpdated->html_url . " is NOT mergeable - State: " . $pullRequestUpdated->mergeable_state . " - Sender: " . $pullRequest->Sender . " ⛔\n";
             return;
         }
-        echo $pullRequestUpdated->html_url . " dependabot recreate - State: " . $pullRequestUpdated->mergeable_state . " - Sender: " . $pullRequest->Sender . " ⚠️\n";
-        $comment = array("body" => "@dependabot recreate");
+        echo $pullRequestUpdated->html_url . " recreate - State: " . $pullRequestUpdated->mergeable_state . " - Sender: " . $pullRequest->Sender . " ☢️\n";
+
+        if ($pullRequest->Sender !== "dependabot[bot]") {
+            $comment = array("body" => "@dependabot recreate");
+        } else {
+            $comment = array("body" => "@depfu recreate");
+        }
+
         doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
+    } else {
+        echo $pullRequestUpdated->html_url . " no conflicts - State: " . $pullRequestUpdated->mergeable_state . " - Sender: " . $pullRequest->Sender . " ⚠️\n";
     }
 }
 
@@ -314,6 +324,8 @@ function updateBranch($metadata, $pullRequestUpdated)
         $url = $metadata["pullRequestUrl"] . "/update-branch";
         $body = array("expected_head_sha" => $pullRequestUpdated->head->sha);
         doRequestGitHub($metadata["token"], $url, $body, "PUT");
+    } else {
+        echo $pullRequestUpdated->html_url . " NOT updating branch - State: " . $pullRequestUpdated->mergeable_state." - Sender: " . $pullRequestUpdated->user->login . " ⛔\n";
     }
 }
 
