@@ -93,6 +93,11 @@ function generateInstallationToken($installationId, $repositoryName, $permission
 
     $url = "app/installations/" . $installationId . "/access_tokens";
     $response = doRequestGitHub($gitHubAppToken, $url, $data, "POST");
+
+    if ($response->statusCode >= 300) {
+        die("Invalid GitHub response.\n".json_encode($response));
+    }
+    
     $json = json_decode($response->body);
     return $json->token;
 }
