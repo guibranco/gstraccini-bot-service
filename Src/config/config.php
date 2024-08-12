@@ -2,7 +2,7 @@
 
 ini_set("default_charset", "UTF-8");
 if (!isset($_SERVER['REQUEST_METHOD'])) {
-    ini_set("date.timezone", "America/Sao_Paulo");
+    ini_set("date.timezone", "Europe/Dublin");
 }
 mb_internal_encoding("UTF-8");
 define("USER_AGENT", "gstraccini-bot/1.0 (+https://github.com/apps/gstraccini-bot/)");
