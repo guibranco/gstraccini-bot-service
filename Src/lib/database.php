@@ -2,13 +2,21 @@
 
 use GuiBranco\Pancake\GUIDv4;
 
-function connectToDatabase()
+function connectToDatabase($isRetry=false)
 {
     global $mySqlHost, $mySqlUser, $mySqlPassword, $mySqlDatabase;
 
-    $mysqli = new mysqli($mySqlHost, $mySqlUser, $mySqlPassword, $mySqlDatabase);
-    if ($mysqli->connect_errno) {
-        die("Failed to connect to MySQL: " . $mysqli->connect_error);
+    try {
+        $mysqli = new mysqli($mySqlHost, $mySqlUser, $mySqlPassword, $mySqlDatabase);
+        if ($mysqli->connect_errno) {
+            die("Failed to connect to MySQL: " . $mysqli->connect_error);
+        }
+    } catch(Exception $e) {
+        if ($isRetry) {
+           throw; 
+        }
+        sleep(10);
+        connectToDatabase(true);
     }
 
     $mysqli->set_charset("utf8mb4");
