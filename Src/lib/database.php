@@ -11,17 +11,17 @@ function connectToDatabase($isRetry = false)
         if ($mysqli->connect_errno) {
             die("Failed to connect to MySQL: " . $mysqli->connect_error);
         }
+
+        $mysqli->set_charset("utf8mb4");
+
+        return $mysqli;
     } catch(Exception $e) {
         if ($isRetry) {
             throw $e;
         }
         sleep(10);
-        connectToDatabase(true);
-    }
-
-    $mysqli->set_charset("utf8mb4");
-
-    return $mysqli;
+        return connectToDatabase(true);
+    }   
 }
 
 function readTable($tableName, $where = null)
