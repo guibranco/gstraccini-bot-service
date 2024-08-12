@@ -21,7 +21,7 @@ function connectToDatabase($isRetry = false)
         }
         sleep(10);
         return connectToDatabase(true);
-    }   
+    }
 }
 
 function readTable($tableName, $where = null)
