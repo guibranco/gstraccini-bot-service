@@ -13,7 +13,7 @@ function connectToDatabase($isRetry=false)
         }
     } catch(Exception $e) {
         if ($isRetry) {
-           throw; 
+           throw $e; 
         }
         sleep(10);
         connectToDatabase(true);
