@@ -143,5 +143,5 @@ function setCheckRunCompleted($metadata, $checkRunId, $type)
 
     if ($response->statusCode >= 300) {
         die("Invalid GitHub response.\n".json_encode($response));
-    
+    }
 }
