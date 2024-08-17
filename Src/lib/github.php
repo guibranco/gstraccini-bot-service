@@ -55,7 +55,7 @@ function doRequestGitHub($token, $url, $data, $method)
     }
 
     if ($response->statusCode >= 300) {
-        $info = json_encode(array("url" => $url, "request" => json_encode($data, true), "response" => $response));
+        $info = json_encode(array("request" => json_encode($data, true), "response" => $response));
         $logger->log("Error on GitHub request", $info);
     }
 
@@ -116,6 +116,11 @@ function setCheckRunInProgress($metadata, $commitId, $type)
     );
 
     $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"], $checkRunBody, "POST");
+
+    if ($response->statusCode >= 300) {
+        die("Invalid GitHub response.\n".json_encode($response));
+    }
+
     $result = json_decode($response->body);
     return $result->id;
 }
@@ -134,5 +139,9 @@ function setCheckRunCompleted($metadata, $checkRunId, $type)
         )
     );
 
-    doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
+    $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
+
+    if ($response->statusCode >= 300) {
+        die("Invalid GitHub response.\n".json_encode($response));
+    }
 }
