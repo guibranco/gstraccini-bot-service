@@ -135,6 +135,11 @@ function checkForOtherPullRequests($metadata, $pullRequest)
     $pullRequestsOpen = json_decode($pullRequestsOpenResponse->body);
 
     foreach ($pullRequestsOpen as $pullRequestPending) {
+
+        if ($pullRequest->Number === $pullRequestPending->number) {
+            continue;
+        }
+
         if ($pullRequestPending->auto_merge !== null) {
             $prUpsert = new \stdClass();
             $prUpsert->DeliveryId = $pullRequest->DeliveryIdText;
@@ -151,7 +156,7 @@ function checkForOtherPullRequests($metadata, $pullRequest)
             $prUpsert->Ref = $pullRequestPending->head->ref;
             $prUpsert->InstallationId = $pullRequest->InstallationId;
             upsertPullRequest($prUpsert);
-            echo "Triggering review - Sender: " . $pullRequest->Sender . " ✅\n";
+            echo "Triggering review of <a href='{$pullRequest->html_url}'>#{$pullRequest->number}</a> - Sender: " . $pullRequest->Sender . " ✅\n";
             break;
         }
     }
