@@ -54,7 +54,7 @@ function handlePullRequest($pullRequest)
         return;
     }
 
-    if ($pullRequestUpdated->mergeable_state === "unknown") {
+    if ($pullRequestUpdated->mergeable_state === "unknown" || $pullRequestUpdated->mergeable_state === "blocked") {
         sleep(5);
         echo "State: {$pullRequestUpdated->mergeable_state} - Triggering review of #{$pullRequestUpdated->number} - Sender: " . $pullRequest->Sender . " 🔄\n";
         upsertPullRequest($pullRequest);
