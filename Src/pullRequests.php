@@ -156,7 +156,7 @@ function checkForOtherPullRequests($metadata, $pullRequest)
             $prUpsert->Ref = $pullRequestPending->head->ref;
             $prUpsert->InstallationId = $pullRequest->InstallationId;
             upsertPullRequest($prUpsert);
-            echo "Triggering review of <a hef='{$pullRequest->html_url}'>#{$pullRequest->number}</a> - Sender: " . $pullRequest->Sender . " ✅\n";
+            echo "Triggering review of <a href='{$pullRequest->html_url}'>#{$pullRequest->number}</a> - Sender: " . $pullRequest->Sender . " ✅\n";
             break;
         }
     }
