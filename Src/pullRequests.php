@@ -306,10 +306,10 @@ function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
 {
     if ($pullRequestUpdated->mergeable_state != "clean" && !$pullRequestUpdated->mergeable) {
         if ($pullRequest->Sender !== "dependabot[bot]" && $pullRequest->Sender !== "depfu[bot]") {
-            echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve Conflicts - Is NOT mergeable - Sender: " . $pullRequest->Sender . " ⛔\n";
+            echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Is NOT mergeable - Sender: " . $pullRequest->Sender . " ⛔\n";
             return;
         }
-        echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve Conflicts - Recreate - Sender: " . $pullRequest->Sender . " ☢️\n";
+        echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Recreate - Sender: " . $pullRequest->Sender . " ☢️\n";
 
         if ($pullRequest->Sender !== "dependabot[bot]") {
             $comment = array("body" => "@dependabot recreate");
@@ -319,7 +319,7 @@ function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
 
         doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
     } else {
-        echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve Conflicts - No conflicts - Sender: " . $pullRequest->Sender . " ⚠️\n";
+        echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - No conflicts - Sender: " . $pullRequest->Sender . " ⚠️\n";
     }
 }
 
