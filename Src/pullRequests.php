@@ -40,8 +40,7 @@ function handlePullRequest($pullRequest)
         "dashboardUrl" => $botDashboardUrl . $prQueryString
     );
 
-    echo str_repeat("=-", 50);
-    echo "\nhttps://github.com/{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}/pull/{$pullRequest->Number}:\n\n";
+    echo "https://github.com/{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}/pull/{$pullRequest->Number}:\n\n";
 
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     $pullRequestUpdated = json_decode($pullRequestResponse->body);
@@ -341,8 +340,10 @@ function main()
 {
     $pullRequests = readTable("github_pull_requests");
     foreach ($pullRequests as $pullRequest) {
-        handlePullRequest($pullRequest);
+        echo str_repeat("=-", 50) . "=\n";
+        handlePullRequest($pullRequest);        
         updateTable("github_pull_requests", $pullRequest->Sequence);
+        echo str_repeat("=-", 50) . "=\n";
     }
 }
 
