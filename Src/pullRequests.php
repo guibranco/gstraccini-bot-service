@@ -45,7 +45,7 @@ function handlePullRequest($pullRequest)
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     $pullRequestUpdated = json_decode($pullRequestResponse->body);
 
-    if ($pullRequestUpdated->state == "closed") {
+    if ($pullRequestUpdated->state === "closed") {
         removeIssueWipLabel($metadata, $pullRequest);
         checkForOtherPullRequests($metadata, $pullRequest);
     }
@@ -56,6 +56,7 @@ function handlePullRequest($pullRequest)
 
     if ($pullRequestUpdated->mergeable_state === "unknown") {
         sleep(5);
+        echo "State: {$pullRequestUpdated->mergeable_state} - Triggering review of #{$pullRequestUpdated->number} - Sender: " . $pullRequest->Sender . " 🔄\n";
         upsertPullRequest($pullRequest);
         return;
     }
@@ -161,7 +162,7 @@ function checkForOtherPullRequests($metadata, $pullRequest)
             $prUpsert->Ref = $pullRequestPending->head->ref;
             $prUpsert->InstallationId = $pullRequest->InstallationId;
             upsertPullRequest($prUpsert);
-            echo "Triggering review of #{$pullRequestPending->number} - Sender: " . $pullRequest->Sender . " ✅\n";
+            echo "Triggering review of #{$pullRequestPending->number} - Sender: " . $pullRequest->Sender . " 🔄\n";
             break;
         }
     }
@@ -217,7 +218,7 @@ function removeIssueWipLabel($metadata, $pullRequest)
 
     $labels = array_column(json_decode($issueResponse->body)->labels, "name");
     if (in_array("🛠 WIP", $labels)) {
-        $url = $metadata["labelsUrl"] . "/🛠 WIP";
+        $url = $metadata["issuesUrl"] . "/" . $issueNumber . "/labels/🛠 WIP";
         doRequestGitHub($metadata["token"], $url, null, "DELETE");
     }
 }
@@ -270,7 +271,7 @@ function addLabels($metadata, $pullRequest)
         unset($labels[$position]);
     } else {
         $body = array("labels" => array("🛠 WIP"));
-        doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $body, "POST");
+        doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber . "/labels", $body, "POST");
     }
 
     $body = array("labels" => array_values($labels));
