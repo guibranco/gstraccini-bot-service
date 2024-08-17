@@ -9,7 +9,7 @@ define("ISSUES", "/issues/");
 define("PULLS", "/pulls/");
 
 function handlePullRequest($pullRequest)
-{    
+{
     global $gitHubUserToken;
     $config = loadConfig();
 
@@ -42,7 +42,7 @@ function handlePullRequest($pullRequest)
 
     echo str_repeat("-=", 30);
     echo "\nHandling PR: https://github.com/{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}/pulls/{$pullRequest->Number}\n";
-    
+
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     $pullRequestUpdated = json_decode($pullRequestResponse->body);
 
