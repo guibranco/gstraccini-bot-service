@@ -120,7 +120,7 @@ function setCheckRunInProgress($metadata, $commitId, $type)
     if ($response->statusCode >= 300) {
         die("Invalid GitHub response.\n".json_encode($response));
     }
-    
+
     $result = json_decode($response->body);
     return $result->id;
 }
