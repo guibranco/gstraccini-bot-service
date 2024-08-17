@@ -40,7 +40,7 @@ function handlePullRequest($pullRequest)
         "dashboardUrl" => $botDashboardUrl . $prQueryString
     );
 
-    echo str_repeat("-=", 30);
+    echo str_repeat("=-", 50);
     echo "\nHandling PR: https://github.com/{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}/pulls/{$pullRequest->Number}\n";
 
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
@@ -151,7 +151,7 @@ function checkForOtherPullRequests($metadata, $pullRequest)
             $prUpsert->Ref = $pullRequestPending->head->ref;
             $prUpsert->InstallationId = $pullRequest->InstallationId;
             upsertPullRequest($prUpsert);
-            echo $pullRequestPending->html_url . " triggering review - Sender: " . $pullRequest->Sender . " ✅\n";
+            echo "Triggering review - Sender: " . $pullRequest->Sender . " ✅\n";
             break;
         }
     }
@@ -288,13 +288,13 @@ function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
     }
 
     if ($pullRequestUpdated->mergeable_state === "clean" && $pullRequestUpdated->mergeable) {
-        echo $pullRequestUpdated->html_url . " is mergeable - Sender auto merge: " . ($isSenderAutoMerge ? "✅" : "⛔") . " - Sender: " . $pullRequest->Sender . " ✅\n";
+        echo "Is mergeable - Sender auto merge: " . ($isSenderAutoMerge ? "✅" : "⛔") . " - Sender: " . $pullRequest->Sender . " ✅\n";
         $comment = array("body" => "This pull request is ready ✅ for merge/squash.");
         doRequestGitHub($metadata["token"], $metadata["commentsUrl"], $comment, "POST");
         //$body = array("merge_method" => "squash", "commit_title" => $pullRequest->Title);
         //requestGitHub($metadata["token"], $metadata["pullRequestUrl"] . "/merge", $body);
     } else {
-        echo $pullRequestUpdated->html_url . " is NOT mergeable - State: " . $pullRequestUpdated->mergeable_state . " - Sender auto merge: " . ($isSenderAutoMerge ? "✅" : "⛔") . " - Sender: " . $pullRequest->Sender . " ⛔\n";
+        echo "Is NOT mergeable - State: " . $pullRequestUpdated->mergeable_state . " - Sender auto merge: " . ($isSenderAutoMerge ? "✅" : "⛔") . " - Sender: " . $pullRequest->Sender . " ⛔\n";
     }
 }
 
@@ -302,10 +302,10 @@ function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
 {
     if ($pullRequestUpdated->mergeable_state != "clean" && !$pullRequestUpdated->mergeable) {
         if ($pullRequest->Sender !== "dependabot[bot]" && $pullRequest->Sender !== "depfu[bot]") {
-            echo $pullRequestUpdated->html_url . " is NOT mergeable - State: " . $pullRequestUpdated->mergeable_state . " - Sender: " . $pullRequest->Sender . " ⛔\n";
+            echo "Is NOT mergeable - State: " . $pullRequestUpdated->mergeable_state . " - Sender: " . $pullRequest->Sender . " ⛔\n";
             return;
         }
-        echo $pullRequestUpdated->html_url . " recreate - State: " . $pullRequestUpdated->mergeable_state . " - Sender: " . $pullRequest->Sender . " ☢️\n";
+        echo "Recreate - State: " . $pullRequestUpdated->mergeable_state . " - Sender: " . $pullRequest->Sender . " ☢️\n";
 
         if ($pullRequest->Sender !== "dependabot[bot]") {
             $comment = array("body" => "@dependabot recreate");
@@ -315,7 +315,7 @@ function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
 
         doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
     } else {
-        echo $pullRequestUpdated->html_url . " no conflicts - State: " . $pullRequestUpdated->mergeable_state . " - Sender: " . $pullRequest->Sender . " ⚠️\n";
+        echo "No conflicts - State: " . $pullRequestUpdated->mergeable_state . " - Sender: " . $pullRequest->Sender . " ⚠️\n";
     }
 }
 
@@ -323,12 +323,12 @@ function updateBranch($metadata, $pullRequestUpdated)
 {
     if ($pullRequestUpdated->mergeable_state === "behind" ||
         $pullRequestUpdated->mergeable_state === "unknown ") {
-        echo $pullRequestUpdated->html_url . " updating branch - State: " . $pullRequestUpdated->mergeable_state." - Sender: " . $pullRequestUpdated->user->login . " ⚠️\n";
+        echo "Updating branch - State: " . $pullRequestUpdated->mergeable_state." - Sender: " . $pullRequestUpdated->user->login . " ⚠️\n";
         $url = $metadata["pullRequestUrl"] . "/update-branch";
         $body = array("expected_head_sha" => $pullRequestUpdated->head->sha);
         doRequestGitHub($metadata["token"], $url, $body, "PUT");
     } else {
-        echo $pullRequestUpdated->html_url . " NOT updating branch - State: " . $pullRequestUpdated->mergeable_state." - Sender: " . $pullRequestUpdated->user->login . " ⛔\n";
+        echo "NOT updating branch - State: " . $pullRequestUpdated->mergeable_state." - Sender: " . $pullRequestUpdated->user->login . " ⛔\n";
     }
 }
 
