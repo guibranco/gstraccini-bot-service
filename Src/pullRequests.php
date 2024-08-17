@@ -161,7 +161,7 @@ function checkForOtherPullRequests($metadata, $pullRequest)
             $prUpsert->Ref = $pullRequestPending->head->ref;
             $prUpsert->InstallationId = $pullRequest->InstallationId;
             upsertPullRequest($prUpsert);
-            echo "State: {$pullRequestPending->mergeable_state} - Triggering review of #{$pullRequestPending->number} - Sender: " . $pullRequest->Sender . " ✅\n";
+            echo "Triggering review of #{$pullRequestPending->number} - Sender: " . $pullRequest->Sender . " ✅\n";
             break;
         }
     }
