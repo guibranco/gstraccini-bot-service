@@ -54,6 +54,12 @@ function handlePullRequest($pullRequest)
         return;
     }
 
+    if ($pullRequestUpdated->mergeable_state === "unknown") {
+        sleep(5);
+        upsertPullRequest($pullRequest);
+        return;
+    }
+
     $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, "pull request");
     enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config);
     addLabels($metadata, $pullRequest);
