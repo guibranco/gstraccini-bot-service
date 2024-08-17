@@ -135,12 +135,11 @@ function checkForOtherPullRequests($metadata, $pullRequest)
     $pullRequestsOpen = json_decode($pullRequestsOpenResponse->body);
 
     foreach ($pullRequestsOpen as $pullRequestPending) {
-        
-        if ($pullRequest->Number === $pullRequestPending->number)
-        {
+
+        if ($pullRequest->Number === $pullRequestPending->number) {
             continue;
         }
-        
+
         if ($pullRequestPending->auto_merge !== null) {
             $prUpsert = new \stdClass();
             $prUpsert->DeliveryId = $pullRequest->DeliveryIdText;
