@@ -1,13 +1,20 @@
 <?php
 
 ini_set("default_charset", "UTF-8");
-if (!isset($_SERVER['REQUEST_METHOD'])) {
-    ini_set("date.timezone", "Europe/Dublin");
-}
+ini_set("date.timezone", "Europe/Dublin");
 mb_internal_encoding("UTF-8");
-define("USER_AGENT", "gstraccini-bot/1.0 (+https://github.com/apps/gstraccini-bot/)");
+
+$version = "1.0.0";
+$versionFile = "version.txt";
+if (file_exists($versionFile)) {
+    $version = file_get_contents($versionFile);
+}
+
+define("USER_AGENT_VENDOR", "gstraccini-bot/{$version} (+https://github.com/apps/gstraccini-bot/)");
+define("USER_AGENT", USER_AGENT_VENDOR);
 
 require_once "vendor/autoload.php";
+
 
 $appVeyorSecretsFile = "secrets/appVeyor.secrets.php";
 if (file_exists($appVeyorSecretsFile)) {
