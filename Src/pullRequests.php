@@ -57,7 +57,8 @@ function handlePullRequest($pullRequest, $isRetry = false)
     if ($isRetry === false && ($pullRequestUpdated->mergeable_state === "unknown" || $pullRequestUpdated->mergeable_state === "blocked")) {
         sleep(5);
         echo "State: {$pullRequestUpdated->mergeable_state} - Retrying #{$pullRequestUpdated->number} - Sender: " . $pullRequest->Sender . " 🔄\n";
-        return handlePullRequest($pullRequest, true);
+        handlePullRequest($pullRequest, true);
+        return;
     }
 
     $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, "pull request");
