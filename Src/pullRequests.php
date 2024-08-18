@@ -8,7 +8,7 @@ use GuiBranco\Pancake\HealthChecks;
 define("ISSUES", "/issues/");
 define("PULLS", "/pulls/");
 
-function handlePullRequest($pullRequest)
+function handlePullRequest($pullRequest, $isRetry = false)
 {
     global $gitHubUserToken;
     $config = loadConfig();
@@ -54,10 +54,10 @@ function handlePullRequest($pullRequest)
         return;
     }
 
-    if ($pullRequestUpdated->mergeable_state === "unknown" || $pullRequestUpdated->mergeable_state === "blocked") {
+    if ($isRetry === false && ($pullRequestUpdated->mergeable_state === "unknown" || $pullRequestUpdated->mergeable_state === "blocked")) {
         sleep(5);
-        echo "State: {$pullRequestUpdated->mergeable_state} - Triggering review of #{$pullRequestUpdated->number} - Sender: " . $pullRequest->Sender . " 🔄\n";
-        upsertPullRequest($pullRequest);
+        echo "State: {$pullRequestUpdated->mergeable_state} - Retrying #{$pullRequestUpdated->number} - Sender: " . $pullRequest->Sender . " 🔄\n";
+        handlePullRequest($pullRequest, true);
         return;
     }
 
