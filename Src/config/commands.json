@@ -92,6 +92,11 @@
     "requiresPullRequestOpen": true
   },
   {
+    "command": "add project",
+    "description": "Adds a project to the solution file (only for **.NET** projects).",
+    "requiresPullRequestOpen": true
+  },
+  {
     "command": "fix csproj",
     "description": "Updates the `.csproj` file with the `packages.config` version of [NuGet packages](https://nuget.org) (only for **.NET Framework** projects).",
     "dev": true,
