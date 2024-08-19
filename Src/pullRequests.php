@@ -40,7 +40,9 @@ function handlePullRequest($pullRequest, $isRetry = false)
         "dashboardUrl" => $botDashboardUrl . $prQueryString
     );
 
-    echo "https://github.com/{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}/pull/{$pullRequest->Number}:\n\n";
+    if (!$isRetry) {
+        echo "https://github.com/{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}/pull/{$pullRequest->Number}:\n\n";
+    }
 
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     $pullRequestUpdated = json_decode($pullRequestResponse->body);
