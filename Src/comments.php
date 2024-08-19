@@ -137,7 +137,7 @@ function execute_addProject($config, $metadata, $comment)
         $body = "Adding project `{$projectPath}` to solution! :wrench:";
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
         $parameters = array("projectPath" => $projectPath);
-        callWorkflow($config, $metadata, $comment, "add-project-to-solution.yml.yml", $parameters);
+        callWorkflow($config, $metadata, $comment, "add-project-to-solution.yml", $parameters);
     } else {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
         $body = $metadata["errorMessages"]["invalidParameter"];
