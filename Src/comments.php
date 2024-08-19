@@ -444,7 +444,7 @@ function callWorkflow($config, $metadata, $comment, $workflow, $extendedParamete
             "installationId" => $comment->InstallationId
         )
     );
-    if ($extendedParamters !== null) {
+    if ($extendedParameters !== null) {
         $data["inputs"] = array_merge($data["inputs"], $extendedParameters);
     }
     doRequestGitHub($tokenBot, $url, $data, "POST");
