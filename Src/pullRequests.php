@@ -64,7 +64,7 @@ function handlePullRequest($pullRequest, $isRetry = false)
 
     $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, "pull request");
     enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config);
-    addLabels($metadata, $pullRequest);
+    addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated);
     updateBranch($metadata, $pullRequestUpdated);
 
     $labelsToAdd = [];
@@ -253,7 +253,7 @@ function getReferencedIssue($metadata, $pullRequest)
     return json_decode($referencedIssueResponse->body);
 }
 
-function addLabels($metadata, $pullRequest)
+function addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated)
 {
     $referencedIssue = getReferencedIssue($metadata, $pullRequest);
 
@@ -263,8 +263,9 @@ function addLabels($metadata, $pullRequest)
 
     $issueNumber = $referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes[0]->number;
     $issueResponse = doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber, null, "GET");
-
-    $labels = array_column(json_decode($issueResponse->body)->labels, "name");
+    $issue = json_decode($issueResponse->body);
+    
+    $labels = array_column($issue->labels, "name");
 
     $position = array_search("🛠 WIP", $labels);
 
@@ -273,6 +274,12 @@ function addLabels($metadata, $pullRequest)
     } else {
         $body = array("labels" => array("🛠 WIP"));
         doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber . "/labels", $body, "POST");
+    }
+
+    $position = array_search("🤖 bot", $labels);
+    
+    if ($position !== false && strtolower($pullRequestUpdated->user->type) !== "bot") {
+        unset($labels[$position]);
     }
 
     $body = array("labels" => array_values($labels));
