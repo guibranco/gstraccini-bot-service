@@ -408,8 +408,10 @@ function execute_review($config, $metadata, $comment)
 
         upsertPush($commit);
     }
-
-    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Reviewing this pull request! :eyes:\n\n Commits included:\n {$commitsList}"), "POST");
+    $body = "Reviewing this pull request! :eyes:\n";
+    $body .= "Mergeable state: {$pullRequestUpdated->mergeable_state}\n\n";
+    $body .= "Commits included:\n {$commitsList}";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
 }
 
 function execute_track($config, $metadata, $comment)
