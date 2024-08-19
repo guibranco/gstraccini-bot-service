@@ -51,11 +51,11 @@ function handlePullRequest($pullRequest, $isRetry = false)
     }
 
     if ($pullRequestUpdated->state != "open") {
-        echo "PR State: {$pullRequestUpdated->state}\n";
+        echo "PR State: {$pullRequestUpdated->state} ⛔\n";
         return;
     }
 
-    if ($isRetry === false && ($pullRequestUpdated->mergeable_state === "unknown" || $pullRequestUpdated->mergeable_state === "blocked")) {
+    if ($isRetry === false && $pullRequestUpdated->mergeable_state === "unknown") {
         sleep(5);
         echo "State: {$pullRequestUpdated->mergeable_state} - Retrying #{$pullRequestUpdated->number} - Sender: " . $pullRequest->Sender . " 🔄\n";
         handlePullRequest($pullRequest, true);
@@ -327,7 +327,7 @@ function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
 
         doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
     } else {
-        echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - No conflicts - Sender: " . $pullRequest->Sender . " ⚠️\n";
+        echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - No conflicts - Sender: " . $pullRequest->Sender . " 🆒\n";
     }
 }
 
@@ -335,12 +335,12 @@ function updateBranch($metadata, $pullRequestUpdated)
 {
     if ($pullRequestUpdated->mergeable_state === "behind" ||
         $pullRequestUpdated->mergeable_state === "unknown ") {
-        echo "State: " . $pullRequestUpdated->mergeable_state . " - Update branch - Updating branch - Sender: " . $pullRequestUpdated->user->login . " ⚠️\n";
+        echo "State: " . $pullRequestUpdated->mergeable_state . " - Update branch - Updating branch - Sender: " . $pullRequestUpdated->user->login . " 👍🏻\n";
         $url = $metadata["pullRequestUrl"] . "/update-branch";
         $body = array("expected_head_sha" => $pullRequestUpdated->head->sha);
         doRequestGitHub($metadata["token"], $url, $body, "PUT");
     } else {
-        echo "State: " . $pullRequestUpdated->mergeable_state . " - Update branch - NOT updating branch - Sender: " . $pullRequestUpdated->user->login . " ⛔\n";
+        echo "State: " . $pullRequestUpdated->mergeable_state . " - Update branch - NOT updating branch - Sender: " . $pullRequestUpdated->user->login . " 👎🏻\n";
     }
 }
 
