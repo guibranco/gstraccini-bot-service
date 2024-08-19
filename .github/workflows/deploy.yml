@@ -133,6 +133,11 @@ jobs:
           echo "\$rabbitMqPassword = \"${{ secrets.RABBITMQ_PASSWORD }}\";" >> rabbitMq.secrets.php
           echo "\$rabbitMqVhost    = \"${{ secrets.RABBITMQ_VHOST }}\";" >> rabbitMq.secrets.php
 
+      - name: Create version file for API
+        run: |
+          cd Src       
+          echo ${{ env.fullSemVer }} > version.txt
+
       - name: Upload service
         if: ${{ steps.changes.outputs.src == 'true' }}
         uses: sebastianpopp/ftp-action@releases/v2
