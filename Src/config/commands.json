@@ -21,7 +21,7 @@
         "required": true
       }
     ],
-    "requiresPullRequestOpen": true,
+    "requiresPullRequestOpen": true
   },
   {
     "command": "appveyor build",
