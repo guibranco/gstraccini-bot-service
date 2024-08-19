@@ -146,7 +146,7 @@ function checkForOtherPullRequests($metadata, $pullRequest)
         echo "No other pull requests to review ❌\n";
         return;
     }
-    
+
     foreach ($pullRequestsOpen as $pullRequestPending) {
 
         if ($pullRequest->Number === $pullRequestPending->number) {
@@ -155,7 +155,7 @@ function checkForOtherPullRequests($metadata, $pullRequest)
 
         if ($pullRequestPending->auto_merge !== null) {
             triggerReview($pullRequest, $pullRequestPending);
-            $any = true;            
+            $any = true;
             break;
         }
     }
@@ -171,10 +171,10 @@ function checkForOtherPullRequests($metadata, $pullRequest)
 
         triggerReview($pullRequest, $pullRequestPending);
         break;
-    }    
+    }
 }
 
-function triggerReview($pullRequest, $pullRequestPending) 
+function triggerReview($pullRequest, $pullRequestPending)
 {
     $prUpsert = new \stdClass();
     $prUpsert->DeliveryId = $pullRequest->DeliveryIdText;
