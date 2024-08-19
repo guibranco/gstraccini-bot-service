@@ -348,10 +348,10 @@ function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
 {
     if ($pullRequestUpdated->mergeable_state != "clean" && !$pullRequestUpdated->mergeable) {
         if ($pullRequest->Sender !== "dependabot[bot]" && $pullRequest->Sender !== "depfu[bot]") {
-            echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Is NOT mergeable - Sender: " . $pullRequest->Sender . " ⛔\n";
+            echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Conflicts - Sender: " . $pullRequest->Sender . " ⚠️\n";
             return;
         }
-        echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Recreate - Sender: " . $pullRequest->Sender . " ☢️\n";
+        echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Recreate via bot - Sender: " . $pullRequest->Sender . " ☢️\n";
 
         if ($pullRequest->Sender !== "dependabot[bot]") {
             $comment = array("body" => "@dependabot recreate");
@@ -368,13 +368,14 @@ function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
 function updateBranch($metadata, $pullRequestUpdated)
 {
     if ($pullRequestUpdated->mergeable_state === "behind" ||
+        $pullRequestUpdated->mergeable_state === "unstable" ||
         $pullRequestUpdated->mergeable_state === "unknown ") {
-        echo "State: " . $pullRequestUpdated->mergeable_state . " - Update branch - Updating branch - Sender: " . $pullRequestUpdated->user->login . " 👍🏻\n";
+        echo "State: " . $pullRequestUpdated->mergeable_state . " - Updating branch: Yes - Sender: " . $pullRequestUpdated->user->login . " 👍🏻\n";
         $url = $metadata["pullRequestUrl"] . "/update-branch";
         $body = array("expected_head_sha" => $pullRequestUpdated->head->sha);
         doRequestGitHub($metadata["token"], $url, $body, "PUT");
     } else {
-        echo "State: " . $pullRequestUpdated->mergeable_state . " - Update branch - NOT updating branch - Sender: " . $pullRequestUpdated->user->login . " 👎🏻\n";
+        echo "State: " . $pullRequestUpdated->mergeable_state . " - Updating branch: No - Sender: " . $pullRequestUpdated->user->login . " 👎🏻\n";
     }
 }
 
