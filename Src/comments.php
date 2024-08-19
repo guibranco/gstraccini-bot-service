@@ -123,6 +123,29 @@ function execute_help($config, $metadata, $comment)
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $helpComment), "POST");
 }
 
+function execute_addProject($config, $metadata, $comment)
+{
+    preg_match(
+        "/@" . $config->botName."\sadd\sproject\s(.+?\.csproj)/",
+        $comment->CommentBody,
+        $matches
+    );
+
+    if (count($matches) === 2) {
+        $projectPath = $matches[1];
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
+        $body = "Adding project `{$projectPath}` to solution! :wrench:";
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+        $parameters = array("projectPath" => $projectPath);
+        callWorkflow($config, $metadata, $comment, "add-project-to-solution.yml.yml", $parameters);
+    } else {
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
+        $body = $metadata["errorMessages"]["invalidParameter"];
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+        return;
+    }
+}
+
 function execute_appveyorBuild($config, $metadata, $comment)
 {
     preg_match(
@@ -404,7 +427,7 @@ function execute_updateSnapshot($config, $metadata, $comment)
     callWorkflow($config, $metadata, $comment, "update-test-snapshot.yml");
 }
 
-function callWorkflow($config, $metadata, $comment, $workflow)
+function callWorkflow($config, $metadata, $comment, $workflow, $extendedParameters = null)
 {
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     $pullRequest = json_decode($pullRequestResponse->body);
@@ -421,6 +444,9 @@ function callWorkflow($config, $metadata, $comment, $workflow)
             "installationId" => $comment->InstallationId
         )
     );
+    if ($extendedParamters !== null) {
+        $data["inputs"] = array_merge($data["inputs"], $extendedParameters);
+    }
     doRequestGitHub($tokenBot, $url, $data, "POST");
 }
 
