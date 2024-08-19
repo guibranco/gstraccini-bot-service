@@ -40,7 +40,9 @@ function handlePullRequest($pullRequest, $isRetry = false)
         "dashboardUrl" => $botDashboardUrl . $prQueryString
     );
 
-    echo "https://github.com/{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}/pull/{$pullRequest->Number}:\n\n";
+    if (!$isRetry) {
+        echo "https://github.com/{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}/pull/{$pullRequest->Number}:\n\n";
+    }
 
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     $pullRequestUpdated = json_decode($pullRequestResponse->body);
@@ -140,6 +142,12 @@ function checkForOtherPullRequests($metadata, $pullRequest)
 {
     $pullRequestsOpenResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestsUrl"] . "?state=open&sort=created", null, "GET");
     $pullRequestsOpen = json_decode($pullRequestsOpenResponse->body);
+    $any = false;
+
+    if (count($pullRequestsOpen) === 0) {
+        echo "No other pull requests to review ❌\n";
+        return;
+    }
 
     foreach ($pullRequestsOpen as $pullRequestPending) {
 
@@ -148,25 +156,44 @@ function checkForOtherPullRequests($metadata, $pullRequest)
         }
 
         if ($pullRequestPending->auto_merge !== null) {
-            $prUpsert = new \stdClass();
-            $prUpsert->DeliveryId = $pullRequest->DeliveryIdText;
-            $prUpsert->HookId = $pullRequest->HookId;
-            $prUpsert->TargetId = $pullRequest->TargetId;
-            $prUpsert->TargetType = $pullRequest->TargetType;
-            $prUpsert->RepositoryOwner = $pullRequest->RepositoryOwner;
-            $prUpsert->RepositoryName = $pullRequest->RepositoryName;
-            $prUpsert->Id = $pullRequestPending->id;
-            $prUpsert->Sender = $pullRequestPending->user->login;
-            $prUpsert->Number = $pullRequestPending->number;
-            $prUpsert->NodeId = $pullRequestPending->node_id;
-            $prUpsert->Title = $pullRequestPending->title;
-            $prUpsert->Ref = $pullRequestPending->head->ref;
-            $prUpsert->InstallationId = $pullRequest->InstallationId;
-            upsertPullRequest($prUpsert);
-            echo "Triggering review of #{$pullRequestPending->number} - Sender: " . $pullRequest->Sender . " 🔄\n";
+            triggerReview($pullRequest, $pullRequestPending);
+            $any = true;
             break;
         }
     }
+
+    if ($any) {
+        return;
+    }
+
+    foreach ($pullRequestsOpen as $pullRequestPending) {
+        if ($pullRequest->Number === $pullRequestPending->number) {
+            continue;
+        }
+
+        triggerReview($pullRequest, $pullRequestPending);
+        break;
+    }
+}
+
+function triggerReview($pullRequest, $pullRequestPending)
+{
+    $prUpsert = new \stdClass();
+    $prUpsert->DeliveryId = $pullRequest->DeliveryIdText;
+    $prUpsert->HookId = $pullRequest->HookId;
+    $prUpsert->TargetId = $pullRequest->TargetId;
+    $prUpsert->TargetType = $pullRequest->TargetType;
+    $prUpsert->RepositoryOwner = $pullRequest->RepositoryOwner;
+    $prUpsert->RepositoryName = $pullRequest->RepositoryName;
+    $prUpsert->Id = $pullRequestPending->id;
+    $prUpsert->Sender = $pullRequestPending->user->login;
+    $prUpsert->Number = $pullRequestPending->number;
+    $prUpsert->NodeId = $pullRequestPending->node_id;
+    $prUpsert->Title = $pullRequestPending->title;
+    $prUpsert->Ref = $pullRequestPending->head->ref;
+    $prUpsert->InstallationId = $pullRequest->InstallationId;
+    echo "Triggering review of #{$pullRequestPending->number} - Sender: " . $pullRequest->Sender . " 🔄\n";
+    upsertPullRequest($prUpsert);
 }
 
 function handleCommentToMerge($metadata, $pullRequest, $collaboratorsLogins)
