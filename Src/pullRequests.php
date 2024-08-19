@@ -264,7 +264,7 @@ function addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated)
     $issueNumber = $referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes[0]->number;
     $issueResponse = doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber, null, "GET");
     $issue = json_decode($issueResponse->body);
-    
+
     $labels = array_column($issue->labels, "name");
 
     $position = array_search("🛠 WIP", $labels);
@@ -277,7 +277,7 @@ function addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated)
     }
 
     $position = array_search("🤖 bot", $labels);
-    
+
     if ($position !== false && strtolower($pullRequestUpdated->user->type) !== "bot") {
         unset($labels[$position]);
     }
