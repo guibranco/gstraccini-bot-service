@@ -14,7 +14,8 @@ function handlePullRequest($pullRequest, $isRetry = false)
         echo "https://github.com/{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}/pull/{$pullRequest->Number}:\n\n";
     }
     // FIX bug
-    if (strtolower($pullRequest->RepositoryOwner) === "apibr") {
+    if (strtolower($pullRequest->RepositoryOwner) === "apibr" ||
+        strtolower($pullRequest->RepositoryOwner) === "d0lli") {
         echo "Skipping PR\n";
         return;
     }
