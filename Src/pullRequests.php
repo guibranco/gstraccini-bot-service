@@ -15,7 +15,7 @@ function handlePullRequest($pullRequest, $isRetry = false)
         echo "Skipping PR";
         return;
     }
-    
+
     global $gitHubUserToken;
     $config = loadConfig();
 
