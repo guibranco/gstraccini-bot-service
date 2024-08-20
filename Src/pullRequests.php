@@ -283,7 +283,7 @@ function getReferencedIssue($metadata, $pullRequest)
     );
 
     $referencedIssueResponse = doRequestGitHub($metadata["token"], "graphql", $referencedIssueQuery, "POST");
-    if ($referencedIssueResponse->status >= 300) {
+    if ($referencedIssueResponse->statusCode >= 300) {
         return null;
     }
     return json_decode($referencedIssueResponse->body);
