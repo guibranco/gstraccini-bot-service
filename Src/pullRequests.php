@@ -388,6 +388,7 @@ function main()
 {
     $pullRequests = readTable("github_pull_requests");
     foreach ($pullRequests as $pullRequest) {
+        echo "Sequence: {$pullRequest->Sequence}\n";
         handlePullRequest($pullRequest);
         updateTable("github_pull_requests", $pullRequest->Sequence);
         echo str_repeat("=-", 50) . "=\n";
