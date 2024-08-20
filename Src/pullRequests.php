@@ -14,7 +14,7 @@ function handlePullRequest($pullRequest, $isRetry = false)
         echo "https://github.com/{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}/pull/{$pullRequest->Number}:\n\n";
     }
     // FIX bug
-    if ($pullRequest->Number === "94" && $pullRequest->RepositoryName === "vagas-aggregator-service") {
+    if ($pullRequest->RepositoryName === "vagas-aggregator-service") {
         echo "Skipping PR\n";
         return;
     }
