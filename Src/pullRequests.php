@@ -283,6 +283,9 @@ function getReferencedIssue($metadata, $pullRequest)
     );
 
     $referencedIssueResponse = doRequestGitHub($metadata["token"], "graphql", $referencedIssueQuery, "POST");
+    if ($referencedIssueResponse->status >= 300) {
+        return null;
+    }
     return json_decode($referencedIssueResponse->body);
 }
 
@@ -290,7 +293,13 @@ function addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated)
 {
     $referencedIssue = getReferencedIssue($metadata, $pullRequest);
 
-    if (count($referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes) == 0) {
+    if ($referencedIssue === null) {
+        echo "Referenced issue null\n";
+        return;
+    }
+    
+    if (!isset($referencedIssue->data->repository) ||
+        count($referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes) == 0) {
         return;
     }
 
