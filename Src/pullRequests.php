@@ -14,7 +14,7 @@ function handlePullRequest($pullRequest, $isRetry = false)
     if ($pullRequest->Number === 94 && $pullRequest->RepositoryName === "vagas-aggregator-service") {
         return;
     }
-    
+
     global $gitHubUserToken;
     $config = loadConfig();
 
