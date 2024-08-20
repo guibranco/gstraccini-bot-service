@@ -12,6 +12,7 @@ function handlePullRequest($pullRequest, $isRetry = false)
 {
     // FIX bug
     if ($pullRequest->Number === 94 && $pullRequest->RepositoryName === "vagas-aggregator-service") {
+        echo "Skipping PR";
         return;
     }
     
