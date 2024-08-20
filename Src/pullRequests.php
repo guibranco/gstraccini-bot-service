@@ -297,7 +297,7 @@ function addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated)
         echo "Referenced issue null\n";
         return;
     }
-    
+
     if (!isset($referencedIssue->data->repository) ||
         count($referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes) == 0) {
         return;
