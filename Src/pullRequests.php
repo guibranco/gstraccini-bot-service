@@ -12,9 +12,9 @@ function handlePullRequest($pullRequest, $isRetry = false)
 {
     if (!$isRetry) {
         echo "https://github.com/{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}/pull/{$pullRequest->Number}:\n\n";
-    }    
+    }
     // FIX bug
-    if ($pullRequest->Number === "94" && $pullRequest->RepositoryName === "vagas-aggregator-service") {        
+    if ($pullRequest->Number === "94" && $pullRequest->RepositoryName === "vagas-aggregator-service") {
         echo "Skipping PR\n";
         return;
     }
@@ -48,7 +48,7 @@ function handlePullRequest($pullRequest, $isRetry = false)
         "botNameMarkdown" => "[" . $config->botName . "\[bot\]](https://github.com/apps/" . $config->botName . ")",
         "dashboardUrl" => $botDashboardUrl . $prQueryString
     );
-    
+
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     $pullRequestUpdated = json_decode($pullRequestResponse->body);
 
