@@ -15,7 +15,8 @@ function handlePullRequest($pullRequest, $isRetry = false)
     }
     // FIX bug
     if (strtolower($pullRequest->RepositoryOwner) === "apibr" ||
-        strtolower($pullRequest->RepositoryOwner) === "d0lli") {
+        strtolower($pullRequest->RepositoryOwner) === "d0lli" ||
+        strtolower($pullRequest->RepositoryName) === "bancosbrasileiros" ) {
         echo "Skipping PR\n";
         return;
     }
