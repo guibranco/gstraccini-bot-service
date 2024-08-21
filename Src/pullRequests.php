@@ -383,7 +383,7 @@ function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
 function updateBranch($metadata, $pullRequestUpdated)
 {
     if ($pullRequestUpdated->mergeable_state === "behind" ||
-        $pullRequestUpdated->mergeable_state === "unstable" ||
+        //$pullRequestUpdated->mergeable_state === "unstable" ||
         $pullRequestUpdated->mergeable_state === "unknown ") {
         echo "State: " . $pullRequestUpdated->mergeable_state . " - Updating branch: Yes - Sender: " . $pullRequestUpdated->user->login . " 👍🏻\n";
         $url = $metadata["pullRequestUrl"] . "/update-branch";
