@@ -23,22 +23,20 @@ That's what I can do :neckbeard::
 - `@gstraccini help`: Shows the help message with available commands.
 - `@gstraccini hello`: Says hello to the invoker.
 - `@gstraccini thank you`: Replies with you are welcome message to the invoker.
+- `@gstraccini add project <projectPath>`: Adds a project to the solution file (only for **.NET** projects).
 - `@gstraccini appveyor build <type>`: Runs the [AppVeyor](https://ci.appveyor.com) build for the target commit and/or pull request.
-  - `type`: `[required]` Specifies if it should trigger a build in a `commit` or `pull request`.
+- `@gstraccini appveyor bump version <component>`: Bumps the CI version in [AppVeyor](https://ci.appveyor.com).
 - `@gstraccini appveyor register`: Registers the repository in [AppVeyor](https://ci.appveyor.com).
 - `@gstraccini appveyor reset`: Resets the [AppVeyor](https://ci.appveyor.com) build number for the target repository.
-- `@gstraccini bump version <version> <project>`: Bumps the [.NET version](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core) in .csproj files.
-  - `version`: `[required]` The .NET version
-  - `project`: `[optional]` The `.csproj` file to update. Suppressing this parameter will run the command in all `.csproj` in the repository/branch.
-- `@gstraccini change runner <runner> <workflow> <jobs>`: Changes the [GitHub action runner](https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources) in a workflow file (.yml).
-  - `runner`: `[required]` The runner's name
-  - `workflow`: `[required]` The workflow filename (with or without the .yml/.yaml extension).
-  - `jobs`: `[optional]` The jobs to apply this command. Suppressing this parameter will run the command in all jobs within the workflow.
+- `@gstraccini bump version <version> <project>`: Bumps the [.NET version](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core) in .csproj files. :warning: (In development, it may not work as expected!)
+- `@gstraccini change runner <runner> <workflow> <jobs>`: Changes the [GitHub action runner](https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources) in a workflow file (.yml). :warning: (In development, it may not work as expected!)
 - `@gstraccini csharpier`: Formats the C# code using [CSharpier](https://csharpier.com) (only for **.NET** projects).
-- `@gstraccini fix csproj`: Updates the `.csproj` file with the `packages.config` version of [NuGet packages](https://nuget.org) (only for **.NET Framework** projects).
+- `@gstraccini fix csproj`: Updates the `.csproj` file with the `packages.config` version of [NuGet packages](https://nuget.org) (only for **.NET Framework** projects). :warning: (In development, it may not work as expected!)
 - `@gstraccini prettier`: Formats the code using [Prettier](https://prettier.io).
+- `@gstraccini rerun failed checks`: This option reruns the failed checks in the target pull request.
+- `@gstraccini rerun failed workflows`: This option reruns the failed workflows (action) in the target pull request. It is only available for GitHub Actions!
 - `@gstraccini review`: Enable review for the target pull request. This is useful when the PR submitter wasn't on the watch list, the webhook was not captured, or some failed scenario occurred.
-- `@gstraccini track`: Tracks the specified pull request. Queue a build, raise a **[dependabot](https://github.com/dependabot), recreate** comment to resolve conflicts, and synchronize merge branches.
+- `@gstraccini track`: Tracks the specified pull request. Queue a build, raise a **[dependabot](https://github.com/dependabot) recreate** comment to resolve conflicts, and synchronize merge branches. :warning: (In development, it may not work as expected!)
 - `@gstraccini update snapshot`: Update test snapshots (`npm test -- -u`) (only for **Node.js** projects).
 
 Multiple commands can be issued at the same time. Just respect each command pattern (with bot name prefix + command).
@@ -46,6 +44,10 @@ Multiple commands can be issued at the same time. Just respect each command patt
 > [!Warning]
 >
 > If you aren't allowed to use this bot, a reaction with a thumbs down will be added to your comment.
+
+> [!Important]
+>
+> You can tick (✅) one item from the above list, and it will be triggered! (In beta).
 
 ---
 
