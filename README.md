@@ -75,4 +75,5 @@ The bot handlers on this repository run on my infrastructure at the following in
 - ![GStraccini Bot - Issues](https://healthchecks.io/b/2/05666a6b-d35f-4cb8-abc8-25584cc9029b.svg) - 🕐 every 1 minute
 - ![GStraccini Bot - Pull Requests](https://healthchecks.io/b/2/05c48393-c700-45b4-880f-59cb7b9b9f25.svg) - 🕐 every 1 minute
 - ![GStraccini Bot - Pushes](https://healthchecks.io/b/2/1e8724fa-8361-47d7-a4f6-901e8d4ff265.svg) - 🕐 every 1 minute
+- ![GStraccini Bot - Repositories](https://healthchecks.io/b/2/4ef0ee6c-38f8-4c79-b9f7-049438bd39a9.svg) - 🕐 every 1 minute
 - ![GStraccini Bot - Signature](https://healthchecks.io/b/2/8303206b-2f4c-4300-ac64-5e9cd342c164.svg) - 🕐 every 5 minutes
