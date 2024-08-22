@@ -7,47 +7,47 @@ use GuiBranco\Pancake\HealthChecks;
 
 function handleRepository($repository)
 {
-  echo "https://github.com/{$repository->RepositoryOwner}/{$repository->RepositoryName}:\n\n";
-  
-  global $gitHubUserToken;
-  $config = loadConfig();
+    echo "https://github.com/{$repository->RepositoryOwner}/{$repository->RepositoryName}:\n\n";
 
-  $botDashboardUrl = "https://gstraccini.bot/dashboard";
-  $prQueryString =
-        "?owner=" . $repository->RepositoryOwner .
-        "&repo=" . $repository->RepositoryName;
+    global $gitHubUserToken;
+    $config = loadConfig();
 
-  $token = generateInstallationToken($repository->InstallationId, $repository->RepositoryName);
-  $repoPrefix = "repos/" . $repository->RepositoryOwner . "/" . $repository->RepositoryName;
-  $metadata = array(
-    "token" => $token,
-    "repoUrl" => $repoPrefix,
-    "userToken" => $gitHubUserToken,
-    "botNameMarkdown" => "[" . $config->botName . "\[bot\]](https://github.com/apps/" . $config->botName . ")",
-    "dashboardUrl" => $botDashboardUrl . $prQueryString
-  );
+    $botDashboardUrl = "https://gstraccini.bot/dashboard";
+    $prQueryString =
+          "?owner=" . $repository->RepositoryOwner .
+          "&repo=" . $repository->RepositoryName;
 
-  $repositoryOptions = getRepositoryOptions($metadata);
-  createRepositoryLabels($metadata, $repositoryOptions);
+    $token = generateInstallationToken($repository->InstallationId, $repository->RepositoryName);
+    $repoPrefix = "repos/" . $repository->RepositoryOwner . "/" . $repository->RepositoryName;
+    $metadata = array(
+      "token" => $token,
+      "repoUrl" => $repoPrefix,
+      "userToken" => $gitHubUserToken,
+      "botNameMarkdown" => "[" . $config->botName . "\[bot\]](https://github.com/apps/" . $config->botName . ")",
+      "dashboardUrl" => $botDashboardUrl . $prQueryString
+    );
+
+    $repositoryOptions = getRepositoryOptions($metadata);
+    createRepositoryLabels($metadata, $repositoryOptions);
 }
 
-function getRepositoryOptions($metadata) 
+function getRepositoryOptions($metadata)
 {
     $paths = array("/", "/.github/");
     $fileContentResponse = null;
     foreach ($paths as $path) {
-      $fileContentResponse = doRequestGitHub($metadata["token"], $metadata["repoUrl"] . "/contents" . $path . ".gstraccini.toml", null, "GET");
-      if ($fileContentResponse->statusCode === 200) {
-          break;
-      }
+        $fileContentResponse = doRequestGitHub($metadata["token"], $metadata["repoUrl"] . "/contents" . $path . ".gstraccini.toml", null, "GET");
+        if ($fileContentResponse->statusCode === 200) {
+            break;
+        }
     }
 
-  if($fileContentResponse === null) {
-      return getDefaultOptions();
-  }
+    if($fileContentResponse === null) {
+        return getDefaultOptions();
+    }
 
-  $fileContent = json_decode($fileContentResponse->body, true);
-  return getDefaultOptions();  
+    $fileContent = json_decode($fileContentResponse->body, true);
+    return getDefaultOptions();
 }
 
 function getDefaultOptions()
@@ -55,14 +55,14 @@ function getDefaultOptions()
     return array("labels" => array("style" => "icons", "type" => "all"));
 }
 
-function createRepositoryLabels($metadata, $options) 
+function createRepositoryLabels($metadata, $options)
 {
-  if(!isset($option["labels"]) || $options["labels"] === null || $options["labels"] === "") {
-    echo "Not creating labels\n";
-    return;
-  }
-  
-  echo "Creating labels | Style: {$options["labels"]["style"]} | Type: {$options["labels"]["type"]}\n";
+    if(!isset($option["labels"]) || $options["labels"] === null || $options["labels"] === "") {
+        echo "Not creating labels\n";
+        return;
+    }
+
+    echo "Creating labels | Style: {$options["labels"]["style"]} | Type: {$options["labels"]["type"]}\n";
 }
 
 function main()
