@@ -67,12 +67,12 @@ function createRepositoryLabels($metadata, $options)
 
 function main()
 {
-    $repositories = readTable("github_pull_repositories");
+    $repositories = readTable("github_repositories");
     foreach ($repositories as $repository) {
         echo "Sequence: {$repository->Sequence}\n";
         echo "Delivery ID: {$repository->DeliveryIdText}\n";
         handleRepository($repository);
-        updateTable("github_pull_repositories", $repository->Sequence);
+        updateTable("github_repositories", $repository->Sequence);
         echo str_repeat("=-", 50) . "=\n";
     }
 }
