@@ -126,7 +126,6 @@ jobs:
           echo ${{ env.fullSemVer }} > version.txt
 
       - name: Upload service
-        if: ${{ steps.changes.outputs.src == 'true' }}
         uses: sebastianpopp/ftp-action@releases/v2
         with:
           host: ${{ secrets.FTP_SERVER }}
