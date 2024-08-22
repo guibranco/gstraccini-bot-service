@@ -97,7 +97,7 @@ function execute_help($config, $metadata, $comment)
         $parameters = "";
         $parametersHelp = "";
         $inDevelopment = isset($command->dev) && $command->dev
-            ? " :warning: (in development - maybe not working as expected!)"
+            ? " :warning: (In development, it may not work as expected!)"
             : "";
         if (isset($command->parameters)) {
             foreach ($command->parameters as $parameter) {
@@ -111,7 +111,7 @@ function execute_help($config, $metadata, $comment)
         $helpComment .= $command->description . $inDevelopment . "\r\n";
         $helpComment .= $parametersHelp;
     }
-    $helpComment .= "\n\nMultiple commands can be issued at the same time. " .
+    $helpComment .= "\n\nMultiple commands can be issued simultaneously. " .
         "Just respect each command pattern (with bot name prefix + command).\n\n" .
         "> [!Warning]\n" .
         "> \n" .
