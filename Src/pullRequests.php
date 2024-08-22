@@ -13,7 +13,7 @@ function handlePullRequest($pullRequest, $isRetry = false)
     if (!$isRetry) {
         echo "https://github.com/{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}/pull/{$pullRequest->Number}:\n\n";
     }
-    
+
     global $gitHubUserToken;
     $config = loadConfig();
 
