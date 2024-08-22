@@ -63,7 +63,7 @@
     "parameters": [
       {
         "parameter": "version",
-        "description": "The .NET version",
+        "description": "The .NET version.",
         "required": true
       },
       {
@@ -81,7 +81,7 @@
     "parameters": [
       {
         "parameter": "runner",
-        "description": "The runner's name",
+        "description": "The runner's name.",
         "required": true
       },
       {
