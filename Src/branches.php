@@ -153,6 +153,7 @@ function main()
 }
 
 $healthCheck = new HealthChecks($healthChecksIoBranches, GUIDv4::random());
+$healthCheck->setHeaders(["User-Agent: " . constant("USER_AGENT"), "Content-Type: application/json; charset=utf-8"]);
 $healthCheck->start();
 $time = time();
 while (true) {
