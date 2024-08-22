@@ -2,7 +2,7 @@ name: Deploy via ftp
 
 on:
   push:
-    branches: [main]
+    branches: main
   workflow_dispatch:
 
 concurrency:
@@ -20,13 +20,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - uses: dorny/paths-filter@v3
-        id: changes
-        with:
-          filters: |
-            src:
-              - "Src/**"
 
       - name: Install GitVersion
         uses: gittools/actions/gitversion/setup@v2
@@ -54,7 +47,6 @@ jobs:
           working_dir: "./Src/"
 
       - name: Create .htaccess secrets file
-        if: ${{ steps.changes.outputs.src == 'true' }}
         run: |
           cd Src
           mkdir -p secrets
@@ -62,7 +54,6 @@ jobs:
           echo "Deny from all" >> .htaccess
       
       - name: Generate AppVeyor secrets file
-        if: ${{ steps.changes.outputs.src == 'true' }}
         run: |
           cd Src
           mkdir -p secrets
@@ -71,7 +62,6 @@ jobs:
           echo "\$appVeyorKey = \"${{ secrets.APPVEYOR_KEY }}\";" >> appVeyor.secrets.php
 
       - name: Generate GitHub App secrets file
-        if: ${{ steps.changes.outputs.src == 'true' }}
         run: |
           cd Src
           mkdir -p secrets
@@ -84,7 +74,6 @@ jobs:
           echo "\$gitHubWebhookSignature = \"${{ secrets.WEBHOOK_SIGNATURE }}\";" >> gitHubApp.secrets.php
 
       - name: Generate HealthChecksIo secrets file
-        if: ${{ steps.changes.outputs.src == 'true' }}
         run: |
           cd Src
           mkdir -p secrets
@@ -99,7 +88,6 @@ jobs:
           echo "\$healthChecksIoSignature    = \"${{ secrets.HEALTHCHECKSIO_SIGNATURE }}\";" >> healthChecksIo.secrets.php
 
       - name: Create Logger secrets file
-        if: ${{ steps.changes.outputs.src == 'true' }}
         run: |
           cd Src
           mkdir -p secrets
@@ -110,7 +98,6 @@ jobs:
           echo "\$loggerApiToken = \"${{ secrets.LOGGER_APITOKEN }}\";" >> logger.secrets.php
       
       - name: Create MySQL secrets file
-        if: ${{ steps.changes.outputs.src == 'true' }}
         run: |
           cd Src
           mkdir -p secrets
@@ -122,7 +109,6 @@ jobs:
           echo "\$mySqlDatabase = \"${{ secrets.MYSQL_DATABASE }}\";" >> mySql.secrets.php
 
       - name: Create RabbitMQ secrets file
-        if: ${{ steps.changes.outputs.src == 'true' }}
         run: |
           cd Src
           mkdir -p secrets
