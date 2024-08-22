@@ -95,7 +95,7 @@ jobs:
           echo "\$healthChecksIoComments     = \"${{ secrets.HEALTHCHECKSIO_COMMENTS }}\";" >> healthChecksIo.secrets.php
           echo "\$healthChecksIoPushes       = \"${{ secrets.HEALTHCHECKSIO_PUSHES }}\";" >> healthChecksIo.secrets.php
           echo "\$healthChecksIoPullRequests = \"${{ secrets.HEALTHCHECKSIO_PULL_REQUESTS }}\";" >> healthChecksIo.secrets.php
-          echo "\$healthChecksIoRepositories = \"${{ secrets.HEALTHCHECKSIO_PULL_REPOSITORIES }}\";" >> healthChecksIo.secrets.php
+          echo "\$healthChecksIoRepositories = \"${{ secrets.HEALTHCHECKSIO_REPOSITORIES }}\";" >> healthChecksIo.secrets.php
           echo "\$healthChecksIoSignature    = \"${{ secrets.HEALTHCHECKSIO_SIGNATURE }}\";" >> healthChecksIo.secrets.php
 
       - name: Create Logger secrets file
