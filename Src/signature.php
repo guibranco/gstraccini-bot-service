@@ -39,6 +39,7 @@ function main()
 }
 
 $healthCheck = new HealthChecks($healthChecksIoSignature, GUIDv4::random());
+$healthCheck->setHeaders(["User-Agent: " . constant("USER_AGENT"), "Content-Type: application/json; charset=utf-8"]);
 $healthCheck->start();
 main();
 $healthCheck->end();
