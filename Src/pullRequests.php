@@ -237,7 +237,8 @@ function removeIssueWipLabel($metadata, $pullRequest)
 {
     $referencedIssue = getReferencedIssue($metadata, $pullRequest);
 
-    if (count($referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes) == 0) {
+    if (!isset($referencedIssue->data->repository) ||
+        count($referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes) == 0) {
         return;
     }
 
@@ -290,35 +291,34 @@ function addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated)
 {
     $referencedIssue = getReferencedIssue($metadata, $pullRequest);
 
-    if ($referencedIssue === null) {
-        echo "Referenced issue null\n";
-        return;
-    }
-
     if (!isset($referencedIssue->data->repository) ||
         count($referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes) == 0) {
         return;
     }
 
-    $issueNumber = $referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes[0]->number;
-    $issueResponse = doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber, null, "GET");
-    $issue = json_decode($issueResponse->body);
+    $labels = array();
+    foreach ($referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes as $node) {
+        $issueNumber = $node->number;
+        $issueResponse = doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber, null, "GET");
+        $issue = json_decode($issueResponse->body);
 
-    $labels = array_column($issue->labels, "name");
+        $labelsIssue = array_column($issue->labels, "name");
+        $position = array_search("🛠 WIP", $labelsIssue);
 
-    $position = array_search("🛠 WIP", $labels);
+        if ($position !== false) {
+            unset($labelsIssue[$position]);
+        } else {
+            $body = array("labels" => array("🛠 WIP"));
+            doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber . "/labels", $body, "POST");
+        }
 
-    if ($position !== false) {
-        unset($labels[$position]);
-    } else {
-        $body = array("labels" => array("🛠 WIP"));
-        doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber . "/labels", $body, "POST");
-    }
+        $position = array_search("🤖 bot", $labelsIssue);
 
-    $position = array_search("🤖 bot", $labels);
+        if ($position !== false && strtolower($pullRequestUpdated->user->type) !== "bot") {
+            unset($labelsIssue[$position]);
+        }
 
-    if ($position !== false && strtolower($pullRequestUpdated->user->type) !== "bot") {
-        unset($labels[$position]);
+        $labels = array_merge($labels, $labelsIssue);
     }
 
     $body = array("labels" => array_values($labels));
