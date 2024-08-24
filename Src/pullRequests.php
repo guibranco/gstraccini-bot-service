@@ -320,7 +320,7 @@ function addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated)
 
         $labels = array_merge($labels, $labelsIssue);
     }
-    
+
     $body = array("labels" => array_values($labels));
     doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $body, "POST");
 }
