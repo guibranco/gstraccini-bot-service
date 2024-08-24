@@ -241,13 +241,16 @@ function removeIssueWipLabel($metadata, $pullRequest)
         return;
     }
 
-    $issueNumber = $referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes[0]->number;
-    $issueResponse = doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber, null, "GET");
+    foreach ($referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes as $node) {
+        $issueNumber = $node->number;
+        $issueResponse = doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber, null, "GET");
 
-    $labels = array_column(json_decode($issueResponse->body)->labels, "name");
-    if (in_array("🛠 WIP", $labels)) {
-        $url = $metadata["issuesUrl"] . "/" . $issueNumber . "/labels/🛠 WIP";
-        doRequestGitHub($metadata["token"], $url, null, "DELETE");
+        $labels = array_column(json_decode($issueResponse->body)->labels, "name");
+        
+        if (in_array("🛠 WIP", $labels)) {
+            $url = $metadata["issuesUrl"] . "/" . $issueNumber . "/labels/🛠 WIP";
+            doRequestGitHub($metadata["token"], $url, null, "DELETE");
+        }
     }
 }
 
@@ -266,7 +269,7 @@ function getReferencedIssue($metadata, $pullRequest)
         "query" => "query {
         repository(owner: \"" . $pullRequest->RepositoryOwner . "\", name: \"" . $pullRequest->RepositoryName . "\") {
           pullRequest(number: " . $pullRequest->Number . ") {
-            closingIssuesReferences(first: 1) {
+            closingIssuesReferences(first: 10) {
               nodes {
                   number
               }
