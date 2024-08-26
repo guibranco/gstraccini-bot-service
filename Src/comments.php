@@ -96,10 +96,12 @@ function execute_help($config, $metadata, $comment)
     foreach ($config->commands as $command) {
         $parameters = "";
         $parametersHelp = "";
+        $prefix = "[ ] ";
         $inDevelopment = isset($command->dev) && $command->dev
             ? " :warning: (In development, it may not work as expected!)"
             : "";
         if (isset($command->parameters)) {
+            $prefix = "";
             foreach ($command->parameters as $parameter) {
                 $parameters .= " <" . $parameter->parameter . ">";
                 $parametersHelp .= "\t- `" . $parameter->parameter . "`: `[" .
@@ -107,7 +109,8 @@ function execute_help($config, $metadata, $comment)
                     $parameter->description . "\r\n";
             }
         }
-        $helpComment .= "- [ ] `@" . $config->botName . " " . $command->command . $parameters . "`: ";
+
+        $helpComment .= "- {$prefix}`@{$config->botName} {$command->command}{$parameters}`:";
         $helpComment .= $command->description . $inDevelopment . "\r\n";
         $helpComment .= $parametersHelp;
     }
@@ -119,7 +122,7 @@ function execute_help($config, $metadata, $comment)
         "\n\n" .
         "> [!Important]\n" .
         "> \n" .
-        "> You can tick (✅) one item from the above list, and it will be triggered! (In beta).\n";
+        "> You can tick (✅) one item from the above list, and it will be triggered! (In beta) (Only parameterless commands).\n";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $helpComment), "POST");
 }
 
