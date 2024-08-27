@@ -358,7 +358,7 @@ function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
 
 function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
 {
-    if ($pullRequestUpdated->mergeable_state != "clean" && !$pullRequestUpdated->mergeable) {
+    if ($pullRequestUpdated->mergeable_state !== "clean" && $pullRequestUpdated->mergeable === false) {
         if ($pullRequest->Sender !== "dependabot[bot]" && $pullRequest->Sender !== "depfu[bot]") {
             echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Conflicts - Sender: " . $pullRequest->Sender . " ⚠️\n";
             return;
@@ -379,16 +379,16 @@ function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
 
 function updateBranch($metadata, $pullRequestUpdated)
 {
-    if ($pullRequestUpdated->mergeable_state === "behind" ||
-        //$pullRequestUpdated->mergeable_state === "unstable" ||
-        $pullRequestUpdated->mergeable_state === "unknown ") {
-        echo "State: " . $pullRequestUpdated->mergeable_state . " - Updating branch: Yes - Sender: " . $pullRequestUpdated->user->login . " 👍🏻\n";
-        $url = $metadata["pullRequestUrl"] . "/update-branch";
-        $body = array("expected_head_sha" => $pullRequestUpdated->head->sha);
-        doRequestGitHub($metadata["token"], $url, $body, "PUT");
-    } else {
+    $states = ["behind", "unknown"]; // ["behind", "unknown", "unstable"];
+    if (!in_array($pullRequestUpdated->mergeable_state, $states)) {
         echo "State: " . $pullRequestUpdated->mergeable_state . " - Updating branch: No - Sender: " . $pullRequestUpdated->user->login . " 👎🏻\n";
+        return;
     }
+    
+    echo "State: " . $pullRequestUpdated->mergeable_state . " - Updating branch: Yes - Sender: " . $pullRequestUpdated->user->login . " 👍🏻\n";
+    $url = $metadata["pullRequestUrl"] . "/update-branch";
+    $body = array("expected_head_sha" => $pullRequestUpdated->head->sha);
+    doRequestGitHub($metadata["token"], $url, $body, "PUT");
 }
 
 function main()
