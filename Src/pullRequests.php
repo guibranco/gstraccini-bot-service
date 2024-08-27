@@ -384,7 +384,7 @@ function updateBranch($metadata, $pullRequestUpdated)
         echo "State: " . $pullRequestUpdated->mergeable_state . " - Updating branch: No - Sender: " . $pullRequestUpdated->user->login . " 👎🏻\n";
         return;
     }
-    
+
     echo "State: " . $pullRequestUpdated->mergeable_state . " - Updating branch: Yes - Sender: " . $pullRequestUpdated->user->login . " 👍🏻\n";
     $url = $metadata["pullRequestUrl"] . "/update-branch";
     $body = array("expected_head_sha" => $pullRequestUpdated->head->sha);
