@@ -365,7 +365,7 @@ function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
         }
         echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Recreate via bot - Sender: " . $pullRequest->Sender . " ☢️\n";
 
-        if ($pullRequest->Sender !== "dependabot[bot]") {
+        if ($pullRequest->Sender === "dependabot[bot]") {
             $comment = array("body" => "@dependabot recreate");
         } else {
             $comment = array("body" => "@depfu recreate");
