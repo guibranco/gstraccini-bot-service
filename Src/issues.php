@@ -22,8 +22,10 @@ function handleIssue($issue)
     $issueUpdated = json_decode($issueResponse->body);
 
     if ($issueUpdated->assignee != null) {
+        removeAwaitingTriageLabel($issueUpdated, $metadata);
         return;
     }
+
     $repositoryResponse = doRequestGitHub($metadata["token"], $metadata["repoUrl"], null, "GET");
     $repository = json_decode($repositoryResponse->body);
 
@@ -37,6 +39,15 @@ function handleIssue($issue)
         return;
     }
 
+    addLabels($issueUpdated, $collaboratorsLogins, $metadata);
+
+    if(in_array($issueUpdated->user->login, $collaboratorsLogins)) {
+        removeAwaitingTriageLabel($issueUpdated, $metadata);
+    }
+}
+
+function addLabels($issueUpdated, $collaboratorsLogins, $metadata)
+{
     $labels = [];
     if (!in_array($issueUpdated->user->login, $collaboratorsLogins)) {
         $labels[] = "🚦awaiting triage";
@@ -49,6 +60,16 @@ function handleIssue($issue)
     if (count($labels) > 0) {
         $body = array("labels" => $labels);
         doRequestGitHub($metadata["token"], $metadata["issueUrl"] . "/labels", $body, "POST");
+    }
+}
+
+function removeAwaitingTriageLabel($issueUpdated, $metadata)
+{
+    $awaitingTriageLabel = "🚦awaiting triage";
+    $labels = array_column($issueUpdated->labels, "name");
+    if (in_array($awaitingTriageLabel, $labels)) {
+        $url = "{$metadata["issuesUrl"]}/{$issueUpdated->number}/labels/{$awaitingTriageLabel}";
+        doRequestGitHub($metadata["token"], $url, null, "DELETE");
     }
 }
 
