@@ -383,14 +383,14 @@ function updateBranch($metadata, $pullRequestUpdated)
     $baseRef = $pullRequestUpdated->base->ref;
     $headRef = $pullRequestUpdated->head->ref;
 
-    $compareResponse = doRequestGitHub($metadata["token"], "{$metadata["compareUrl"]}{$baseRef}...{$headRef}" , null, "GET");
+    $compareResponse = doRequestGitHub($metadata["token"], "{$metadata["compareUrl"]}{$baseRef}...{$headRef}", null, "GET");
     $compare = json_decode($compareResponse->body, true);
 
     if ($compare->behind_by === 0) {
         echo "State: {$pullRequestUpdated->mergeable_state} - Commits Behind: 0 - Updating branch: No - Sender: {$pullRequestUpdated->user->login} 👎🏻\n";
         return;
-    }    
-    
+    }
+
     echo "State: {$pullRequestUpdated->mergeable_state} - Commits Behind: {$compare->behind_by} - Updating branch: Yes - Sender: {$pullRequestUpdated->user->login} 👍🏻\n";
     $url = $metadata["pullRequestUrl"] . "/update-branch";
     $body = array("expected_head_sha" => $pullRequestUpdated->head->sha);
