@@ -40,6 +40,7 @@ function handlePullRequest($pullRequest, $isRetry = false)
         "checkRunUrl" => $repoPrefix . "/check-runs",
         "issuesUrl" => $repoPrefix . "/issues",
         "labelsUrl" => $repoPrefix . ISSUES . $pullRequest->Number . "/labels",
+        "compareUrl" => $repoPrefix . "/compare/",
         "botNameMarkdown" => "[" . $config->botName . "\[bot\]](https://github.com/apps/" . $config->botName . ")",
         "dashboardUrl" => $botDashboardUrl . $prQueryString
     );
@@ -379,13 +380,18 @@ function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
 
 function updateBranch($metadata, $pullRequestUpdated)
 {
-    $states = ["behind", "unknown"]; // ["behind", "unknown", "unstable"];
-    if (!in_array($pullRequestUpdated->mergeable_state, $states)) {
-        echo "State: " . $pullRequestUpdated->mergeable_state . " - Updating branch: No - Sender: " . $pullRequestUpdated->user->login . " 👎🏻\n";
-        return;
-    }
+    $baseRef = $pullRequestUpdated->base->ref;
+    $headRef = $pullRequestUpdated->head->ref;
 
-    echo "State: " . $pullRequestUpdated->mergeable_state . " - Updating branch: Yes - Sender: " . $pullRequestUpdated->user->login . " 👍🏻\n";
+    $compareResponse = doRequestGitHub($metadata["token"], "{$metadata["compareUrl"]}{$baseRef}...{$headRef}" , null, "GET");
+    $compare = json_decode($compareResponse->body, true);
+
+    if ($compare->behind_by === 0) {
+        echo "State: {$pullRequestUpdated->mergeable_state} - Commits Behind: 0 - Updating branch: No - Sender: {$pullRequestUpdated->user->login} 👎🏻\n";
+        return;
+    }    
+    
+    echo "State: {$pullRequestUpdated->mergeable_state} - Commits Behind: {$compare->behind_by} - Updating branch: Yes - Sender: {$pullRequestUpdated->user->login} 👍🏻\n";
     $url = $metadata["pullRequestUrl"] . "/update-branch";
     $body = array("expected_head_sha" => $pullRequestUpdated->head->sha);
     doRequestGitHub($metadata["token"], $url, $body, "PUT");
