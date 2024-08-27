@@ -25,7 +25,7 @@ function handleIssue($issue)
         removeAwaitingTriageLabel($issueUpdated, $metadata);
         return;
     }
-    
+
     $repositoryResponse = doRequestGitHub($metadata["token"], $metadata["repoUrl"], null, "GET");
     $repository = json_decode($repositoryResponse->body);
 
@@ -43,7 +43,7 @@ function handleIssue($issue)
 
     if(in_array($issueUpdated->user->login, $collaboratorsLogins)) {
         removeAwaitingTriageLabel($issueUpdated, $metadata);
-    }    
+    }
 }
 
 function addLabels($issueUpdated, $collaboratorsLogins, $metadata)
@@ -63,7 +63,7 @@ function addLabels($issueUpdated, $collaboratorsLogins, $metadata)
     }
 }
 
-function removeAwaitingTriageLabel($issueUpdated,  $metadata)
+function removeAwaitingTriageLabel($issueUpdated, $metadata)
 {
     $awaitingTriageLabel = "🚦awaiting triage";
     $labels = array_column($issueUpdated->labels, "name");
