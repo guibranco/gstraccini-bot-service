@@ -101,7 +101,7 @@ jobs:
           refresh-message-position: true
           allow-repeats: true
           message: |
-           :warning: [Update test snapshots](${{ env.GHA_URL }}) executed! No changes are needed.
+           :warning: [Update test snapshots](${{ env.GHA_URL }}) executed! There's no need for any changes.
 
 
       - name: Verify Changed files
@@ -111,10 +111,10 @@ jobs:
       - name: Config git
         if: steps.verify-changed-files.outputs.files_changed == 'true'
         run: |
-          git config --local user.email "${{ github.event.inputs.installationId }}+gstraccini[bot]@users.noreply.github.com"
+          git config --local user.email "150967461+gstraccini[bot]@users.noreply.github.com"
           git config --local user.name "gstraccini[bot]"
           git config --global --add --bool push.autoSetupRemote true
-      
+
       - name: Commit files
         if: steps.verify-changed-files.outputs.files_changed == 'true'
         run: |
