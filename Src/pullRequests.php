@@ -384,7 +384,7 @@ function updateBranch($metadata, $pullRequestUpdated)
     $headRef = $pullRequestUpdated->head->ref;
 
     $compareResponse = doRequestGitHub($metadata["token"], "{$metadata["compareUrl"]}{$baseRef}...{$headRef}", null, "GET");
-    $compare = json_decode($compareResponse->body, true);
+    $compare = json_decode($compareResponse->body);
 
     if ($compare->behind_by === 0) {
         echo "State: {$pullRequestUpdated->mergeable_state} - Commits Behind: 0 - Updating branch: No - Sender: {$pullRequestUpdated->user->login} 👎🏻\n";
