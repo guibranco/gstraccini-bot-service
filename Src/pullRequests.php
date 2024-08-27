@@ -380,8 +380,8 @@ function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
 
 function updateBranch($metadata, $pullRequestUpdated)
 {
-    $baseRef = $pullRequestUpdated->base->ref;
-    $headRef = $pullRequestUpdated->head->ref;
+    $baseRef = urlencode($pullRequestUpdated->base->ref);
+    $headRef = urlencode($pullRequestUpdated->head->ref);
 
     $compareResponse = doRequestGitHub($metadata["token"], "{$metadata["compareUrl"]}{$baseRef}...{$headRef}", null, "GET");
     $compare = json_decode($compareResponse->body);
