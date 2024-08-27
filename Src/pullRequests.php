@@ -384,6 +384,9 @@ function updateBranch($metadata, $pullRequestUpdated)
     $headRef = urlencode($pullRequestUpdated->head->ref);
 
     $compareResponse = doRequestGitHub($metadata["token"], "{$metadata["compareUrl"]}{$baseRef}...{$headRef}", null, "GET");
+    if ($compareResponse->statusCode >= 300) {
+        return;
+    }
     $compare = json_decode($compareResponse->body);
 
     if ($compare->behind_by === 0) {
