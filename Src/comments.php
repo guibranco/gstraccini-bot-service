@@ -500,25 +500,28 @@ function callWorkflow($config, $metadata, $comment, $workflow, $extendedParamete
     doRequestGitHub($tokenBot, $url, $data, "POST");
 }
 
-function checkIfPullRequestIsOpen($metadata)
+function checkIfPullRequestIsOpen(&$metadata)
 {
-    $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["issueUrl"], null, "GET");
+    $issueResponse = doRequestGitHub($metadata["token"], $metadata["issueUrl"], null, "GET");
+    if ($issueResponse->statusCode !== 200) {
+        return false;
+    }
+
+    $issue = json_decode($issueResponse->body);
+    if (isset($issue->pull_request) === false || $issue->state === "closed") {
+        return false;
+    }
+    
+    $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     if ($pullRequestResponse->statusCode !== 200) {
         return false;
     }
     $pullRequest = json_decode($pullRequestResponse->body);
 
-    if (!isset($pullRequest->pull_request)) {
-        return false;
-    }
-
     $metadata["headRef"] = $pullRequest->head->ref;
     $metadata["headSha"] = $pullRequest->head->sha;
 
-    if ($pullRequest->state === "open") {
-        return true;
-    }
-    return false;
+    return $pullRequest->state === "open";
 }
 
 function getAppVeyorProject($metadata, $comment)
