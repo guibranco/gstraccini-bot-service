@@ -511,7 +511,7 @@ function checkIfPullRequestIsOpen(&$metadata)
     if (isset($issue->pull_request) === false || $issue->state === "closed") {
         return false;
     }
-    
+
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     if ($pullRequestResponse->statusCode !== 200) {
         return false;
