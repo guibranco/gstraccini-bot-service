@@ -72,7 +72,7 @@ function removeLabels($issueUpdated, $metadata, $includeWip = false)
     if ($includeWip === true) {
         $labelsLookup[] = "🛠 WIP";
     }
-    
+
     $labels = array_column($issueUpdated->labels, "name");
     $intersect = array_intersect($labelsLookup, $labels);
 
