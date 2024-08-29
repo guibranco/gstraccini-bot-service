@@ -20,14 +20,14 @@ function doRequestGitHub($token, $url, $data, $method)
     }
 
     $headers = array(
-        "User-Agent: " . USER_AGENT,
+        constant("USER_AGENT"),
         "Content-type: application/json",
         "Accept: application/json",
         "X-GitHub-Api-Version: 2022-11-28",
         "Authorization: Bearer " . $token
     );
 
-    $logger = new Logger($loggerUrl, $loggerApiKey, $loggerApiToken, USER_AGENT);
+    $logger = new Logger($loggerUrl, $loggerApiKey, $loggerApiToken, constant("USER_AGENT_VENDOR"));
     $request = new Request();
     switch ($method) {
         case "GET":
