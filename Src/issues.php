@@ -21,8 +21,13 @@ function handleIssue($issue)
     $issueResponse = doRequestGitHub($metadata["token"], $metadata["issueUrl"], null, "GET");
     $issueUpdated = json_decode($issueResponse->body);
 
-    if ($issueUpdated->assignee != null) {
+    if ($issueUpdated->state === "closed") {
         removeLabels($issueUpdated, $metadata, true);
+        return;
+    } 
+
+    if ($issueUpdated->assignee != null) {
+        removeLabels($issueUpdated, $metadata);
         return;
     }
 
