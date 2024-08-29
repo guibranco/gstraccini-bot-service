@@ -75,6 +75,16 @@ function removeLabels($issueUpdated, $metadata)
     }
 }
 
+function removeAwaitingTriageLabel($issueUpdated, $metadata)
+{
+    $awaitingTriageLabel = "🚦awaiting triage";
+    $labels = array_column($issueUpdated->labels, "name");
+    if (in_array($awaitingTriageLabel, $labels)) {
+        $url = "{$metadata["issuesUrl"]}/{$issueUpdated->number}/labels/{$awaitingTriageLabel}";
+        doRequestGitHub($metadata["token"], $url, null, "DELETE");
+    }
+}
+
 function main()
 {
     $issues = readTable("github_issues");
