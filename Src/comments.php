@@ -508,7 +508,7 @@ function checkIfPullRequestIsOpen(&$metadata)
     }
 
     $issue = json_decode($issueResponse->body);
-    if (isset($issue->pull_request) === false || $issue->state === "closed") {
+    if (isset($issue->pull_request) === false || isset($issue->state) === false || $issue->state === "closed") {
         return false;
     }
 
