@@ -305,7 +305,7 @@ function execute_copyIssue($config, $metadata, $comment)
     $newIssue = array("title" => $issueUpdated->title, "body" => $issueUpdated->body, "labels" => $issueUpdated->labels);
 
     $createdIssueResponse = doRequestGitHub($metadata["token"], $newIssueUrl, $newIssue, "POST");
-    if ($createdIssueResponse->statusCode !== 200) {
+    if ($createdIssueResponse->statusCode !== 201) {
         $body = "Error copying issue: {$createdIssueResponse->statusCode}";
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
         return;
@@ -318,6 +318,9 @@ function execute_copyIssue($config, $metadata, $comment)
 
     $body = "Issue copied to [{$targetRepository}#{$number}]({$htmlUrl})";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+
+    $body = "Issue copied from [{$comment->RepositoryOwner}/{$comment->RepositoryName}](https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/issues/{$comment->PulLRequestNumber})";
+    doRequestGitHub($metadata["token"], $createdIssue->comments_url, array("body" => $body), "POST");
 }
 
 function execute_csharpier($config, $metadata, $comment)
