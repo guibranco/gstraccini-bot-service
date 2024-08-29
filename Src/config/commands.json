@@ -99,6 +99,18 @@
     "requiresPullRequestOpen": true
   },
   {
+    "command": "copy issue",
+    "description": "Copy an issue from one repository to another",
+    "parameters": [
+      {
+        "parameter": "repository",
+        "description": "The target repository where the issue will be copied/created.",
+        "required": true
+      }
+    ],
+    "dev": true
+  },
+  {
     "command": "csharpier",
     "description": "Formats the C# code using [CSharpier](https://csharpier.com) (only for **.NET** projects).",
     "requiresPullRequestOpen": true
