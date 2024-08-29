@@ -303,10 +303,10 @@ function execute_copyIssue($config, $metadata, $comment)
             doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
         } else {
             $createdIssue = json_decode($createdIssueResponse->body);
-    
+
             $number = $createdIssue->number;
             $htmlUrl = $createdIssue->html_url;
-    
+
             $body = "Issue copied to [{$targetRepository}#{$number}]({$htmlUrl})";
             doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
         }
