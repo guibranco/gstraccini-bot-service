@@ -24,7 +24,7 @@ function handleIssue($issue)
     if ($issueUpdated->state === "closed") {
         removeLabels($issueUpdated, $metadata, true);
         return;
-    } 
+    }
 
     if ($issueUpdated->assignee != null) {
         removeLabels($issueUpdated, $metadata);
