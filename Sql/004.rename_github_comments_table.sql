@@ -1,0 +1,1 @@
+RENAME TABLE github_pull_requests_comments TO github_comments;
