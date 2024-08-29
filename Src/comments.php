@@ -284,7 +284,7 @@ function execute_bumpVersion($config, $metadata, $comment)
 function execute_copyIssue($config, $metadata, $comment)
 {
     preg_match(
-        "/@" . $config->botName . "\scopy\sissue\s(?:(\w+)\/(\w+))/",
+        "/@" . $config->botName . "\scopy\sissue\s([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)/",
         $comment->CommentBody,
         $matches
     );
@@ -502,11 +502,15 @@ function callWorkflow($config, $metadata, $comment, $workflow, $extendedParamete
 
 function checkIfPullRequestIsOpen($metadata)
 {
-    $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
+    $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["issueUrl"], null, "GET");
     if ($pullRequestResponse->statusCode !== 200) {
         return false;
     }
     $pullRequest = json_decode($pullRequestResponse->body);
+
+    if (!isset($pullRequest->pull_request)) {
+        return false;
+    }
 
     $metadata["headRef"] = $pullRequest->head->ref;
     $metadata["headSha"] = $pullRequest->head->sha;
