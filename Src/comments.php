@@ -284,7 +284,7 @@ function execute_bumpVersion($config, $metadata, $comment)
 function execute_copyIssue($config, $metadata, $comment)
 {
     preg_match(
-        "/@" . $config->botName . "\scopy\sissue\s(?:(\w+)\/(\w+))/",
+        "/@" . $config->botName . "\scopy\sissue\s([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)/",
         $comment->CommentBody,
         $matches
     );
@@ -500,8 +500,18 @@ function callWorkflow($config, $metadata, $comment, $workflow, $extendedParamete
     doRequestGitHub($tokenBot, $url, $data, "POST");
 }
 
-function checkIfPullRequestIsOpen($metadata)
+function checkIfPullRequestIsOpen(&$metadata)
 {
+    $issueResponse = doRequestGitHub($metadata["token"], $metadata["issueUrl"], null, "GET");
+    if ($issueResponse->statusCode !== 200) {
+        return false;
+    }
+
+    $issue = json_decode($issueResponse->body);
+    if (isset($issue->pull_request) === false || isset($issue->state) === false || $issue->state === "closed") {
+        return false;
+    }
+
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     if ($pullRequestResponse->statusCode !== 200) {
         return false;
@@ -511,10 +521,7 @@ function checkIfPullRequestIsOpen($metadata)
     $metadata["headRef"] = $pullRequest->head->ref;
     $metadata["headSha"] = $pullRequest->head->sha;
 
-    if ($pullRequest->state === "open") {
-        return true;
-    }
-    return false;
+    return $pullRequest->state === "open";
 }
 
 function getAppVeyorProject($metadata, $comment)
