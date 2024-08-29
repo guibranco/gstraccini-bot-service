@@ -293,18 +293,23 @@ function execute_copyIssue($config, $metadata, $comment)
         $issueUpdatedResponse = doRequestGitHub($metadata["token"], $metadata["issueUrl"], null, "GET");
         $issueUpdated = json_decode($issueUpdatedResponse->body);
 
-        $targetRepository = $matches[0]."/".$matches[1];
-        $newIssueUrl = "repos".$targetRepository."/issues";
+        $targetRepository = $matches[1]."/".$matches[2];
+        $newIssueUrl = "repos/".$targetRepository."/issues";
         $newIssue = array("title" => $issueUpdated->title, "body" => $issueUpdated->body, "labels" => $issueUpdated->labels);
 
         $createdIssueResponse = doRequestGitHub($metadata["token"], $newIssueUrl, $newIssue, "POST");
-        $createdIssue = json_decode($createdIssueResponse->body);
-
-        $number = $createdIssue->number;
-        $htmlUrl = $createdIssue->html_url;
-
-        $body = "Issue copied to [{$targetRepository}#{$number}]({$htmlUrl})";
-        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+        if ($createdIssueResponse->statusCode !== 200) {
+            $body = "Error copying issue: {$createdIssueResponse->statusCode}";
+            doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+        } else {
+            $createdIssue = json_decode($createdIssueResponse->body);
+    
+            $number = $createdIssue->number;
+            $htmlUrl = $createdIssue->html_url;
+    
+            $body = "Issue copied to [{$targetRepository}#{$number}]({$htmlUrl})";
+            doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+        }
     } else {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
         $body = $metadata["errorMessages"]["invalidParameter"];
