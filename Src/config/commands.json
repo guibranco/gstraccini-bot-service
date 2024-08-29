@@ -104,7 +104,7 @@
     "parameters": [
       {
         "parameter": "repository",
-        "description: "The target repository where the issue will be copied/created.",
+        "description": "The target repository where the issue will be copied/created.",
         "required": true
       },
     ],
