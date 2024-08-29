@@ -23,6 +23,7 @@ function handleComment($comment)
         "repoPrefix" => $repoPrefix,
         "reactionUrl" => $repoPrefix . "/issues/comments/" . $comment->CommentId . "/reactions",
         "pullRequestUrl" => $repoPrefix . "/pulls/" . $comment->PullRequestNumber,
+        "issueUrl" => $repoPrefix . "/issues/" . $comment->PullRequestNumber,
         "commentUrl" => $repoPrefix . "/issues/" . $comment->PullRequestNumber . "/comments",
         "errorMessages" => array(
             "notCollaborator" => $prefix . $suffix . " You aren't a collaborator in this repository." . $emoji,
@@ -287,34 +288,36 @@ function execute_copyIssue($config, $metadata, $comment)
         $matches
     );
 
-    if (count($matches) === 3) {
-        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"), "POST");
-
-        $issueUpdatedResponse = doRequestGitHub($metadata["token"], $metadata["issueUrl"], null, "GET");
-        $issueUpdated = json_decode($issueUpdatedResponse->body);
-
-        $targetRepository = $matches[1]."/".$matches[2];
-        $newIssueUrl = "repos/".$targetRepository."/issues";
-        $newIssue = array("title" => $issueUpdated->title, "body" => $issueUpdated->body, "labels" => $issueUpdated->labels);
-
-        $createdIssueResponse = doRequestGitHub($metadata["token"], $newIssueUrl, $newIssue, "POST");
-        if ($createdIssueResponse->statusCode !== 200) {
-            $body = "Error copying issue: {$createdIssueResponse->statusCode}";
-            doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-        } else {
-            $createdIssue = json_decode($createdIssueResponse->body);
-
-            $number = $createdIssue->number;
-            $htmlUrl = $createdIssue->html_url;
-
-            $body = "Issue copied to [{$targetRepository}#{$number}]({$htmlUrl})";
-            doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-        }
-    } else {
+    if (count($matches) !== 3) {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
         $body = $metadata["errorMessages"]["invalidParameter"];
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+        return;
     }
+
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"), "POST");
+
+    $issueUpdatedResponse = doRequestGitHub($metadata["token"], $metadata["issueUrl"], null, "GET");
+    $issueUpdated = json_decode($issueUpdatedResponse->body);
+
+    $targetRepository = $matches[1]."/".$matches[2];
+    $newIssueUrl = "repos/".$targetRepository."/issues";
+    $newIssue = array("title" => $issueUpdated->title, "body" => $issueUpdated->body, "labels" => $issueUpdated->labels);
+
+    $createdIssueResponse = doRequestGitHub($metadata["token"], $newIssueUrl, $newIssue, "POST");
+    if ($createdIssueResponse->statusCode !== 200) {
+        $body = "Error copying issue: {$createdIssueResponse->statusCode}";
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+        return;
+    }
+
+    $createdIssue = json_decode($createdIssueResponse->body);
+
+    $number = $createdIssue->number;
+    $htmlUrl = $createdIssue->html_url;
+
+    $body = "Issue copied to [{$targetRepository}#{$number}]({$htmlUrl})";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
 }
 
 function execute_csharpier($config, $metadata, $comment)
