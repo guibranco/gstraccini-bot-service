@@ -282,7 +282,7 @@ function execute_bumpVersion($config, $metadata, $comment)
 function execute_copyIssue($config, $metadata, $comment)
 {
     preg_match(
-        "/@" . $config->botName . "\scopy\sissue\s(?:(?<account>\w+)\/(?<repository>\w+))/",
+        "/@" . $config->botName . "\scopy\sissue\s(?:(\w+)\/(\w+))/",
         $comment->CommentBody,
         $matches
     );
