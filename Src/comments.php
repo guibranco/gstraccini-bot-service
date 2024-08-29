@@ -496,6 +496,9 @@ function callWorkflow($config, $metadata, $comment, $workflow, $extendedParamete
 function checkIfPullRequestIsOpen($metadata)
 {
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
+    if ($pullRequestResponse->statusCode !== 200) {
+        return false;
+    }
     $pullRequest = json_decode($pullRequestResponse->body);
 
     $metadata["headRef"] = $pullRequest->head->ref;
