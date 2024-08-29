@@ -11,10 +11,9 @@ if (file_exists($versionFile)) {
 }
 
 define("USER_AGENT_VENDOR", "gstraccini-bot/{$version} (+https://github.com/apps/gstraccini-bot/)");
-define("USER_AGENT", USER_AGENT_VENDOR);
+define("USER_AGENT", "User-Agent: ".USER_AGENT_VENDOR);
 
 require_once "vendor/autoload.php";
-
 
 $appVeyorSecretsFile = "secrets/appVeyor.secrets.php";
 if (file_exists($appVeyorSecretsFile)) {
