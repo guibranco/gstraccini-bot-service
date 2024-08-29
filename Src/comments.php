@@ -291,7 +291,7 @@ function execute_copyIssue($config, $metadata, $comment)
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"), "POST");
 
         $issueUpdatedResponse = doRequestGitHub($metadata["token"], $metadata["issueUrl"], null, "GET");
-        $isseuUpdated = json_decode($issueUpdatedResponse->body);
+        $issueUpdated = json_decode($issueUpdatedResponse->body);
 
         $targetRepository = $matches[0]."/".$matches[1];
         $newIssueUrl = "repos".$targetRepository."/issues";
