@@ -22,7 +22,7 @@ function handleIssue($issue)
     $issueUpdated = json_decode($issueResponse->body);
 
     if ($issueUpdated->assignee != null) {
-        removeAwaitingTriageLabel($issueUpdated, $metadata);
+        removeLabels($issueUpdated, $metadata);
         return;
     }
 
@@ -63,12 +63,14 @@ function addLabels($issueUpdated, $collaboratorsLogins, $metadata)
     }
 }
 
-function removeAwaitingTriageLabel($issueUpdated, $metadata)
+function removeLabels($issueUpdated, $metadata)
 {
-    $awaitingTriageLabel = "🚦awaiting triage";
+    $labelsLookup = ["🚦awaiting triage", "⏳ awaiting response", "🛠 WIP"];
     $labels = array_column($issueUpdated->labels, "name");
-    if (in_array($awaitingTriageLabel, $labels)) {
-        $url = "{$metadata["issuesUrl"]}/{$issueUpdated->number}/labels/{$awaitingTriageLabel}";
+    $intersect = array_intersect($labelsLookup, $labels);
+
+    foreach($intersect as $label) {
+        $url = "{$metadata["issuesUrl"]}/{$issueUpdated->number}/labels/{$label}";
         doRequestGitHub($metadata["token"], $url, null, "DELETE");
     }
 }
