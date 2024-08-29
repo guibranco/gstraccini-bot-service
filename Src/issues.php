@@ -69,7 +69,7 @@ function removeLabels($issueUpdated, $metadata)
     $labels = array_column($issueUpdated->labels, "name");
     $intersect = array_intersect($labelsLookup, $labels);
 
-    foreach($intersect as $label) {
+    foreach ($intersect as $label) {
         $url = "{$metadata["issuesUrl"]}/{$issueUpdated->number}/labels/{$label}";
         doRequestGitHub($metadata["token"], $url, null, "DELETE");
     }
