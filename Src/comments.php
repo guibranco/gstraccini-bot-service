@@ -279,6 +279,39 @@ function execute_bumpVersion($config, $metadata, $comment)
     callWorkflow($config, $metadata, $comment, "bump-version.yml");
 }
 
+function execute_copyIssue($config, $metadata, $comment)
+{
+    preg_match(
+        "/@" . $config->botName . "\scopy\sissue\s(?:(?<account>\w+)\/(?<repository>\w+))/",
+        $comment->CommentBody,
+        $matches
+    );
+
+    if (count($matches) === 3) {
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"), "POST");        
+
+        $issueUpdatedResponse = doRequestGitHub($metadata["token"], $metadata["issueUrl"], null, "GET");        
+        $isseuUpdated = json_decode($issueUpdatedResponse->body);
+
+        $targetRepository = $matches[0]."/".$matches[1];
+        $newIssuelUrl = "repos".$targetRepository."/issues";
+        $newIssue = array("title" => $issueUpdated->title, "body" => $issueUpdated->body, "labels" => $issueUpdated->labels);
+       
+        $createdIssueResponse = doRequestGitHub($metadata["token"], $newIssueUrl, $newIssue, "POST");
+        $createdIssue = json_decode($createdIssueResponse->body);
+
+        $number = $createdIssue->number;
+        $htmlUrl = $createdIssue->html_url;
+        
+        $body = "Issue copied to [{$targetRepository}#{$number}]({$htmlUrl})";
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    } else {
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
+        $body = $metadata["errorMessages"]["invalidParameter"];
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    }    
+}
+
 function execute_csharpier($config, $metadata, $comment)
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
