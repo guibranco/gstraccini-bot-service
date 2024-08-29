@@ -41,6 +41,7 @@ function handleIssue($issue)
     if ($repository->private) {
         $body = array("assignees" => $collaboratorsLogins);
         doRequestGitHub($metadata["token"], $metadata["assigneesUrl"], $body, "POST");
+        removeLabels($issueUpdated, $metadata);
         return;
     }
 
