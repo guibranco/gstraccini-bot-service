@@ -321,7 +321,7 @@ function execute_copyIssue($config, $metadata, $comment)
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
 
     $body = "Issue copied from [{$comment->RepositoryOwner}/{$comment->RepositoryName}](https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/issues/{$comment->PullRequestNumber})";
-    doRequestGitHub($metadata["token"], $createdIssue->comments_url, array("body" => $body), "POST");
+    doRequestGitHub($metadata["token"], "repos/{$targetRepository}/issues/{$number}/comments", array("body" => $body), "POST");
 }
 
 function execute_csharpier($config, $metadata, $comment)
