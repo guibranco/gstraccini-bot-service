@@ -108,7 +108,7 @@
         "required": true
       },
     ],
-    "dev": true,
+    "dev": true
   },
   {
     "command": "csharpier",
