@@ -23,6 +23,4 @@ CREATE TABLE
         `Processed` BOOLEAN NOT NULL DEFAULT FALSE,
         `ProcessedDate` TIMESTAMP NULL,
         PRIMARY KEY (`Sequence`)
-    ) ENGINE = InnoDB;
-
-ALTER TABLE `github_pull_requests` CONVERT TO CHARACTER SET utf8;
+    ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_unicode_ci;
