@@ -563,7 +563,7 @@ function updateNextBuildNumber($metadata, $project, $nextBuildNumber)
 
 function main()
 {
-    $comments = readTable("github_pull_requests_comments");
+    $comments = readTable("github_comments");
     foreach ($comments as $comment) {
         handleComment($comment);
         updateTable("github_pull_requests_comments", $comment->Sequence);
