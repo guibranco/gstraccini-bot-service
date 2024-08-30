@@ -1,7 +1,7 @@
-DROP TABLE IF EXISTS `github_pull_requests_comments`;
+DROP TABLE IF EXISTS `github_comments`;
 
 CREATE TABLE
-    `github_pull_requests_comments` (
+    `github_comments` (
         `Sequence` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
         `Date` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         `DeliveryId` BINARY(16) NOT NULL,
@@ -25,6 +25,4 @@ CREATE TABLE
         `Processed` BOOLEAN NOT NULL DEFAULT FALSE,
         `ProcessedDate` TIMESTAMP NULL,
         PRIMARY KEY (`Sequence`)
-    ) ENGINE = InnoDB;
-
-ALTER TABLE `github_pull_requests_comments` CONVERT TO CHARACTER SET utf8;
+    ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_unicode_ci;
