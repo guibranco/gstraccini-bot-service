@@ -10,7 +10,7 @@ function connectToDatabase($isRetry = false)
         $mysqli = new mysqli($mySqlHost, $mySqlUser, $mySqlPassword, $mySqlDatabase);
         if ($mysqli->connect_errno && $isRetry === false) {
             sleep(10);
-            return connectToDatbase(true);
+            return connectToDatabase(true);
         } elseif ($mysqli->connect_errno) {
             die("Failed to connect to MySQL: " . $mysqli->connect_error);
         }
