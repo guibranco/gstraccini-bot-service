@@ -11,7 +11,7 @@ function connectToDatabase($isRetry = false)
         if ($mysqli->connect_errno && $isRetry === false) {
             sleep(10);
             return connectToDatbase(true);
-        } else if ($mysqli->connect_errno) {
+        } elseif ($mysqli->connect_errno) {
             die("Failed to connect to MySQL: " . $mysqli->connect_error);
         }
 
