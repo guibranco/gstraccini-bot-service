@@ -117,7 +117,7 @@ function setCheckRunInProgress($metadata, $commitId, $type)
 
     $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"], $checkRunBody, "POST");
 
-    if ($response->statusCode >= 300 || !isset($response->body)) {
+    if ($response->statusCode >= 300 || isset($response->body) === false) {
         die("Invalid GitHub response.\n".json_encode($response));
     }
 
