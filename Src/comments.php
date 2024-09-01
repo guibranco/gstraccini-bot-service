@@ -516,6 +516,7 @@ function checkIfPullRequestIsOpen(&$metadata)
     if ($pullRequestResponse->statusCode !== 200) {
         return false;
     }
+
     $pullRequest = json_decode($pullRequestResponse->body);
 
     $metadata["headRef"] = $pullRequest->head->ref;
