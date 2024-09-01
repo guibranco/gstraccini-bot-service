@@ -15,14 +15,14 @@ function doRequestGitHub($token, $url, $data, $method)
     $baseUrl = "https://api.github.com/";
     $url = $baseUrl . $url;
 
-    if ($data != null) {
+    if ($data !== null) {
         $data = json_encode($data);
     }
 
     $headers = array(
         constant("USER_AGENT"),
         "Content-type: application/json",
-        "Accept: application/json",
+        "Accept: application/vnd.github+json",
         "X-GitHub-Api-Version: 2022-11-28",
         "Authorization: Bearer " . $token
     );
@@ -43,7 +43,7 @@ function doRequestGitHub($token, $url, $data, $method)
             $response = $request->patch($url, $data, $headers);
             break;
         case "DELETE":
-            if ($data == null) {
+            if ($data === null) {
                 $response = $request->delete($url, $headers);
                 break;
             }
@@ -125,6 +125,28 @@ function setCheckRunInProgress($metadata, $commitId, $type)
     return $result->id;
 }
 
+function setCheckRunFailed($metadata, $checkRunId, $type, $details)
+{
+    $checkRunBody = array(
+        "name" => "GStraccini Checks: " . ucwords($type),
+        "details_url" => $metadata["dashboardUrl"],
+        "status" => "completed",
+        "conclusion" => "failure",
+        "output" => array(
+            "title" => "Checks failed ❌",
+            "summary" => "GStraccini checked this " . strtolower($type) . ". Error found!",
+            "text" => $details
+        )
+    );
+
+    $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
+
+    if ($response->statusCode >= 300) {
+        die("Invalid GitHub response.\n".json_encode($response));
+    }
+}
+
+// TOOD: Rename Completed to Succeeded
 function setCheckRunCompleted($metadata, $checkRunId, $type)
 {
     $checkRunBody = array(
