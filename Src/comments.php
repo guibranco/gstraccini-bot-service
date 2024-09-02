@@ -315,12 +315,17 @@ function execute_copyIssue($config, $metadata, $comment)
     $createdIssue = json_decode($createdIssueResponse->body);
 
     $number = $createdIssue->number;
-    $htmlUrl = $createdIssue->html_url;
 
-    $body = "Issue copied to [{$targetRepository}#{$number}]({$htmlUrl})";
+    $target = "{$targetRepository}#{$number}";
+    $targetUrl = $createdIssue->html_url;
+
+    $source = "{$comment->RepositoryOwner}/{$comment->RepositoryName}#{$comment->PullRequestNumber}";
+    $sourceUrl = "https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/issues/{$comment->PullRequestNumber}";
+
+    $body = "Issue copied to [$target]({$targetUrl})";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
 
-    $body = "Issue copied from [{$comment->RepositoryOwner}/{$comment->RepositoryName}](https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/issues/{$comment->PullRequestNumber})";
+    $body = "Issue copied from [$source]($sourceUrl)";
     doRequestGitHub($metadata["token"], "repos/{$targetRepository}/issues/{$number}/comments", array("body" => $body), "POST");
 }
 
