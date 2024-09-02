@@ -567,7 +567,7 @@ function main()
     $comments = readTable("github_comments");
     foreach ($comments as $comment) {
         handleComment($comment);
-        updateTable("github_pull_requests_comments", $comment->Sequence);
+        updateTable("github_comments", $comment->Sequence);
     }
 }
 
