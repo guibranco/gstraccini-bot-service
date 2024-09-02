@@ -75,7 +75,8 @@ function processLabels($issue, $branch, $metadata)
     }
 
     if ($found && $branch->Event == "delete") {
-        doRequestGitHub($metadata["token"], $metadata["issueUrl"] . "/labels/🛠 WIP", null, "DELETE");
+        $url = $metadata["issueUrl"] . "/labels/" . urlencode("🛠 WIP");
+        doRequestGitHub($metadata["token"], $url null, "DELETE");
         processRemoveAssignee($issue, $branch, $metadata);
     }
 
