@@ -90,10 +90,16 @@ function removeLabels($issueUpdated, $metadata, $includeWip = false)
 
 function main()
 {
+    $config = loadConfig();
+    ob_start();
     $issues = readTable("github_issues");
     foreach ($issues as $issue) {
         handleIssue($issue);
         updateTable("github_issues", $issue->Sequence);
+    }
+    $result = ob_get_clean();
+    if ($config->debug->all === true || $config->debug->issues === true) {
+        echo $result;
     }
 }
 

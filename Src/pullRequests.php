@@ -402,6 +402,8 @@ function updateBranch($metadata, $pullRequestUpdated)
 
 function main()
 {
+    $config = loadConfig();
+    ob_start();
     $pullRequests = readTable("github_pull_requests");
     foreach ($pullRequests as $pullRequest) {
         echo "Sequence: {$pullRequest->Sequence}\n";
@@ -409,6 +411,10 @@ function main()
         handlePullRequest($pullRequest);
         updateTable("github_pull_requests", $pullRequest->Sequence);
         echo str_repeat("=-", 50) . "=\n";
+    }
+    $result = ob_get_clean();
+    if ($config->debug->all === true || $config->debug->pullRequests === true) {
+        echo $result;
     }
 }
 

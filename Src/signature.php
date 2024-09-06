@@ -31,10 +31,16 @@ function installSignature($signature)
 
 function main()
 {
+    $config = loadConfig();
+    ob_start();
     $signatures = readTable("github_signature");
     foreach ($signatures as $signature) {
         installSignature($signature);
         updateTable("github_signature", $signature->Sequence);
+    }
+    $result = ob_get_clean();
+    if ($config->debug->all === true || $config->debug->signature === true) {
+        echo $result;
     }
 }
 

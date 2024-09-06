@@ -2,6 +2,16 @@
   "botName": "gstraccini",
   "botRepository": "guibranco/gstraccini-bot",
   "botRepositoryInstallationId": "51682906",
+  "debug": {
+    "all": false,
+    "branches": false,
+    "comments": false,
+    "issues": false,
+    "pullRequests": false,
+    "pushes": false,
+    "repositories": false,
+    "signature": false
+  },
   "ownerHandler": "guibranco",
   "pullRequests": {
     "autoReviewSubmitters": [

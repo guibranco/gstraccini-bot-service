@@ -67,6 +67,8 @@ function createRepositoryLabels($metadata, $options)
 
 function main()
 {
+    $config = loadConfig();
+    ob_start();
     $repositories = readTable("github_repositories");
     foreach ($repositories as $repository) {
         echo "Sequence: {$repository->Sequence}\n";
@@ -74,6 +76,10 @@ function main()
         handleRepository($repository);
         updateTable("github_repositories", $repository->Sequence);
         echo str_repeat("=-", 50) . "=\n";
+    }
+    $result = ob_get_clean();
+    if ($config->debug->all === true || $config->debug->repositories === true) {
+        echo $result;
     }
 }
 
