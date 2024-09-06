@@ -569,10 +569,16 @@ function updateNextBuildNumber($metadata, $project, $nextBuildNumber)
 
 function main()
 {
+    $config = loadConfig();
+    ob_start();
     $comments = readTable("github_comments");
     foreach ($comments as $comment) {
         handleComment($comment);
         updateTable("github_comments", $comment->Sequence);
+    }
+    $result = ob_get_clean();
+    if ($config->debug->all === true || $config->debug->comments === true) {
+        echo $result;
     }
 }
 
