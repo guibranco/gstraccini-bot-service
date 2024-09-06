@@ -146,10 +146,16 @@ function getReferencedIssueByBranch($metadata, $branch)
 
 function main()
 {
+    $config = loadConfig();
+    ob_start();
     $branches = readTable("github_branches");
     foreach ($branches as $branch) {
         handleBranch($branch);
         updateTable("github_branches", $branch->Sequence);
+    }
+    $result = ob_get_clean();
+    if ($config->debug->all === true || $config->debug->branches === true) {
+        echo $result;
     }
 }
 
