@@ -11,7 +11,7 @@
     "pushes": false,
     "repositories": false,
     "signature": false
-  }
+  },
   "ownerHandler": "guibranco",
   "pullRequests": {
     "autoReviewSubmitters": [
