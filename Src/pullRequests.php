@@ -413,7 +413,7 @@ function main()
         echo str_repeat("=-", 50) . "=\n";
     }
     $result = ob_get_clean();
-    if ($config->debug === true || $config->debugPullRequest === true) {
+    if ($config->debug->all === true || $config->debug->pullRequests === true) {
         echo $result;
     }
 }
