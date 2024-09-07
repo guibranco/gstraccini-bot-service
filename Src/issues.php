@@ -8,7 +8,7 @@ use GuiBranco\Pancake\HealthChecks;
 function handleIssue($issue)
 {
     echo "https://github.com/{$issue->RepositoryOwner}/{$issue->RepositoryName}/issues/{$issue->Number}:\n\n";
-    
+
     $token = generateInstallationToken($issue->InstallationId, $issue->RepositoryName);
 
     $repoPrefix = "repos/" . $issue->RepositoryOwner . "/" . $issue->RepositoryName;
