@@ -7,18 +7,18 @@ use GuiBranco\Pancake\HealthChecks;
 
 function handleRepository($repository)
 {
-    echo "https://github.com/{$repository->RepositoryOwner}/{$repository->RepositoryName}:\n\n";
+    echo "https://github.com/{$repository->FullName}:\n\n";
 
     global $gitHubUserToken;
     $config = loadConfig();
 
     $botDashboardUrl = "https://gstraccini.bot/dashboard";
     $prQueryString =
-          "?owner=" . $repository->RepositoryOwner .
-          "&repo=" . $repository->RepositoryName;
+          "?owner=" . $repository->OwnerLogin .
+          "&repo=" . $repository->Name;
 
-    $token = generateInstallationToken($repository->InstallationId, $repository->RepositoryName);
-    $repoPrefix = "repos/" . $repository->RepositoryOwner . "/" . $repository->RepositoryName;
+    $token = generateInstallationToken($repository->InstallationId, $repository->Name);
+    $repoPrefix = "repos/" . $repository->FullName;
     $metadata = array(
       "token" => $token,
       "repoUrl" => $repoPrefix,
