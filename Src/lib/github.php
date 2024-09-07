@@ -55,7 +55,7 @@ function doRequestGitHub($token, $url, $data, $method)
     }
 
     if ($response->statusCode >= 300) {
-        $info = json_encode(array("request" => json_encode($data, true), "response" => $response));
+        $info = json_encode($response);
         $logger->log("Error on GitHub request", $info);
     }
 
