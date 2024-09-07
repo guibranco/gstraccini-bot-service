@@ -7,6 +7,8 @@ use GuiBranco\Pancake\HealthChecks;
 
 function handleIssue($issue)
 {
+    echo "https://github.com/{$issue->RepositoryOwner}/{$issue->RepositoryName}/issues/{$issue->Number}:\n\n";
+    
     $token = generateInstallationToken($issue->InstallationId, $issue->RepositoryName);
 
     $repoPrefix = "repos/" . $issue->RepositoryOwner . "/" . $issue->RepositoryName;
@@ -84,7 +86,8 @@ function removeLabels($issueUpdated, $metadata, $includeWip = false)
 
     foreach ($intersect as $label) {
         $url = "{$metadata["issueUrl"]}/labels/{$label}";
-        doRequestGitHub($metadata["token"], $url, null, "DELETE");
+        $result = doRequestGitHub($metadata["token"], $url, null, "DELETE");
+        echo "Deleting label {$label}\n";
     }
 }
 
@@ -94,8 +97,11 @@ function main()
     ob_start();
     $issues = readTable("github_issues");
     foreach ($issues as $issue) {
+        echo "Sequence: {$issue->Sequence}\n";
+        echo "Delivery ID: {$issue->DeliveryIdText}\n";
         handleIssue($issue);
         updateTable("github_issues", $issue->Sequence);
+        echo str_repeat("=-", 50) . "=\n";
     }
     $result = ob_get_clean();
     if ($config->debug->all === true || $config->debug->issues === true) {
