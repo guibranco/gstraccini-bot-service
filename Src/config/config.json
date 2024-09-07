@@ -9,7 +9,7 @@
     "issues": false,
     "pullRequests": false,
     "pushes": false,
-    "repositories": false,
+    "repositories": true,
     "signature": false
   },
   "ownerHandler": "guibranco",
