@@ -139,7 +139,7 @@ function loadLabelsFromConfig($categories)
 
     if (is_array($categories)) {
         $keys = array_intersect($keys, $categories);
-    } else if ($categories !== "all") {
+    } elseif ($categories !== "all") {
         $keys = array();
         if (in_array($categories, $keys)) {
             $keys = array($categories);
