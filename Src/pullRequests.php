@@ -408,8 +408,8 @@ function main()
     foreach ($pullRequests as $pullRequest) {
         echo "Sequence: {$pullRequest->Sequence}\n";
         echo "Delivery ID: {$pullRequest->DeliveryIdText}\n";
-        handlePullRequest($pullRequest);
         updateTable("github_pull_requests", $pullRequest->Sequence);
+        handlePullRequest($pullRequest);        
         echo str_repeat("=-", 50) . "=\n";
     }
     $result = ob_get_clean();
