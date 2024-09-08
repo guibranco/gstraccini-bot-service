@@ -99,8 +99,8 @@ function main()
     foreach ($issues as $issue) {
         echo "Sequence: {$issue->Sequence}\n";
         echo "Delivery ID: {$issue->DeliveryIdText}\n";
-        handleIssue($issue);
         updateTable("github_issues", $issue->Sequence);
+        handleIssue($issue);        
         echo str_repeat("=-", 50) . "=\n";
     }
     $result = ob_get_clean();
