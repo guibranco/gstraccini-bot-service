@@ -56,6 +56,10 @@ function loadConfig()
         $config = json_decode($rawConfig);
     }
 
+    if(isset($config) === false || isset($config->debug) === false) {
+        die();
+    }
+
     $config->commands = array();
     if (file_exists($fileNameCommands)) {
         $rawCommands = file_get_contents($fileNameCommands);
