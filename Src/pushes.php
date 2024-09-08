@@ -33,8 +33,8 @@ function main()
     ob_start();
     $pushes = readTable("github_pushes");
     foreach ($pushes as $push) {
-        handlePush($push);
         updateTable("github_pushes", $push->Sequence);
+        handlePush($push);        
     }
     $result = ob_get_clean();
     if ($config->debug->all === true || $config->debug->pushes === true) {
