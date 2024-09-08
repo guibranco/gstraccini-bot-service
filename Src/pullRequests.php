@@ -410,7 +410,7 @@ function main()
         echo "Sequence: {$item->Sequence}\n";
         echo "Delivery ID: {$item->DeliveryIdText}\n";
         updateTable($table, $item->Sequence);
-        handleItem($item);        
+        handleItem($item);
         echo str_repeat("=-", 50) . "=\n";
     }
     $result = ob_get_clean();
