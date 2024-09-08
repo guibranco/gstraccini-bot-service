@@ -6,7 +6,7 @@
     "all": false,
     "branches": false,
     "comments": false,
-    "issues": true,
+    "issues": false,
     "pullRequests": false,
     "pushes": false,
     "repositories": true,
