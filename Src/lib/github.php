@@ -56,7 +56,7 @@ function doRequestGitHub($token, $url, $data, $method)
             break;
     }
 
-    if (($response->statusCode === 404 && $method !== "GET") || $response->statusCode <= 0 || $response->statusCode >= 300) {
+    if (($response->statusCode <= 0 || $response->statusCode >= 300) && ($response->statusCode !== 404 || $method !== "GET")) {
         $info = json_encode($response);
         $logger->log("Error on GitHub request", $info);
     }
