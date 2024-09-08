@@ -110,16 +110,16 @@ function createRepositoryLabels($metadata, $options)
     foreach ($labelsToCreateObject as $label) {
         $response = doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $label, "POST");
         if ($response->statusCode === 201) {
-            echo "Label created: {$label->name}\n";
+            echo "Label created: {$label["name"]}\n";
         } else {
-            echo "Error creating label: {$label->name}\n";
+            echo "Error creating label: {$label["name"]}\n";
         }
     }
 
     foreach ($labelsToUpdateObject as $oldName => $label) {
         $response = doRequestGitHub($metadata["token"], $metadata["labelsUrl"] . "/" . str_replace(" ", "%20", $oldName), $label, "PATCH");
         if ($response->statusCode === 200) {
-            echo "Label updated: {$oldName} -> {$label->new_name}\n";
+            echo "Label updated: {$oldName} -> {$label["new_name"]}\n";
         } else {
             echo "Error updating label: {$oldName}\n";
         }
