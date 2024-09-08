@@ -8,7 +8,7 @@ use GuiBranco\Pancake\HealthChecks;
 define("ISSUES", "/issues/");
 define("PULLS", "/pulls/");
 
-function handlePullRequest($pullRequest, $isRetry = false)
+function handleItem($pullRequest, $isRetry = false)
 {
     if (!$isRetry) {
         echo "https://github.com/{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}/pull/{$pullRequest->Number}:\n\n";
@@ -404,12 +404,13 @@ function main()
 {
     $config = loadConfig();
     ob_start();
-    $pullRequests = readTable("github_pull_requests");
-    foreach ($pullRequests as $pullRequest) {
-        echo "Sequence: {$pullRequest->Sequence}\n";
-        echo "Delivery ID: {$pullRequest->DeliveryIdText}\n";
-        updateTable("github_pull_requests", $pullRequest->Sequence);
-        handlePullRequest($pullRequest);        
+    $table = "github_pull_requests";
+    $items = readTable($table);
+    foreach ($items as $item) {
+        echo "Sequence: {$item->Sequence}\n";
+        echo "Delivery ID: {$item->DeliveryIdText}\n";
+        updateTable($table, $item->Sequence);
+        handleItem($item);        
         echo str_repeat("=-", 50) . "=\n";
     }
     $result = ob_get_clean();
