@@ -180,8 +180,8 @@ function main()
     foreach ($repositories as $repository) {
         echo "Sequence: {$repository->Sequence}\n";
         echo "Delivery ID: {$repository->DeliveryIdText}\n";
-        handleRepository($repository);
         updateTable("github_repositories", $repository->Sequence);
+        handleRepository($repository);        
         echo str_repeat("=-", 50) . "=\n";
     }
     $result = ob_get_clean();
