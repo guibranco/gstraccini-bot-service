@@ -47,7 +47,7 @@ function doRequestGitHub($token, $url, $data, $method)
                 $response = $request->delete($url, $headers);
                 break;
             }
-            $response = $request->delete($url, $data, $headers);
+            $response = $request->delete($url, $headers, $data);
             break;
         default:
             $logger->log("Invalid method: " . $method, array("url" => $url, "method" => $method, "data" => $data));
