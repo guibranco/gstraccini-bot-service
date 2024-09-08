@@ -150,8 +150,8 @@ function main()
     ob_start();
     $branches = readTable("github_branches");
     foreach ($branches as $branch) {
-        handleBranch($branch);
         updateTable("github_branches", $branch->Sequence);
+        handleBranch($branch);        
     }
     $result = ob_get_clean();
     if ($config->debug->all === true || $config->debug->branches === true) {
