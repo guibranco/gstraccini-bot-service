@@ -14,17 +14,18 @@ function handleRepository($repository)
 
     $botDashboardUrl = "https://gstraccini.bot/dashboard";
     $prQueryString =
-          "?owner=" . $repository->OwnerLogin .
-          "&repo=" . $repository->Name;
+        "?owner=" . $repository->OwnerLogin .
+        "&repo=" . $repository->Name;
 
     $token = generateInstallationToken($repository->InstallationId, $repository->Name);
     $repoPrefix = "repos/" . $repository->FullName;
     $metadata = array(
-      "token" => $token,
-      "repoUrl" => $repoPrefix,
-      "userToken" => $gitHubUserToken,
-      "botNameMarkdown" => "[" . $config->botName . "\[bot\]](https://github.com/apps/" . $config->botName . ")",
-      "dashboardUrl" => $botDashboardUrl . $prQueryString
+        "token" => $token,
+        "repoUrl" => $repoPrefix,
+        "labelsUrl" => $repoPrefix . "/labels",
+        "userToken" => $gitHubUserToken,
+        "botNameMarkdown" => "[" . $config->botName . "\[bot\]](https://github.com/apps/" . $config->botName . ")",
+        "dashboardUrl" => $botDashboardUrl . $prQueryString
     );
 
     $repositoryOptions = getRepositoryOptions($metadata);
@@ -42,7 +43,7 @@ function getRepositoryOptions($metadata)
         }
     }
 
-    if($fileContentResponse === null) {
+    if ($fileContentResponse === null) {
         return getDefaultOptions();
     }
 
@@ -52,18 +53,121 @@ function getRepositoryOptions($metadata)
 
 function getDefaultOptions()
 {
-    return array("labels" => array("style" => "icons", "type" => "all"));
+    return array("labels" => array("style" => "icons", "categories" => "all"));
 }
 
 function createRepositoryLabels($metadata, $options)
 {
-    if(!isset($options["labels"]) || $options["labels"] === null || $options["labels"] === "") {
+    if (isset($options["labels"]) === false || $options["labels"] === null || $options["labels"] === "") {
         echo "Not creating labels\n";
         return;
     }
 
-    echo "Creating labels | Style: {$options["labels"]["style"]} | Type: {$options["labels"]["type"]}\n";
+    $style = $options["labels"]["style"];
+    $categories = $options["labels"]["categories"];
+
+    $labelsToCreate = loadLabelsFromConfig($categories);
+    if ($labelsToCreate === null || count($labelsToCreate) === 0) {
+        echo "No labels to create\n";
+        return;
+    }
+
+    $existingLabels = getRepositoryLabels($metadata);
+
+    $labelsToUpdateObject = array();
+    $labelsToCreate = array_filter($labelsToCreate, function ($label) use ($existingLabels, &$labelsToUpdateObject, $style) {
+        $existingLabel = array_filter($existingLabels, function ($existingLabel) use ($label) {
+            return $existingLabel["name"] === $label["text"] || $existingLabel["name"] === $label["textWithIcon"];
+        });
+
+        $total = count($existingLabel);
+
+        if ($total > 0) {
+            $labelToUpdate = new \stdClass();
+            $labelToUpdate->color = $label["color"];
+            $labelToUpdate->description = $label["description"];
+            $labelToUpdate->new_name = $style === "icons" ? $label["textWithIcon"] : $label["text"];
+            $labelsToUpdateObject[$existingLabel[0]]["name"] = $labelToUpdate;
+        }
+
+        return $total === 0;
+    });
+
+    $labelsToCreateObject = array_map(function ($label) use ($style) {
+        $newLabel = new \stdClass();
+        $newLabel->color = $label["color"];
+        $newLabel->description = $label["description"];
+        $newLabel->name = $style === "icons" ? $label["textWithIcon"] : $label["text"];
+        return $newLabel;
+    }, $labelsToCreate);
+
+    $totalLabelsToCreate = count($labelsToCreateObject);
+    $totalLabelsToUpdate = count($labelsToUpdateObject);
+
+    echo "Creating labels {$totalLabelsToCreate} | Updating labels: {$totalLabelsToUpdate} | Style: {$style} | Categories: {$categories}\n";
+
+    foreach ($labelsToCreateObject as $label) {
+        $response = doRequestGitHub($metadata["token"], $metadata["labelsUrl"], json_encode($label), "POST");
+        if ($response->statusCode === 201) {
+            echo "Label created: {$label->name}\n";
+        } else {
+            echo "Error creating label: {$label->name}\n";
+        }
+    }
+
+    foreach ($labelsToUpdateObject as $oldName => $label) {
+        $response = doRequestGitHub($metadata["token"], $metadata["labelsUrl"] . "/" . $oldName, json_encode($label), "PATCH");
+        if ($response->statusCode === 200) {
+            echo "Label updated: {$oldName} -> {$label->new_name}\n";
+        } else {
+            echo "Error updating label: {$oldName}\n";
+        }
+    }
 }
+
+function loadLabelsFromConfig($categories)
+{
+    $fileNameLabels = "config/labels.json";
+    $labels = array();
+
+    if (file_exists($fileNameLabels)) {
+        $rawLabels = file_get_contents($fileNameLabels);
+        $labels = json_decode($rawLabels, true);
+    }
+
+    $keys = array_keys($labels);
+
+    if (is_array($categories)) {
+        $keys = array_intersect($keys, $categories);
+    } else if ($categories !== "all") {
+        $keys = array();
+        if (in_array($categories, $keys)) {
+            $keys = array($categories);
+        }
+    }
+
+    if (count($keys) === 0) {
+        return null;
+    }
+
+    $finalLabels = array();
+    foreach ($keys as $key) {
+        $finalLabels = array_merge($finalLabels, $labels[$key]);
+    }
+
+    return $finalLabels;
+}
+
+function getRepositoryLabels($metadata)
+{
+    $labelsResponse = doRequestGitHub($metadata["token"], $metadata["labelsUrl"], null, "GET");
+    if ($labelsResponse->statusCode !== 200) {
+        return array();
+    }
+
+    return json_decode($labelsResponse->body, true);
+}
+
 
 function main()
 {

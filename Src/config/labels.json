@@ -1,0 +1,304 @@
+{
+    "context": [
+        {
+            "color": "#000000",
+            "description": "GitHub Actions for automation and CI/CD",
+            "text": "github-actions",
+            "textWithIcon": ":octocat: github-actions"
+        },
+        {
+            "color": "#5319E7",
+            "description": "Automatic merging of pull requests (gstraccini-bot)",
+            "text": "auto-merge",
+            "textWithIcon": "☑️ auto-merge"
+        },
+        {
+            "color": "#5319E7",
+            "description": "Automated processes or integrations",
+            "text": "bot",
+            "textWithIcon": "🤖 bot"
+        },
+        {
+            "color": "#15E6EF",
+            "description": "Infrastructure-related tasks or issues",
+            "text": "infrastructure",
+            "textWithIcon": "👷🏼 infrastructure"
+        },
+        {
+            "color": "#006B75",
+            "description": "Database-related operations",
+            "text": "database",
+            "textWithIcon": "🎲 database"
+        },
+        {
+            "color": "#F92288",
+            "description": "Task or issue is currently blocked",
+            "text": "blocked",
+            "textWithIcon": "🚷 blocked"
+        },
+        {
+            "color": "#B60205",
+            "description": "Issues related to bugs or errors",
+            "text": "bug",
+            "textWithIcon": "🐛 bug"
+        },
+        {
+            "color": "#FBCA04",
+            "description": "Work in progress",
+            "text": "WIP",
+            "textWithIcon": "🛠 WIP"
+        },
+        {
+            "color": "#ADCAB2",
+            "description": "Tasks related to testing",
+            "text": "tests",
+            "textWithIcon": "🧪 tests"
+        },
+        {
+            "color": "#B60205",
+            "description": "Security-related issues or improvements",
+            "text": "security",
+            "textWithIcon": "🚨 security"
+        },
+        {
+            "color": "#9425A1",
+            "description": "Continuous Integration/Continuous Deployment processes",
+            "text": "CI/CD",
+            "textWithIcon": "⚙️ CI/CD"
+        },
+        {
+            "color": "#E99695",
+            "description": "Items that are in the backlog for future work",
+            "text": "backlog",
+            "textWithIcon": "🧠 backlog"
+        },
+        {
+            "color": "#0075ca",
+            "description": "Tasks related to writing or updating documentation",
+            "text": "documentation",
+            "textWithIcon": "📝 documentation"
+        },
+        {
+            "color": "#B60205",
+            "description": "Technical debt that needs to be addressed",
+            "text": "tech-debit",
+            "textWithIcon": "🧑‍💻 tech-debit"
+        },
+        {
+            "color": "#B60205",
+            "description": "Waiting on a response from another party",
+            "text": "waiting response",
+            "textWithIcon": "⏳ waiting response"
+        },
+        {
+            "color": "#D93F0B",
+            "description": "Items that are awaiting triage or categorization",
+            "text": "awaiting triage",
+            "textWithIcon": "🚦 awaiting triage"
+        },
+        {
+            "color": "#D93F0B",
+            "description": "Participation in the Hacktoberfest event",
+            "text": "hacktoberfest",
+            "textWithIcon": "hacktoberfest"
+        }
+    ],
+    "effort": [
+        {
+            "color": "#FF0000",
+            "description": "A task that can be completed in a few minutes",
+            "text": "low",
+            "textWithIcon": "🕒 low"
+        },
+        {
+            "color": "#FFA500",
+            "description": "A task that can be completed in a few hours",
+            "text": "medium",
+            "textWithIcon": "🕓 medium"
+        },
+        {
+            "color": "#008000",
+            "description": "A task that can be completed in a few days",
+            "text": "high",
+            "textWithIcon": "🕔 high"
+        },
+        {
+            "color": "#0000FF",
+            "description": "A task that can be completed in a few weeks",
+            "text": "very high",
+            "textWithIcon": "🕕 very high"
+        }
+    ],
+    "language": [
+        {
+            "color": "#777BB3",
+            "description": "PHP programming language",
+            "text": "PHP",
+            "textWithIcon": "🐘 PHP"
+        },
+        {
+            "color": "#f28d1a",
+            "description": "PHP package manager",
+            "text": "packagist",
+            "textWithIcon": "packagist"
+        },
+        {
+            "color": "#5FA04E",
+            "description": "JavaScript runtime environment",
+            "text": "NodeJs",
+            "textWithIcon": "NodeJs"
+        },
+        {
+            "color": "#CB3837",
+            "description": "Node package manager",
+            "text": "NPM",
+            "textWithIcon": "NPM"
+        },
+        {
+            "color": "#512BD4",
+            "description": "Microsoft .NET",
+            "text": ".NET",
+            "textWithIcon": ".NET"
+        },
+        {
+            "color": "#004880",
+            "description": ".NET package manager",
+            "text": "NuGet",
+            "textWithIcon": "NuGet"
+        },
+        {
+            "color": "#F7DF1E",
+            "description": "JavaScript programming language",
+            "text": "JavaScript",
+            "textWithIcon": "JavaScript"
+        },
+        {
+            "color": "#3776AB",
+            "description": "Python programming language",
+            "text": "Python",
+            "textWithIcon": "Python"
+        },
+        {
+            "color": "#3776AB",
+            "description": "Python package manager",
+            "text": "pip",
+            "textWithIcon": "pip"
+        },
+        {
+            "color": "#2B7489",
+            "description": "Ruby programming language",
+            "text": "Ruby",
+            "textWithIcon": "Ruby"
+        },
+        {
+            "color": "#701516",
+            "description": "Ruby package manager",
+            "text": "RubyGems",
+            "textWithIcon": "RubyGems"
+        },
+        {
+            "color": "#E34F26",
+            "description": "HTML programming language",
+            "text": "HTML",
+            "textWithIcon": "HTML"
+        },
+        {
+            "color": "#563D7C",
+            "description": "CSS programming language",
+            "text": "CSS",
+            "textWithIcon": "CSS"
+        },
+        {
+            "color": "#F16529",
+            "description": "Java programming language",
+            "text": "Java",
+            "textWithIcon": "Java"
+        },
+        {
+            "color": "#007396",
+            "description": "Java package manager",
+            "text": "Maven",
+            "textWithIcon": "Maven"
+        },
+        {
+            "color": "#2B7489",
+            "description": "Go programming language",
+            "text": "Go",
+            "textWithIcon": "Go"
+        },
+        {
+            "color": "#00ADD8",
+            "description": "Go package manager",
+            "text": "Go Modules",
+            "textWithIcon": "Go Modules"
+        },
+        {
+            "color": "#F34B7D",
+            "description": "Swift programming language",
+            "text": "Swift",
+            "textWithIcon": "Swift"
+        },
+        {
+            "color": "#F34B7D",
+            "description": "Swift package manager",
+            "text": "Swift Package Manager",
+            "textWithIcon": "Swift Package Manager"
+        },
+        {
+            "color": "#2B7489",
+            "description": "Rust programming language",
+            "text": "Rust",
+            "textWithIcon": "Rust"
+        },
+        {
+            "color": "#2B7489",
+            "description": "Rust package manager",
+            "text": "Cargo",
+            "textWithIcon": "Cargo"
+        },
+        {
+            "color": "#3178C6",
+            "description": "Typed superset of JavaScript",
+            "text": "TypeScript",
+            "textWithIcon": "TypeScript"
+        }
+    ],
+    "size": [
+        {
+            "color": "#009900",
+            "description": "Denotes a PR that changes 0-9 lines, ignoring generated files.",
+            "text": "size/XS",
+            "textWithIcon": "size/XS"
+        },
+        {
+            "color": "#77bb00",
+            "description": "Denotes a PR that changes 10-29 lines, ignoring generated files.",
+            "text": "size/S",
+            "textWithIcon": "size/S"
+        },
+        {
+            "color": "#eebb00",
+            "description": "Denotes a PR that changes 30-99 lines, ignoring generated files.",
+            "text": "size/M",
+            "textWithIcon": "size/M"
+        },
+        {
+            "color": "#ee9900",
+            "description": "Denotes a PR that changes 100-499 lines, ignoring generated files.",
+            "text": "size/L",
+            "textWithIcon": "size/L"
+        },
+        {
+            "color": "#ee5500",
+            "description": "Denotes a PR that changes 500-999 lines, ignoring generated files.",
+            "text": "size/XL",
+            "textWithIcon": "size/XL"
+        },
+        {
+            "color": "#ee0000",
+            "description": "Denotes a PR that changes 1000+ lines, ignoring generated files.",
+            "text": "size/XXL",
+            "textWithIcon": "size/XXL"
+        }
+    ]
+}
