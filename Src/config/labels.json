@@ -107,26 +107,26 @@
         {
             "color": "#FF0000",
             "description": "A task that can be completed in a few minutes",
-            "text": "low",
-            "textWithIcon": "🕒 low"
+            "text": "low effort",
+            "textWithIcon": "🕒 low effort"
         },
         {
             "color": "#FFA500",
             "description": "A task that can be completed in a few hours",
-            "text": "medium",
-            "textWithIcon": "🕓 medium"
+            "text": "medium effort",
+            "textWithIcon": "🕓 medium effort"
         },
         {
             "color": "#008000",
             "description": "A task that can be completed in a few days",
-            "text": "high",
-            "textWithIcon": "🕔 high"
+            "text": "high-effort",
+            "textWithIcon": "🕔 high effort"
         },
         {
             "color": "#0000FF",
             "description": "A task that can be completed in a few weeks",
-            "text": "very high",
-            "textWithIcon": "🕕 very high"
+            "text": "very high effort",
+            "textWithIcon": "🕕 very high effort"
         }
     ],
     "language": [
@@ -198,13 +198,13 @@
         },
         {
             "color": "#E34F26",
-            "description": "HTML programming language",
+            "description": "HTML markup language",
             "text": "HTML",
             "textWithIcon": "HTML"
         },
         {
             "color": "#563D7C",
-            "description": "CSS programming language",
+            "description": "CSS style sheet language",
             "text": "CSS",
             "textWithIcon": "CSS"
         },
