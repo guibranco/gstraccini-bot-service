@@ -84,7 +84,7 @@ function createRepositoryLabels($metadata, $options)
 
         if ($total > 0) {
             $existingLabel = array_values($existingLabel);
-            $labelToUpdate = array();
+            $labelToUpdate = [];
             $labelToUpdate["color"] = substr($label["color"], 1);
             $labelToUpdate["description"] = $label["description"];
             $labelToUpdate["new_name"] = $style === "icons" ? $label["textWithIcon"] : $label["text"];
