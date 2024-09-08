@@ -95,7 +95,7 @@ function createRepositoryLabels($metadata, $options)
     });
 
     $labelsToCreateObject = array_map(function ($label) use ($style) {
-        $newLabel = new \stdClass();
+        $newLabel = [];
         $newLabel["color"] = substr($label["color"], 1);
         $newLabel["description"] = $label["description"];
         $newLabel["name"] = $style === "icons" ? $label["textWithIcon"] : $label["text"];
