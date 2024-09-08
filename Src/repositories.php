@@ -135,6 +135,8 @@ function loadLabelsFromConfig($categories)
         $labels = json_decode($rawLabels, true);
     }
 
+    unset($labels["languages"]);
+
     $keys = array_keys($labels);
 
     if (is_array($categories)) {
