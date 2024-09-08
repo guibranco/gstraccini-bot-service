@@ -573,8 +573,8 @@ function main()
     ob_start();
     $comments = readTable("github_comments");
     foreach ($comments as $comment) {
-        handleComment($comment);
         updateTable("github_comments", $comment->Sequence);
+        handleComment($comment);        
     }
     $result = ob_get_clean();
     if ($config->debug->all === true || $config->debug->comments === true) {
