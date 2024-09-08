@@ -5,7 +5,7 @@ require_once "config/config.php";
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
 
-function installSignature($signature)
+function handleItem($signature)
 {
     global $gitHubUserToken, $gitHubWebhookEndpoint, $gitHubWebhookSignature;
 
@@ -33,10 +33,14 @@ function main()
 {
     $config = loadConfig();
     ob_start();
-    $signatures = readTable("github_signature");
-    foreach ($signatures as $signature) {
-        updateTable("github_signature", $signature->Sequence);
-        installSignature($signature);        
+    $table = "github_signature";
+    $items = readTable($table);
+    foreach ($items as $item) {
+        echo "Sequence: {$item->Sequence}\n";
+        echo "Delivery ID: {$item->DeliveryIdText}\n";
+        updateTable($table, $item->Sequence);
+        handleItem($item);        
+        echo str_repeat("=-", 50) . "=\n";
     }
     $result = ob_get_clean();
     if ($config->debug->all === true || $config->debug->signature === true) {
