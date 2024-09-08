@@ -83,6 +83,7 @@ function createRepositoryLabels($metadata, $options)
         $total = count($existingLabel);
 
         if ($total > 0) {
+            $existingLabel = array_values($existingLabel);
             $labelToUpdate = new \stdClass();
             $labelToUpdate->color = substr($label["color"], 1);
             $labelToUpdate->description = $label["description"];
@@ -116,7 +117,7 @@ function createRepositoryLabels($metadata, $options)
     }
 
     foreach ($labelsToUpdateObject as $oldName => $label) {
-        $response = doRequestGitHub($metadata["token"], $metadata["labelsUrl"] . "/" . $oldName, json_encode($label), "PATCH");
+        $response = doRequestGitHub($metadata["token"], $metadata["labelsUrl"] . "/" . str_replace(" ", "%20", $oldName), json_encode($label), "PATCH");
         if ($response->statusCode === 200) {
             echo "Label updated: {$oldName} -> {$label->new_name}\n";
         } else {
