@@ -35,8 +35,8 @@ function main()
     ob_start();
     $signatures = readTable("github_signature");
     foreach ($signatures as $signature) {
-        installSignature($signature);
         updateTable("github_signature", $signature->Sequence);
+        installSignature($signature);        
     }
     $result = ob_get_clean();
     if ($config->debug->all === true || $config->debug->signature === true) {
