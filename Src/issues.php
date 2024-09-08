@@ -85,6 +85,7 @@ function removeLabels($issueUpdated, $metadata, $includeWip = false)
     $intersect = array_intersect($labelsLookup, $labels);
 
     foreach ($intersect as $label) {
+        $label = str_replace(" ", "%20", $label);
         $url = $metadata["issueUrl"] . "/labels/{$label}";
         $result = doRequestGitHub($metadata["token"], $url, null, "DELETE");
         echo "Deleting label {$label} - {$url} - {$result->statusCode}\n";
