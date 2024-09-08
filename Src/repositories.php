@@ -57,7 +57,7 @@ function getDefaultOptions()
 
 function createRepositoryLabels($metadata, $options)
 {
-    if(!isset($option["labels"]) || $options["labels"] === null || $options["labels"] === "") {
+    if(!isset($options["labels"]) || $options["labels"] === null || $options["labels"] === "") {
         echo "Not creating labels\n";
         return;
     }
