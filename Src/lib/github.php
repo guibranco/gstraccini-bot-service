@@ -50,10 +50,9 @@ function doRequestGitHub($token, $url, $data, $method)
             $response = $request->delete($url, $headers, $data);
             break;
         default:
-            $message = "Invalid method: {$method}";
-            $response = new stdCLass();
+            $response = new \stdCLass();
             $response->statusCode = -2;
-            $result->error = $message;
+            $response->error = "Invalid method: {$method}";
             break;
     }
 
