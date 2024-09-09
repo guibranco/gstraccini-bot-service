@@ -58,7 +58,7 @@ function addLabels($issueUpdated, $collaboratorsLogins, $metadata)
 {
     $labels = [];
     if (!in_array($issueUpdated->user->login, $collaboratorsLogins)) {
-        $labels[] = "🚦awaiting triage";
+        $labels[] = "🚦 awaiting triage";
     }
 
     if ($issueUpdated->user->type === "Bot") {
@@ -74,7 +74,7 @@ function addLabels($issueUpdated, $collaboratorsLogins, $metadata)
 function removeLabels($issueUpdated, $metadata, $includeWip = false)
 {
     $labelsLookup = [
-        "🚦awaiting triage",
+        "🚦 awaiting triage",
         "⏳ awaiting response"
     ];
     if ($includeWip === true) {
