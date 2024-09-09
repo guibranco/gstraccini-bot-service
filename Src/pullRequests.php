@@ -122,7 +122,7 @@ function handleItem($pullRequest, $isRetry = false)
         }
 
         if (!in_array($pullRequest->Sender, $collaboratorsLogins)) {
-            $labelsToAdd[] = "🚦awaiting triage";
+            $labelsToAdd[] = "🚦 awaiting triage";
         }
     }
 
