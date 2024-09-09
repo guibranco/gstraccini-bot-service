@@ -5,7 +5,7 @@ require_once "config/config.php";
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
 
-function handleBranch($branch)
+function handleItem($branch)
 {
     $token = generateInstallationToken($branch->InstallationId, $branch->RepositoryName);
 
@@ -148,10 +148,14 @@ function main()
 {
     $config = loadConfig();
     ob_start();
-    $branches = readTable("github_branches");
-    foreach ($branches as $branch) {
-        handleBranch($branch);
-        updateTable("github_branches", $branch->Sequence);
+    $table = "github_branches";
+    $items = readTable($table);
+    foreach ($items as $item) {
+        echo "Sequence: {$item->Sequence}\n";
+        echo "Delivery ID: {$item->DeliveryIdText}\n";
+        updateTable($table, $item->Sequence);
+        handleItem($item);
+        echo str_repeat("=-", 50) . "=\n";
     }
     $result = ob_get_clean();
     if ($config->debug->all === true || $config->debug->branches === true) {

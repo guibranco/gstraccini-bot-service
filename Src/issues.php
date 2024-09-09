@@ -5,7 +5,7 @@ require_once "config/config.php";
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
 
-function handleIssue($issue)
+function handleItem($issue)
 {
     echo "https://github.com/{$issue->RepositoryOwner}/{$issue->RepositoryName}/issues/{$issue->Number}:\n\n";
 
@@ -95,12 +95,13 @@ function main()
 {
     $config = loadConfig();
     ob_start();
-    $issues = readTable("github_issues");
-    foreach ($issues as $issue) {
-        echo "Sequence: {$issue->Sequence}\n";
-        echo "Delivery ID: {$issue->DeliveryIdText}\n";
-        handleIssue($issue);
-        updateTable("github_issues", $issue->Sequence);
+    $table = "github_issues";
+    $items = readTable($table);
+    foreach ($items as $item) {
+        echo "Sequence: {$item->Sequence}\n";
+        echo "Delivery ID: {$item->DeliveryIdText}\n";
+        updateTable($table, $item->Sequence);
+        handleItem($item);
         echo str_repeat("=-", 50) . "=\n";
     }
     $result = ob_get_clean();

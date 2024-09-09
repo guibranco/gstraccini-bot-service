@@ -5,7 +5,7 @@ require_once "config/config.php";
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
 
-function handleRepository($repository)
+function handleItem($repository)
 {
     echo "https://github.com/{$repository->FullName}:\n\n";
 
@@ -176,12 +176,13 @@ function main()
 {
     $config = loadConfig();
     ob_start();
-    $repositories = readTable("github_repositories");
-    foreach ($repositories as $repository) {
-        echo "Sequence: {$repository->Sequence}\n";
-        echo "Delivery ID: {$repository->DeliveryIdText}\n";
-        handleRepository($repository);
-        updateTable("github_repositories", $repository->Sequence);
+    $table = "github_repositories";
+    $items = readTable($table);
+    foreach ($items as $item) {
+        echo "Sequence: {$item->Sequence}\n";
+        echo "Delivery ID: {$item->DeliveryIdText}\n";
+        updateTable($table, $item->Sequence);
+        handleItem($item);
         echo str_repeat("=-", 50) . "=\n";
     }
     $result = ob_get_clean();

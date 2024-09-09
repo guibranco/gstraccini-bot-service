@@ -5,7 +5,7 @@ require_once "config/config.php";
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
 
-function handlePush($push)
+function handleItem($push)
 {
     $token = generateInstallationToken($push->InstallationId, $push->RepositoryName);
 
@@ -31,10 +31,14 @@ function main()
 {
     $config = loadConfig();
     ob_start();
-    $pushes = readTable("github_pushes");
-    foreach ($pushes as $push) {
-        handlePush($push);
-        updateTable("github_pushes", $push->Sequence);
+    $table = "github_pushes";
+    $items = readTable($table);
+    foreach ($items as $item) {
+        echo "Sequence: {$item->Sequence}\n";
+        echo "Delivery ID: {$item->DeliveryIdText}\n";
+        updateTable($table, $item->Sequence);
+        handleItem($item);
+        echo str_repeat("=-", 50) . "=\n";
     }
     $result = ob_get_clean();
     if ($config->debug->all === true || $config->debug->pushes === true) {
