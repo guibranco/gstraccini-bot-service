@@ -61,7 +61,7 @@ function handleItem($pullRequest, $isRetry = false)
     if ($isRetry === false && $pullRequestUpdated->mergeable_state === "unknown") {
         sleep(5);
         echo "State: {$pullRequestUpdated->mergeable_state} - Retrying #{$pullRequestUpdated->number} - Sender: " . $pullRequest->Sender . " 🔄\n";
-        handlePullRequest($pullRequest, true);
+        handleItem($pullRequest, true);
         return;
     }
 
