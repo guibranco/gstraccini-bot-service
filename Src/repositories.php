@@ -30,7 +30,7 @@ function handleItem($repository)
 
     $repositoryOptions = getRepositoryOptions($metadata);
     $languages = getRepositoryLanguages($metadata);
-    foreach ($languages as $language=>$lines) {
+    foreach ($languages as $language => $lines) {
         echo "Language: {$language}: {$lines}\n";
     }
     createRepositoryLabels($metadata, $repositoryOptions);
