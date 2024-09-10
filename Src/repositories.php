@@ -29,6 +29,10 @@ function handleItem($repository)
     );
 
     $repositoryOptions = getRepositoryOptions($metadata);
+    $languages = getRepositoryLanguages($metadata);
+    foreach ($languages as $language => $bytes) {
+        echo "Language: {$language}: {$bytes} bytes\n";
+    }
     createRepositoryLabels($metadata, $repositoryOptions);
 }
 
@@ -171,6 +175,15 @@ function getRepositoryLabels($metadata)
     return json_decode($labelsResponse->body, true);
 }
 
+function getRepositoryLanguages($metadata)
+{
+    $languagesResponse = doRequestGitHub($metadata["token"], $metadata["repoUrl"] . "/languages", null, "GET");
+    if ($languagesResponse->statusCode !== 200) {
+        return array();
+    }
+
+    return json_decode($languagesResponse->body, true);
+}
 
 function main()
 {
