@@ -29,7 +29,7 @@ function handleItem($repository)
     );
 
     $repositoryOptions = getRepositoryOptions($metadata);
-    $languages = getRepositoryLanguages($metadata);   
+    $languages = getRepositoryLanguages($metadata);
     createRepositoryLabels($metadata, $repositoryOptions);
 }
 
