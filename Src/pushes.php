@@ -9,7 +9,7 @@ function handleItem($push)
 {
     $token = generateInstallationToken($push->InstallationId, $push->RepositoryName);
 
-    $botDashboardUrl = "https://bot.straccini.com/dashboard";
+    $botDashboardUrl = "https://gstraccini.bot/dashboard";
     $commitQueryString =
         "?owner=" . $push->RepositoryOwner .
         "&repo=" . $push->RepositoryName .
