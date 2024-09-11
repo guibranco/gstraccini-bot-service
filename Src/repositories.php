@@ -115,6 +115,12 @@ function createRepositoryLabels($metadata, $options)
         $response = doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $label, "POST");
         if ($response->statusCode === 201) {
             echo "Label created: {$label["name"]}\n";
+        } else if($response->statusCode === 422) {
+            $labelToUpdate = [];
+            $labelToUpdate["color"] = $label["color"];
+            $labelToUpdate["description"] = $label["description"];
+            $labelToUpdate["new_name"] = $label["name"];
+            $labelsToUpdateObject[$label["name"]] = $labelToUpdate;
         } else {
             echo "Error creating label: {$label["name"]}\n";
         }
