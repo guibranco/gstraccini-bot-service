@@ -41,11 +41,11 @@ That's what I can do :neckbeard::
 
 Multiple commands can be issued at the same time. Just respect each command pattern (with bot name prefix + command).
 
-> [!Warning]
+> [!NOTE]
 >
 > If you aren't allowed to use this bot, a reaction with a thumbs down will be added to your comment.
 
-> [!Important]
+> [!TIP]
 >
 > You can tick (✅) one item from the above list, and it will be triggered! (In beta).
 
