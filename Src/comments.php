@@ -118,11 +118,11 @@ function execute_help($config, $metadata, $comment)
     }
     $helpComment .= "\n\nMultiple commands can be issued simultaneously. " .
         "Just respect each command pattern (with bot name prefix + command).\n\n" .
-        "> [!Warning]\n" .
+        "> [!NOTE]\n" .
         "> \n" .
         "> If you aren't allowed to use this bot, a reaction with a thumbs down will be added to your comment.\r\n" .
         "\n\n" .
-        "> [!Important]\n" .
+        "> [!TIP]\n" .
         "> \n" .
         "> You can tick (✅) one item from the above list, and it will be triggered! (In beta) (Only parameterless commands).\n";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $helpComment), "POST");
