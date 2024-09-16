@@ -25,6 +25,12 @@
             "textWithIcon": "👷🏼 infrastructure"
         },
         {
+            "color": "#FBCA04",
+            "description": "Code quality related tasks or issues",
+            "text": "code quality",
+            "textWithIcon": "♻️ code quality"
+        },
+        {
             "color": "#006B75",
             "description": "Database-related operations",
             "text": "database",
