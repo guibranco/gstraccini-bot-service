@@ -26,7 +26,7 @@
         },
         {
             "color": "#FBCA04",
-            "description": "Code quality related tasks or issues",
+            "description": "Code quality-related tasks or issues",
             "text": "code quality",
             "textWithIcon": "♻️ code quality"
         },
@@ -143,130 +143,136 @@
             "textWithIcon": "🐘 PHP"
         },
         {
-            "color": "#f28d1a",
+            "color": "#0DB7ED",
+            "description": "Docker images, Dockerfile and Docker compose",
+            "text": "Docker",
+            "textWithIcon": "🐳 Docker"
+        },
+        {
+            "color": "#F28D1A",
             "description": "PHP package manager",
             "text": "packagist",
-            "textWithIcon": "packagist"
+            "textWithIcon": "📦 packagist"
         },
         {
             "color": "#5FA04E",
             "description": "JavaScript runtime environment",
             "text": "NodeJs",
-            "textWithIcon": "NodeJs"
+            "textWithIcon": "🟨 NodeJs"
         },
         {
             "color": "#CB3837",
             "description": "Node package manager",
             "text": "NPM",
-            "textWithIcon": "NPM"
+            "textWithIcon": "📦 NPM"
         },
         {
             "color": "#512BD4",
             "description": "Microsoft .NET",
             "text": ".NET",
-            "textWithIcon": ".NET"
+            "textWithIcon": "#️⃣ .NET"
         },
         {
             "color": "#004880",
             "description": ".NET package manager",
             "text": "NuGet",
-            "textWithIcon": "NuGet"
+            "textWithIcon": "📦 NuGet"
         },
         {
             "color": "#F7DF1E",
             "description": "JavaScript programming language",
             "text": "JavaScript",
-            "textWithIcon": "JavaScript"
+            "textWithIcon": "🟨 JavaScript"
         },
         {
             "color": "#3776AB",
             "description": "Python programming language",
             "text": "Python",
-            "textWithIcon": "Python"
+            "textWithIcon": "🐍 Python"
         },
         {
             "color": "#3776AB",
             "description": "Python package manager",
             "text": "pip",
-            "textWithIcon": "pip"
+            "textWithIcon": "📦 PIP"
         },
         {
             "color": "#2B7489",
             "description": "Ruby programming language",
             "text": "Ruby",
-            "textWithIcon": "Ruby"
+            "textWithIcon": "💎 Ruby"
         },
         {
             "color": "#701516",
             "description": "Ruby package manager",
             "text": "RubyGems",
-            "textWithIcon": "RubyGems"
+            "textWithIcon": "📦 RubyGems"
         },
         {
             "color": "#E34F26",
             "description": "HTML markup language",
             "text": "HTML",
-            "textWithIcon": "HTML"
+            "textWithIcon": "🦴 HTML"
         },
         {
             "color": "#563D7C",
             "description": "CSS style sheet language",
             "text": "CSS",
-            "textWithIcon": "CSS"
+            "textWithIcon": "💄 CSS"
         },
         {
             "color": "#F16529",
             "description": "Java programming language",
             "text": "Java",
-            "textWithIcon": "Java"
+            "textWithIcon": "☕ Java"
         },
         {
             "color": "#007396",
             "description": "Java package manager",
             "text": "Maven",
-            "textWithIcon": "Maven"
+            "textWithIcon": "📦 Maven"
         },
         {
             "color": "#2B7489",
             "description": "Go programming language",
             "text": "Go",
-            "textWithIcon": "Go"
+            "textWithIcon": "🐿️ Go"
         },
         {
             "color": "#00ADD8",
             "description": "Go package manager",
             "text": "Go Modules",
-            "textWithIcon": "Go Modules"
+            "textWithIcon": "📦 Go Modules"
         },
         {
             "color": "#F34B7D",
             "description": "Swift programming language",
             "text": "Swift",
-            "textWithIcon": "Swift"
+            "textWithIcon": "🐦‍⬛ Swift"
         },
         {
             "color": "#F34B7D",
             "description": "Swift package manager",
             "text": "Swift Package Manager",
-            "textWithIcon": "Swift Package Manager"
+            "textWithIcon": "📦 Swift Package Manager"
         },
         {
             "color": "#2B7489",
             "description": "Rust programming language",
             "text": "Rust",
-            "textWithIcon": "Rust"
+            "textWithIcon": "🦀 Rust"
         },
         {
             "color": "#2B7489",
             "description": "Rust package manager",
             "text": "Cargo",
-            "textWithIcon": "Cargo"
+            "textWithIcon": "📦 Cargo"
         },
         {
             "color": "#3178C6",
             "description": "Typed superset of JavaScript",
             "text": "TypeScript",
-            "textWithIcon": "TypeScript"
+            "textWithIcon": "🟨 TypeScript"
         }
     ],
     "size": [
