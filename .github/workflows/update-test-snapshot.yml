@@ -63,7 +63,7 @@ jobs:
       - name: Run update snapshot
         run: |
           set -e
-          echo "$(npm test -- -u)" >> update-snapshot.log
+          npm test -- -u >> update-snapshot.log
 
       - name: Read update-snapshot.log
         uses: guibranco/github-file-reader-action-v2@latest
@@ -101,8 +101,7 @@ jobs:
           refresh-message-position: true
           allow-repeats: true
           message: |
-           :warning: [Update test snapshots](${{ env.GHA_URL }}) executed! There's no need for any changes.
-
+           :warning: [Update test snapshots](${{ env.GHA_URL }}) executed! I just wanted to let you know there's no need for any changes.
 
       - name: Verify Changed files
         uses: tj-actions/verify-changed-files@v20
