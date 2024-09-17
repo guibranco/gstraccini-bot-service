@@ -76,6 +76,11 @@
         "requiresPullRequestOpen": true
     },
     {
+        "command": "cargo clippy",
+        "description": "Formats the Rust code using [Cargo Clippy](https://doc.rust-lang.org/clippy/usage.html) (only for **Rust** projects).",
+        "requiresPullRequestOpen": true
+    },
+    {
         "command": "change runner",
         "description": "Changes the [GitHub action runner](https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources) in a workflow file (.yml).",
         "parameters": [
