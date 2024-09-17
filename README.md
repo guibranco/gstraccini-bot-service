@@ -55,9 +55,11 @@ GStraccini-bot can handle various tasks. Here’s a list of commands:
 - `@gstraccini track`: Tracks a pull request, queues a build, and synchronizes merge branches.
 - `@gstraccini update snapshot`: Updates test snapshots (`npm test -- -u`) for **Node.js** projects.
 
-> **Note**: If you are not allowed to use the bot, a thumbs-down reaction will be added to your comment.
-> 
-> **Tip**: You can trigger commands with a ✅ tick (beta feature).
+> [!Note]
+> If you are not allowed to use the bot, a thumbs-down reaction will be added to your comment.
+
+> [!Tip]
+> You can trigger commands with a ✅ tick (beta feature).
 
 ---
 
