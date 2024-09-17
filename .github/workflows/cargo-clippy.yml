@@ -1,0 +1,148 @@
+name: Clippy
+
+on:
+  workflow_dispatch:
+    inputs:
+      owner:
+        description: "The owner of the repository to run"
+        required: true
+        default: "guibranco"
+      repository:
+        description: "The repository to run"
+        required: true
+        default: "gstraccini-bot"
+      branch:
+        description: "The branch to run"
+        required: true
+        default: "main"
+      pull_request:
+        description: "The pull request number"
+        required: true
+        default: "-1"
+      installationId:
+        description: "The installation id"
+        required: true
+        default: "-1"
+
+env:
+  GHA_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+jobs:
+  clippy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Generate a token
+        id: generate_token
+        uses: tibdex/github-app-token@v2.1.0
+        with:
+          app_id: ${{ secrets.APP_ID }}
+          private_key: ${{ secrets.APP_PRIVATE_KEY }}
+          installation_retrieval_mode: id
+          installation_retrieval_payload: ${{ github.event.inputs.installationId }}
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ github.event.inputs.owner}}/${{ github.event.inputs.repository }}"
+          ref: ${{ github.event.inputs.branch }}
+          token: ${{ steps.generate_token.outputs.token }}
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: CSharpier format check
+        continue-on-error: true
+        run: |
+          set -e
+          echo "$(cargo clippy 2>&1 > /dev/null)" >> clippy.log
+
+      - name: Read clippy.log
+        uses: guibranco/github-file-reader-action-v2@v2.2.687
+        id: log
+        with:
+          path: clippy.log
+
+      - name: Delete clippy.log
+        run: rm clippy.log 2> /dev/null
+
+      - name: Update PR with comment
+        uses: mshick/add-pr-comment@v2
+        if: ${{ steps.log.outputs.contents != '' }}
+        with:
+          repo-token: ${{ steps.generate_token.outputs.token }}
+          repo-owner: ${{ github.event.inputs.owner }}
+          repo-name: ${{ github.event.inputs.repository }}
+          issue: ${{ github.event.inputs.pull_request }}
+          refresh-message-position: true
+          allow-repeats: true
+          message: |
+            :white_check_mark: [Cargo Clippy](${{ env.GHA_URL }}) result:
+
+            ```
+            ${{ steps.log.outputs.contents }}
+            ```
+
+      - name: Update PR with comment
+        uses: mshick/add-pr-comment@v2
+        if: ${{ steps.log.outputs.contents == '' }}
+        with:
+          repo-token: ${{ steps.generate_token.outputs.token }}
+          repo-owner: ${{ github.event.inputs.owner }}
+          repo-name: ${{ github.event.inputs.repository }}
+          issue: ${{ github.event.inputs.pull_request }}
+          refresh-message-position: true
+          allow-repeats: true
+          message: |
+            :warning: [Cargo Clippy](${{ env.GHA_URL }}) executed! I just wanted to let you know there's no need for any changes.
+
+      - name: Run Clippy Fix
+        run: cargo clippy --fix --allow-dirty --allow-staged
+
+      - name: Verify Changed files
+        uses: tj-actions/verify-changed-files@v20
+        id: verify-changed-files
+
+      - name: Config git
+        if: steps.verify-changed-files.outputs.files_changed == 'true'
+        run: |
+          git config --local user.email "150967461+gstraccini[bot]@users.noreply.github.com"
+          git config --local user.name "gstraccini[bot]"
+          git config --global --add --bool push.autoSetupRemote true
+
+      - name: Commit files
+        if: steps.verify-changed-files.outputs.files_changed == 'true'
+        run: |
+          git add .
+          git commit -m "Cargo Clippy format"
+          echo "sha1=$(git rev-parse HEAD)" >> $GITHUB_ENV
+          git push origin ${{ github.event.inputs.branch }}
+
+      - name: Update PR with comment
+        uses: mshick/add-pr-comment@v2
+        if: failure()
+        with:
+          repo-token: ${{ steps.generate_token.outputs.token }}
+          repo-owner: ${{ github.event.inputs.owner }}
+          repo-name: ${{ github.event.inputs.repository }}
+          issue: ${{ github.event.inputs.pull_request }}
+          refresh-message-position: true
+          allow-repeats: true
+          message: |
+            :x: [Cargo Clippy](${{ env.GHA_URL }}) failed!
