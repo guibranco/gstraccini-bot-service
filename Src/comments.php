@@ -281,6 +281,14 @@ function execute_bumpVersion($config, $metadata, $comment)
     callWorkflow($config, $metadata, $comment, "bump-version.yml");
 }
 
+function execute_cargoClippy($config, $metadata, $comment)
+{
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
+    $body = "Running [Cargo Clippy](https://doc.rust-lang.org/clippy/usage.html) on this branch! :wrench:";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    callWorkflow($config, $metadata, $comment, "cargo-clippy.yml");
+}
+
 function execute_copyIssue($config, $metadata, $comment)
 {
     preg_match(
