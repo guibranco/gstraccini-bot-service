@@ -58,7 +58,7 @@ Currently, another (still private) repository works with this one to provide all
 
 ---
 
-### Webhooks
+## Webhooks
 
 Once you install the [GStraccini-bot GitHub app](https://github.com/apps/gstraccini), GitHub will send webhooks to a registered endpoint for some events. Once these webhooks reach the handler, they are stored in SQL database tables for later processing by this bot.
 
@@ -66,7 +66,7 @@ If you are interested in hosting your instance, let me know, and I will share th
 
 ---
 
-### Cronjobs
+## Cronjobs
 
 The bot handlers on this repository run on my infrastructure at the following intervals:
 
@@ -77,3 +77,13 @@ The bot handlers on this repository run on my infrastructure at the following in
 - ![GStraccini Bot - Pushes](https://healthchecks.io/b/2/1e8724fa-8361-47d7-a4f6-901e8d4ff265.svg) - 🕐 every 1 minute
 - ![GStraccini Bot - Repositories](https://healthchecks.io/b/2/4ef0ee6c-38f8-4c79-b9f7-049438bd39a9.svg) - 🕐 every 1 minute
 - ![GStraccini Bot - Signature](https://healthchecks.io/b/2/8303206b-2f4c-4300-ac64-5e9cd342c164.svg) - 🕐 every 5 minutes
+
+---
+
+## Links
+
+- [GitHub Marketplace](https://github.com/marketplace/gstraccini-bot)
+- [GitHub App](https://github.com/apps/gstraccini)
+- [Repository on GitHub](https://github.com/guibranco/gstraccini-bot)
+- [handler](https://bot.straccini.com/)
+
