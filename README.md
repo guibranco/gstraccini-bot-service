@@ -1,11 +1,23 @@
 # GStraccini GitHub Bot
 
-🤖 :octocat: A GitHub bot that runs on issues, pull requests, and comments.
+🤖 :octocat: A GitHub bot that keeps your repository organized and healthy by managing pull requests, issues, comments, and commits so you can focus on solving the real problems.
 
 [![Deploy via ftp](https://github.com/guibranco/gstraccini-bot/actions/workflows/deploy.yml/badge.svg)](https://github.com/guibranco/gstraccini-bot/actions/workflows/deploy.yml)
 [![PHP Linting](https://github.com/guibranco/gstraccini-bot/actions/workflows/php-lint.yml/badge.svg)](https://github.com/guibranco/gstraccini-bot/actions/workflows/php-lint.yml)
 [![JSON/YAML validation](https://github.com/guibranco/gstraccini-bot/actions/workflows/json-yaml-lint.yml/badge.svg)](https://github.com/guibranco/gstraccini-bot/actions/workflows/json-yaml-lint.yml)
 [![Shell checker](https://github.com/guibranco/gstraccini-bot/actions/workflows/shell-cheker.yml/badge.svg)](https://github.com/guibranco/gstraccini-bot/actions/workflows/shell-cheker.yml)
+
+---
+
+## About the bot
+
+[GStraccini-bot](https://bot.straccini.com) keeps your repository organized and healthy by managing pull requests, issues, comments, and commits, so you can focus on solving the real problems.
+
+---
+
+## About this repository
+
+This is the core repository for the bot. It processes every command and executes the actions.
 
 ---
 
@@ -53,16 +65,9 @@ Multiple commands can be issued at the same time. Just respect each command patt
 
 ## How it works
 
-This project is just part of the overall process.
-Currently, another (still private) repository works with this one to provide all the necessary data and metadata for the actions.
-
----
-
-## Webhooks
-
-Once you install the [GStraccini-bot GitHub app](https://github.com/apps/gstraccini), GitHub will send webhooks to a registered endpoint for some events. Once these webhooks reach the handler, they are stored in SQL database tables for later processing by this bot.
-
-If you are interested in hosting your instance, let me know, and I will share the database schemas and scripts and the procedure for creating your own GitHub app to receive events on your infrastructure.
+- [Core](https://github.com/guibranco/gstraccini-bot): The worker for the bot.
+- [Webhooks handler](https://github.com/guibranco/gstraccini-bot-handler): The webhooks received/handler.
+- [Website/Dashboard](https://github.com/guibranco/gstraccini-bot-website): The landing page and dashboard for the bot.
 
 ---
 
