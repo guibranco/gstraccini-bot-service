@@ -1,4 +1,4 @@
-# GStraccini GitHub Bot
+# ![GStraccini-bot](https://raw.githubusercontent.com/guibranco/gstraccini-bot-website/main/Src/logo.png)
 
 🤖 :octocat: **GStraccini-bot** is a GitHub bot designed to keep your repository organized and healthy by automating tasks like managing pull requests, issues, comments, and commits, allowing you to focus on solving real problems.
 
