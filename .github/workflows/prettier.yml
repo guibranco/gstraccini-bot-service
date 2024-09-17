@@ -64,7 +64,7 @@ jobs:
       - name: Run Prettier format check
         run: |
           set -e
-          echo "$(npm run format:check)" >> prettier.log
+          npm run format:check >> prettier.log
 
       - name: Read prettier.log
         uses: guibranco/github-file-reader-action-v2@latest
@@ -91,6 +91,7 @@ jobs:
             ```
             ${{ steps.log.outputs.contents }}
             ```
+
       - name: Update PR with comment
         uses: mshick/add-pr-comment@v2
         if: ${{ steps.log.outputs.contents == '' }}

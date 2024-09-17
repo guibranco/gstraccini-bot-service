@@ -71,7 +71,7 @@ jobs:
         continue-on-error: true
         run: |
           set -e
-          echo "$(cargo clippy 2>&1 > /dev/null)" >> clippy.log
+          cargo clippy 2>&1 > /dev/null >> clippy.log
 
       - name: Read clippy.log
         uses: guibranco/github-file-reader-action-v2@v2.2.687
