@@ -3,6 +3,9 @@
 use GuiBranco\Pancake\Logger;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
+use PhpAmqpLib\Wire\AMQPTable;
+use GuiBranco\Pancake\GUIDv4;
+use GuiBranco\Pancake\HealthChecks;
 
 function getServers()
 {
@@ -40,16 +43,10 @@ function connect($servers)
 
 function sendQueue($queueName, $payload)
 {
-    $circuitBreaker = new CircuitBreaker();
-
     $payload = json_encode($payload);
 
-    try {
-        $circuitBreaker->execute(function () use ($queueName, $payload) {
-            sendByLib($queueName, $payload);
-        });
-    } catch (CircuitBreakerOpenException $e) {
-        handleSendingError($e, $queueName, $payload);
+    try{
+        sendByLib($queueName, $payload);
     } catch (Exception $e) {
         handleSendingError($e, $queueName, $payload);
     }
