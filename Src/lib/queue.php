@@ -45,7 +45,7 @@ function sendQueue($queueName, $payload)
 {
     $payload = json_encode($payload);
 
-    try{
+    try {
         sendByLib($queueName, $payload);
     } catch (Exception $e) {
         handleSendingError($e, $queueName, $payload);
