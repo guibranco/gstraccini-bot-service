@@ -3,80 +3,101 @@
 use GuiBranco\Pancake\Logger;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
+use PhpAmqpLib\Wire\AMQPTable;
+use GuiBranco\Pancake\GUIDv4;
+use GuiBranco\Pancake\HealthChecks;
 
-function sendQueue($queueName, $headers, $data)
+function getServers()
 {
-    $payload = array(time(), $headers, $data);
+    global $rabbitMqConnectionStrings;
+
+    if (empty($rabbitMqConnectionStrings)) {
+        throw new Exception("RabbitMQ connection strings not found");
+    }
+
+    $servers = [];
+    foreach ($rabbitMqConnectionStrings as $connectionString) {
+        $url = parse_url($connectionString);
+        $servers[] = [
+            "host" => $url["host"],
+            "port" => isset($url["port"]) ? $url["port"] : 5672,
+            "user" => $url["user"],
+            "password" => $url["pass"],
+            "vhost" => ($url['path'] == '/' || !isset($url['path'])) ? '/' : substr($url['path'], 1)
+        ];
+    }
+
+    return $servers;
+}
+
+function connect($servers)
+{
+    shuffle($servers);
+    $options = [];
+    if (count($servers) == 1) {
+        $options = ['connection_timeout' => 10.0, 'read_write_timeout' => 10.0,];
+    }
+
+    return AMQPStreamConnection::create_connection($servers, $options);
+}
+
+function sendQueue($queueName, $payload)
+{
     $payload = json_encode($payload);
 
-    sendByLib($queueName, $payload);
+    try {
+        sendByLib($queueName, $payload);
+    } catch (Exception $e) {
+        handleSendingError($e, $queueName, $payload);
+    }
 }
 
 function sendByLib($queueName, $payload)
 {
-    global $rabbitMqHost, $rabbitMqPort, $rabbitMqUser, $rabbitMqPassword, $rabbitMqVhost;
+    $connection = connect(getServers());
+    if ($connection === false) {
+        return;
+    }
 
-    try {
-        $connection = new AMQPStreamConnection(
-            $rabbitMqHost,
-            $rabbitMqPort,
-            $rabbitMqUser,
-            $rabbitMqPassword,
-            $rabbitMqVhost
-        );
-        $channel = $connection->channel();
-        $channel->queue_declare($queueName, false, true, false, false);
+    $channel = $connection->channel();
+    declareQueueAndDLX($channel, $queueName);
+    $msgOptions = array('content_type' => 'application/json', 'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT);
+    $msg = new AMQPMessage($payload, $msgOptions);
+    $channel->basic_publish($msg, '', $queueName);
 
-        $msg = new AMQPMessage($payload, array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT));
-        $channel->basic_publish($msg, '', $queueName);
+    $channel->close();
+    $connection->close();
+}
 
-        $channel->close();
-        $connection->close();
-    } catch (Exception $exception) {
-        saveFailed($queueName, $payload);
-        sendToLogger("Error on sending queue", $queueName, $exception);
+function receiveQueue($timeout, $queueName, $callback)
+{
+    $servers = getServers();
+    $timeoutPerServer = $timeout / count($servers);
+    foreach ($servers as $server) {
+        receiveByLib([$server], $timeoutPerServer, $queueName, $callback);
     }
 }
 
-function receiveQueue($queueName, $callback)
+function receiveByLib($server, $timeout, $queueName, $callback, $isRetry = false)
 {
-    receiveByLib($queueName, $callback);
-}
-
-function receiveByLib($queueName, $callback)
-{
-    global $rabbitMqHost, $rabbitMqPort, $rabbitMqUser, $rabbitMqPassword, $rabbitMqVhost;
-
     $startTime = time();
 
     try {
-        $fn = function ($msg) use ($callback, $startTime) {
-            $callback($startTime, $msg);
+        $fn = function ($msg) use ($callback, $timeout, $startTime) {
+            $callback($timeout, $startTime, $msg);
         };
-        $connection = new AMQPStreamConnection(
-            $rabbitMqHost,
-            $rabbitMqPort,
-            $rabbitMqUser,
-            $rabbitMqPassword,
-            $rabbitMqVhost,
-            false,
-            'AMQPLAIN',
-            null,
-            'en_US',
-            10.0,
-            10.0,
-            null,
-            false,
-            0,
-            5.0
-        );
+        $connection = connect($server);
+        if ($connection === false) {
+            return;
+        }
         $channel = $connection->channel();
-        $channel->queue_declare($queueName, false, true, false, false);
-        $channel->basic_consume($queueName, '', false, false, false, false, $fn);
+        declareQueueAndDLX($channel, $queueName);
+        $channel->basic_qos(null, 1, null);
+        $channel->basic_consume($queueName, 'consumer-webhooks', false, false, false, false, $fn);
 
         while ($channel->is_consuming()) {
             $channel->wait(null, true);
-            if ($startTime + 60 < time()) {
+            if ($startTime + $timeout < time()) {
                 break;
             }
         }
@@ -84,24 +105,73 @@ function receiveByLib($queueName, $callback)
         $channel->close();
         $connection->close();
     } catch (Exception $exception) {
-        sendToLogger("Error on receiving queue", $queueName, $exception);
+        if (!$isRetry) {
+            logQueueError("retrying receiving", $queueName, $exception, $server[0]["host"], $server[0]["port"]);
+            sleep(5);
+            return receiveByLib($server, $timeout, $queueName, $callback, true);
+        }
+        logQueueError("receiving", $queueName, $exception, $server[0]["host"], $server[0]["port"]);
     }
 }
 
-function sendToLogger($message, $queueName, $exception)
-{
-    global $loggerUrl, $loggerApiKey, $loggerApiToken;
-    $logger = new Logger($loggerUrl, $loggerApiKey, $loggerApiToken, constant("USER_AGENT_VENDOR"));
-    $logger->log($message, array("queue" => $queueName, "error" => $exception->getMessage()));
-}
-
-
-function saveFailed($queueName, $payload)
+function handleSendingError($exception, $queueName, $payload)
 {
     $dir = "failed";
     if (!is_dir($dir)) {
         mkdir($dir);
     }
-    $date = date("Y-m-d-H-i-s-e");
-    file_put_contents($dir . "/" . $queueName . "_" . $date . "_" . uniqid() . ".json", $payload);
+    $file = $dir . "/" . $queueName . "_" . microtime(true) . "_" . uniqid() . ".json";
+    file_put_contents($file, $queueName . PHP_EOL . $payload);
+    logQueueError("sending", $queueName, $exception);
+}
+
+
+function logQueueError($type, $queueName, $exception, $host = null, $port = null)
+{
+    $message = $type . " " . $queueName;
+    if ($host != null) {
+        $message .= " (" . $host . ($port != null ? ":" . $port : "") . ")";
+    }
+    $message .= ": " . $exception->getMessage() . "\n";
+
+    global $logger;
+    $logger->log($message, $exception->getTraceAsString());
+    $data = json_encode(array("queueName" => $queueName, "message" => $exception->getMessage()));
+    global $hc;
+    if (isset($hc)) {
+        $hc->error($data);
+    }
+}
+
+function declareQueueAndDLX($channel, $queueName)
+{
+    $channel->queue_declare(
+        $queueName,
+        false,
+        true,
+        false,
+        false,
+        false,
+        new AMQPTable(
+            array(
+                'x-dead-letter-exchange' => '',
+                'x-dead-letter-routing-key' => $queueName . '-retry'
+            )
+        )
+    );
+    $channel->queue_declare(
+        $queueName . '-retry',
+        false,
+        true,
+        false,
+        false,
+        false,
+        new AMQPTable(
+            array(
+                'x-dead-letter-exchange' => '',
+                'x-dead-letter-routing-key' => $queueName,
+                'x-message-ttl' => 1000 * 60 * 10
+            )
+        )
+    );
 }
