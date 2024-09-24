@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "c03e4aea20de087144eb1e017ccd33a5",
+    "content-hash": "e999b3178f932762f85868f9cad1cb26",
     "packages": [
         {
             "name": "guibranco/pancake",
-            "version": "v0.8.19",
+            "version": "v0.10.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/guibranco/pancake.git",
-                "reference": "14cacceee397ca9b908fdfb409d7fe8b4c712612"
+                "reference": "8695a1c678542370a0768feb8f773f55922aca06"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/guibranco/pancake/zipball/14cacceee397ca9b908fdfb409d7fe8b4c712612",
-                "reference": "14cacceee397ca9b908fdfb409d7fe8b4c712612",
+                "url": "https://api.github.com/repos/guibranco/pancake/zipball/8695a1c678542370a0768feb8f773f55922aca06",
+                "reference": "8695a1c678542370a0768feb8f773f55922aca06",
                 "shasum": ""
             },
             "require-dev": {
@@ -42,9 +42,9 @@
             "description": "The Pancake project, a toolkit for PHP projects",
             "support": {
                 "issues": "https://github.com/guibranco/pancake/issues",
-                "source": "https://github.com/guibranco/pancake/tree/v0.8.19"
+                "source": "https://github.com/guibranco/pancake/tree/v0.10.2"
             },
-            "time": "2024-08-22T22:41:37+00:00"
+            "time": "2024-09-23T23:43:03+00:00"
         },
         {
             "name": "lcobucci/jwt",
@@ -238,16 +238,16 @@
         },
         {
             "name": "php-amqplib/php-amqplib",
-            "version": "v3.7.0",
+            "version": "v3.7.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/php-amqplib/php-amqplib.git",
-                "reference": "91fd00e74cd2eea624fd50a321d926b1c124bb99"
+                "reference": "5db9a68435fdde9ba4248a8fd2fae6d07b442b65"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/php-amqplib/php-amqplib/zipball/91fd00e74cd2eea624fd50a321d926b1c124bb99",
-                "reference": "91fd00e74cd2eea624fd50a321d926b1c124bb99",
+                "url": "https://api.github.com/repos/php-amqplib/php-amqplib/zipball/5db9a68435fdde9ba4248a8fd2fae6d07b442b65",
+                "reference": "5db9a68435fdde9ba4248a8fd2fae6d07b442b65",
                 "shasum": ""
             },
             "require": {
@@ -313,22 +313,22 @@
             ],
             "support": {
                 "issues": "https://github.com/php-amqplib/php-amqplib/issues",
-                "source": "https://github.com/php-amqplib/php-amqplib/tree/v3.7.0"
+                "source": "https://github.com/php-amqplib/php-amqplib/tree/v3.7.1"
             },
-            "time": "2024-07-09T21:10:28+00:00"
+            "time": "2024-09-03T19:18:03+00:00"
         },
         {
             "name": "phpseclib/phpseclib",
-            "version": "3.0.41",
+            "version": "3.0.42",
             "source": {
                 "type": "git",
                 "url": "https://github.com/phpseclib/phpseclib.git",
-                "reference": "621c73f7dcb310b61de34d1da4c4204e8ace6ceb"
+                "reference": "db92f1b1987b12b13f248fe76c3a52cadb67bb98"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpseclib/phpseclib/zipball/621c73f7dcb310b61de34d1da4c4204e8ace6ceb",
-                "reference": "621c73f7dcb310b61de34d1da4c4204e8ace6ceb",
+                "url": "https://api.github.com/repos/phpseclib/phpseclib/zipball/db92f1b1987b12b13f248fe76c3a52cadb67bb98",
+                "reference": "db92f1b1987b12b13f248fe76c3a52cadb67bb98",
                 "shasum": ""
             },
             "require": {
@@ -409,7 +409,7 @@
             ],
             "support": {
                 "issues": "https://github.com/phpseclib/phpseclib/issues",
-                "source": "https://github.com/phpseclib/phpseclib/tree/3.0.41"
+                "source": "https://github.com/phpseclib/phpseclib/tree/3.0.42"
             },
             "funding": [
                 {
@@ -425,7 +425,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2024-08-12T00:13:54+00:00"
+            "time": "2024-09-16T03:06:04+00:00"
         },
         {
             "name": "psr/clock",
@@ -484,5 +484,5 @@
     "prefer-lowest": false,
     "platform": [],
     "platform-dev": [],
-    "plugin-api-version": "2.3.0"
+    "plugin-api-version": "2.6.0"
 }
