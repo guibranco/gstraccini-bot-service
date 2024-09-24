@@ -10,7 +10,7 @@ use Lcobucci\JWT\Token\Builder;
 /**
  * The function `doRequestGitHub` sends HTTP requests to the GitHub API with specified parameters and
  * handles different HTTP methods.
- * 
+ *
  * @param string token The `token` parameter in the `doRequestGitHub` function is the access token used
  * for authentication when making requests to the GitHub API. This token is required to authenticate
  * and authorize the requests being made on behalf of a user or application. It typically starts with
@@ -23,7 +23,7 @@ use Lcobucci\JWT\Token\Builder;
  * request to the GitHub API. It can be an array, object, or any other type that can be
  * @param string method The `method` parameter in the `doRequestGitHub` function specifies the HTTP
  * method to be used for the request. It can be one of the following values:
- * 
+ *
  * @return stdClass The function `doRequestGitHub` returns an object of type `stdClass` which
  * represents the response of the GitHub API request.
  */
@@ -85,7 +85,7 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
 /**
  * The function `generateAppToken` generates a token for a GitHub app using specified parameters and
  * returns it as a string.
- * 
+ *
  * @return string The function `generateAppToken()` returns a string value, which is the generated
  * token for the GitHub application using the provided GitHub App ID and private key.
  */
@@ -110,7 +110,7 @@ function generateAppToken(): string
 
 /**
  * The function generates an installation token for a GitHub repository with optional permissions.
- * 
+ *
  * @param string installationId The `installationId` parameter in the `generateInstallationToken`
  * function is the unique identifier for the GitHub App installation. This ID is used to specify which
  * installation of the GitHub App you want to generate an access token for.
@@ -121,7 +121,7 @@ function generateAppToken(): string
  * @param array permissions The `permissions` parameter in the `generateInstallationToken` function is
  * an optional array that allows you to specify the permissions you want to grant to the installation
  * token. These permissions determine what actions the token can perform on the repository.
- * 
+ *
  * @return string The function `generateInstallationToken` returns a string, which is the access token
  * generated for the specified installation ID and repository name with optional permissions.
  */
@@ -149,7 +149,7 @@ function generateInstallationToken(string $installationId, string $repositoryNam
 /**
  * The function `setCheckRunInProgress` sends a request to GitHub API to create a new check run in
  * progress for a specific commit.
- * 
+ *
  * @param array metadata The `metadata` parameter in the `setCheckRunInProgress` function is an array
  * that contains information needed to make a request to the GitHub API. It typically includes the
  * GitHub token and the URL for the check run endpoint. This information is used to authenticate the
@@ -161,7 +161,7 @@ function generateInstallationToken(string $installationId, string $repositoryNam
  * @param string type The `type` parameter in the `setCheckRunInProgress` function represents the type
  * of checks being run. It is used to generate the name of the check run displayed on GitHub. The
  * function appends the capitalized `type` to "GStraccini Checks: " to create the check run
- * 
+ *
  * @return int The function `setCheckRunInProgress` is returning an integer value, which is the ID of
  * the check run created on GitHub.
  */
@@ -191,7 +191,7 @@ function setCheckRunInProgress(array $metadata, string $commitId, string $type):
 /**
  * The function `setCheckRunFailed` updates a GitHub check run to mark it as failed with specific
  * details.
- * 
+ *
  * @param array metadata The `metadata` parameter is an array containing information needed for the
  * GitHub check run. It includes the following keys:
  * @param int checkRunId The `checkRunId` parameter is an integer that represents the unique identifier
@@ -228,7 +228,7 @@ function setCheckRunFailed(array $metadata, int $checkRunId, string $type, strin
 /**
  * The function `setCheckRunSucceeded` updates a GitHub check run to mark it as completed and
  * successful with specific details.
- * 
+ *
  * @param array metadata The `metadata` parameter is an array containing information required for
  * setting a check run as succeeded. It includes the following keys:
  * @param int checkRunId The `checkRunId` parameter in the `setCheckRunSucceeded` function is an

@@ -293,7 +293,7 @@ function execute_cargoClippy($config, $metadata, $comment)
 
 function execute_codacyBypass($config, $metadata, $comment): void
 {
-    
+
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
     $codacyUrl = "https://app.codacy.com/gh/{$comment->RepositoryOwner}/{$comment->RepositoryName}/pull-requests/{$comment->PullRequestNumber}/issues";
     $body = "Bypassing the Codacy analysis for this [pull request]({$codacyUrl}! :warning:";

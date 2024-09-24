@@ -5,7 +5,7 @@ use GuiBranco\Pancake\Request;
 /**
  * The function bypassPullRequestAnalysis sends a POST request to Codacy API to bypass analysis for a
  * specific pull request in a repository.
- * 
+ *
  * @param string remoteOrganizationName The `remoteOrganizationName` parameter represents the name of
  * the organization on the remote repository hosting service (e.g., GitHub) where the repository is
  * located. This could be the GitHub organization name if the repository is hosted on GitHub.
@@ -17,7 +17,7 @@ use GuiBranco\Pancake\Request;
  * function represents the number assigned to a specific pull request in a repository. This number is
  * used to uniquely identify and reference the pull request when interacting with the repository, such
  * as requesting code analysis or making changes to the pull request
- * 
+ *
  * @return stdClass The function `bypassPullRequestAnalysis` is returning an object of type `stdClass`,
  * which is the response from the Codacy API after attempting to bypass the pull request analysis for a
  * specific repository in a remote organization.
