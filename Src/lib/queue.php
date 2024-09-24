@@ -1,11 +1,8 @@
 <?php
 
-use GuiBranco\Pancake\Logger;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 use PhpAmqpLib\Wire\AMQPTable;
-use GuiBranco\Pancake\GUIDv4;
-use GuiBranco\Pancake\HealthChecks;
 
 function getServers()
 {

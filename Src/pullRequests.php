@@ -136,7 +136,7 @@ function handleItem($pullRequest, $isRetry = false)
         handleCommentToMerge($metadata, $pullRequest, $collaboratorsLogins);
     }
 
-    setCheckRunCompleted($metadata, $checkRunId, "pull request");
+    setCheckRunSucceeded($metadata, $checkRunId, "pull request");
 }
 
 function checkForOtherPullRequests($metadata, $pullRequest)

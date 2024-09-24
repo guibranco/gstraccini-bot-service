@@ -1,11 +1,10 @@
 <?php
 
-use GuiBranco\Pancake\Logger;
 use GuiBranco\Pancake\Request;
 
 function requestAppVeyor($url, $data = null, $isPut = false)
 {
-    global $appVeyorKey, $loggerUrl, $loggerApiKey, $loggerApiToken;
+    global $appVeyorKey, $logger;
 
     $baseUrl = "https://ci.appveyor.com/api/";
     $url = $baseUrl . $url;
@@ -16,7 +15,6 @@ function requestAppVeyor($url, $data = null, $isPut = false)
         "Content-Type: application/json"
     );
 
-    $logger = new Logger($loggerUrl, $loggerApiKey, $loggerApiToken, constant("USER_AGENT_VENDOR"));
     $request = new Request();
 
     $response = null;

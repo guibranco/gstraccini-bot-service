@@ -104,6 +104,11 @@
         "requiresPullRequestOpen": true
     },
     {
+        "command": "codacy bypass",
+        "description": "Bypasses the [Codacy](https://www.codacy.com) analysis for the target commit and/or pull request.",
+        "requiresPullRequestOpen": true
+    },
+    {
         "command": "copy issue",
         "description": "Copy an issue from one repository to another",
         "parameters": [

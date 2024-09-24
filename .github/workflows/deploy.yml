@@ -61,6 +61,14 @@ jobs:
           echo "<?php" >> appVeyor.secrets.php
           echo "\$appVeyorKey = \"${{ secrets.APPVEYOR_KEY }}\";" >> appVeyor.secrets.php
 
+      - name: Generate Codacy secrets file
+        run: |
+          cd Src
+          mkdir -p secrets
+          cd secrets
+          echo "<?php" >> codacy.secrets.php
+          echo "\$codacyApiToken = \"${{ secrets.CODACY_API_TOKEN }}\";" >> codacy.secrets.php
+
       - name: Generate GitHub App secrets file
         run: |
           cd Src
@@ -109,7 +117,6 @@ jobs:
           echo "\$mySqlDatabase = \"${{ secrets.MYSQL_DATABASE }}\";" >> mySql.secrets.php
 
       - name: Create RabbitMQ secrets file
-        if: steps.changes.outputs.src == 'true' || github.event_name == 'workflow_dispatch'
         run: |
           SECRETS_CONTEXT='${{ toJson(secrets) }}'
           cd Src
