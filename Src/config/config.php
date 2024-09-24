@@ -15,9 +15,16 @@ define("USER_AGENT", "User-Agent: " . USER_AGENT_VENDOR);
 
 require_once "vendor/autoload.php";
 
+use GuiBranco\Pancake\Logger;
+
 $appVeyorSecretsFile = "secrets/appVeyor.secrets.php";
 if (file_exists($appVeyorSecretsFile)) {
     require_once $appVeyorSecretsFile;
+}
+
+$codacySecretsFile = "secrets/codacy.secrets.php";
+if (file_exists($codacySecretsFile)) {
+    require_once $codacySecretsFile;
 }
 
 $healthChecksIoSecretsFile = "secrets/healthChecksIo.secrets.php";
@@ -34,6 +41,7 @@ $loggerSecretsFile = "secrets/logger.secrets.php";
 if (file_exists($loggerSecretsFile)) {
     require_once $loggerSecretsFile;
 }
+$logger = new Logger($loggerUrl, $loggerApiKey, $loggerApiToken, constant("USER_AGENT_VENDOR"));
 
 $mySqlSecretsFile = "secrets/mySql.secrets.php";
 if (file_exists($mySqlSecretsFile)) {

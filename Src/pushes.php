@@ -24,7 +24,7 @@ function handleItem($push)
     );
 
     $checkRunId = setCheckRunInProgress($metadata, $push->HeadCommitId, "commit");
-    setCheckRunCompleted($metadata, $checkRunId, "commit");
+    setCheckRunSucceeded($metadata, $checkRunId, "commit");
 }
 
 function main()
