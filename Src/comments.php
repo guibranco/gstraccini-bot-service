@@ -35,9 +35,11 @@ function handleItem($comment)
         )
     );
 
-    if ($comment->CommentSender === "github-actions[bot]" ||
+    if (
+        $comment->CommentSender === "github-actions[bot]" ||
         $comment->CommentSender === "AppVeyorBot" ||
-        $comment->CommentSender === "gitauto-ai[bot]") {
+        $comment->CommentSender === "gitauto-ai[bot]"
+    ) {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
         return;
     }
@@ -131,7 +133,7 @@ function execute_help($config, $metadata, $comment)
 function execute_addProject($config, $metadata, $comment)
 {
     preg_match(
-        "/@" . $config->botName."\sadd\sproject\s(.+?\.csproj)/",
+        "/@" . $config->botName . "\sadd\sproject\s(.+?\.csproj)/",
         $comment->CommentBody,
         $matches
     );
@@ -289,6 +291,16 @@ function execute_cargoClippy($config, $metadata, $comment)
     callWorkflow($config, $metadata, $comment, "cargo-clippy.yml");
 }
 
+function execute_codacyBypass($config, $metadata, $comment): void
+{
+    
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
+    $codacyUrl = "https://app.codacy.com/gh/{$comment->RepositoryOwner}/{$comment->RepositoryName}/pull-requests/{$comment->PullRequestNumber}/issues";
+    $body = "Bypassing the Codacy analysis for this [pull request]({$codacyUrl}! :warning:";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    bypassPullRequestAnalysis($comment->RepositoryOwner, $comment->RepositoryName, $comment->PullRequestNumber);
+}
+
 function execute_copyIssue($config, $metadata, $comment)
 {
     preg_match(
@@ -309,8 +321,8 @@ function execute_copyIssue($config, $metadata, $comment)
     $issueUpdatedResponse = doRequestGitHub($metadata["token"], $metadata["issueUrl"], null, "GET");
     $issueUpdated = json_decode($issueUpdatedResponse->body);
 
-    $targetRepository = $matches[1]."/".$matches[2];
-    $newIssueUrl = "repos/".$targetRepository."/issues";
+    $targetRepository = $matches[1] . "/" . $matches[2];
+    $newIssueUrl = "repos/" . $targetRepository . "/issues";
     $newIssue = array("title" => $issueUpdated->title, "body" => $issueUpdated->body, "labels" => $issueUpdated->labels);
 
     $createdIssueResponse = doRequestGitHub($metadata["token"], $newIssueUrl, $newIssue, "POST");
@@ -377,7 +389,7 @@ function execute_rerunFailedChecks($config, $metadata, $comment)
 
     $body = "Rerunning " . $total . " failed check" . ($total === 1 ? "" : "s") . " on the commit `" . $commitSha1 . "`! :repeat:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-    if($total === 0) {
+    if ($total === 0) {
         return;
     }
 
@@ -404,7 +416,7 @@ function execute_rerunFailedWorkflows($config, $metadata, $comment)
 
     $body = "Rerunning " . $total . " failed workflow" . ($total === 1 ? "" : "s") . " on the commit `" . $commitSha1 . "`! :repeat:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-    if($total === 0) {
+    if ($total === 0) {
         return;
     }
 
