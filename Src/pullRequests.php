@@ -50,6 +50,7 @@ function handleItem($pullRequest, $isRetry = false)
 
     if ($pullRequestUpdated->state === "closed") {
         removeIssueWipLabel($metadata, $pullRequest);
+        removeLabels($metadata, $pullRequest);
         checkForOtherPullRequests($metadata, $pullRequest);
     }
 
@@ -137,6 +138,24 @@ function handleItem($pullRequest, $isRetry = false)
     }
 
     setCheckRunSucceeded($metadata, $checkRunId, "pull request");
+}
+
+function removeLabels($metadata, $pullRequest)
+{
+    $labelsLookup = [
+        "🚦 awaiting triage",
+        "⏳ awaiting response",
+        "🛠 WIP"
+    ];
+
+    $labels = array_column($pullRequest->labels, "name");
+    $intersect = array_intersect($labelsLookup, $labels);
+
+    foreach ($intersect as $label) {
+        $label = str_replace(" ", "%20", $label);
+        $url = $metadata["pullRequestUrl"] . "/labels/{$label}";
+        doRequestGitHub($metadata["token"], $url, null, "DELETE");
+    }
 }
 
 function checkForOtherPullRequests($metadata, $pullRequest)
