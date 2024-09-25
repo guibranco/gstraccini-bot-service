@@ -50,7 +50,7 @@ function handleItem($pullRequest, $isRetry = false)
 
     if ($pullRequestUpdated->state === "closed") {
         removeIssueWipLabel($metadata, $pullRequest);
-        removeLabels($metadata, $pullRequest);
+        removeLabels($metadata, $pullRequestUpdated);
         checkForOtherPullRequests($metadata, $pullRequest);
     }
 
@@ -140,7 +140,7 @@ function handleItem($pullRequest, $isRetry = false)
     setCheckRunSucceeded($metadata, $checkRunId, "pull request");
 }
 
-function removeLabels($metadata, $pullRequest)
+function removeLabels($metadata, $pullRequestUpdated)
 {
     $labelsLookup = [
         "🚦 awaiting triage",
@@ -148,7 +148,7 @@ function removeLabels($metadata, $pullRequest)
         "🛠 WIP"
     ];
 
-    $labels = array_column($pullRequest->labels, "name");
+    $labels = array_column($pullRequestUpdated->labels, "name");
     $intersect = array_intersect($labelsLookup, $labels);
 
     foreach ($intersect as $label) {
