@@ -7,7 +7,7 @@ mb_internal_encoding("UTF-8");
 $version = "1.0.0";
 $versionFile = "version.txt";
 if (file_exists($versionFile)) {
-    $version = file_get_contents($versionFile);
+    $version = trim(file_get_contents($versionFile));
 }
 
 define("USER_AGENT_VENDOR", "gstraccini-bot/{$version} (+https://github.com/apps/gstraccini/)");
