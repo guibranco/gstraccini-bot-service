@@ -137,7 +137,20 @@ function handleItem($pullRequest, $isRetry = false)
         handleCommentToMerge($metadata, $pullRequest, $collaboratorsLogins);
     }
 
+    checkPullRequestDescription($metadata, $pullRequest, $pullRequestUpdated);
     setCheckRunSucceeded($metadata, $checkRunId, "pull request");
+}
+
+function checkPullRequestDescription($metada, $pullRequest, $pullRequestUpdated)
+{
+    $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, "pull request description");
+
+    $bodyLength = strlen($pullRequestUpdated["body"]);
+    if ($bodyLength <= 250) {
+        setCheckRunFailed($metadata, $checkRunId, "pull request description", "Pull request description too short (at least 250 characters long).");
+    } else {
+        setCheckRunSucceeded($metadata, $checkRunId, "pull request description");
+    }
 }
 
 function removeLabels($metadata, $pullRequestUpdated)
