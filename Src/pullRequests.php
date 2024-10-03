@@ -141,10 +141,9 @@ function handleItem($pullRequest, $isRetry = false)
     setCheckRunSucceeded($metadata, $checkRunId, "pull request");
 }
 
-function checkPullRequestDescription($metada, $pullRequest, $pullRequestUpdated)
+function checkPullRequestDescription($metadata, $pullRequest, $pullRequestUpdated)
 {
     $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, "pull request description");
-
     $bodyLength = strlen($pullRequestUpdated["body"]);
     if ($bodyLength <= 250) {
         setCheckRunFailed($metadata, $checkRunId, "pull request description", "Pull request description too short (at least 250 characters long).");
