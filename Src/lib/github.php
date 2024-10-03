@@ -169,6 +169,7 @@ function setCheckRunInProgress(array $metadata, string $commitId, string $type):
 {
     $checkRunBody = array(
         "name" => "GStraccini Checks: " . ucwords($type),
+        "details_url" => $metadata["dashboardUrl"],
         "head_sha" => $commitId,
         "status" => "in_progress",
         "output" => array(
