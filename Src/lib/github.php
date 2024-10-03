@@ -52,13 +52,13 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
             $response = $request->get($url, $headers);
             break;
         case "POST":
-            $response = $request->post($url, $data, $headers);
+            $response = $request->post($url, $headers, $data);
             break;
         case "PUT":
-            $response = $request->put($url, $data, $headers);
+            $response = $request->put($url, $headers, $data);
             break;
         case "PATCH":
-            $response = $request->patch($url, $data, $headers);
+            $response = $request->patch($url, $headers, $data);
             break;
         case "DELETE":
             if ($data === null) {

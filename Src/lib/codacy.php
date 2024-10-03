@@ -37,7 +37,7 @@ function bypassPullRequestAnalysis(string $remoteOrganizationName, string $repos
 
     $request = new Request();
 
-    $response = $request->post($baseUrl . $url, null, $headers);
+    $response = $request->post($baseUrl . $url, $headers);
 
     if ($response->statusCode >= 300) {
         $info = json_encode(array("url" => $url, "response" => $response));
