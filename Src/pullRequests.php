@@ -137,18 +137,19 @@ function handleItem($pullRequest, $isRetry = false)
         handleCommentToMerge($metadata, $pullRequest, $collaboratorsLogins);
     }
 
-    //checkPullRequestDescription($metadata, $pullRequestUpdated);
+    checkPullRequestDescription($metadata, $pullRequestUpdated);
     setCheckRunSucceeded($metadata, $checkRunId, "pull request");
 }
 
 function checkPullRequestDescription($metadata, $pullRequestUpdated)
 {
-    $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, "pull request description");
-    $bodyLength = strlen($pullRequestUpdated["body"]);
+    $type = "pull request description";
+    $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, $type);
+    $bodyLength = strlen($pullRequestUpdated->body);
     if ($bodyLength <= 250) {
-        setCheckRunFailed($metadata, $checkRunId, "pull request description", "Pull request description too short (at least 250 characters long).");
+        setCheckRunFailed($metadata, $checkRunId, $type, "Pull request description too short (at least 250 characters long).");
     } else {
-        setCheckRunSucceeded($metadata, $checkRunId, "pull request description");
+        setCheckRunSucceeded($metadata, $checkRunId, $type);
     }
 }
 
