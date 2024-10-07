@@ -1,25 +1,10 @@
 <?php
 
-// Sample data structure for commands
-$commands = [
-    [
-        'command' => '/start',
-        'description' => 'Initializes the process.',
-        'parameters' => 'None',
-        'examples' => '',
-    ],
-    [
-        'command' => '/stop',
-        'description' => 'Stops the current process.',
-        'parameters' => 'force (optional): boolean, whether to force stop.',
-        'examples' => '',
-    ],
-];
+$commandsContent = file_get_contents("../../../config/commands.json");
+$commands = json_decode($commandsContent);
 
-// Get the requested format
 $format = $_GET['format'] ?? 'markdown';
 
-// Function to generate Markdown
 function generateMarkdown($commands)
 {
     $output = "## Available Commands\n";
@@ -31,7 +16,6 @@ function generateMarkdown($commands)
     return $output;
 }
 
-// Function to generate HTML
 function generateHTML($commands)
 {
     $output = "<h2>Available Commands</h2>";
@@ -43,7 +27,6 @@ function generateHTML($commands)
     return $output;
 }
 
-// Output the commands in the requested format
 if ($format === 'html') {
     header('Content-Type: text/html');
     echo generateHTML($commands);
