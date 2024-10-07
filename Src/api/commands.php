@@ -20,7 +20,8 @@ $commands = [
 $format = $_GET['format'] ?? 'markdown';
 
 // Function to generate Markdown
-function generateMarkdown($commands) {
+function generateMarkdown($commands)
+{
     $output = "## Available Commands\n";
     foreach ($commands as $command) {
         $output .= "### " . $command['command'] . "\n";
@@ -31,7 +32,8 @@ function generateMarkdown($commands) {
 }
 
 // Function to generate HTML
-function generateHTML($commands) {
+function generateHTML($commands)
+{
     $output = "<h2>Available Commands</h2>";
     foreach ($commands as $command) {
         $output .= "<h3>" . $command['command'] . "</h3>";
@@ -49,5 +51,3 @@ if ($format === 'html') {
     header('Content-Type: text/markdown');
     echo generateMarkdown($commands);
 }
-
-?>
