@@ -165,6 +165,7 @@ function checkPullRequestDescription($metadata, $pullRequestUpdated)
         return;
     } elseif ($validationResult["found"] === false || $validationResult["found"] === 0) {
         setCheckRunSucceeded($metadata, $checkRunId, $type, "No groups or checkboxes found in the PR body.");
+        return;
     }
 
     setCheckRunSucceeded($metadata, $checkRunId, $type);
@@ -217,11 +218,9 @@ function checkForOtherPullRequests($metadata, $pullRequest)
     }
 
     foreach ($pullRequestsOpen as $pullRequestPending) {
-
         if ($pullRequest->Number === $pullRequestPending->number) {
             continue;
         }
-
         if ($pullRequestPending->auto_merge !== null) {
             triggerReview($pullRequest, $pullRequestPending);
             $any = true;
