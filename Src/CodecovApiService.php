@@ -2,15 +2,18 @@
 
 namespace Src;
 
-class CodecovApiService {
+class CodecovApiService
+{
     private $apiBaseUrl = 'https://api.codecov.io/v2';
     private $token;
 
-    public function __construct($token) {
+    public function __construct($token)
+    {
         $this->token = $token;
     }
 
-    private function makeRequest($endpoint) {
+    private function makeRequest($endpoint)
+    {
         $url = $this->apiBaseUrl . $endpoint;
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -26,15 +29,15 @@ class CodecovApiService {
         return json_decode($response, true);
     }
 
-    public function getPullRequests($repoId) {
+    public function getPullRequests($repoId)
+    {
         $endpoint = "/repos/$repoId/pulls";
         return $this->makeRequest($endpoint);
     }
 
-    public function getCommitDetails($repoId, $commitId) {
+    public function getCommitDetails($repoId, $commitId)
+    {
         $endpoint = "/repos/$repoId/commits/$commitId";
         return $this->makeRequest($endpoint);
     }
 }
-
-?>
