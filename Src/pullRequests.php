@@ -163,8 +163,7 @@ function checkPullRequestDescription($metadata, $pullRequestUpdated)
         $message = $validator->generateReport($validationResult);
         setCheckRunFailed($metadata, $checkRunId, $type, $message);
         return;
-    }
-    else if ($validationResult["found"] === false || $validationResult["found"] === 0) {
+    } elseif ($validationResult["found"] === false || $validationResult["found"] === 0) {
         setCheckRunSucceeded($metadata, $checkRunId, $type, "No groups or checkboxes found in the PR body.");
     }
 
