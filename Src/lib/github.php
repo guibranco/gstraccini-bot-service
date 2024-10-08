@@ -265,7 +265,7 @@ function setCheckRunFailed(array $metadata, int $checkRunId, string $type, strin
  * of check that was completed. It is used to customize the check run details and message based on the
  * specific type of check being performed.
  */
-function setCheckRunSucceeded(array $metadata, int $checkRunId, string $type): void
+function setCheckRunSucceeded(array $metadata, int $checkRunId, string $type, string $details = null): void
 {
     $checkRunBody = array(
         "name" => "GStraccini Checks: " . ucwords($type),
@@ -275,7 +275,7 @@ function setCheckRunSucceeded(array $metadata, int $checkRunId, string $type): v
         "output" => array(
             "title" => "Checks completed ✅",
             "summary" => "GStraccini checked this " . strtolower($type) . " successfully!",
-            "text" => "No issues found."
+            "text" => $details ?? "No issues found."
         )
     );
 
