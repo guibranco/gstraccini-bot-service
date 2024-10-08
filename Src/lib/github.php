@@ -82,6 +82,31 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
     return $response;
 }
 
+function getPullRequestDiff(array $metadata): object
+{
+    global $logger;
+
+    $baseUrl = "https://api.github.com/";
+    $url = $baseUrl . $metadata["pullRequestUrl"];
+
+    $headers = array(
+        constant("USER_AGENT"),
+        "Accept: application/vnd.github.v3.diff",
+        "X-GitHub-Api-Version: 2022-11-28",
+        "Authorization: Bearer " . $metadata["token"]
+    );
+
+    $request = new Request();
+    $response = $request->get($url, $headers);
+
+    if ($response->statusCode <= 0 || $response->statusCode >= 300) {
+        $info = json_encode($response);
+        $logger->log("Error on GitHub request", $info);
+    }
+
+    return $response;
+}
+
 /**
  * The function `generateAppToken` generates a token for a GitHub app using specified parameters and
  * returns it as a string.
