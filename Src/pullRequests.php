@@ -3,7 +3,7 @@
 require_once "config/config.php";
 
 use GuiBranco\GStracciniBot\Library\MarkdownGroupCheckboxValidator;
-use Guibranco\GStracciniBot\Library\PullRequestCodeScanner;
+use GuiBranco\GStracciniBot\Library\PullRequestCodeScanner;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
 
@@ -163,6 +163,8 @@ function checkPullRequestDescription($metadata, $pullRequestUpdated)
         $message = $validator->generateReport($validationResult);
         setCheckRunFailed($metadata, $checkRunId, $type, $message);
         return;
+    } elseif ($validationResult["found"] === false || $validationResult["found"] === 0) {
+        setCheckRunSucceeded($metadata, $checkRunId, $type, "No groups or checkboxes found in the PR body.");
     }
 
     setCheckRunSucceeded($metadata, $checkRunId, $type);
@@ -173,7 +175,7 @@ function checkPullRequestContent($metadata, $pullRequestUpdated)
     $type = "pull request content";
     $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, $type);
     $diffResponse = getPullRequestDiff($metadata);
-    $diff = json_decode($diffResponse->body);
+    $diff = $diffResponse->body;
     $scanner = new PullRequestCodeScanner();
     $comments = $scanner->scanDiffForKeywords($diff);
     $report = $scanner->generateReport($comments);

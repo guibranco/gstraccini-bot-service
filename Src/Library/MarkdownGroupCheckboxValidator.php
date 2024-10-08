@@ -6,45 +6,49 @@ class MarkdownGroupCheckboxValidator
 {
     public function validateCheckboxes(string $prBody): array
     {
-        $groupPattern = '/(###[^\n]+)(?:\n- \[(x| )\] [^\n]+)+/i';
+        $groupPattern = '/(###?[^\n]+)(?:\n- \[(x| )\] [^\n]+)+/i';
         $checkboxPattern = '/- \[(x| )\] (.+)/i';
 
         $report = [
+            'found' => 0,
             'groups' => [],
             'errors' => [],
         ];
 
-        if (preg_match_all($groupPattern, $prBody, $groupMatches, PREG_SET_ORDER)) {
-            foreach ($groupMatches as $groupMatch) {
-                $groupTitle = trim($groupMatch[1]);
+        $found = preg_match_all($groupPattern, $prBody, $groupMatches, PREG_SET_ORDER);
+        $report['found'] = $found;
 
-                preg_match_all($checkboxPattern, $groupMatch[0], $checkboxMatches, PREG_SET_ORDER);
+        if (!$found) {
+            return $report;
+        }
 
-                $groupResult = [
-                    'group' => $groupTitle,
-                    'checked' => [],
-                    'unchecked' => [],
-                ];
+        foreach ($groupMatches as $groupMatch) {
+            $groupTitle = trim($groupMatch[1]);
 
-                $hasChecked = false;
-                foreach ($checkboxMatches as $checkboxMatch) {
-                    $checkboxText = trim($checkboxMatch[2]);
-                    if (strtolower($checkboxMatch[1]) === 'x') {
-                        $groupResult['checked'][] = $checkboxText;
-                        $hasChecked = true;
-                    } else {
-                        $groupResult['unchecked'][] = $checkboxText;
-                    }
+            preg_match_all($checkboxPattern, $groupMatch[0], $checkboxMatches, PREG_SET_ORDER);
+
+            $groupResult = [
+                'group' => $groupTitle,
+                'checked' => [],
+                'unchecked' => [],
+            ];
+
+            $hasChecked = false;
+            foreach ($checkboxMatches as $checkboxMatch) {
+                $checkboxText = trim($checkboxMatch[2]);
+                if (strtolower($checkboxMatch[1]) === 'x') {
+                    $groupResult['checked'][] = $checkboxText;
+                    $hasChecked = true;
+                } else {
+                    $groupResult['unchecked'][] = $checkboxText;
                 }
-
-                if (!$hasChecked) {
-                    $report['errors'][] = "No checkbox selected in group: $groupTitle";
-                }
-
-                $report['groups'][] = $groupResult;
             }
-        } else {
-            $report['errors'][] = 'No groups or checkboxes found in the PR body.';
+
+            if (!$hasChecked) {
+                $report['errors'][] = "No checkbox selected in group: $groupTitle";
+            }
+
+            $report['groups'][] = $groupResult;
         }
 
         return $report;
