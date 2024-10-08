@@ -19,7 +19,7 @@ class CodecovApiService
     private function makeRequest($endpoint)
     {
         $url = $this->apiBaseUrl . $endpoint;
-        $response = $this->request->get($url, $headers);
+        $response = $this->request->get($url, $this->headers);
 
         return json_decode($response->body, true);
     }
