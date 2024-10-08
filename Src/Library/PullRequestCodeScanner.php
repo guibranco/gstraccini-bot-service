@@ -4,7 +4,7 @@ namespace GuiBranco\GStracciniBot\Library;
 
 class PullRequestCodeScanner
 {
-    public function scanDiffForKeywords($diff): array
+    public function scanDiffForKeywords($diffContent): array
     {
         $lines = explode(PHP_EOL, $diffContent);
         $files = [];
