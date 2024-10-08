@@ -69,6 +69,14 @@ jobs:
           echo "<?php" >> codacy.secrets.php
           echo "\$codacyApiToken = \"${{ secrets.CODACY_API_TOKEN }}\";" >> codacy.secrets.php
 
+      - name: Generate Codecov secrets file
+        run: |
+          cd Src
+          mkdir -p secrets
+          cd secrets
+          echo "<?php" >> codecov.secrets.php
+          echo "\$codecovApiToken = \"${{ secrets.CODECOV_API_TOKEN }}\";" >> codecov.secrets.php
+
       - name: Generate GitHub App secrets file
         run: |
           cd Src
