@@ -1,6 +1,6 @@
 <?php
 
-namespace Guibranco\GStracciniBot\Library;
+namespace GuiBranco\GStracciniBot\Library;
 
 class PullRequestCodeScanner
 {
