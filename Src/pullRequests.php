@@ -173,7 +173,7 @@ function checkPullRequestContent($metadata, $pullRequestUpdated)
     $type = "pull request content";
     $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, $type);
     $diffResponse = getPullRequestDiff($metadata);
-    $diff = json_decode($diffResponse->body);
+    $diff = $diffResponse->body;
     $scanner = new PullRequestCodeScanner();
     $comments = $scanner->scanDiffForKeywords($diff);
     $report = $scanner->generateReport($comments);
