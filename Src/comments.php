@@ -365,6 +365,14 @@ function execute_fixCsproj($config, $metadata, $comment)
     callWorkflow($config, $metadata, $comment, "fix-csproj.yml");
 }
 
+function execute_npmDist($config, $metadata, $comment)
+{
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
+    $body = "Generating the `dist` files via NPM! :building_construction:";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    callWorkflow($config, $metadata, $comment, "npm-dist.yml");
+}
+
 function execute_prettier($config, $metadata, $comment)
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
