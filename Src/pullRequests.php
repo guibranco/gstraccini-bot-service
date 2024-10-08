@@ -2,6 +2,8 @@
 
 require_once "config/config.php";
 
+use GuiBranco\GStracciniBot\Library\MarkdownGroupCheckboxValidator;
+use Guibranco\GStracciniBot\Library\PullRequestCodeScanner;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
 
@@ -14,37 +16,9 @@ function handleItem($pullRequest, $isRetry = false)
         echo "https://github.com/{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}/pull/{$pullRequest->Number}:\n\n";
     }
 
-    global $gitHubUserToken;
     $config = loadConfig();
-
-    $botDashboardUrl = "https://gstraccini.bot/dashboard";
-    $prQueryString =
-        "?owner=" . $pullRequest->RepositoryOwner .
-        "&repo=" . $pullRequest->RepositoryName .
-        "&pullRequest=" . $pullRequest->Number;
-
     $token = generateInstallationToken($pullRequest->InstallationId, $pullRequest->RepositoryName);
-    $repoPrefix = "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName;
-    $metadata = array(
-        "token" => $token,
-        "userToken" => $gitHubUserToken,
-        "squashAndMergeComment" => "@dependabot squash and merge",
-        "mergeComment" => "@depfu merge",
-        "commentsUrl" => $repoPrefix . ISSUES . $pullRequest->Number . "/comments",
-        "pullRequestUrl" => $repoPrefix . PULLS . $pullRequest->Number,
-        "pullRequestsUrl" => $repoPrefix . "/pulls",
-        "reviewsUrl" => $repoPrefix . PULLS . $pullRequest->Number . "/reviews",
-        "assigneesUrl" => $repoPrefix . ISSUES . $pullRequest->Number . "/assignees",
-        "collaboratorsUrl" => $repoPrefix . "/collaborators",
-        "requestReviewUrl" => $repoPrefix . PULLS . $pullRequest->Number . "/requested_reviewers",
-        "checkRunUrl" => $repoPrefix . "/check-runs",
-        "issuesUrl" => $repoPrefix . "/issues",
-        "labelsUrl" => $repoPrefix . ISSUES . $pullRequest->Number . "/labels",
-        "compareUrl" => $repoPrefix . "/compare/",
-        "botNameMarkdown" => "[" . $config->botName . "\[bot\]](https://github.com/apps/" . $config->botName . ")",
-        "dashboardUrl" => $botDashboardUrl . $prQueryString
-    );
-
+    $metadata = createMetadata($token, $pullRequest, $config);
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     $pullRequestUpdated = json_decode($pullRequestResponse->body);
 
@@ -138,7 +112,39 @@ function handleItem($pullRequest, $isRetry = false)
     }
 
     checkPullRequestDescription($metadata, $pullRequestUpdated);
+    checkPullRequestContent($metadata, $pullRequestUpdated);
     setCheckRunSucceeded($metadata, $checkRunId, "pull request");
+}
+
+function createMetadata($token, $pullRequest, $config)
+{
+    global $gitHubUserToken;
+
+    $botDashboardUrl = "https://gstraccini.bot/dashboard";
+    $prQueryString =
+        "?owner=" . $pullRequest->RepositoryOwner .
+        "&repo=" . $pullRequest->RepositoryName .
+        "&pullRequest=" . $pullRequest->Number;
+    $repoPrefix = "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName;
+    return array(
+        "token" => $token,
+        "userToken" => $gitHubUserToken,
+        "squashAndMergeComment" => "@dependabot squash and merge",
+        "mergeComment" => "@depfu merge",
+        "commentsUrl" => $repoPrefix . ISSUES . $pullRequest->Number . "/comments",
+        "pullRequestUrl" => $repoPrefix . PULLS . $pullRequest->Number,
+        "pullRequestsUrl" => $repoPrefix . "/pulls",
+        "reviewsUrl" => $repoPrefix . PULLS . $pullRequest->Number . "/reviews",
+        "assigneesUrl" => $repoPrefix . ISSUES . $pullRequest->Number . "/assignees",
+        "collaboratorsUrl" => $repoPrefix . "/collaborators",
+        "requestReviewUrl" => $repoPrefix . PULLS . $pullRequest->Number . "/requested_reviewers",
+        "checkRunUrl" => $repoPrefix . "/check-runs",
+        "issuesUrl" => $repoPrefix . "/issues",
+        "labelsUrl" => $repoPrefix . ISSUES . $pullRequest->Number . "/labels",
+        "compareUrl" => $repoPrefix . "/compare/",
+        "botNameMarkdown" => "[" . $config->botName . "\[bot\]](https://github.com/apps/" . $config->botName . ")",
+        "dashboardUrl" => $botDashboardUrl . $prQueryString
+    );
 }
 
 function checkPullRequestDescription($metadata, $pullRequestUpdated)
@@ -148,9 +154,35 @@ function checkPullRequestDescription($metadata, $pullRequestUpdated)
     $bodyLength = strlen($pullRequestUpdated->body);
     if ($bodyLength <= 250) {
         setCheckRunFailed($metadata, $checkRunId, $type, "Pull request description too short (at least 250 characters long).");
-    } else {
-        setCheckRunSucceeded($metadata, $checkRunId, $type);
+        return;
     }
+
+    $validator = new MarkdownGroupCheckboxValidator();
+    $validationResult = $validator->validateCheckboxes($pullRequestUpdated->body);
+    if (isset($validationResult['errors']) && !empty($validationResult['errors'])) {
+        $message = $validator->generateReport($validationResult);
+        setCheckRunFailed($metadata, $checkRunId, $type, $message);
+        return;
+    }
+
+    setCheckRunSucceeded($metadata, $checkRunId, $type);
+}
+
+function checkPullRequestContent($metadata, $pullRequestUpdated)
+{
+    $type = "pull request content";
+    $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, $type);
+    $diffResponse = getPullRequestDiff($metadata);
+    $diff = json_decode($diffResponse->body);
+    $scanner = new PullRequestCodeScanner();
+    $comments = $scanner->scanDiffForKeywords($diff);
+    $report = $scanner->generateReport($comments);
+    if (!empty($comments)) {
+        setCheckRunFailed($metadata, $checkRunId, $type, $report);
+        return;
+    }
+
+    setCheckRunSucceeded($metadata, $checkRunId, $type);
 }
 
 function removeLabels($metadata, $pullRequestUpdated)
@@ -270,8 +302,10 @@ function removeIssueWipLabel($metadata, $pullRequest)
 {
     $referencedIssue = getReferencedIssue($metadata, $pullRequest);
 
-    if (!isset($referencedIssue->data->repository) ||
-        count($referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes) == 0) {
+    if (
+        !isset($referencedIssue->data->repository) ||
+        count($referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes) == 0
+    ) {
         return;
     }
 
@@ -324,8 +358,10 @@ function addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated)
 {
     $referencedIssue = getReferencedIssue($metadata, $pullRequest);
 
-    if (!isset($referencedIssue->data->repository) ||
-        count($referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes) == 0) {
+    if (
+        !isset($referencedIssue->data->repository) ||
+        count($referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes) == 0
+    ) {
         return;
     }
 
