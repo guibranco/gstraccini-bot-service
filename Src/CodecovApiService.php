@@ -2,31 +2,26 @@
 
 namespace Src;
 
+use GuiBranco\Pancake\Request;
+
 class CodecovApiService
 {
     private $apiBaseUrl = 'https://api.codecov.io/v2';
-    private $token;
-
+    private $headers;
+    private $request;
+    
     public function __construct($token)
     {
-        $this->token = $token;
+        $this->headers = ['Authorization: Bearer '.$token, 'Content-Type: application/json'];
+        $this->request = new Request();
     }
 
     private function makeRequest($endpoint)
     {
         $url = $this->apiBaseUrl . $endpoint;
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Authorization: Bearer ' . $this->token,
-            'Content-Type: application/json'
-        ]);
-        $response = curl_exec($ch);
-        if (curl_errno($ch)) {
-            throw new \Exception('Request Error: ' . curl_error($ch));
-        }
-        curl_close($ch);
-        return json_decode($response, true);
+        $response = $this->request($url, $headers);
+       
+        return json_decode($response->body, true);
     }
 
     public function getPullRequests($repoId)
