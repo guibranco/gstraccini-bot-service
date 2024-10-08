@@ -34,7 +34,7 @@ class PullRequestCodeScanner
 
         return $files;
     }
-    
+
     public function generateReport(array $files): string
     {
         if (empty($files)) {
@@ -42,7 +42,7 @@ class PullRequestCodeScanner
         }
 
         $report = "Found the following comments with 'bug', 'todo', or 'fixme':\n";
-        foreach ($foundComments as $file=>$lines) {
+        foreach ($foundComments as $file => $lines) {
             foreach ($lines as $line) {
                 $report .= "- {$line} ({$file})\n";
             }
