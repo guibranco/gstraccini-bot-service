@@ -9,7 +9,7 @@ class CodecovApiService
     private $apiBaseUrl = 'https://api.codecov.io/v2';
     private $headers;
     private $request;
-    
+
     public function __construct($token)
     {
         $this->headers = ['Authorization: Bearer '.$token, 'Content-Type: application/json'];
@@ -20,7 +20,7 @@ class CodecovApiService
     {
         $url = $this->apiBaseUrl . $endpoint;
         $response = $this->request($url, $headers);
-       
+
         return json_decode($response->body, true);
     }
 
