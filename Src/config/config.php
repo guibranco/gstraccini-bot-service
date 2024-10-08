@@ -27,6 +27,11 @@ if (file_exists($codacySecretsFile)) {
     require_once $codacySecretsFile;
 }
 
+$codecovSecretsFile = "secrets/codecov.secrets.php";
+if (file_exists($codecovSecretsFile)) {
+    require_once $codecovSecretsFile;
+}
+
 $healthChecksIoSecretsFile = "secrets/healthChecksIo.secrets.php";
 if (file_exists($healthChecksIoSecretsFile)) {
     require_once $healthChecksIoSecretsFile;
