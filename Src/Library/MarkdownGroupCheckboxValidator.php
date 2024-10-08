@@ -21,35 +21,35 @@ class MarkdownGroupCheckboxValidator
         if (!$found) {
             return $report;
         }
-        
-            foreach ($groupMatches as $groupMatch) {
-                $groupTitle = trim($groupMatch[1]);
 
-                preg_match_all($checkboxPattern, $groupMatch[0], $checkboxMatches, PREG_SET_ORDER);
+        foreach ($groupMatches as $groupMatch) {
+            $groupTitle = trim($groupMatch[1]);
 
-                $groupResult = [
-                    'group' => $groupTitle,
-                    'checked' => [],
-                    'unchecked' => [],
-                ];
+            preg_match_all($checkboxPattern, $groupMatch[0], $checkboxMatches, PREG_SET_ORDER);
 
-                $hasChecked = false;
-                foreach ($checkboxMatches as $checkboxMatch) {
-                    $checkboxText = trim($checkboxMatch[2]);
-                    if (strtolower($checkboxMatch[1]) === 'x') {
-                        $groupResult['checked'][] = $checkboxText;
-                        $hasChecked = true;
-                    } else {
-                        $groupResult['unchecked'][] = $checkboxText;
-                    }
+            $groupResult = [
+                'group' => $groupTitle,
+                'checked' => [],
+                'unchecked' => [],
+            ];
+
+            $hasChecked = false;
+            foreach ($checkboxMatches as $checkboxMatch) {
+                $checkboxText = trim($checkboxMatch[2]);
+                if (strtolower($checkboxMatch[1]) === 'x') {
+                    $groupResult['checked'][] = $checkboxText;
+                    $hasChecked = true;
+                } else {
+                    $groupResult['unchecked'][] = $checkboxText;
                 }
-
-                if (!$hasChecked) {
-                    $report['errors'][] = "No checkbox selected in group: $groupTitle";
-                }
-
-                $report['groups'][] = $groupResult;
             }
+
+            if (!$hasChecked) {
+                $report['errors'][] = "No checkbox selected in group: $groupTitle";
+            }
+
+            $report['groups'][] = $groupResult;
+        }
 
         return $report;
     }
