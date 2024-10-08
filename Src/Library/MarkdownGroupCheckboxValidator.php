@@ -6,7 +6,7 @@ class MarkdownGroupCheckboxValidator
 {
     public function validateCheckboxes(string $prBody): array
     {
-        $groupPattern = '/(###?[^\n]+)(?:\n- \[(x| )\] [^\n]+)+/i';
+        $groupPattern = '/##\s(.+)\n(?:<!--.*?-->\n)?((?:- \[(.)\] .+\n)+)/mi';
         $checkboxPattern = '/- \[(x| )\] (.+)/i';
 
         $report = [
@@ -60,7 +60,7 @@ class MarkdownGroupCheckboxValidator
             return implode("\n", $validationResult['errors']);
         }
 
-        $report = "Checkbox Validation Report:\n";
+        $report = "Checkbox validation report:\n";
 
         foreach ($validationResult['groups'] as $group) {
             $report .= "\n{$group['group']}\n";
