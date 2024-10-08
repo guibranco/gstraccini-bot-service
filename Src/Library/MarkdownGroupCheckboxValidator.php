@@ -10,11 +10,18 @@ class MarkdownGroupCheckboxValidator
         $checkboxPattern = '/- \[(x| )\] (.+)/i';
 
         $report = [
+            'found' => 0,
             'groups' => [],
             'errors' => [],
         ];
 
-        if (preg_match_all($groupPattern, $prBody, $groupMatches, PREG_SET_ORDER)) {
+        $found = preg_match_all($groupPattern, $prBody, $groupMatches, PREG_SET_ORDER);
+        $report['found'] = $found;
+
+        if (!$found) {
+            return $report;
+        }
+        
             foreach ($groupMatches as $groupMatch) {
                 $groupTitle = trim($groupMatch[1]);
 
@@ -43,9 +50,6 @@ class MarkdownGroupCheckboxValidator
 
                 $report['groups'][] = $groupResult;
             }
-        } else {
-            $report['errors'][] = 'No groups or checkboxes found in the PR body.';
-        }
 
         return $report;
     }
