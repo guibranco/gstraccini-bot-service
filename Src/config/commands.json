@@ -132,6 +132,11 @@
         "requiresPullRequestOpen": true
     },
     {
+        "command": "npm dist",
+        "description": "Generate or regenerate the `dist` files. It will run the following NPM command: `npm run package`.",
+        "requiresPullRequestOpen": true
+    },
+    {
         "command": "prettier",
         "description": "Formats the code using [Prettier](https://prettier.io).",
         "requiresPullRequestOpen": true
