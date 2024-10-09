@@ -157,6 +157,17 @@
         "requiresPullRequestOpen": true
     },
     {
+        "command": "sync labels",
+        "description": "Synchronizes the labels in the current repository from a remote repository.",
+        "parameters": [
+            {
+                "parameter": "repository",
+                "description": "The owner/repository to synchronize the labels from.",
+                "required": true
+            }
+        ]
+    },
+    {
         "command": "track",
         "description": "Tracks the specified pull request. Queue a build, raise a **[dependabot](https://github.com/dependabot) recreate** comment to resolve conflicts, and synchronize merge branches.",
         "dev": true,

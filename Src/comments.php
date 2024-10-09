@@ -495,6 +495,25 @@ function execute_review($config, $metadata, $comment)
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
 }
 
+function execute_syncLabels($config, $metadata, $comment): void
+{
+    $pattern = '/\b(\w+)\/(\w+)\b/';
+    preg_match($pattern, $comment, $matches);
+
+    if (count($matches) !== 3) {
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
+        $body = $metadata["errorMessages"]["invalidParameter"];
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+        return;
+    }
+
+    $owner = $matches[1];
+    $repository = $matches[2];
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"), "POST");
+    $body = array("body" => "Copying labels from {$owner}/{$repository}!");
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
+}
+
 function execute_track($config, $metadata, $comment)
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
