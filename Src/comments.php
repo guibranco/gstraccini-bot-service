@@ -322,7 +322,7 @@ function execute_copyLabels($config, $metadata, $comment): void
 
     $repositoryManager = new RepositoryManager();
     $labelsToCreate = $repositoryManager->getLabels($metadata["token"], $owner, $repository);
-    $existingLabels = $repositoryManager->getLabels($metadata["userToken"], $metadata["repositoryOwner"], $metadata["repositoryName"]);
+    $existingLabels = $repositoryManager->getLabels($metadata["token"], $comment->RepositoryOwner, $comment->RepositoryName);
 
     $labelsToUpdateObject = array();
     $labelsToCreate = array_filter($labelsToCreate, function ($label) use ($existingLabels, &$labelsToUpdateObject) {
