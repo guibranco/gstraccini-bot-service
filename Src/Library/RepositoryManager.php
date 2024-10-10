@@ -23,7 +23,7 @@ class RepositoryManager
         return $this->getDefaultBotOptions();
     }
 
-    private function getDefaultBotOptions()
+    private function getDefaultBotOptions(): array
     {
         return array("labels" => array("style" => "icons", "categories" => "all"));
     }

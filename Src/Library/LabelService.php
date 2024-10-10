@@ -4,7 +4,7 @@ namespace GuiBranco\GStracciniBot\Library;
 
 class LabelService
 {
-    public function loadFromConfig(array $categories): ?array
+    public function loadFromConfig(array $categories): array
     {
         $fileNameLabels = "config/labels.json";
         $labels = array();

@@ -61,7 +61,6 @@ function createRepositoryLabels($metadata, $options)
     }
 
     $repositoryManager = new RepositoryManager();
-
     $existingLabels = $repositoryManager->getLabels($metadata["userToken"], $metadata["repositoryOwner"], $metadata["repositoryName"]);
 
     $labelsToUpdateObject = array();
@@ -100,9 +99,7 @@ function createRepositoryLabels($metadata, $options)
     $labelService->processLabels($labelsToCreateObject, $labelsToUpdateObject, $metadata["token"], $metadata["labelsUrl"]);
 }
 
-
-
-function main()
+function main(): void
 {
     $config = loadConfig();
     ob_start();
