@@ -132,6 +132,22 @@
         "dev": true
     },
     {
+        "command": "create labels",
+        "description": "Create the default labels in the repository.",
+        "parameters": [
+            {
+                "parameter": "style",
+                "description": "The labels style (icons or text).",
+                "required": false
+            },
+            {
+                "parameter": "categories",
+                "description": "The labels categories (comma separated).",
+                "required": false
+            }
+        ]
+    },
+    {
         "command": "csharpier",
         "description": "Formats the C# code using [CSharpier](https://csharpier.com) (only for **.NET** projects).",
         "requiresPullRequestOpen": true

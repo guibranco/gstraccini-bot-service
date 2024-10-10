@@ -349,7 +349,7 @@ function execute_copyLabels($config, $metadata, $comment): void
         $newLabel = [];
         $newLabel["color"] = substr($label["color"], 1);
         $newLabel["description"] = $label["description"];
-        $newLabel["name"] =  $label["name"];
+        $newLabel["name"] = $label["name"];
         return $newLabel;
     }, $labelsToCreate);
 
@@ -408,6 +408,75 @@ function execute_copyIssue($config, $metadata, $comment): void
 
     $body = "Issue copied from [$source]($sourceUrl)";
     doRequestGitHub($metadata["token"], "repos/{$targetRepository}/issues/{$number}/comments", array("body" => $body), "POST");
+}
+
+function execute_createLabels($config, $metadata, $comment): void
+{
+    preg_match(
+        "/@" . $config->botName . "\screate\slabels(?:\s(\w+))?(?:\s([\w,]+))?/",
+        $comment->CommentBody,
+        $matches
+    );
+
+    if (empty($matches) === true) {
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
+        $body = $metadata["errorMessages"]["invalidParameter"];
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+        return;
+    }
+
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
+    $body = "Creating labels on this repository! :label:";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+
+    $style = $matches[1] ?? "icons";
+    $categories = $matches[2] ?? "all";
+
+    $labelService = new LabelService();
+    $labelsToCreate = $labelService->loadFromConfig($categories);
+    if ($labelsToCreate === null || count($labelsToCreate) === 0) {
+        echo "No labels to create\n";
+        return;
+    }
+
+    $repositoryManager = new RepositoryManager();
+    $existingLabels = $repositoryManager->getLabels($metadata["userToken"], $metadata["repositoryOwner"], $metadata["repositoryName"]);
+
+    $labelsToUpdateObject = array();
+    $labelsToCreate = array_filter($labelsToCreate, function ($label) use ($existingLabels, &$labelsToUpdateObject, $style) {
+        $existingLabel = array_filter($existingLabels, function ($existingLabel) use ($label) {
+            return $existingLabel["name"] === $label["text"] || $existingLabel["name"] === $label["textWithIcon"];
+        });
+
+        $total = count($existingLabel);
+
+        if ($total > 0) {
+            $existingLabel = array_values($existingLabel);
+            $labelToUpdate = [];
+            $labelToUpdate["color"] = substr($label["color"], 1);
+            $labelToUpdate["description"] = $label["description"];
+            $labelToUpdate["new_name"] = $style === "icons" ? $label["textWithIcon"] : $label["text"];
+            $labelsToUpdateObject[$existingLabel[0]["name"]] = $labelToUpdate;
+        }
+
+        return $total === 0;
+    });
+
+    $labelsToCreateObject = array_map(function ($label) use ($style) {
+        $newLabel = [];
+        $newLabel["color"] = substr($label["color"], 1);
+        $newLabel["description"] = $label["description"];
+        $newLabel["name"] = $style === "icons" ? $label["textWithIcon"] : $label["text"];
+        return $newLabel;
+    }, $labelsToCreate);
+
+    $totalLabelsToCreate = count($labelsToCreateObject);
+    $totalLabelsToUpdate = count($labelsToUpdateObject);
+
+    echo "Creating labels {$totalLabelsToCreate} | Updating labels: {$totalLabelsToUpdate} | Style: {$style} | Categories: {$categories}\n";
+
+    $labelService->processLabels($labelsToCreateObject, $labelsToUpdateObject, $metadata["token"], $metadata["labelsUrl"]);
+
 }
 
 function execute_csharpier($config, $metadata, $comment): void
