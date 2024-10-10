@@ -317,7 +317,7 @@ function execute_copyLabels($config, $metadata, $comment): void
     $owner = $matches[1];
     $repository = $matches[2];
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"), "POST");
-    $body = array("body" => "Copying labels from {$owner}/{$repository}!");
+    $body = array("body" => "Copying labels from [{$owner}/{$repository}](https://github.com/{$owner}/{$repository})!");
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
 
     $repositoryManager = new RepositoryManager();
