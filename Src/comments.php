@@ -295,7 +295,6 @@ function execute_cargoClippy($config, $metadata, $comment): void
 
 function execute_codacyBypass($config, $metadata, $comment): void
 {
-
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
     $codacyUrl = "https://app.codacy.com/gh/{$comment->RepositoryOwner}/{$comment->RepositoryName}/pull-requests/{$comment->PullRequestNumber}/issues";
     $body = "Bypassing the Codacy analysis for this [pull request]({$codacyUrl})! :warning:";
@@ -306,7 +305,7 @@ function execute_codacyBypass($config, $metadata, $comment): void
 function execute_copyLabels($config, $metadata, $comment): void
 {
     $pattern = '/\b(\w+)\/(\w+)\b/';
-    preg_match($pattern, $comment, $matches);
+    preg_match($pattern, $comment->CommentBody, $matches);
 
     if (count($matches) !== 3) {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
@@ -360,7 +359,6 @@ function execute_copyLabels($config, $metadata, $comment): void
 
     $labelService = new LabelService();
     $labelService->processLabels($labelsToCreateObject, $labelsToUpdateObject, $metadata["token"], $metadata["labelsUrl"]);
-
 }
 
 function execute_copyIssue($config, $metadata, $comment): void
