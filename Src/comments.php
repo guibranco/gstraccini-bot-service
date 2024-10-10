@@ -345,11 +345,11 @@ function execute_copyLabels($config, $metadata, $comment): void
         return $total === 0;
     });
 
-    $labelsToCreateObject = array_map(function ($label) use ($style) {
+    $labelsToCreateObject = array_map(function ($label) {
         $newLabel = [];
         $newLabel["color"] = substr($label["color"], 1);
         $newLabel["description"] = $label["description"];
-        $newLabel["name"] = $style === "icons" ? $label["textWithIcon"] : $label["text"];
+        $newLabel["name"] =  $label["name"];
         return $newLabel;
     }, $labelsToCreate);
 
