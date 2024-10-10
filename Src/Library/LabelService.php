@@ -38,7 +38,7 @@ class LabelService
 
         return $finalLabels;
     }
-    
+
     public function processLabels(array $labelsToCreateObject, array $labelsToUpdateObject, string $token, string $labelsUrl): void
     {
         foreach ($labelsToCreateObject as $label) {
