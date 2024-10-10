@@ -185,7 +185,7 @@ function checkPullRequestContent($metadata, $pullRequestUpdated)
         return;
     }
 
-    setCheckRunSucceeded($metadata, $checkRunId, $type);
+    setCheckRunSucceeded($metadata, $checkRunId, $type, $report);
 }
 
 function removeLabels($metadata, $pullRequestUpdated)
