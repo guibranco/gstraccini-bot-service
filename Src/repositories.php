@@ -51,7 +51,7 @@ function createRepositoryLabels($metadata, $options)
     }
 
     $style = $options["labels"]["style"] ?? "icons";
-    $categories = $options["labels"]["categories"] ?? "all";
+    $categories = $options["labels"]["categories"] ?? ["all"];
 
     $labelService = new LabelService();
     $labelsToCreate = $labelService->loadFromConfig($categories);
