@@ -2,10 +2,12 @@
 
 require_once "config/config.php";
 
+use GuiBranco\GStracciniBot\Library\LabelService;
+use GuiBranco\GStracciniBot\Library\RepositoryManager;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
 
-function handleItem($comment)
+function handleItem($comment): void
 {
     $config = loadConfig();
 
@@ -79,21 +81,21 @@ function handleItem($comment)
     }
 }
 
-function execute_hello($config, $metadata, $comment)
+function execute_hello($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "heart"), "POST");
     $body = "Hello @" . $comment->CommentSender . "! :wave:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
 }
 
-function execute_thankYou($config, $metadata, $comment)
+function execute_thankYou($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"), "POST");
     $body = "You're welcome @" . $comment->CommentSender . "! :pray:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
 }
 
-function execute_help($config, $metadata, $comment)
+function execute_help($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
     $helpComment = "That's what I can do :neckbeard::\r\n";
@@ -130,7 +132,7 @@ function execute_help($config, $metadata, $comment)
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $helpComment), "POST");
 }
 
-function execute_addProject($config, $metadata, $comment)
+function execute_addProject($config, $metadata, $comment): void
 {
     preg_match(
         "/@" . $config->botName . "\sadd\sproject\s(.+?\.csproj)/",
@@ -153,7 +155,7 @@ function execute_addProject($config, $metadata, $comment)
     }
 }
 
-function execute_appveyorBuild($config, $metadata, $comment)
+function execute_appveyorBuild($config, $metadata, $comment): void
 {
     preg_match(
         "/@" . $config->botName . "\sappveyor\sbuild(?:\s(commit|pull request))?/",
@@ -202,7 +204,7 @@ function execute_appveyorBuild($config, $metadata, $comment)
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
 }
 
-function execute_appveyorBumpVersion($config, $metadata, $comment)
+function execute_appveyorBumpVersion($config, $metadata, $comment): void
 {
     preg_match(
         "/@" . $config->botName . "\sappveyor\sbump\sversion(?:\s(major|minor|build))?/",
@@ -241,7 +243,7 @@ function execute_appveyorBumpVersion($config, $metadata, $comment)
     }
 }
 
-function execute_appveyorRegister($config, $metadata, $comment)
+function execute_appveyorRegister($config, $metadata, $comment): void
 {
     $data = array(
         "repositoryProvider" => "gitHub",
@@ -263,7 +265,7 @@ function execute_appveyorRegister($config, $metadata, $comment)
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
 }
 
-function execute_appveyorReset($config, $metadata, $comment)
+function execute_appveyorReset($config, $metadata, $comment): void
 {
     $project = getAppVeyorProject($metadata, $comment);
 
@@ -274,7 +276,7 @@ function execute_appveyorReset($config, $metadata, $comment)
     updateNextBuildNumber($metadata, $project, 0);
 }
 
-function execute_bumpVersion($config, $metadata, $comment)
+function execute_bumpVersion($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
     $dotNetLink = "https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core";
@@ -283,7 +285,7 @@ function execute_bumpVersion($config, $metadata, $comment)
     callWorkflow($config, $metadata, $comment, "bump-version.yml");
 }
 
-function execute_cargoClippy($config, $metadata, $comment)
+function execute_cargoClippy($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
     $body = "Running [Cargo Clippy](https://doc.rust-lang.org/clippy/usage.html) on this branch! :wrench:";
@@ -301,7 +303,67 @@ function execute_codacyBypass($config, $metadata, $comment): void
     bypassPullRequestAnalysis($comment->RepositoryOwner, $comment->RepositoryName, $comment->PullRequestNumber);
 }
 
-function execute_copyIssue($config, $metadata, $comment)
+function execute_copyLabels($config, $metadata, $comment): void
+{
+    $pattern = '/\b(\w+)\/(\w+)\b/';
+    preg_match($pattern, $comment, $matches);
+
+    if (count($matches) !== 3) {
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
+        $body = $metadata["errorMessages"]["invalidParameter"];
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+        return;
+    }
+
+    $owner = $matches[1];
+    $repository = $matches[2];
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"), "POST");
+    $body = array("body" => "Copying labels from {$owner}/{$repository}!");
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
+
+    $repositoryManager = new RepositoryManager();
+    $labelsToCreate = $repositoryManager->getLabels($metadata["token"], $owner, $repository);
+    $existingLabels = $repositoryManager->getLabels($metadata["userToken"], $metadata["repositoryOwner"], $metadata["repositoryName"]);
+
+    $labelsToUpdateObject = array();
+    $labelsToCreate = array_filter($labelsToCreate, function ($label) use ($existingLabels, &$labelsToUpdateObject) {
+        $existingLabel = array_filter($existingLabels, function ($existingLabel) use ($label) {
+            return $existingLabel["name"] === $label["name"];
+        });
+
+        $total = count($existingLabel);
+
+        if ($total > 0) {
+            $existingLabel = array_values($existingLabel);
+            $labelToUpdate = [];
+            $labelToUpdate["color"] = $label["color"];
+            $labelToUpdate["description"] = $label["description"];
+            $labelToUpdate["new_name"] = $label["name"];
+            $labelsToUpdateObject[$existingLabel[0]["name"]] = $labelToUpdate;
+        }
+
+        return $total === 0;
+    });
+
+    $labelsToCreateObject = array_map(function ($label) {
+        $newLabel = [];
+        $newLabel["color"] = substr($label["color"], 1);
+        $newLabel["description"] = $label["description"];
+        $newLabel["name"] =  $label["name"];
+        return $newLabel;
+    }, $labelsToCreate);
+
+    $totalLabelsToCreate = count($labelsToCreateObject);
+    $totalLabelsToUpdate = count($labelsToUpdateObject);
+
+    echo "Creating labels {$totalLabelsToCreate} | Updating labels: {$totalLabelsToUpdate}\n";
+
+    $labelService = new LabelService();
+    $labelService->processLabels($labelsToCreateObject, $labelsToUpdateObject, $metadata["token"], $metadata["labelsUrl"]);
+
+}
+
+function execute_copyIssue($config, $metadata, $comment): void
 {
     preg_match(
         "/@" . $config->botName . "\scopy\sissue\s([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)/",
@@ -349,7 +411,7 @@ function execute_copyIssue($config, $metadata, $comment)
     doRequestGitHub($metadata["token"], "repos/{$targetRepository}/issues/{$number}/comments", array("body" => $body), "POST");
 }
 
-function execute_csharpier($config, $metadata, $comment)
+function execute_csharpier($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
     $body = "Running [CSharpier](https://csharpier.com/) on this branch! :wrench:";
@@ -357,7 +419,7 @@ function execute_csharpier($config, $metadata, $comment)
     callWorkflow($config, $metadata, $comment, "csharpier.yml");
 }
 
-function execute_fixCsproj($config, $metadata, $comment)
+function execute_fixCsproj($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
     $body = "Fixing [NuGet packages](https://nuget.org) references in .csproj files! :pill:";
@@ -365,7 +427,7 @@ function execute_fixCsproj($config, $metadata, $comment)
     callWorkflow($config, $metadata, $comment, "fix-csproj.yml");
 }
 
-function execute_npmDist($config, $metadata, $comment)
+function execute_npmDist($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
     $body = "Generating the `dist` files via NPM! :building_construction:";
@@ -373,7 +435,7 @@ function execute_npmDist($config, $metadata, $comment)
     callWorkflow($config, $metadata, $comment, "npm-dist.yml");
 }
 
-function execute_prettier($config, $metadata, $comment)
+function execute_prettier($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
     $body = "Running [Prettier](https://prettier.io/) on this branch! :wrench:";
@@ -381,7 +443,7 @@ function execute_prettier($config, $metadata, $comment)
     callWorkflow($config, $metadata, $comment, "prettier.yml");
 }
 
-function execute_rerunFailedChecks($config, $metadata, $comment)
+function execute_rerunFailedChecks($config, $metadata, $comment): void
 {
     $filter = function ($checkRun) {
         return $checkRun->conclusion === "failure" && $checkRun->status === "completed" && $checkRun->app->slug !== "github-actions";
@@ -412,7 +474,7 @@ function execute_rerunFailedChecks($config, $metadata, $comment)
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $checksToRerun), "POST");
 }
 
-function execute_rerunFailedWorkflows($config, $metadata, $comment)
+function execute_rerunFailedWorkflows($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
@@ -439,7 +501,7 @@ function execute_rerunFailedWorkflows($config, $metadata, $comment)
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $actionsToRerun), "POST");
 }
 
-function execute_review($config, $metadata, $comment)
+function execute_review($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"), "POST");
 
@@ -495,7 +557,7 @@ function execute_review($config, $metadata, $comment)
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
 }
 
-function execute_track($config, $metadata, $comment)
+function execute_track($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
     $body = array("body" => "Tracking this pull request! :repeat:");
@@ -503,14 +565,14 @@ function execute_track($config, $metadata, $comment)
     callWorkflow($config, $metadata, $comment, "track.yml");
 }
 
-function execute_updateSnapshot($config, $metadata, $comment)
+function execute_updateSnapshot($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Updating test snapshots"), "POST");
     callWorkflow($config, $metadata, $comment, "update-test-snapshot.yml");
 }
 
-function callWorkflow($config, $metadata, $comment, $workflow, $extendedParameters = null)
+function callWorkflow($config, $metadata, $comment, $workflow, $extendedParameters = null): void
 {
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     $pullRequest = json_decode($pullRequestResponse->body);
@@ -533,7 +595,7 @@ function callWorkflow($config, $metadata, $comment, $workflow, $extendedParamete
     doRequestGitHub($tokenBot, $url, $data, "POST");
 }
 
-function checkIfPullRequestIsOpen(&$metadata)
+function checkIfPullRequestIsOpen(&$metadata): bool
 {
     $issueResponse = doRequestGitHub($metadata["token"], $metadata["issueUrl"], null, "GET");
     if ($issueResponse->statusCode !== 200) {
@@ -578,7 +640,7 @@ function getAppVeyorProject($metadata, $comment)
     return $project;
 }
 
-function updateNextBuildNumber($metadata, $project, $nextBuildNumber)
+function updateNextBuildNumber($metadata, $project, $nextBuildNumber): void
 {
     $data = array("nextBuildNumber" => $nextBuildNumber);
     $url = "projects/" . $project->accountName . "/" . $project->slug . "/settings/build-number";
@@ -594,8 +656,7 @@ function updateNextBuildNumber($metadata, $project, $nextBuildNumber)
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
 }
 
-
-function main()
+function main(): void
 {
     $config = loadConfig();
     ob_start();

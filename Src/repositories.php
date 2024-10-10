@@ -2,6 +2,8 @@
 
 require_once "config/config.php";
 
+use GuiBranco\GStracciniBot\Library\LabelService;
+use GuiBranco\GStracciniBot\Library\RepositoryManager;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
 
@@ -19,46 +21,26 @@ function handleItem($repository)
 
     $token = generateInstallationToken($repository->InstallationId, $repository->Name);
     $repoPrefix = "repos/" . $repository->FullName;
-    $metadata = array(
+    list($repositoryOwner, $repositoryName) = explode("/", $repository->FullName);
+    $metadata = [
         "token" => $token,
         "repoUrl" => $repoPrefix,
         "labelsUrl" => $repoPrefix . "/labels",
         "userToken" => $gitHubUserToken,
         "botNameMarkdown" => "[" . $config->botName . "\[bot\]](https://github.com/apps/" . $config->botName . ")",
-        "dashboardUrl" => $botDashboardUrl . $prQueryString
-    );
+        "dashboardUrl" => $botDashboardUrl . $prQueryString,
+        "repositoryOwner" => $repositoryOwner,
+        "repositoryName" => $repositoryName
+    ];
 
-    $repositoryOptions = getRepositoryOptions($metadata);
-    $languages = getRepositoryLanguages($metadata);
+    $repositoryManager = new RepositoryManager();
+    $repositoryOptions = $repositoryManager->getBotOptions($metadata["token"], $metadata["repositoryOwner"], $metadata["repositoryName"]);
+    $languages = $repositoryManager->getLanguages($metadata["token"], $metadata["repositoryOwner"], $metadata["repositoryName"]);
     foreach ($languages as $language => $bytes) {
         echo "Language: {$language}: {$bytes} bytes\n";
     }
     echo "\n";
     createRepositoryLabels($metadata, $repositoryOptions);
-}
-
-function getRepositoryOptions($metadata)
-{
-    $paths = array("/", "/.github/");
-    $fileContentResponse = null;
-    foreach ($paths as $path) {
-        $fileContentResponse = doRequestGitHub($metadata["token"], $metadata["repoUrl"] . "/contents" . $path . ".gstraccini.toml", null, "GET");
-        if ($fileContentResponse->statusCode === 200) {
-            break;
-        }
-    }
-
-    if ($fileContentResponse === null) {
-        return getDefaultOptions();
-    }
-
-    $fileContent = json_decode($fileContentResponse->body, true);
-    return getDefaultOptions();
-}
-
-function getDefaultOptions()
-{
-    return array("labels" => array("style" => "icons", "categories" => "all"));
 }
 
 function createRepositoryLabels($metadata, $options)
@@ -68,16 +50,18 @@ function createRepositoryLabels($metadata, $options)
         return;
     }
 
-    $style = $options["labels"]["style"];
-    $categories = $options["labels"]["categories"];
+    $style = $options["labels"]["style"] ?? "icons";
+    $categories = $options["labels"]["categories"] ?? "all";
 
-    $labelsToCreate = loadLabelsFromConfig($categories);
+    $labelService = new LabelService();
+    $labelsToCreate = $labelService->loadFromConfig($categories);
     if ($labelsToCreate === null || count($labelsToCreate) === 0) {
         echo "No labels to create\n";
         return;
     }
 
-    $existingLabels = getRepositoryLabels($metadata);
+    $repositoryManager = new RepositoryManager();
+    $existingLabels = $repositoryManager->getLabels($metadata["userToken"], $metadata["repositoryOwner"], $metadata["repositoryName"]);
 
     $labelsToUpdateObject = array();
     $labelsToCreate = array_filter($labelsToCreate, function ($label) use ($existingLabels, &$labelsToUpdateObject, $style) {
@@ -112,88 +96,10 @@ function createRepositoryLabels($metadata, $options)
 
     echo "Creating labels {$totalLabelsToCreate} | Updating labels: {$totalLabelsToUpdate} | Style: {$style} | Categories: {$categories}\n";
 
-    foreach ($labelsToCreateObject as $label) {
-        $response = doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $label, "POST");
-        if ($response->statusCode === 201) {
-            echo "✅ Label created: {$label["name"]}\n";
-        } elseif($response->statusCode === 422) {
-            $labelToUpdate = [];
-            $labelToUpdate["color"] = $label["color"];
-            $labelToUpdate["description"] = $label["description"];
-            $labelToUpdate["new_name"] = $label["name"];
-            $labelsToUpdateObject[$label["name"]] = $labelToUpdate;
-            echo "⚠️ Label already exists: {$label["name"]}\n";
-        } else {
-            echo "⛔ Error creating label: {$label["name"]}\n";
-        }
-    }
-
-    foreach ($labelsToUpdateObject as $oldName => $label) {
-        $response = doRequestGitHub($metadata["token"], $metadata["labelsUrl"] . "/" . str_replace(" ", "%20", $oldName), $label, "PATCH");
-        if ($response->statusCode === 200) {
-            echo "✅ Label updated: {$oldName} -> {$label["new_name"]}\n";
-        } else {
-            echo "⛔ Error updating label: {$oldName}\n";
-        }
-    }
+    $labelService->processLabels($labelsToCreateObject, $labelsToUpdateObject, $metadata["token"], $metadata["labelsUrl"]);
 }
 
-function loadLabelsFromConfig($categories)
-{
-    $fileNameLabels = "config/labels.json";
-    $labels = array();
-
-    if (file_exists($fileNameLabels)) {
-        $rawLabels = file_get_contents($fileNameLabels);
-        $labels = json_decode($rawLabels, true);
-    }
-
-    unset($labels["language"]);
-
-    $keys = array_keys($labels);
-
-    if (is_array($categories)) {
-        $keys = array_intersect($keys, $categories);
-    } elseif ($categories !== "all") {
-        $keys = array();
-        if (in_array($categories, $keys)) {
-            $keys = array($categories);
-        }
-    }
-
-    if (count($keys) === 0) {
-        return null;
-    }
-
-    $finalLabels = array();
-    foreach ($keys as $key) {
-        $finalLabels = array_merge($finalLabels, $labels[$key]);
-    }
-
-    return $finalLabels;
-}
-
-function getRepositoryLabels($metadata)
-{
-    $labelsResponse = doRequestGitHub($metadata["token"], $metadata["labelsUrl"], null, "GET");
-    if ($labelsResponse->statusCode !== 200) {
-        return array();
-    }
-
-    return json_decode($labelsResponse->body, true);
-}
-
-function getRepositoryLanguages($metadata)
-{
-    $languagesResponse = doRequestGitHub($metadata["token"], $metadata["repoUrl"] . "/languages", null, "GET");
-    if ($languagesResponse->statusCode !== 200) {
-        return array();
-    }
-
-    return json_decode($languagesResponse->body, true);
-}
-
-function main()
+function main(): void
 {
     $config = loadConfig();
     ob_start();
