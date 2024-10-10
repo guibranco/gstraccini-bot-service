@@ -109,6 +109,17 @@
         "requiresPullRequestOpen": true
     },
     {
+        "command": "copy labels",
+        "description": "Copy the labels from another repository.",
+        "parameters": [
+            {
+                "parameter": "repository",
+                "description": "The owner/repository to copy the labels from.",
+                "required": true
+            }
+        ]
+    },
+    {
         "command": "copy issue",
         "description": "Copy an issue from one repository to another",
         "parameters": [
@@ -155,18 +166,7 @@
         "command": "review",
         "description": "Enable review for the target pull request. This is useful when the PR submitter wasn't on the watch list, the webhook was not captured, or some failed scenario occurred.",
         "requiresPullRequestOpen": true
-    },
-    {
-        "command": "sync labels",
-        "description": "Synchronizes the labels in the current repository from a remote repository.",
-        "parameters": [
-            {
-                "parameter": "repository",
-                "description": "The owner/repository to synchronize the labels from.",
-                "required": true
-            }
-        ]
-    },
+    },    
     {
         "command": "track",
         "description": "Tracks the specified pull request. Queue a build, raise a **[dependabot](https://github.com/dependabot) recreate** comment to resolve conflicts, and synchronize merge branches.",
