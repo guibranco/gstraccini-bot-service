@@ -366,7 +366,7 @@ function execute_copyLabels($config, $metadata, $comment): void
 
     $body = array("body" => "Creating {$totalLabelsToCreate} labels and updating {$totalLabelsToUpdate} labels! :label:");
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
-    
+
     $labelService = new LabelService();
     $labelService->processLabels($labelsToCreateObject, $labelsToUpdateObject, $metadata["token"], $metadata["labelsUrl"]);
 }
