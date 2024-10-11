@@ -5,9 +5,9 @@
   "debug": {
     "all": false,
     "branches": false,
-    "comments": false,
-    "issues": false,
-    "pullRequests": false,
+    "comments": true,
+    "issues": true,
+    "pullRequests": true,
     "pushes": false,
     "repositories": true,
     "signature": false
