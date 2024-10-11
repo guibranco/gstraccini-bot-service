@@ -318,7 +318,7 @@ function execute_copyLabels($config, $metadata, $comment): void
     $owner = $matches[1];
     $repository = $matches[2];
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"), "POST");
-    $body = array("body" => "Copying labels from [{$owner}/{$repository}](https://github.com/{$owner}/{$repository})!");
+    $body = array("body" => "Copying labels from [{$owner}/{$repository}](https://github.com/{$owner}/{$repository})! :label:");
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
 
     $repositoryManager = new RepositoryManager();
@@ -358,6 +358,15 @@ function execute_copyLabels($config, $metadata, $comment): void
 
     echo "Creating labels {$totalLabelsToCreate} | Updating labels: {$totalLabelsToUpdate}\n";
 
+    if ($totalLabelsToCreate === 0 && $totalLabelsToUpdate === 0) {
+        $body = array("body" => "No labels to create or update! :no_entry:");
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
+        return;
+    }
+
+    $body = array("body" => "Creating {$totalLabelsToCreate} labels and updating {$totalLabelsToUpdate} labels! :label:");
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
+    
     $labelService = new LabelService();
     $labelService->processLabels($labelsToCreateObject, $labelsToUpdateObject, $metadata["token"], $metadata["labelsUrl"]);
 }
@@ -436,6 +445,8 @@ function execute_createLabels($config, $metadata, $comment): void
     $labelsToCreate = $labelService->loadFromConfig($categories);
     if ($labelsToCreate === null || count($labelsToCreate) === 0) {
         echo "No labels to create\n";
+        $body = array("body" => "No labels to create or update! :no_entry:");
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
         return;
     }
 
@@ -474,6 +485,14 @@ function execute_createLabels($config, $metadata, $comment): void
     $totalLabelsToUpdate = count($labelsToUpdateObject);
 
     echo "Creating labels {$totalLabelsToCreate} | Updating labels: {$totalLabelsToUpdate} | Style: {$style} | Categories: {$categories}\n";
+    if ($totalLabelsToCreate === 0 && $totalLabelsToUpdate === 0) {
+        $body = array("body" => "No labels to create or update! :no_entry:");
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
+        return;
+    }
+
+    $body = array("body" => "Creating {$totalLabelsToCreate} labels and updating {$totalLabelsToUpdate} labels! :label:");
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
 
     $labelService->processLabels($labelsToCreateObject, $labelsToUpdateObject, $metadata["token"], $metadata["labelsUrl"]);
 
