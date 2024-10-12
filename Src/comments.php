@@ -22,7 +22,7 @@ function handleItem($comment): void
     $repoPrefix = "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName;
     $metadata = array(
         "token" => generateInstallationToken($comment->InstallationId, $comment->RepositoryName),
-        "repoPrefix" => $repoPrefix,        
+        "repoPrefix" => $repoPrefix,
         "repositoryOwner" => $comment->RepositoryOwner,
         "repositoryName" => $comment->RepositoryName,
         "reactionUrl" => $repoPrefix . "/issues/comments/" . $comment->CommentId . "/reactions",
