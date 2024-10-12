@@ -18,9 +18,9 @@ class LabelService
 
         $keys = array_keys($labels);
 
-        if (is_array($categories)) {
+        if (count($categories) > 1) {
             $keys = array_intersect($keys, $categories);
-        } elseif ($categories !== "all") {
+        } elseif ($categories[0] !== "all") {
             $keys = array();
             if (in_array($categories, $keys)) {
                 $keys = array($categories);
