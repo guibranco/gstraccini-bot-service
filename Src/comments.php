@@ -495,7 +495,6 @@ function execute_createLabels($config, $metadata, $comment): void
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
 
     $labelService->processLabels($labelsToCreateObject, $labelsToUpdateObject, $metadata["token"], $metadata["labelsUrl"]);
-
 }
 
 function execute_csharpier($config, $metadata, $comment): void
