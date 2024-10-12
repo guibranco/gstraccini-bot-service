@@ -486,7 +486,7 @@ function execute_createLabels($config, $metadata, $comment): void
     $totalLabelsToCreate = count($labelsToCreateObject);
     $totalLabelsToUpdate = count($labelsToUpdateObject);
 
-    echo "Creating labels {$totalLabelsToCreate} | Updating labels: {$totalLabelsToUpdate} | Style: {$style} | Categories: {$categories}\n";
+    echo "Creating labels {$totalLabelsToCreate} | Updating labels: {$totalLabelsToUpdate} | Style: {$style} | Categories: ".join(",", $categories)."\n";
     if ($totalLabelsToCreate === 0 && $totalLabelsToUpdate === 0) {
         $body = array("body" => "No labels to create or update! :no_entry:");
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
