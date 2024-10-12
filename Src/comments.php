@@ -330,7 +330,7 @@ function execute_copyLabels($config, $metadata, $comment): void
     $labelsToUpdateObject = array();
     $labelsToCreate = array_filter($labelsToCreate, function ($label) use ($existingLabels, &$labelsToUpdateObject) {
         $existingLabel = array_filter($existingLabels, function ($existingLabel) use ($label) {
-            return $existingLabel["name"] === $label["name"];
+            return strtolower($existingLabel["name"]) === strtolower($label["name"]);
         });
 
         $total = count($existingLabel);
@@ -458,7 +458,8 @@ function execute_createLabels($config, $metadata, $comment): void
     $labelsToUpdateObject = array();
     $labelsToCreate = array_filter($labelsToCreate, function ($label) use ($existingLabels, &$labelsToUpdateObject, $style) {
         $existingLabel = array_filter($existingLabels, function ($existingLabel) use ($label) {
-            return $existingLabel["name"] === $label["text"] || $existingLabel["name"] === $label["textWithIcon"];
+            return  strtolower($existingLabel["name"]) === strtolower($label["text"]) ||
+                    strtolower($existingLabel["name"]) === strtolower($label["textWithIcon"]);
         });
 
         $total = count($existingLabel);
