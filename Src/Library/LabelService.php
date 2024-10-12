@@ -12,6 +12,8 @@ class LabelService
         if (file_exists($fileNameLabels)) {
             $rawLabels = file_get_contents($fileNameLabels);
             $labels = json_decode($rawLabels, true);
+        } else {
+            echo "⚠️ File {$fileNameLabels} not found!\n";
         }
 
         unset($labels["language"]);
@@ -19,8 +21,10 @@ class LabelService
         $keys = array_keys($labels);
 
         if (count($categories) > 1) {
+            echo "🔍 Filtering by categories: ".join(",",$categories)."\n";
             $keys = array_intersect($keys, $categories);
         } elseif ($categories[0] !== "all") {
+            echo "🔍 Filtering by category: ".$categories[0]."\n";
             $keys = array();
             if (in_array($categories, $keys)) {
                 $keys = array($categories);
@@ -28,6 +32,7 @@ class LabelService
         }
 
         if (count($keys) === 0) {
+            echo "⛔ No filtered labels\n";
             return null;
         }
 
