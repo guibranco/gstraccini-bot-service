@@ -94,7 +94,7 @@ function createRepositoryLabels($metadata, $options)
     $totalLabelsToCreate = count($labelsToCreateObject);
     $totalLabelsToUpdate = count($labelsToUpdateObject);
 
-    echo "🏃‍♂️ Creating labels {$totalLabelsToCreate} | Updating labels: {$totalLabelsToUpdate} | Style: {$style} | Categories: {$categories}\n";
+    echo "🏃‍♂️ Creating labels {$totalLabelsToCreate} | Updating labels: {$totalLabelsToUpdate} | Style: {$style} | Categories: ".join(",", $categories)."\n";
 
     $labelService->processLabels($labelsToCreateObject, $labelsToUpdateObject, $metadata["token"], $metadata["labelsUrl"]);
 }
