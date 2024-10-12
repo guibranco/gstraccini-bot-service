@@ -25,7 +25,7 @@ class RepositoryManager
 
     private function getDefaultBotOptions(): array
     {
-        return array("labels" => array("style" => "icons", "categories" => "all"));
+        return array("labels" => array("style" => "icons", "categories" => ["all"]));
     }
 
     public function getLabels(string $token, string $repositoryOwner, string $repositoryName): array
