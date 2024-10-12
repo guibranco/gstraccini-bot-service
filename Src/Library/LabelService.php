@@ -21,7 +21,7 @@ class LabelService
         $keys = array_keys($labels);
 
         if (count($categories) > 1) {
-            echo "🔍 Filtering by categories: ".join(",",$categories)."\n";
+            echo "🔍 Filtering by categories: ".join(",", $categories)."\n";
             $keys = array_intersect($keys, $categories);
         } elseif ($categories[0] !== "all") {
             echo "🔍 Filtering by category: ".$categories[0]."\n";
