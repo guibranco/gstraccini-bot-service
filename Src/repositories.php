@@ -37,7 +37,7 @@ function handleItem($repository)
     $repositoryOptions = $repositoryManager->getBotOptions($metadata["token"], $metadata["repositoryOwner"], $metadata["repositoryName"]);
     $languages = $repositoryManager->getLanguages($metadata["token"], $metadata["repositoryOwner"], $metadata["repositoryName"]);
     foreach ($languages as $language => $bytes) {
-        echo "Language: {$language}: {$bytes} bytes\n";
+        echo "🔤 Language: {$language}: {$bytes} bytes\n";
     }
     echo "\n";
     createRepositoryLabels($metadata, $repositoryOptions);
@@ -46,7 +46,7 @@ function handleItem($repository)
 function createRepositoryLabels($metadata, $options)
 {
     if (isset($options["labels"]) === false || $options["labels"] === null || $options["labels"] === "") {
-        echo "Not creating labels\n";
+        echo "⛔ Not creating labels\n";
         return;
     }
 
@@ -56,7 +56,7 @@ function createRepositoryLabels($metadata, $options)
     $labelService = new LabelService();
     $labelsToCreate = $labelService->loadFromConfig($categories);
     if ($labelsToCreate === null || count($labelsToCreate) === 0) {
-        echo "No labels to create\n";
+        echo "⛔ No labels to create\n";
         return;
     }
 
@@ -94,7 +94,7 @@ function createRepositoryLabels($metadata, $options)
     $totalLabelsToCreate = count($labelsToCreateObject);
     $totalLabelsToUpdate = count($labelsToUpdateObject);
 
-    echo "Creating labels {$totalLabelsToCreate} | Updating labels: {$totalLabelsToUpdate} | Style: {$style} | Categories: {$categories}\n";
+    echo "🏃‍♂️ Creating labels {$totalLabelsToCreate} | Updating labels: {$totalLabelsToUpdate} | Style: {$style} | Categories: {$categories}\n";
 
     $labelService->processLabels($labelsToCreateObject, $labelsToUpdateObject, $metadata["token"], $metadata["labelsUrl"]);
 }
