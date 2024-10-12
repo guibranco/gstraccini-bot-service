@@ -437,8 +437,6 @@ function execute_createLabels($config, $metadata, $comment): void
     }
 
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
-    $body = "Creating labels on this repository! :label:";
-    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
 
     $style = $matches[1] ?? "icons";
     $categories = $matches[2] ?? ["all"];
