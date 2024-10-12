@@ -66,7 +66,8 @@ function createRepositoryLabels($metadata, $options)
     $labelsToUpdateObject = array();
     $labelsToCreate = array_filter($labelsToCreate, function ($label) use ($existingLabels, &$labelsToUpdateObject, $style) {
         $existingLabel = array_filter($existingLabels, function ($existingLabel) use ($label) {
-            return $existingLabel["name"] === $label["text"] || $existingLabel["name"] === $label["textWithIcon"];
+            return  strtolower($existingLabel["name"]) === strtolower($label["text"]) ||
+                    strtolower($existingLabel["name"]) === strtolower($label["textWithIcon"]);
         });
 
         $total = count($existingLabel);
