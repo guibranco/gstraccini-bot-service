@@ -312,5 +312,13 @@
             "text": "size/XXL",
             "textWithIcon": "size/XXL"
         }
+    ],
+    "apps": [
+        {
+            "color": "#db2777",
+            "description": "GitAuto label to trigger the app in a issue.",
+            "text": "gitauto",
+            "textWithIcon": "gitauto"
+        }
     ]
 }
