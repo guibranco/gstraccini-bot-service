@@ -6,8 +6,8 @@
     "all": false,
     "branches": false,
     "comments": true,
-    "issues": true,
-    "pullRequests": true,
+    "issues": false,
+    "pullRequests": false,
     "pushes": false,
     "repositories": true,
     "signature": false
