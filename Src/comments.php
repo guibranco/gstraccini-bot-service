@@ -451,7 +451,7 @@ function execute_createLabels($config, $metadata, $comment): void
     }
 
     $repositoryManager = new RepositoryManager();
-    $existingLabels = $repositoryManager->getLabels($metadata["userToken"], $metadata["repositoryOwner"], $metadata["repositoryName"]);
+    $existingLabels = $repositoryManager->getLabels($metadata["token"], $metadata["repositoryOwner"], $metadata["repositoryName"]);
 
     $labelsToUpdateObject = array();
     $labelsToCreate = array_filter($labelsToCreate, function ($label) use ($existingLabels, &$labelsToUpdateObject, $style) {
