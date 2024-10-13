@@ -9,7 +9,7 @@ use GuiBranco\Pancake\HealthChecks;
 
 function handleItem($comment): void
 {
-    echo "https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/issues/{$comment->PullRequestNumber}/comments/{$comment->CommentId}:\n\n";
+    echo "https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/issues/{$comment->PullRequestNumber}/#issuecomment-{$comment->CommentId}:\n\n";
 
     $config = loadConfig();
 
