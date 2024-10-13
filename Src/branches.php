@@ -7,6 +7,8 @@ use GuiBranco\Pancake\HealthChecks;
 
 function handleItem($branch)
 {
+    echo "https://github.com/{$branch->RepositoryOwner}/{$branch->RepositoryName}/tree/{$branch->Ref}:\n\n";
+
     $token = generateInstallationToken($branch->InstallationId, $branch->RepositoryName);
 
     $metadata = array(
