@@ -7,6 +7,8 @@ use GuiBranco\Pancake\HealthChecks;
 
 function handleItem($push)
 {
+    echo "https://github.com/{$push->RepositoryOwner}/{$push->RepositoryName}/commit/{$push->HeadCommitId}:\n\n";
+    
     $token = generateInstallationToken($push->InstallationId, $push->RepositoryName);
 
     $botDashboardUrl = "https://gstraccini.bot/dashboard";
