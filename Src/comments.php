@@ -9,6 +9,8 @@ use GuiBranco\Pancake\HealthChecks;
 
 function handleItem($comment): void
 {
+    echo "https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/issues/{$comment->PullRequestNumber}/comments/{$comment->CommentId}:\n\n";
+    
     $config = loadConfig();
 
     if ($comment->CommentSender === $config->botName . "[bot]") {
