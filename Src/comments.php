@@ -10,6 +10,7 @@ use GuiBranco\Pancake\HealthChecks;
 function handleItem($comment): void
 {
     echo "https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/issues/{$comment->PullRequestNumber}/#issuecomment-{$comment->CommentId}:\n\n";
+    echo "Comment: {$comment->CommentBody} | Sender: {$comment->CommentSender}\n";
 
     $config = loadConfig();
 
@@ -47,6 +48,7 @@ function handleItem($comment): void
         $comment->CommentSender === "AppVeyorBot" ||
         $comment->CommentSender === "gitauto-ai[bot]"
     ) {
+        echo "Skipping this comment! 🚷\n";
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
         return;
     }
