@@ -120,9 +120,8 @@ function createMetadata($token, $pullRequest, $config)
 {
     global $gitHubUserToken;
 
-    $botDashboardUrl = "https://gstraccini.bot/dashboard";
     $prQueryString =
-        "?owner=" . $pullRequest->RepositoryOwner .
+        "pull-requests/?owner=" . $pullRequest->RepositoryOwner .
         "&repo=" . $pullRequest->RepositoryName .
         "&pullRequest=" . $pullRequest->Number;
     $repoPrefix = "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName;
@@ -143,7 +142,7 @@ function createMetadata($token, $pullRequest, $config)
         "labelsUrl" => $repoPrefix . ISSUES . $pullRequest->Number . "/labels",
         "compareUrl" => $repoPrefix . "/compare/",
         "botNameMarkdown" => "[" . $config->botName . "\[bot\]](https://github.com/apps/" . $config->botName . ")",
-        "dashboardUrl" => $botDashboardUrl . $prQueryString
+        "dashboardUrl" => $config->dashboardUrl . $prQueryString
     );
 }
 
