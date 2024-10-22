@@ -1,7 +1,9 @@
 {
   "botName": "gstraccini",
   "botRepository": "guibranco/gstraccini-bot",
-  "botRepositoryInstallationId": "51682906",
+  "botRepositoryInstallationId": "51682906",  
+  "dashboardUrl": "https://bot.straccini.com/",
+  "docsUrl": "https://docs.bot.straccini.com/",
   "debug": {
     "all": false,
     "branches": false,
