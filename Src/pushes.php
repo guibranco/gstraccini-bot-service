@@ -11,9 +11,8 @@ function handleItem($push)
 
     $token = generateInstallationToken($push->InstallationId, $push->RepositoryName);
 
-    $botDashboardUrl = "https://gstraccini.bot/dashboard";
     $commitQueryString =
-        "?owner=" . $push->RepositoryOwner .
+        "commits/?owner=" . $push->RepositoryOwner .
         "&repo=" . $push->RepositoryName .
         "&ref=" . urlencode($push->Ref);
 
@@ -22,7 +21,7 @@ function handleItem($push)
         "token" => $token,
         "repoUrl" => $repoPrefix,
         "checkRunUrl" => $repoPrefix . "/check-runs",
-        "dashboardUrl" => $botDashboardUrl . $commitQueryString
+        "dashboardUrl" => $config->dashboardUrl . $commitQueryString
     );
 
     $checkRunId = setCheckRunInProgress($metadata, $push->HeadCommitId, "commit");
