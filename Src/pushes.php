@@ -9,6 +9,7 @@ function handleItem($push)
 {
     echo "https://github.com/{$push->RepositoryOwner}/{$push->RepositoryName}/commit/{$push->HeadCommitId}:\n\n";
 
+    $config = loadConfig();
     $token = generateInstallationToken($push->InstallationId, $push->RepositoryName);
 
     $commitQueryString =
