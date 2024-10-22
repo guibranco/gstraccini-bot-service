@@ -505,7 +505,7 @@ function execute_createLabels($config, $metadata, $comment): void
 function execute_csharpier($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
-    $body = "Running [CSharpier](https://csharpier.com/) on this branch! :wrench:";
+    $body = "Running [CSharpier](https://csharpier.com/) on this branch! :wrench: Please note that this action cannot be performed on pull requests from forked repositories due to permission restrictions.";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
     callWorkflow($config, $metadata, $comment, "csharpier.yml");
 }
