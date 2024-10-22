@@ -20,7 +20,7 @@
          "description":"GStraccini BOT server"
       },
       {
-         "url";"https://bot.straccini.com",
+         "url":"https://bot.straccini.com",
          "description": "Legacy Service"
       }
    ],
