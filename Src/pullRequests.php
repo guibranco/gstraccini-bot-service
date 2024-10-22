@@ -382,11 +382,15 @@ function addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated)
             doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber . "/labels", $body, "POST");
         }
 
-        $position = array_search("🤖 bot", $labelsIssue);
+        $predefinedLabelsToNotAdd = ["🤖 bot", "good first issue", "help wanted"];
 
-        if ($position !== false && strtolower($pullRequestUpdated->user->type) !== "bot") {
-            unset($labelsIssue[$position]);
-        }
+        foreach ($predefinedLabelsToNotAdd as $label) {
+            $position = array_search($label, $labelsIssue);
+    
+            if ($position !== false && strtolower($pullRequestUpdated->user->type) !== "bot") {
+                unset($labelsIssue[$position]);
+            }
+        }        
 
         $labels = array_merge($labels, $labelsIssue);
     }
