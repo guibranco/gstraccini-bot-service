@@ -8,6 +8,8 @@ $version = "1.0.0";
 $versionFile = "version.txt";
 if (file_exists($versionFile)) {
     $version = trim(file_get_contents($versionFile));
+require_once "Src/issueNotifier.php";
+
 }
 
 define("USER_AGENT_VENDOR", "gstraccini-bot/{$version} (+https://github.com/apps/gstraccini/)");
