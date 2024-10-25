@@ -8,7 +8,7 @@ $version = "1.0.0";
 $versionFile = "version.txt";
 if (file_exists($versionFile)) {
     $version = trim(file_get_contents($versionFile));
-require_once "Src/issueNotifier.php";
+    require_once "Src/issueNotifier.php";
 
 }
 
