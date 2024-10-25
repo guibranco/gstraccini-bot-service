@@ -1,4 +1,11 @@
 name: Deploy via ftp
+# Redirect to the current version during deployment
+RewriteEngine On
+RewriteCond %{REQUEST_URI} !^/temp_deploy/
+RewriteRule ^(.*)$ /temp_deploy/$1 [L]
+
+# Switch to the new version after deployment
+RewriteRule ^(.*)$ /$1 [L]
 
 on:
   push:
