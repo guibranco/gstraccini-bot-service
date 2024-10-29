@@ -1,14 +1,17 @@
 <?php
 
-class CodeClimateIntegration {
+class CodeClimateIntegration
+{
     private $apiToken;
     private $apiUrl = 'https://api.codeclimate.com/v1/repos';
 
-    public function __construct($apiToken) {
+    public function __construct($apiToken)
+    {
         $this->apiToken = $apiToken;
     }
 
-    public function registerRepository($repoName, $vcsType = 'github', $vcsUrl) {
+    public function registerRepository($repoName, $vcsType = 'github', $vcsUrl)
+    {
         $data = [
             'data' => [
                 'type' => 'repos',
@@ -44,5 +47,3 @@ $vcsUrl = 'https://github.com/your_username/your_repo_name';
 $ccIntegration = new CodeClimateIntegration($apiToken);
 $response = $ccIntegration->registerRepository($repoName, 'github', $vcsUrl);
 print_r($response);
-
-?>
