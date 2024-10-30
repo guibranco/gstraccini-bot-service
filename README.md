@@ -1,3 +1,13 @@
+# Snyk Integration
+
+This project includes functionality to register new repositories with Snyk for automatic vulnerability scanning and monitoring.
+
+## Usage
+
+1. Ensure you have your Snyk API token available.
+2. When creating a new repository, the system will automatically register it with Snyk using the provided API token.
+3. Check the Snyk dashboard to verify that the repository has been registered and is being monitored for vulnerabilities.
+
 # ![GStraccini-bot](https://raw.githubusercontent.com/guibranco/gstraccini-bot-website/main/Src/logo.png)
 
 🤖 :octocat: **GStraccini-bot** is a GitHub bot designed to keep your repository organized and healthy by automating tasks like managing pull requests, issues, comments, and commits. This allows you to focus on solving real problems.
