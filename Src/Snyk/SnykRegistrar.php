@@ -2,17 +2,19 @@
 
 namespace Src\Snyk;
 
-class SnykRegistrar {
-
+class SnykRegistrar
+{
     private $apiToken;
     private $httpClient;
 
-    public function __construct($apiToken, $httpClient) {
+    public function __construct($apiToken, $httpClient)
+    {
         $this->apiToken = $apiToken;
         $this->httpClient = $httpClient;
     }
 
-    public function registerRepository($repositoryDetails) {
+    public function registerRepository($repositoryDetails)
+    {
         $url = "https://snyk.io/api/v1/org/YOUR_ORG_ID/projects";
         $headers = [
             'Authorization: token ' . $this->apiToken,
@@ -23,5 +25,3 @@ class SnykRegistrar {
     }
 
 }
-
-?>
