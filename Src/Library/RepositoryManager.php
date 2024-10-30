@@ -4,6 +4,7 @@ namespace GuiBranco\GStracciniBot\Library;
 use Src\Snyk\SnykRegistrar;
 
 class RepositoryManager
+{
     private $snykRegistrar;
 
     public function __construct($snykApiToken, $httpClient) {
