@@ -1,8 +1,17 @@
 <?php
 
 namespace GuiBranco\GStracciniBot\Library;
+use Src\Snyk\SnykRegistrar;
 
 class RepositoryManager
+    private $snykRegistrar;
+
+    public function __construct($snykApiToken, $httpClient) {
+        $this->snykRegistrar = new SnykRegistrar($snykApiToken, $httpClient);
+    }
+
+    public function registerRepositoryWithSnyk($repositoryDetails) {
+        return $this->snykRegistrar->registerRepository($repositoryDetails);
 {
     public function getBotOptions(string $token, string $repositoryOwner, string $repositoryName): array
     {
