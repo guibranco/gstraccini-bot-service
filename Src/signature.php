@@ -20,11 +20,13 @@ function handleItem($signature)
         "content_type" => "json",
         "insecure_ssl" => "0",
         "url" => $gitHubWebhookEndpoint,
-    if (isset($payload['comment']['body']) && isset($payload['issue']['number'])) {
-        $commentBody = $payload['comment']['body'];
-        $issueOrPrNumber = $payload['issue']['number'];
-        $repository = $payload['repository']['full_name'];
-        $labelHandler->handleInvalidLabels($commentBody, $issueOrPrNumber, $repository);
+    "secret" => $gitHubWebhookSignature
+);
+
+if (isset($payload['comment']['body']) && isset($payload['issue']['number'])) {
+    $commentBody = $payload['comment']['body'];
+    $issueOrPrNumber = $payload['issue']['number'];
+    $repository = $payload['repository']['full_name'];
         "secret" => $gitHubWebhookSignature
     );
 
