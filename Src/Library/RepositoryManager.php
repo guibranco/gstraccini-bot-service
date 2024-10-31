@@ -13,7 +13,7 @@ class RepositoryManager
 
     public function registerRepositoryWithSnyk($repositoryDetails) {
         return $this->snykRegistrar->registerRepository($repositoryDetails);
-{
+}
     public function getBotOptions(string $token, string $repositoryOwner, string $repositoryName): array
     {
         $paths = array("/", "/.github/");
