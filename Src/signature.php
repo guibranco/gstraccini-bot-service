@@ -20,7 +20,6 @@ function handleItem($signature)
         "content_type" => "json",
         "insecure_ssl" => "0",
         "url" => $gitHubWebhookEndpoint,
-    "secret" => $gitHubWebhookSignature
 );
 
 if (isset($payload['comment']['body']) && isset($payload['issue']['number'])) {
