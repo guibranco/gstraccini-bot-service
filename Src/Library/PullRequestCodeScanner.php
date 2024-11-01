@@ -37,7 +37,10 @@ class PullRequestCodeScanner
             }
 
             if (preg_match('/^@@ -\d+,\d+ \+(\d+),\d+ @@/', $line, $matches)) {
-                $currentLine = $matches[1];
+                $currentLine = (int)$matches[1];
+            }
+            if (strpos($line, '+') === 0) {
+                $currentLine++;
             }
 
             if ($currentFile && $currentLine && preg_match('/^\+(.*)/', $line, $matches)) {
