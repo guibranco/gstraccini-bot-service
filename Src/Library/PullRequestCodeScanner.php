@@ -11,7 +11,25 @@ class PullRequestCodeScanner
         $currentFile = null;
         $currentLine = null;
 
-        $commentPattern = '/(?<=\+\+\+).+?\s*(?:\/\/|#|%|;|--|<!--|\/\*|\*)\s*\b(?<category>bug|fixme|todo)\b(:|\s+)(?<description>.+)?/';
+        private const COMMENT_MARKERS = ['//', '#', '%', ';', '--', '<!--', '/*', '*'];
+        private const KEYWORDS = ['bug', 'fixme', 'todo'];
+
+        private function parseCommentLine(string $line): ?array {
+            foreach (self::COMMENT_MARKERS as $marker) {
+                if (($pos = strpos($line, $marker)) !== false) {
+                    $comment = trim(substr($line, $pos + strlen($marker)));
+                    foreach (self::KEYWORDS as $keyword) {
+                        if (preg_match("/\b$keyword\b(:|\s+)(?<description>.+)?/i", $comment, $matches)) {
+                            return [
+                                'category' => strtolower($keyword),
+                                'description' => $matches['description'] ?? ''
+                            ];
+                        }
+                    }
+                }
+            }
+            return null;
+        }
 
         foreach ($lines as $line) {
             if (preg_match('/^\+\+\+ b\/(.+)/', $line, $matches)) {
