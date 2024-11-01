@@ -1,4 +1,5 @@
 <?php
+
 $codecovApiToken = getenv('CODECOV_API_TOKEN');
 
 ini_set("default_charset", "UTF-8");
