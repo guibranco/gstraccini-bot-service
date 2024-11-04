@@ -19,6 +19,7 @@
             "text": "do-not-merge",
         {
             "textWithIcon": "🧷 do-not-merge"
+,
             "color": "#5319E7",
             "description": "Automated processes or integrations",
             "text": "bot",
