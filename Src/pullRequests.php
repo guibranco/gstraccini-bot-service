@@ -1,4 +1,5 @@
 <?php
+use function handleAutoMergeToggle;
 
 require_once "config/config.php";
 
@@ -8,6 +9,9 @@ use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
 
 define("ISSUES", "/issues/");
+function handleAutoMergeToggle($action, $metadata) {
+    // Logic to enable or disable auto-merge based on action
+}
 define("PULLS", "/pulls/");
 
 function handleItem($pullRequest, $isRetry = false)
@@ -18,6 +22,9 @@ function handleItem($pullRequest, $isRetry = false)
 
     $config = loadConfig();
     $token = generateInstallationToken($pullRequest->InstallationId, $pullRequest->RepositoryName);
+    if ($action === 'auto-merge enable') {
+        handleAutoMergeToggle('enable', $metadata);
+    }
     $metadata = createMetadata($token, $pullRequest, $config);
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     $pullRequestUpdated = json_decode($pullRequestResponse->body);
@@ -28,6 +35,9 @@ function handleItem($pullRequest, $isRetry = false)
         checkForOtherPullRequests($metadata, $pullRequest);
     }
 
+    if ($action === 'auto-merge disable') {
+        handleAutoMergeToggle('disable', $metadata);
+    }
     if ($pullRequestUpdated->state != "open") {
         echo "PR State: {$pullRequestUpdated->state} ⛔\n";
         return;
