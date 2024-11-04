@@ -1,4 +1,5 @@
 <?php
+
 use function handleAutoMergeToggle;
 
 require_once "config/config.php";
@@ -9,7 +10,8 @@ use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
 
 define("ISSUES", "/issues/");
-function handleAutoMergeToggle($action, $metadata) {
+function handleAutoMergeToggle($action, $metadata)
+{
     // Logic to enable or disable auto-merge based on action
 }
 define("PULLS", "/pulls/");
