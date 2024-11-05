@@ -1,4 +1,5 @@
 <?php
+use GuiBranco\Pancake;
 
 require_once "config/config.php";
 
@@ -8,11 +9,26 @@ use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
 
 function handleItem($comment): void
+
+function checkReviewApprovals($pullRequestUrl, $token) {
+    $pullRequestResponse = doRequestGitHub($token, $pullRequestUrl, null, "GET");
+    $pullRequestUpdated = json_decode($pullRequestResponse->body);
+    $commitSha1 = $pullRequestUpdated->head->sha;
 {
     echo "https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/issues/{$comment->PullRequestNumber}/#issuecomment-{$comment->CommentId}:\n\n";
     echo "Comment: {$comment->CommentBody} | Sender: {$comment->CommentSender}\n";
 
     $config = loadConfig();
+    $failedWorkflowRunsResponse = doRequestGitHub($token, $metadata["repoPrefix"] . "/actions/runs?head_sha=" . $commitSha1 . "&status=failure", null, "GET");
+    $failedWorkflowRuns = json_decode($failedWorkflowRunsResponse->body);
+    $total = $failedWorkflowRuns->total_count;
+
+    $pancake = new Pancake();
+    $status = $pancake->getStatus($pullRequestUrl);
+    if ($status !== 'approved') {
+        throw new Exception('Not all required reviewers have approved this PR.');
+    }
+    return true;
 
     if ($comment->CommentSender === $config->botName . "[bot]") {
         return;
