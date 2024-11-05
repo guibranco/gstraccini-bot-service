@@ -24,7 +24,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         node <<EOF
-    (async () => {
+        const REQUIRED_APPROVALS = 2; // Define the required number of approvals
         const { Octokit } = require("@octokit/rest");
         const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
         const { data: reviews } = await octokit.pulls.listReviews({
