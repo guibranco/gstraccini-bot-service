@@ -24,6 +24,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         node <<EOF
+    (async () => {
         const { Octokit } = require("@octokit/rest");
         const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
         const { data: reviews } = await octokit.pulls.listReviews({
@@ -33,6 +34,7 @@ jobs:
         });
         const approvals = reviews.filter(review => review.state === 'APPROVED');
         if (approvals.length < REQUIRED_APPROVALS) {
+      const REQUIRED_APPROVALS = 2; // Define the required number of approvals
           throw new Error('Not all required reviewers have approved this PR.');
         }
-        EOF
+    })();
