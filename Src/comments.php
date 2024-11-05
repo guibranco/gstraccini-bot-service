@@ -14,7 +14,6 @@ function checkReviewApprovals($pullRequestUrl, $token) {
     $pullRequestResponse = doRequestGitHub($token, $pullRequestUrl, null, "GET");
     $pullRequestUpdated = json_decode($pullRequestResponse->body);
     $commitSha1 = $pullRequestUpdated->head->sha;
-{
     echo "https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/issues/{$comment->PullRequestNumber}/#issuecomment-{$comment->CommentId}:\n\n";
     echo "Comment: {$comment->CommentBody} | Sender: {$comment->CommentSender}\n";
 
