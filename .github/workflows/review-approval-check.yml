@@ -1,0 +1,38 @@
+name: 'Review Approval Check'
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  review-approval:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v2
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '14'
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Check review approvals
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        node <<EOF
+        const { Octokit } = require("@octokit/rest");
+        const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+        const { data: reviews } = await octokit.pulls.listReviews({
+          owner: process.env.GITHUB_REPOSITORY_OWNER,
+          repo: process.env.GITHUB_REPOSITORY.split('/')[1],
+          pull_number: process.env.GITHUB_PULL_REQUEST_NUMBER
+        });
+        const approvals = reviews.filter(review => review.state === 'APPROVED');
+        if (approvals.length < REQUIRED_APPROVALS) {
+          throw new Error('Not all required reviewers have approved this PR.');
+        }
+        EOF
