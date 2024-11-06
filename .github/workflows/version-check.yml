@@ -1,0 +1,30 @@
+name: Version Check
+
+on:
+  pull_request:
+    paths:
+      - 'appveyor.yml'
+
+jobs:
+  version-check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Install PyYAML
+      run: |
+        python -m pip install pyyaml
+
+    - name: Check version change
+      run: |
+        python .github/scripts/check_version_change.py
+
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
