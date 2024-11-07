@@ -34,8 +34,7 @@ async function encryptSecret(publicKey, secretValue) {
 }
 
 async function copySecrets() {
-  const owner = 'your-owner';
-  const repo = 'your-repo';
+  const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
   const publicKey = await getPublicKey(owner, repo);
 
   // Example: Copy a single secret
