@@ -4,6 +4,13 @@
         "description": "Shows the help message with available commands."
     },
     {
+    },
+    {
+        "command": "update repo variable",
+        "description": "Updates or creates a repository action variable using the GitHub REST API.",
+        "parameters": "name, value"
+    }
+
         "command": "hello",
         "description": "Says hello to the invoker."
     },
