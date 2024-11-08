@@ -10,6 +10,7 @@ use GuiBranco\Pancake\HealthChecks;
 
 function handleItem($comment): void
 
+
 function handleUpdateRepoVariableCommand($comment, $config) {
     $commandExpression = "@" . $config->botName . " update repo variable ";
     if (stripos($comment->CommentBody, $commandExpression) !== false) {
