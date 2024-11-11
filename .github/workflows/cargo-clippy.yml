@@ -74,7 +74,7 @@ jobs:
           cargo clippy 2>&1 > /dev/null >> clippy.log
 
       - name: Read clippy.log
-        uses: guibranco/github-file-reader-action-v2@v2.2.702
+        uses: guibranco/github-file-reader-action-v2@v2.2.705
         id: log
         with:
           path: clippy.log
