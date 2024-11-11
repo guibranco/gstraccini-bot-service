@@ -24,6 +24,7 @@ function updateOrCreateRepoVariable($owner, $repo, $name, $value) {
             break;
         }
     }
+}
 
     if ($variableExists) {
         $url .= "/{$name}";
