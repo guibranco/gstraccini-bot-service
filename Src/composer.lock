@@ -8,16 +8,16 @@
     "packages": [
         {
             "name": "guibranco/pancake",
-            "version": "v0.14.5",
+            "version": "v0.14.6",
             "source": {
                 "type": "git",
                 "url": "https://github.com/guibranco/pancake.git",
-                "reference": "28fe9cabcfc71077b4c6778962fdbc9e742310e2"
+                "reference": "0bc1d804611480b36f86a400dd5ce691d16fbe7e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/guibranco/pancake/zipball/28fe9cabcfc71077b4c6778962fdbc9e742310e2",
-                "reference": "28fe9cabcfc71077b4c6778962fdbc9e742310e2",
+                "url": "https://api.github.com/repos/guibranco/pancake/zipball/0bc1d804611480b36f86a400dd5ce691d16fbe7e",
+                "reference": "0bc1d804611480b36f86a400dd5ce691d16fbe7e",
                 "shasum": ""
             },
             "require-dev": {
@@ -42,22 +42,22 @@
             "description": "The Pancake project, a toolkit for PHP projects",
             "support": {
                 "issues": "https://github.com/guibranco/pancake/issues",
-                "source": "https://github.com/guibranco/pancake/tree/v0.14.5"
+                "source": "https://github.com/guibranco/pancake/tree/v0.14.6"
             },
-            "time": "2024-11-04T03:31:19+00:00"
+            "time": "2024-11-11T11:16:21+00:00"
         },
         {
             "name": "lcobucci/jwt",
-            "version": "5.4.0",
+            "version": "5.4.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/lcobucci/jwt.git",
-                "reference": "aac4fd512681fd5cb4b77d2105ab7ec700c72051"
+                "reference": "ea1ce71cbf9741e445a5914e2f67cdbb484ff712"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/lcobucci/jwt/zipball/aac4fd512681fd5cb4b77d2105ab7ec700c72051",
-                "reference": "aac4fd512681fd5cb4b77d2105ab7ec700c72051",
+                "url": "https://api.github.com/repos/lcobucci/jwt/zipball/ea1ce71cbf9741e445a5914e2f67cdbb484ff712",
+                "reference": "ea1ce71cbf9741e445a5914e2f67cdbb484ff712",
                 "shasum": ""
             },
             "require": {
@@ -105,7 +105,7 @@
             ],
             "support": {
                 "issues": "https://github.com/lcobucci/jwt/issues",
-                "source": "https://github.com/lcobucci/jwt/tree/5.4.0"
+                "source": "https://github.com/lcobucci/jwt/tree/5.4.2"
             },
             "funding": [
                 {
@@ -117,7 +117,7 @@
                     "type": "patreon"
                 }
             ],
-            "time": "2024-10-08T22:06:45+00:00"
+            "time": "2024-11-07T12:54:35+00:00"
         },
         {
             "name": "paragonie/constant_time_encoding",
