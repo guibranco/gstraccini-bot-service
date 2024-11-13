@@ -107,6 +107,12 @@
             "description": "Participation in the Hacktoberfest event",
             "text": "hacktoberfest",
             "textWithIcon": "hacktoberfest"
+        },
+        {
+            "color": "#FFCC00",
+            "description": "Issue or bug report is under investigation",
+            "text": "under investigation",
+            "textWithIcon": "🔍 under investigation"
         }
     ],
     "effort": [
