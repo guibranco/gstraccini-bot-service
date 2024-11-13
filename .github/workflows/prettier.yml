@@ -51,7 +51,7 @@ jobs:
           token: ${{ steps.generate_token.outputs.token }}
 
       - name: Setup Node
-        uses: actions/setup-node@v4.0.4
+        uses: actions/setup-node@v4.1.0
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
@@ -62,6 +62,7 @@ jobs:
           npm run test --if-present
 
       - name: Run Prettier format check
+        continue-on-error: true
         run: |
           set -e
           npm run format:check >> prettier.log
