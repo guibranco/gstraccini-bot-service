@@ -18,6 +18,10 @@
       {
          "url":"https://gstraccini.bot",
          "description":"GStraccini BOT server"
+      },
+      {
+         "url":"https://bot.straccini.com",
+         "description": "Legacy Service"
       }
    ],
    "tags":[

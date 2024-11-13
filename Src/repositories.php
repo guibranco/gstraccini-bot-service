@@ -14,9 +14,8 @@ function handleItem($repository)
     global $gitHubUserToken;
     $config = loadConfig();
 
-    $botDashboardUrl = "https://gstraccini.bot/dashboard";
-    $prQueryString =
-        "?owner=" . $repository->OwnerLogin .
+    $repoQueryString =
+        "repositories/?owner=" . $repository->OwnerLogin .
         "&repo=" . $repository->Name;
 
     $token = generateInstallationToken($repository->InstallationId, $repository->Name);
@@ -28,7 +27,7 @@ function handleItem($repository)
         "labelsUrl" => $repoPrefix . "/labels",
         "userToken" => $gitHubUserToken,
         "botNameMarkdown" => "[" . $config->botName . "\[bot\]](https://github.com/apps/" . $config->botName . ")",
-        "dashboardUrl" => $botDashboardUrl . $prQueryString,
+        "dashboardUrl" => $config->dashboardUrl . $repoQueryString,
         "repositoryOwner" => $repositoryOwner,
         "repositoryName" => $repositoryName
     ];
