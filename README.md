@@ -92,7 +92,8 @@ GStraccini-bot runs automated tasks at regular intervals on its infrastructure:
 
 ## Useful Links
 
-- [GitHub Marketplace](https://github.com/marketplace/gstraccini-bot)
+- [GitHub Marketplace](https://github.com/marketplace/gstraccini-bot-service)
 - [GitHub App](https://github.com/apps/gstraccini)
 - [Repository on GitHub](https://github.com/guibranco/gstraccini-bot)
-- [Bot Dashboard](https://bot.straccini.com)
+- [Bot's Dashboard](https://bot.straccini.com)
+- [Bot's Documentation](https://docs.bot.straccini.com)
