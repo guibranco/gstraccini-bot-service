@@ -107,6 +107,12 @@
             "description": "Participation in the Hacktoberfest event",
             "text": "hacktoberfest",
             "textWithIcon": "hacktoberfest"
+        },
+        {
+            "color": "#FFCC00",
+            "description": "Issue or bug report is under investigation",
+            "text": "under investigation",
+            "textWithIcon": "🔍 under investigation"
         }
     ],
     "effort": [
@@ -319,6 +325,12 @@
             "description": "GitAuto label to trigger the app in a issue.",
             "text": "gitauto",
             "textWithIcon": "gitauto"
+        },
+        {
+            "color": "#FFFF00",
+            "description": "Kobit AI code analysis label.",
+            "text": "korbit-code-analysis",
+            "textWithIcon": "korbit-code-analysis"
         }
     ]
 }
