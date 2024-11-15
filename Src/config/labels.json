@@ -17,12 +17,12 @@
             "description": "Prevents automatic merging of pull requests",
             "text": "do-not-merge",
             "textWithIcon": "🧷 do-not-merge",
-            "color": "#5319E7"
+        },
+        {
             "color": "#5319E7",
             "description": "Automated processes or integrations",
             "text": "bot",
             "textWithIcon": "🤖 bot"
-        },
         },
         {
             "color": "#15E6EF",
