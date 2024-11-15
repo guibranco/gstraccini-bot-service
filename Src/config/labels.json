@@ -14,9 +14,9 @@
         },
         {
             "color": "#FF0000",
-            "description": "Prevents automatic merging of pull requests",
+            "description": "Prevents automatic merging of pull requests (gstraccini-bot)",
             "text": "do-not-merge",
-            "textWithIcon": "🧷 do-not-merge",
+            "textWithIcon": "🫷 do-not-merge"
         },
         {
             "color": "#5319E7",
