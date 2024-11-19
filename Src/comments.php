@@ -309,6 +309,15 @@ function execute_codacyBypass($config, $metadata, $comment): void
     bypassPullRequestAnalysis($comment->RepositoryOwner, $comment->RepositoryName, $comment->PullRequestNumber);
 }
 
+function execute_codacyReanalyzeCommit($config, $metadata, $comment): void
+{
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
+    $codacyUrl = "https://app.codacy.com/gh/{$comment->RepositoryOwner}/{$comment->RepositoryName}/commit/{$comment->HeadSha}";
+    $body = "Reanalyzing the commit {$metadata["headSha"]} in [Codacy]({$codacyUrl})! :warning:";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    reanalyzeCommit($comment->RepositoryOwner, $comment->RepositoryName, $metadata["headSha"]);
+}
+
 function execute_copyLabels($config, $metadata, $comment): void
 {
     $pattern = '/\b(\w+)\/(\w+)\b/';
@@ -460,8 +469,8 @@ function execute_createLabels($config, $metadata, $comment): void
     $labelsToUpdateObject = array();
     $labelsToCreate = array_filter($labelsToCreate, function ($label) use ($existingLabels, &$labelsToUpdateObject, $style) {
         $existingLabel = array_filter($existingLabels, function ($existingLabel) use ($label) {
-            return  strtolower($existingLabel["name"]) === strtolower($label["text"]) ||
-                    strtolower($existingLabel["name"]) === strtolower($label["textWithIcon"]);
+            return strtolower($existingLabel["name"]) === strtolower($label["text"]) ||
+                strtolower($existingLabel["name"]) === strtolower($label["textWithIcon"]);
         });
 
         $total = count($existingLabel);
@@ -489,7 +498,7 @@ function execute_createLabels($config, $metadata, $comment): void
     $totalLabelsToCreate = count($labelsToCreateObject);
     $totalLabelsToUpdate = count($labelsToUpdateObject);
 
-    echo "Creating labels {$totalLabelsToCreate} | Updating labels: {$totalLabelsToUpdate} | Style: {$style} | Categories: ".join(",", $categories)."\n";
+    echo "Creating labels {$totalLabelsToCreate} | Updating labels: {$totalLabelsToUpdate} | Style: {$style} | Categories: " . join(",", $categories) . "\n";
     if ($totalLabelsToCreate === 0 && $totalLabelsToUpdate === 0) {
         $body = array("body" => "No labels to create or update! :no_entry:");
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
