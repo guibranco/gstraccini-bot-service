@@ -309,6 +309,22 @@ function execute_codacyBypass($config, $metadata, $comment): void
     bypassPullRequestAnalysis($comment->RepositoryOwner, $comment->RepositoryName, $comment->PullRequestNumber);
 }
 
+/**
+ * Executes the process to reanalyze a commit in Codacy and updates GitHub with comments and reactions.
+ *
+ * @param array $config   Configuration data (currently unused).
+ * @param array $metadata Metadata for the GitHub API request:
+ *                        - 'token' (string): GitHub API token for authentication.
+ *                        - 'reactionUrl' (string): URL to post a reaction to the comment.
+ *                        - 'commentUrl' (string): URL to post a new comment.
+ *                        - 'headSha' (string): SHA of the commit being reanalyzed.
+ * @param object $comment Information about the triggering comment:
+ *                        - RepositoryOwner (string): Repository owner.
+ *                        - RepositoryName (string): Repository name.
+ *                        - HeadSha (string): SHA of the associated commit.
+ *
+ * @return void
+ */
 function execute_codacyReanalyzeCommit($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
