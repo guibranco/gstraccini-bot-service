@@ -33,7 +33,7 @@ function bypassPullRequestAnalysis(string $remoteOrganizationName, string $repos
         constant("USER_AGENT"),
         "api-token: " . $codacyApiToken,
         "Accept: application/json",
-        "Content-Type: application/json"
+        "Content-Type: application/json",
     );
 
     $request = new Request();
@@ -78,12 +78,12 @@ function reanalyzeCommit(string $remoteOrganizationName, string $repositoryName,
         constant("USER_AGENT"),
         "api-token: " . $codacyApiToken,
         "Accept: application/json",
-        "Content-Type: application/json"
+        "Content-Type: application/json",
     );
 
     $request = new Request();
 
-    $response = $request->post($baseUrl . $url, $headers, json_encode(array("commit" => $commitUUID, "cleanCache" => false)));
+    $response = $request->post($baseUrl . $url, $headers, json_encode(["commit" => $commitUUID, "cleanCache" => false]));
 
     if ($response->statusCode >= 300) {
         $info = json_encode(array("url" => $url, "response" => $response));
