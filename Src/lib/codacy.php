@@ -38,7 +38,7 @@ function bypassPullRequestAnalysis(string $remoteOrganizationName, string $repos
 
     $request = new Request();
 
-    $response = $request->post($baseUrl . $url, $headers);
+    $response = $request->post($baseUrl.$url, $headers);
 
     if ($response->statusCode >= 300) {
         $info = json_encode(array("url" => $url, "response" => $response));
@@ -83,7 +83,7 @@ function reanalyzeCommit(string $remoteOrganizationName, string $repositoryName,
 
     $request = new Request();
 
-    $response = $request->post($baseUrl . $url, $headers, json_encode(["commit" => $commitUUID, "cleanCache" => false]));
+    $response = $request->post($baseUrl.$url, $headers, json_encode(["commit" => $commitUUID, "cleanCache" => false]));
 
     if ($response->statusCode >= 300) {
         $info = json_encode(array("url" => $url, "response" => $response));
