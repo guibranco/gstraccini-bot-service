@@ -44,21 +44,30 @@ class MarkdownGroupCheckboxValidator
                 "unchecked" => [],
             ];
 
-            $hasChecked = false;
+            $checkedCount = 0;
+            $checkboxTexts = [];
             foreach ($checkboxMatches as $checkboxMatch) {
                 $checkboxText = trim($checkboxMatch[2]);
+                $checkboxTexts[] = strtolower($checkboxText);
                 if (strtolower($checkboxMatch[1]) === "x") {
                     $groupResult["checked"][] = $checkboxText;
-                    $hasChecked = true;
+                    $checkedCount++;
                 } else {
                     $groupResult["unchecked"][] = $checkboxText;
                 }
             }
 
-            if (!$hasChecked) {
-                $report[
-                    "errors"
-                ][] = "No checkbox selected in group: $groupTitle";
+            if (
+                count($checkboxMatches) === 2 &&
+                in_array("yes", $checkboxTexts) &&
+                in_array("no", $checkboxTexts) &&
+                $checkedCount !== 1
+            ) {
+                $report["errors"][] = "Invalid selection in group: $groupTitle. Please select exactly one option (Yes or No).";
+            }
+
+            if ($checkedCount === 0) {
+                $report["errors"][] = "No checkbox selected in group: $groupTitle";
             }
 
             $report["groups"][] = $groupResult;
