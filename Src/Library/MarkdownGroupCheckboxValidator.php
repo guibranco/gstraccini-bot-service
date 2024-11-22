@@ -65,7 +65,7 @@ class MarkdownGroupCheckboxValidator
             ) {
                 $report["errors"][] = "Invalid selection in group: $groupTitle. Please select exactly one option (Yes or No).";
             }
-            
+
             if ($checkedCount === 0) {
                 $report["errors"][] = "No checkbox selected in group: $groupTitle";
             }
