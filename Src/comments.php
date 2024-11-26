@@ -117,13 +117,13 @@ function execute_help($config, $metadata, $comment): void
             $prefix = "";
             foreach ($command->parameters as $parameter) {
                 $parameters .= " <" . $parameter->parameter . ">";
-                $parametersHelp .= "\t- `" . $parameter->parameter . "`: `[" .
+                $parametersHelp .= "\t- `" . $parameter->parameter . "` - `[" .
                     ($parameter->required ? "required" : "optional") . "]` " .
                     $parameter->description . "\r\n";
             }
         }
 
-        $helpComment .= "- {$prefix}`@{$config->botName} {$command->command}{$parameters}`:";
+        $helpComment .= "- {$prefix}`@{$config->botName} {$command->command}{$parameters}` - ";
         $helpComment .= $command->description . $inDevelopment . "\r\n";
         $helpComment .= $parametersHelp;
     }
