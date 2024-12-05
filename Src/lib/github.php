@@ -199,7 +199,7 @@ function setCheckRunInProgress(array $metadata, string $commitId, string $type):
         "status" => "in_progress",
         "output" => array(
             "title" => "Running checks...",
-            "summary" => "",
+            "summary" => "GStraccini is checking this " . strtolower($type) . "!",
             "text" => ""
         )
     );
