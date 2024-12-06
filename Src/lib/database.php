@@ -3,11 +3,29 @@
 use GuiBranco\Pancake\GUIDv4;
 
 function connectToDatabase($isRetry = false)
+
+function createIssuesTable() {
+    $conn = connectToDatabase();
+    $query = "CREATE TABLE IF NOT EXISTS issues (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        issue_id INT NOT NULL,
+        assignee VARCHAR(255) NOT NULL,
+        last_activity DATETIME NOT NULL,
+        labels VARCHAR(255),
+        UNIQUE(issue_id)
+    )";
+    $conn->query($query);
+    $conn->close();
+}
+
 {
     global $mySqlHost, $mySqlUser, $mySqlPassword, $mySqlDatabase;
 
     try {
         $mysqli = new mysqli($mySqlHost, $mySqlUser, $mySqlPassword, $mySqlDatabase);
+// Create the issues table if it doesn't exist
+createIssuesTable();
+
         if ($mysqli->connect_errno && $isRetry === false) {
             sleep(10);
             return connectToDatabase(true);
