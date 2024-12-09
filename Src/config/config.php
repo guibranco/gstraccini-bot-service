@@ -1,5 +1,7 @@
 <?php
 
+$codecovApiToken = getenv('CODECOV_API_TOKEN');
+
 ini_set("default_charset", "UTF-8");
 ini_set("date.timezone", "Europe/Dublin");
 mb_internal_encoding("UTF-8");

@@ -4,6 +4,14 @@ namespace Src;
 
 use GuiBranco\Pancake\Request;
 
+    public function registerRepository($repositoryName, $accessToken) {
+        $url = $this->apiBaseUrl . '/repository';
+        $headers = array_merge($this->headers, ['Authorization: Bearer ' . $accessToken]);
+        $data = ['repository' => $repositoryName];
+        $response = Request::post($url, $headers, $data);
+        return $response;
+    }
+
 class CodecovApiService
 {
     private $apiBaseUrl = 'https://api.codecov.io/v2';
