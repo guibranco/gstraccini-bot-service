@@ -8,16 +8,16 @@
     "packages": [
         {
             "name": "guibranco/pancake",
-            "version": "v0.14.15",
+            "version": "v0.14.21",
             "source": {
                 "type": "git",
                 "url": "https://github.com/guibranco/pancake.git",
-                "reference": "02b7fd474a3ccdacb38f0932f2c1776f3d5481e8"
+                "reference": "d5eceda80bed9f7831a789dc5fd9e288646b9491"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/guibranco/pancake/zipball/02b7fd474a3ccdacb38f0932f2c1776f3d5481e8",
-                "reference": "02b7fd474a3ccdacb38f0932f2c1776f3d5481e8",
+                "url": "https://api.github.com/repos/guibranco/pancake/zipball/d5eceda80bed9f7831a789dc5fd9e288646b9491",
+                "reference": "d5eceda80bed9f7831a789dc5fd9e288646b9491",
                 "shasum": ""
             },
             "require-dev": {
@@ -42,9 +42,9 @@
             "description": "The Pancake project, a toolkit for PHP projects",
             "support": {
                 "issues": "https://github.com/guibranco/pancake/issues",
-                "source": "https://github.com/guibranco/pancake/tree/v0.14.15"
+                "source": "https://github.com/guibranco/pancake/tree/v0.14.21"
             },
-            "time": "2024-11-26T10:18:07+00:00"
+            "time": "2024-12-09T03:24:36+00:00"
         },
         {
             "name": "lcobucci/jwt",
