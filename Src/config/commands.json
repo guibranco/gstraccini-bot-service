@@ -109,6 +109,11 @@
         "requiresPullRequestOpen": true
     },
     {
+        "command": "codacy reanalyze commit",
+        "description": "Reanalyzes the [Codacy](https://www.codacy.com) last commit in a pull request.",
+        "requiresPullRequestOpen": true
+    },
+    {
         "command": "copy labels",
         "description": "Copy the labels from another repository.",
         "parameters": [

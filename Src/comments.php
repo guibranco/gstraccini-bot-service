@@ -117,13 +117,13 @@ function execute_help($config, $metadata, $comment): void
             $prefix = "";
             foreach ($command->parameters as $parameter) {
                 $parameters .= " <" . $parameter->parameter . ">";
-                $parametersHelp .= "\t- `" . $parameter->parameter . "`: `[" .
+                $parametersHelp .= "\t- `" . $parameter->parameter . "` - `[" .
                     ($parameter->required ? "required" : "optional") . "]` " .
                     $parameter->description . "\r\n";
             }
         }
 
-        $helpComment .= "- {$prefix}`@{$config->botName} {$command->command}{$parameters}`:";
+        $helpComment .= "- {$prefix}`@{$config->botName} {$command->command}{$parameters}` - ";
         $helpComment .= $command->description . $inDevelopment . "\r\n";
         $helpComment .= $parametersHelp;
     }
@@ -309,6 +309,31 @@ function execute_codacyBypass($config, $metadata, $comment): void
     bypassPullRequestAnalysis($comment->RepositoryOwner, $comment->RepositoryName, $comment->PullRequestNumber);
 }
 
+/**
+ * Executes the process to reanalyze a commit in Codacy and updates GitHub with comments and reactions.
+ *
+ * @param array $config   Configuration data (currently unused).
+ * @param array $metadata Metadata for the GitHub API request:
+ *                        - 'token' (string): GitHub API token for authentication.
+ *                        - 'reactionUrl' (string): URL to post a reaction to the comment.
+ *                        - 'commentUrl' (string): URL to post a new comment.
+ *                        - 'headSha' (string): SHA of the commit being reanalyzed.
+ * @param object $comment Information about the triggering comment:
+ *                        - RepositoryOwner (string): Repository owner.
+ *                        - RepositoryName (string): Repository name.
+ *                        - HeadSha (string): SHA of the associated commit.
+ *
+ * @return void
+ */
+function execute_codacyReanalyzeCommit($config, $metadata, $comment): void
+{
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
+    $codacyUrl = "https://app.codacy.com/gh/{$comment->RepositoryOwner}/{$comment->RepositoryName}/commits/{$metadata["headSha"]}/issues";
+    $body = "Reanalyzing the commit {$metadata["headSha"]} in [Codacy]({$codacyUrl})! :warning:";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    reanalyzeCommit($comment->RepositoryOwner, $comment->RepositoryName, $metadata["headSha"]);
+}
+
 function execute_copyLabels($config, $metadata, $comment): void
 {
     $pattern = '/\b(\w+)\/(\w+)\b/';
@@ -460,8 +485,8 @@ function execute_createLabels($config, $metadata, $comment): void
     $labelsToUpdateObject = array();
     $labelsToCreate = array_filter($labelsToCreate, function ($label) use ($existingLabels, &$labelsToUpdateObject, $style) {
         $existingLabel = array_filter($existingLabels, function ($existingLabel) use ($label) {
-            return  strtolower($existingLabel["name"]) === strtolower($label["text"]) ||
-                    strtolower($existingLabel["name"]) === strtolower($label["textWithIcon"]);
+            return strtolower($existingLabel["name"]) === strtolower($label["text"]) ||
+                strtolower($existingLabel["name"]) === strtolower($label["textWithIcon"]);
         });
 
         $total = count($existingLabel);
@@ -489,7 +514,7 @@ function execute_createLabels($config, $metadata, $comment): void
     $totalLabelsToCreate = count($labelsToCreateObject);
     $totalLabelsToUpdate = count($labelsToUpdateObject);
 
-    echo "Creating labels {$totalLabelsToCreate} | Updating labels: {$totalLabelsToUpdate} | Style: {$style} | Categories: ".join(",", $categories)."\n";
+    echo "Creating labels {$totalLabelsToCreate} | Updating labels: {$totalLabelsToUpdate} | Style: {$style} | Categories: " . join(",", $categories) . "\n";
     if ($totalLabelsToCreate === 0 && $totalLabelsToUpdate === 0) {
         $body = array("body" => "No labels to create or update! :no_entry:");
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
