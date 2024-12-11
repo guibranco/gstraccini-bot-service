@@ -49,6 +49,8 @@ GStraccini-bot can handle various tasks. Here’s a list of commands:
 - `@gstraccini appveyor reset`: Resets the AppVeyor build number for a repository.
 - `@gstraccini bump version <version> <project>`: Bumps the [.NET version](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core) in `.csproj` files.
 - `@gstraccini change runner <runner> <workflow> <jobs>`: Changes the GitHub Actions runner in a workflow file.
+- `@gstraccini codacy bypass`: Bypass a [Codacy](https://codacy.com) analysis.
+- `@gstraccini codacy reanalyze commit`: Trigger a reanalyze in [Codacy](https://codacy.com) of the last commit of the pull request.
 - `@gstraccini csharpier`: Formats C# code using [CSharpier](https://csharpier.com).
 - `@gstraccini fix csproj`: Updates the `.csproj` file with NuGet package versions (for **.NET Framework** projects).
 - `@gstraccini prettier`: Formats code using [Prettier](https://prettier.io).
@@ -97,5 +99,6 @@ GStraccini-bot runs automated tasks at regular intervals on its infrastructure:
 
 - [GitHub Marketplace](https://github.com/marketplace/gstraccini-bot)
 - [GitHub App](https://github.com/apps/gstraccini)
-- [Repository on GitHub](https://github.com/guibranco/gstraccini-bot)
-- [Bot Dashboard](https://bot.straccini.com)
+- [Repository on GitHub](https://github.com/guibranco/gstraccini-bot-service)
+- [Bot's Dashboard](https://bot.straccini.com)
+- [Bot's Documentation](https://docs.bot.straccini.com)
