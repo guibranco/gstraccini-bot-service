@@ -481,8 +481,11 @@ function main()
     foreach ($items as $item) {
         echo "Sequence: {$item->Sequence}\n";
         echo "Delivery ID: {$item->DeliveryIdText}\n";
-        updateTable($table, $item->Sequence);
-        handleItem($item);
+        if (updateTable($table, $item->Sequence)) {
+            handleItem($item);
+        } else {
+            echo "Skipping item since it was already handled.";
+        }
         echo str_repeat("=-", 50) . "=\n";
     }
     $result = ob_get_clean();
