@@ -27,7 +27,7 @@ function connectToDatabase($isRetry = false)
     }
 }
 
-function readTable($tableName, $where = null): array
+function readTable($tableName, $where = null): ?array
 {
     $mysqli = connectToDatabase();
     $defaultWhere = "Processed = 0 ORDER BY Sequence ASC LIMIT 10";
