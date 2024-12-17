@@ -481,10 +481,26 @@ function main()
     foreach ($items as $item) {
         echo "Sequence: {$item->Sequence}\n";
         echo "Delivery ID: {$item->DeliveryIdText}\n";
-        if (updateTable($table, $item->Sequence)) {
-            handleItem($item);
-        } else {
-            echo "Skipping item since it was already handled.";
+        try {
+            $updateResult = updateTable($table, $item->Sequence);
+            if ($updateResult) {
+                handleItem($item);
+            } else {
+                $message = sprintf(
+                    "Skipping item (Sequence: %d, Delivery ID: %s) since it was already handled.",
+                    $item->Sequence,
+                    $item->DeliveryIdText
+                );
+                error_log($message);
+                echo $message;
+            }
+        } catch (Exception $e) {
+            error_log(sprintf(
+                "Failed to update item (Sequence: %d): %s",
+                $item->Sequence,
+                $e->getMessage()
+            ));
+            throw $e;
         }
         echo str_repeat("=-", 50) . "=\n";
     }
