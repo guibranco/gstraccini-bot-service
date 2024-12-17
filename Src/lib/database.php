@@ -62,9 +62,11 @@ function updateTable($tableName, $sequence): bool
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param("i", $sequence);
     $succeeded = false;
+    
     if ($stmt->execute()) {
         $succeeded = $stmt->affected_rows === 1;
     }
+    
     $stmt->close();
     $mysqli->close();
     return $succeeded;
