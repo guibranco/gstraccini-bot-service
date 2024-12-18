@@ -1,6 +1,6 @@
 <?php
 
-namespace Src;
+namespace GuiBranco\GStracciniBot\Library;
 
 use GuiBranco\Pancake\Request;
 
