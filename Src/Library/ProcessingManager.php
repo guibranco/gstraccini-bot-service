@@ -1,5 +1,7 @@
 <?php
 
+namespace GuiBranco\GStracciniBot\Library;
+
 using GuiBranco\Pancake\ILogger;
 
 class ProcessingManager
