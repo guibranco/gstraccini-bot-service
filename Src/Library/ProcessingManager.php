@@ -6,13 +6,13 @@ using GuiBranco\Pancake\ILogger;
 
 class ProcessingManager
 {
-    private $table;
-    private $logger;
+    private $_table;
+    private $_logger;
 
     public function __construct(string $table, ILogger $logger)
     {
-        $this->table = $_table;
-        $this->logger = $_logger;
+        $this->_table = $table;
+        $this->_logger = $logger;
     }
 
     public function process(callable $handler): void
