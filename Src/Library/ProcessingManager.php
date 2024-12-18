@@ -1,11 +1,13 @@
 <?php
 
+using GuiBranco\Pancake\ILogger;
+
 class ProcessingManager
 {
     private $table;
     private $logger;
 
-    public function __construct(string $table, LoggerInterface $logger)
+    public function __construct(string $table, ILogger $logger)
     {
         $this->table = $table;
         $this->logger = $logger;
@@ -13,7 +15,7 @@ class ProcessingManager
 
     public function process(callable $handler): void
     {
-        $items = readTable($table);
+        $items = readTable($this->table);
         foreach ($items as $item) {
             echo "Sequence: {$item->Sequence}\n";
             echo "Delivery ID: {$item->DeliveryIdText}\n";
@@ -35,14 +37,14 @@ class ProcessingManager
                 $item->Sequence,
                 $item->DeliveryIdText
             );
-            $this->logger->info($message);
+            $this->logger->log($message, $item);
             echo $message;
         } catch (Exception $e) {
-            $this->logger->error(sprintf(
+            $this->logger->log(sprintf(
                 "Failed to process item (Sequence: %d): %s",
                 $item->Sequence,
                 $e->getMessage()
-            ));
+            ), $item);
             throw $e;
         }
     }
