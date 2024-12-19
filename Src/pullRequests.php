@@ -158,9 +158,9 @@ function checkPullRequestDescription($metadata, $pullRequestUpdated)
             // The check should ask to review the PR description (if there are checkbox on it, set is as failed, otherwise, set it as succeeded).
             return;
         }
-        
+
         $defaultMessage = "Please provide a description for this pull request.";
-        updatePullRequestDescription($metadata, $defaultMessage);       
+        updatePullRequestDescription($metadata, $defaultMessage);
         // add a comment with the same content.
     }
 
