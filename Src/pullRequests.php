@@ -154,11 +154,14 @@ function checkPullRequestDescription($metadata, $pullRequestUpdated)
     if ($bodyLength === 0) {
         $templateContent = getPullRequestTemplate($metadata);
         if ($templateContent) {
-            updatePullRequestDescription($metadata, $pullRequestUpdated->number, $templateContent);
-        } else {
-            $defaultMessage = "Please provide a description for this pull request.";
-            updatePullRequestDescription($metadata, $pullRequestUpdated->number, $defaultMessage);
+            updatePullRequestDescription($metadata, $templateContent);
+            // The check should ask to review the PR description (if there are checkbox on it, set is as failed, otherwise, set it as succeeded).
+            return;
         }
+        
+        $defaultMessage = "Please provide a description for this pull request.";
+        updatePullRequestDescription($metadata, $defaultMessage);       
+        // add a comment with the same content.
     }
 
     if ($bodyLength <= 250) {
