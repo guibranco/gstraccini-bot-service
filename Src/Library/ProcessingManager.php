@@ -36,16 +36,16 @@ class ProcessingManager
 
             $message = sprintf(
                 "Skipping item (Table: %s, Sequence: %d, Delivery ID: %s) since it was already handled.",
-                $this->_table,
+                $this->table,
                 $item->Sequence,
                 $item->DeliveryIdText
             );
             $this->logger->log($message, $item);
             echo $message;
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $this->logger->log(sprintf(
                 "Failed to process item (Table: %s, Sequence: %d): %s",
-                $this->_table,
+                $this->table,
                 $item->Sequence,
                 $e->getMessage()
             ), $item);
