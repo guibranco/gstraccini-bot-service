@@ -160,7 +160,7 @@ function checkPullRequestDescription($metadata, $pullRequestUpdated)
             updatePullRequestDescription($metadata, $pullRequestUpdated->number, $defaultMessage);
         }
     }
-  
+
     if ($bodyLength <= 250) {
         setCheckRunFailed($metadata, $checkRunId, $type, "Pull request description too short (at least 250 characters long).");
         return;
