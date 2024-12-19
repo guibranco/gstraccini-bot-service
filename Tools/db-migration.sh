@@ -20,7 +20,7 @@ DRY_RUN="$5"
 
 CONNECT=$(
     mysql -h "$MYSQL_HOST" --protocol tcp "--user=$MYSQL_USER" --batch --skip-column-names -e \
-        "SHOW DATABASES LIKE '$DBNAME';" | grep "$DBNAME" >/dev/null
+        "SHOW DATABASES LIKE '$MYSQL_DB';" | grep "$MYSQL_DB" >/dev/null
     echo "$?"
 )
 
@@ -58,8 +58,6 @@ SCHEMA_TABLE=$(mysql -h "$MYSQL_HOST" --protocol tcp "--user=$MYSQL_USER" "--dat
 if [ "$SCHEMA_TABLE" -eq 1 ]; then
     if [ "$DRY_RUN" == "--dry-run" ]; then
         echo "The schema version table does exist."
-    else
-        echo "::notice file=$0,line=$LINENO::The schema version table does exist."
     fi
     echo "- :thumbsup: The \`schema version\` table already exists." >>"$GITHUB_STEP_SUMMARY"
 else
@@ -70,7 +68,9 @@ else
         echo "file[$INDEX]=schema-version.sql" >>"$GITHUB_OUTPUT"
         INDEX=$((INDEX + 1))
     else
-        echo "::warning file=$0,line=$LINENO::The schema version table does not exist."
+        if [ "$DB_ENV" == "PRD" ]; then
+            echo "::warning file=$0,line=$LINENO::The schema version table does not exist."
+        fi
         mysql -h "$MYSQL_HOST" --protocol tcp "--user=$MYSQL_USER" "--database=$MYSQL_DB" <../Tools/schema-version.sql
     fi
     echo "- :white_check_mark: The \`schema version\` table was created." >>"$GITHUB_STEP_SUMMARY"
@@ -95,19 +95,15 @@ for FILE in *.sql; do
     if [ "$EXISTS" -eq 1 ]; then
         if [ "$DRY_RUN" == "--dry-run" ]; then
             echo "File $FILE already processed"
-        else
-            echo "::notice file=$0,line=$LINENO::File $FILE already processed"
         fi
-        echo "- :thumbsup: The \`$FILE\` file was already processed." >>"$GITHUB_STEP_SUMMARY"
+        echo "- :thumbsup: The file \`$FILE\` was already processed." >>"$GITHUB_STEP_SUMMARY"
     else
         if [ "$DRY_RUN" == "--dry-run" ]; then
             echo "Running file $FILE"
-        else
-            echo "::warning file=$0,line=$LINENO::Running file $FILE"
         fi
         cat "$FILE" >>$WORKING_SQL_FILE
         echo "INSERT INTO schema_version (Filename, Checksum) VALUES ('$FILE', '$sha256');" >>$WORKING_SQL_FILE
-        echo "- :white_check_mark: The \`$FILE\` file was processed." >>"$GITHUB_STEP_SUMMARY"
+        echo "- :white_check_mark: The file \`$FILE\` was processed." >>"$GITHUB_STEP_SUMMARY"
         FILES="$FILES- $FILE\n"
         echo "file[$INDEX]=$FILE" >>"$GITHUB_OUTPUT"
         INDEX=$((INDEX + 1))
@@ -122,8 +118,9 @@ else
     err=$(mysql -h "$MYSQL_HOST" --protocol tcp "--user=$MYSQL_USER" "--database=$MYSQL_DB" <$WORKING_SQL_FILE 2>&1)
     if [ "$err" != "" ]; then
         echo "::error file=$0,line=$LINENO::$err"
-        echo "db_migration_error=true" >>"$GITHUB_ENV"
-        echo "error=$err" >>"$GITHUB_OUTPUT"
+        echo "error=true" >>"$GITHUB_OUTPUT"        
+        escaped_error=$(echo "$err" | sed 's/%/%25/g' | sed 's/\r/%0D/g' | sed 's/\n/%0A/g')
+        echo "error_message=$escaped_error" >>"$GITHUB_OUTPUT"
         exit 1
     fi
 fi
