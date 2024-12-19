@@ -2,7 +2,7 @@
 
 namespace GuiBranco\GStracciniBot\Library;
 
-using GuiBranco\Pancake\ILogger;
+use GuiBranco\Pancake\ILogger;
 
 class ProcessingManager
 {
