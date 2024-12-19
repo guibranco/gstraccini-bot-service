@@ -3,6 +3,7 @@
 require_once "config/config.php";
 
 use GuiBranco\GStracciniBot\Library\MarkdownGroupCheckboxValidator;
+use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\GStracciniBot\Library\PullRequestCodeScanner;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
@@ -472,38 +473,14 @@ function updateBranch($metadata, $pullRequestUpdated)
     doRequestGitHub($metadata["token"], $url, $body, "PUT");
 }
 
-function main()
+function main(): void
 {
     $config = loadConfig();
     ob_start();
     $table = "github_pull_requests";
-    $items = readTable($table);
-    foreach ($items as $item) {
-        echo "Sequence: {$item->Sequence}\n";
-        echo "Delivery ID: {$item->DeliveryIdText}\n";
-        try {
-            $updateResult = updateTable($table, $item->Sequence);
-            if ($updateResult) {
-                handleItem($item);
-            } else {
-                $message = sprintf(
-                    "Skipping item (Sequence: %d, Delivery ID: %s) since it was already handled.",
-                    $item->Sequence,
-                    $item->DeliveryIdText
-                );
-                error_log($message);
-                echo $message;
-            }
-        } catch (Exception $e) {
-            error_log(sprintf(
-                "Failed to update item (Sequence: %d): %s",
-                $item->Sequence,
-                $e->getMessage()
-            ));
-            throw $e;
-        }
-        echo str_repeat("=-", 50) . "=\n";
-    }
+    global $logger;
+    $processor = new ProcessingManager($table, $logger);
+    $processor->process('handleItem');
     $result = ob_get_clean();
     if ($config->debug->all === true || $config->debug->pullRequests === true) {
         echo $result;
