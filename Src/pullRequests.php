@@ -3,6 +3,7 @@
 require_once "config/config.php";
 
 use GuiBranco\GStracciniBot\Library\MarkdownGroupCheckboxValidator;
+use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\GStracciniBot\Library\PullRequestCodeScanner;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
@@ -472,19 +473,14 @@ function updateBranch($metadata, $pullRequestUpdated)
     doRequestGitHub($metadata["token"], $url, $body, "PUT");
 }
 
-function main()
+function main(): void
 {
     $config = loadConfig();
     ob_start();
     $table = "github_pull_requests";
-    $items = readTable($table);
-    foreach ($items as $item) {
-        echo "Sequence: {$item->Sequence}\n";
-        echo "Delivery ID: {$item->DeliveryIdText}\n";
-        updateTable($table, $item->Sequence);
-        handleItem($item);
-        echo str_repeat("=-", 50) . "=\n";
-    }
+    global $logger;
+    $processor = new ProcessingManager($table, $logger);
+    $processor->process('handleItem');
     $result = ob_get_clean();
     if ($config->debug->all === true || $config->debug->pullRequests === true) {
         echo $result;

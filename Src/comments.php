@@ -4,6 +4,7 @@ require_once "config/config.php";
 
 use GuiBranco\GStracciniBot\Library\LabelService;
 use GuiBranco\GStracciniBot\Library\RepositoryManager;
+use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
 
@@ -777,14 +778,9 @@ function main(): void
     $config = loadConfig();
     ob_start();
     $table = "github_comments";
-    $items = readTable($table);
-    foreach ($items as $item) {
-        echo "Sequence: {$item->Sequence}\n";
-        echo "Delivery ID: {$item->DeliveryIdText}\n";
-        updateTable($table, $item->Sequence);
-        handleItem($item);
-        echo str_repeat("=-", 50) . "=\n";
-    }
+    global $logger;
+    $processor = new ProcessingManager($table, $logger);
+    $processor->process('handleItem');
     $result = ob_get_clean();
     if ($config->debug->all === true || $config->debug->comments === true) {
         echo $result;
