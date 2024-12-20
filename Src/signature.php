@@ -34,7 +34,7 @@ function main(): void
 {
     $config = loadConfig();
     ob_start();
-    $table = "gitub_signature";
+    $table = "github_signature";
     global $logger;
     $processor = new ProcessingManager($table, $logger);
     $processor->process('handleItem');
