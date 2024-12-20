@@ -2,6 +2,7 @@
 
 require_once "config/config.php";
 
+use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
 
@@ -29,19 +30,14 @@ function handleItem($push)
     setCheckRunSucceeded($metadata, $checkRunId, "commit");
 }
 
-function main()
+function main(): void
 {
     $config = loadConfig();
     ob_start();
     $table = "github_pushes";
-    $items = readTable($table);
-    foreach ($items as $item) {
-        echo "Sequence: {$item->Sequence}\n";
-        echo "Delivery ID: {$item->DeliveryIdText}\n";
-        updateTable($table, $item->Sequence);
-        handleItem($item);
-        echo str_repeat("=-", 50) . "=\n";
-    }
+    global $logger;
+    $processor = new ProcessingManager($table, $logger);
+    $processor->process('handleItem');
     $result = ob_get_clean();
     if ($config->debug->all === true || $config->debug->pushes === true) {
         echo $result;
