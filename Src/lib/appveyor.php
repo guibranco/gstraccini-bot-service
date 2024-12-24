@@ -45,7 +45,7 @@ function findProjectByRepositorySlug($repositorySlug): Object
         return null;
     }
 
-    $projects = json_decode($projectsResponse->body);
+    $projects = json_decode($projectsResponse->getBody());
     if (isset($projects->message) && !empty($projects->message)) {
         $error = new \stdClass();
         $error->error = true;
