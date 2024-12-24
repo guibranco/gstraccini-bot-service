@@ -151,7 +151,7 @@ function checkPullRequestDescription($metadata, $pullRequestUpdated)
 {
     $type = "pull request description";
     $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, $type);
-    $bodyLength = isset($pullRequestUpdated->getBody()) ? strlen($pullRequestUpdated->getBody()) : 0;
+    $bodyLength = empty($pullRequestUpdated->getBody()) === false ? strlen($pullRequestUpdated->getBody()) : 0;
     if ($bodyLength <= 250) {
         setCheckRunFailed($metadata, $checkRunId, $type, "Pull request description too short (at least 250 characters long).");
         return;
