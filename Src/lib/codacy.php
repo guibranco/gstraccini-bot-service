@@ -86,7 +86,7 @@ function reanalyzeCommit(string $remoteOrganizationName, string $repositoryName,
     $response = $request->post($baseUrl.$url, $headers, json_encode(["commit" => $commitUUID, "cleanCache" => false]));
 
     if ($response->getStatusCode() >= 300) {
-        die("Invalid GitHub response.\n" . $response->toJson());
+        die("Invalid Codacy response.\n" . $response->toJson());
     }
 
     return $response;
