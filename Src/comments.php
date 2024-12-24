@@ -425,7 +425,7 @@ function execute_copyIssue($config, $metadata, $comment): void
 
     $targetRepository = $matches[1] . "/" . $matches[2];
     $newIssueUrl = "repos/" . $targetRepository . "/issues";
-    $newIssue = array("title" => $issueUpdated->title, "body" => $issueUpdated->getBody(), "labels" => $issueUpdated->labels);
+    $newIssue = array("title" => $issueUpdated->title, "body" => $issueUpdated->body, "labels" => $issueUpdated->labels);
 
     $createdIssueResponse = doRequestGitHub($metadata["token"], $newIssueUrl, $newIssue, "POST");
     if ($createdIssueResponse->getStatusCode() !== 201) {
