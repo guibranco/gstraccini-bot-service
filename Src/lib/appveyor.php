@@ -1,8 +1,9 @@
 <?php
 
 use GuiBranco\Pancake\Request;
+use GuiBranco\Pancake\Response;
 
-function requestAppVeyor($url, $data = null, $isPut = false)
+function requestAppVeyor($url, $data = null, $isPut = false): Response
 {
     global $appVeyorKey, $logger;
 
@@ -27,15 +28,15 @@ function requestAppVeyor($url, $data = null, $isPut = false)
         $response = $request->get($url, $headers);
     }
 
-    if ($response->statusCode >= 300) {
-        $info = json_encode(array("url" => $url, "request" => json_encode($data, true), "response" => $response));
-        $logger->log("Error on AppVeyor request", $info);
+    if ($response->getStatusCode() >= 300) {
+        $info = $response->toJson();
+        $logger->log("Invalid AppVeyor response", $info);
     }
 
     return $response;
 }
 
-function findProjectByRepositorySlug($repositorySlug)
+function findProjectByRepositorySlug($repositorySlug): Object
 {
     $searchSlug = strtolower($repositorySlug);
 
@@ -44,7 +45,7 @@ function findProjectByRepositorySlug($repositorySlug)
         return null;
     }
 
-    $projects = json_decode($projectsResponse->body);
+    $projects = json_decode($projectsResponse->getBody());
     if (isset($projects->message) && !empty($projects->message)) {
         $error = new \stdClass();
         $error->error = true;
