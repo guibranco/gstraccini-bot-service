@@ -21,7 +21,7 @@ class CodecovApiService
         $url = $this->apiBaseUrl . $endpoint;
         $response = $this->request->get($url, $this->headers);
 
-        return json_decode($response->body, true);
+        return json_decode($response->getBody(), true);
     }
 
     public function getPullRequests($repoId)
