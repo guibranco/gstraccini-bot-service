@@ -74,9 +74,11 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
     }
 
     $statusCode = $response->getStatusCode();
-    if (($statusCode <= 0 || $statusCode >= 300) && ($statusCode !== 404 || $method !== "GET")) {
-        $info = $response->toJson();
-        $logger->log("Invalid GitHub response", $info);
+    $info = $response->toJson();
+    if ($statusCode <= 0 || ($statusCode >= 300 && $statusCode !== 404)) {         
+         $logger->log("Invalid GitHub response", $info);
+    } elseif (empty($response->getBody()) && $method !== "DELETE" && $statusCode !== 204) {
+        $logger->log("Unexpected empty response", $info);
     }
 
     return $response;
