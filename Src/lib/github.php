@@ -76,7 +76,7 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
     $statusCode = $response->getStatusCode();
     if (($statusCode <= 0 || $statusCode >= 300) && ($statusCode !== 404 || $method !== "GET")) {
         $info = $response->toJson();
-        $logger->log("Error on GitHub request", $info);
+        $logger->log("Invalid GitHub response", $info);
     }
 
     return $response;
@@ -102,7 +102,7 @@ function getPullRequestDiff(array $metadata): Response
     $statusCode = $response->getStatusCode();
     if ($statusCode <= 0 || $statusCode >= 300) {
         $info = $response->toJson();
-        $logger->log("Error on GitHub request", $info);
+        $logger->log("Invalid GitHub response", $info);
     }
 
     return $response;
@@ -165,7 +165,8 @@ function generateInstallationToken(string $installationId, string $repositoryNam
     $response = doRequestGitHub($gitHubAppToken, $url, $data, "POST");
 
     if ($response->getStatusCode() >= 300) {
-        die("Invalid GitHub response.\n" . $response->toJson());
+        $info = $response->toJson();
+        $logger->log("Invalid GitHub response", $info);
     }
 
     $json = json_decode($response->getBody());
@@ -208,7 +209,8 @@ function setCheckRunInProgress(array $metadata, string $commitId, string $type):
     $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"], $checkRunBody, "POST");
 
     if ($response->getStatusCode() >= 300 || empty($response->getBody()) === true) {
-        die("Invalid GitHub response.\n" . $response->toJson());
+        $info = $response->toJson();
+        $logger->log("Invalid GitHub response", $info);
     }
 
     $result = json_decode($response->getBody());
@@ -216,13 +218,13 @@ function setCheckRunInProgress(array $metadata, string $commitId, string $type):
 }
 
 /**
- * The function `setCheckRunFailed` updates a GitHub check run to mark it as failed with specific
+ * The function `setCheckRunFailed` updates a GitHub check run to mark it as failed with a specific
  * details.
  *
  * @param array metadata The `metadata` parameter is an array containing information needed for the
  * GitHub check run. It includes the following keys:
  * @param int checkRunId The `checkRunId` parameter is an integer that represents the unique identifier
- * of a specific check run in GitHub. It is used to identify the check run that you want to update with
+ * of a specific check run in GitHub. It identifies the check run you want to update with
  * the new status and details provided in the function `setCheckRunFailed`.
  * @param string type The `type` parameter in the `setCheckRunFailed` function represents the type of
  * check that was performed. It is used to generate the name and summary for the check run that is
@@ -248,7 +250,8 @@ function setCheckRunFailed(array $metadata, int $checkRunId, string $type, strin
     $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
 
     if ($response->getStatusCode() >= 300) {
-        die("Invalid GitHub response.\n" . $response->toJson());
+        $info = $response->toJson();
+        $logger->log("Invalid GitHub response", $info);
     }
 }
 
@@ -256,7 +259,7 @@ function setCheckRunFailed(array $metadata, int $checkRunId, string $type, strin
  * The function `setCheckRunSucceeded` updates a GitHub check run to mark it as completed and
  * successful with specific details.
  *
- * @param array metadata The `metadata` parameter is an array containing information required for
+ * @param array metadata The `metadata` parameter is an array containing the information required for
  * setting a check run as succeeded. It includes the following keys:
  * @param int checkRunId The `checkRunId` parameter in the `setCheckRunSucceeded` function is an
  * integer that represents the unique identifier of the check run on GitHub that you want to update.
@@ -283,6 +286,7 @@ function setCheckRunSucceeded(array $metadata, int $checkRunId, string $type, st
     $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
 
     if ($response->getStatusCode() >= 300) {
-        die("Invalid GitHub response.\n" . $response->toJson());
+        $info = $response->toJson();
+        $logger->log("Invalid GitHub response", $info);
     }
 }
