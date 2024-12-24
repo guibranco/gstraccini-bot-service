@@ -1,6 +1,7 @@
 <?php
 
 use GuiBranco\Pancake\Request;
+use GuiBranco\Pancake\Response;
 use Lcobucci\JWT\Encoding\ChainedFormatter;
 use Lcobucci\JWT\Encoding\JoseEncoder;
 use Lcobucci\JWT\Signer\Key\InMemory;
@@ -27,7 +28,7 @@ use Lcobucci\JWT\Token\Builder;
  * @return stdClass The function `doRequestGitHub` returns an object of type `stdClass` which
  * represents the response of the GitHub API request.
  */
-function doRequestGitHub(string $token, string $url, mixed $data, string $method): stdClass
+function doRequestGitHub(string $token, string $url, mixed $data, string $method): Response
 {
     global $logger;
 
@@ -68,21 +69,20 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
             $response = $request->delete($url, $headers, $data);
             break;
         default:
-            $response = new \stdCLass();
-            $response->statusCode = -2;
-            $response->error = "Invalid method: {$method}";
+            $response = Response::error("Invalid method: {$method}", $url, -2);
             break;
     }
 
-    if (($response->statusCode <= 0 || $response->statusCode >= 300) && ($response->statusCode !== 404 || $method !== "GET")) {
-        $info = json_encode($response);
+    $statusCode = $response->getStatusCode();
+    if (($statusCode <= 0 || $statusCode >= 300) && ($statusCode !== 404 || $method !== "GET")) {
+        $info = $response->toJson();
         $logger->log("Error on GitHub request", $info);
     }
 
     return $response;
 }
 
-function getPullRequestDiff(array $metadata): object
+function getPullRequestDiff(array $metadata): Response
 {
     global $logger;
 
@@ -99,8 +99,9 @@ function getPullRequestDiff(array $metadata): object
     $request = new Request();
     $response = $request->get($url, $headers);
 
-    if ($response->statusCode <= 0 || $response->statusCode >= 300) {
-        $info = json_encode($response);
+    $statusCode = $response->getStatusCode();
+    if ($statusCode <= 0 || $statusCode >= 300) {
+        $info = $response->toJson();
         $logger->log("Error on GitHub request", $info);
     }
 
@@ -163,11 +164,11 @@ function generateInstallationToken(string $installationId, string $repositoryNam
     $url = "app/installations/" . $installationId . "/access_tokens";
     $response = doRequestGitHub($gitHubAppToken, $url, $data, "POST");
 
-    if ($response->statusCode >= 300) {
-        die("Invalid GitHub response.\n" . json_encode($response));
+    if ($response->getStatusCode() >= 300) {
+        die("Invalid GitHub response.\n" . $response->toJson());
     }
 
-    $json = json_decode($response->body);
+    $json = json_decode($response->getBody());
     return $json->token;
 }
 
@@ -206,11 +207,11 @@ function setCheckRunInProgress(array $metadata, string $commitId, string $type):
 
     $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"], $checkRunBody, "POST");
 
-    if ($response->statusCode >= 300 || isset($response->body) === false) {
-        die("Invalid GitHub response.\n" . json_encode($response));
+    if ($response->getStatusCode() >= 300 || empty($response->getBody()) === true) {
+        die("Invalid GitHub response.\n" . $response->toJson());
     }
 
-    $result = json_decode($response->body);
+    $result = json_decode($response->getBody());
     return $result->id;
 }
 
@@ -246,8 +247,8 @@ function setCheckRunFailed(array $metadata, int $checkRunId, string $type, strin
 
     $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
 
-    if ($response->statusCode >= 300) {
-        die("Invalid GitHub response.\n" . json_encode($response));
+    if ($response->getStatusCode() >= 300) {
+        die("Invalid GitHub response.\n" . $response->toJson());
     }
 }
 
@@ -281,7 +282,7 @@ function setCheckRunSucceeded(array $metadata, int $checkRunId, string $type, st
 
     $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
 
-    if ($response->statusCode >= 300) {
-        die("Invalid GitHub response.\n" . json_encode($response));
+    if ($response->getStatusCode() >= 300) {
+        die("Invalid GitHub response.\n" . $response->toJson());
     }
 }
