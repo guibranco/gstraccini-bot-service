@@ -42,7 +42,8 @@ function bypassPullRequestAnalysis(string $remoteOrganizationName, string $repos
     $response = $request->post($baseUrl.$url, $headers);
 
     if ($response->getStatusCode() >= 300) {
-        die("Invalid Codacy response.\n" . $response->toJson());
+        $info = $response->toJson();
+        $logger->log("Invalid Codacy response", $info);
     }
 
     return $response;
@@ -86,7 +87,8 @@ function reanalyzeCommit(string $remoteOrganizationName, string $repositoryName,
     $response = $request->post($baseUrl.$url, $headers, json_encode(["commit" => $commitUUID, "cleanCache" => false]));
 
     if ($response->getStatusCode() >= 300) {
-        die("Invalid Codacy response.\n" . $response->toJson());
+        $info = $response->toJson();
+        $logger->log("Invalid Codacy response", $info);
     }
 
     return $response;
