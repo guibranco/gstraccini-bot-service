@@ -56,7 +56,7 @@ function handleItem($comment): void
 
     $collaboratorUrl = $repoPrefix . "/collaborators/" . $comment->CommentSender;
     $collaboratorResponse = doRequestGitHub($metadata["token"], $collaboratorUrl, null, "GET");
-    if ($collaboratorResponse->statusCode === 404) {
+    if ($collaboratorResponse->getStatusCode() === 404) {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
         $body = $metadata["errorMessages"]["notCollaborator"];
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
@@ -197,12 +197,12 @@ function execute_appveyorBuild($config, $metadata, $comment): void
     }
 
     $buildResponse = requestAppVeyor("builds", $data);
-    if ($buildResponse->statusCode !== 200) {
-        $commentBody = "AppVeyor build failed: :x:\r\n\r\n```\r\n" . $buildResponse->body . "\r\n```\r\n";
+    if ($buildResponse->getStatusCode() !== 200) {
+        $commentBody = "AppVeyor build failed: :x:\r\n\r\n```\r\n" . $buildResponse->getBody() . "\r\n```\r\n";
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
         return;
     }
-    $build = json_decode($buildResponse->body);
+    $build = json_decode($buildResponse->getBody());
     $buildId = $build->buildId;
     $version = $build->version;
     $link = "https://ci.appveyor.com/project/" . $project->accountName . "/" . $project->slug . "/builds/" . $buildId;
@@ -228,14 +228,14 @@ function execute_appveyorBumpVersion($config, $metadata, $comment): void
 
     $url = "projects/" . $project->accountName . "/" . $project->slug . "/settings";
     $settingsResponse = requestAppVeyor($url);
-    if ($settingsResponse->statusCode !== 200) {
+    if ($settingsResponse->getStatusCode() !== 200) {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
-        $commentBody = "AppVeyor bump version failed: :x:\r\n\r\n```\r\n" . $settingsResponse->body . "\r\n```\r\n";
+        $commentBody = "AppVeyor bump version failed: :x:\r\n\r\n```\r\n" . $settingsResponse->getBody() . "\r\n```\r\n";
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
         return;
     }
 
-    $settings = json_decode($settingsResponse->body);
+    $settings = json_decode($settingsResponse->getBody());
 
     if (count($matches) === 2 && $matches[1] === "build") {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
@@ -258,12 +258,12 @@ function execute_appveyorRegister($config, $metadata, $comment): void
         "repositoryName" => $comment->RepositoryOwner . "/" . $comment->RepositoryName,
     );
     $registerResponse = requestAppVeyor("projects", $data);
-    if ($registerResponse->statusCode !== 200) {
-        $commentBody = "AppVeyor registration failed: :x:\r\n\r\n```\r\n" . $registerResponse->body . "\r\n```\r\n";
+    if ($registerResponse->getStatusCode() !== 200) {
+        $commentBody = "AppVeyor registration failed: :x:\r\n\r\n```\r\n" . $registerResponse->getBody() . "\r\n```\r\n";
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
         return;
     }
-    $register = json_decode($registerResponse->body);
+    $register = json_decode($registerResponse->getBody());
 
     $link = "https://ci.appveyor.com/project/" .
         $register->accountName . "/" . $register->slug;
@@ -421,20 +421,20 @@ function execute_copyIssue($config, $metadata, $comment): void
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"), "POST");
 
     $issueUpdatedResponse = doRequestGitHub($metadata["token"], $metadata["issueUrl"], null, "GET");
-    $issueUpdated = json_decode($issueUpdatedResponse->body);
+    $issueUpdated = json_decode($issueUpdatedResponse->getBody());
 
     $targetRepository = $matches[1] . "/" . $matches[2];
     $newIssueUrl = "repos/" . $targetRepository . "/issues";
     $newIssue = array("title" => $issueUpdated->title, "body" => $issueUpdated->body, "labels" => $issueUpdated->labels);
 
     $createdIssueResponse = doRequestGitHub($metadata["token"], $newIssueUrl, $newIssue, "POST");
-    if ($createdIssueResponse->statusCode !== 201) {
-        $body = "Error copying issue: {$createdIssueResponse->statusCode}";
+    if ($createdIssueResponse->getStatusCode() !== 201) {
+        $body = "Error copying issue: {$createdIssueResponse->getStatusCode()}";
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
         return;
     }
 
-    $createdIssue = json_decode($createdIssueResponse->body);
+    $createdIssue = json_decode($createdIssueResponse->getBody());
 
     $number = $createdIssue->number;
 
@@ -567,10 +567,10 @@ function execute_rerunFailedChecks($config, $metadata, $comment): void
     };
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
-    $pullRequestUpdated = json_decode($pullRequestResponse->body);
+    $pullRequestUpdated = json_decode($pullRequestResponse->getBody());
     $commitSha1 = $pullRequestUpdated->head->sha;
     $checkRunsResponse = doRequestGitHub($metadata["token"], $metadata["repoPrefix"] . "/commits/" . $commitSha1 . "/check-runs?status=completed", null, "GET");
-    $checkRuns = json_decode($checkRunsResponse->body);
+    $checkRuns = json_decode($checkRunsResponse->getBody());
     $failedCheckRuns = array_filter($checkRuns->check_runs, $filter);
     $total = count($failedCheckRuns);
 
@@ -584,7 +584,7 @@ function execute_rerunFailedChecks($config, $metadata, $comment): void
     foreach ($failedCheckRuns as $failedCheckRun) {
         $url = $metadata["repoPrefix"] . "/check-runs/" . $failedCheckRun->id . "/rerequest";
         $response = doRequestGitHub($metadata["token"], $url, null, "POST");
-        $status = $response->statusCode === 201 ? "🔄" : "❌";
+        $status = $response->getStatusCode() === 201 ? "🔄" : "❌";
         $checksToRerun .= "- [" . $failedCheckRun->name . "](" . $failedCheckRun->details_url . ") ([" . $failedCheckRun->app->name . " ](" . $failedCheckRun->app->html_url . " )) - " . $status . "\n";
     }
 
@@ -595,10 +595,10 @@ function execute_rerunFailedWorkflows($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
-    $pullRequestUpdated = json_decode($pullRequestResponse->body);
+    $pullRequestUpdated = json_decode($pullRequestResponse->getBody());
     $commitSha1 = $pullRequestUpdated->head->sha;
     $failedWorkflowRunsResponse = doRequestGitHub($metadata["token"], $metadata["repoPrefix"] . "/actions/runs?head_sha=" . $commitSha1 . "&status=failure", null, "GET");
-    $failedWorkflowRuns = json_decode($failedWorkflowRunsResponse->body);
+    $failedWorkflowRuns = json_decode($failedWorkflowRunsResponse->getBody());
     $total = $failedWorkflowRuns->total_count;
 
     $body = "Rerunning " . $total . " failed workflow" . ($total === 1 ? "" : "s") . " on the commit `" . $commitSha1 . "`! :repeat:";
@@ -611,7 +611,7 @@ function execute_rerunFailedWorkflows($config, $metadata, $comment): void
     foreach ($failedWorkflowRuns->workflow_runs as $failedWorkflowRun) {
         $url = $metadata["repoPrefix"] . "/actions/runs/" . $failedWorkflowRun->id . "/rerun-failed-jobs";
         $response = doRequestGitHub($metadata["token"], $url, null, "POST");
-        $status = $response->statusCode === 201 ? "🔄" : "❌";
+        $status = $response->getStatusCode() === 201 ? "🔄" : "❌";
         $actionsToRerun .= "- [" . $failedWorkflowRun->name . "](" . $failedWorkflowRun->html_url . ") - " . $status . "\n";
     }
 
@@ -623,10 +623,10 @@ function execute_review($config, $metadata, $comment): void
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"), "POST");
 
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
-    $pullRequestUpdated = json_decode($pullRequestResponse->body);
+    $pullRequestUpdated = json_decode($pullRequestResponse->getBody());
 
     $commitsResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"] . "/commits?per_page=100", null, "GET");
-    $commits = json_decode($commitsResponse->body);
+    $commits = json_decode($commitsResponse->getBody());
 
     $pullRequest = new \stdClass();
     $pullRequest->DeliveryId = $comment->DeliveryIdText;
@@ -692,7 +692,7 @@ function execute_updateSnapshot($config, $metadata, $comment): void
 function callWorkflow($config, $metadata, $comment, $workflow, $extendedParameters = null): void
 {
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
-    $pullRequest = json_decode($pullRequestResponse->body);
+    $pullRequest = json_decode($pullRequestResponse->getBody());
 
     $tokenBot = generateInstallationToken($config->botRepositoryInstallationId, $config->botRepository);
     $url = "repos/" . $config->botRepository . "/actions/workflows/" . $workflow . "/dispatches";
@@ -715,21 +715,21 @@ function callWorkflow($config, $metadata, $comment, $workflow, $extendedParamete
 function checkIfPullRequestIsOpen(&$metadata): bool
 {
     $issueResponse = doRequestGitHub($metadata["token"], $metadata["issueUrl"], null, "GET");
-    if ($issueResponse->statusCode !== 200) {
+    if ($issueResponse->getStatusCode() !== 200) {
         return false;
     }
 
-    $issue = json_decode($issueResponse->body);
+    $issue = json_decode($issueResponse->getBody());
     if (isset($issue->pull_request) === false || isset($issue->state) === false || $issue->state === "closed") {
         return false;
     }
 
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
-    if ($pullRequestResponse->statusCode !== 200) {
+    if ($pullRequestResponse->getStatusCode() !== 200) {
         return false;
     }
 
-    $pullRequest = json_decode($pullRequestResponse->body);
+    $pullRequest = json_decode($pullRequestResponse->getBody());
 
     $metadata["headRef"] = $pullRequest->head->ref;
     $metadata["headSha"] = $pullRequest->head->sha;
@@ -763,8 +763,8 @@ function updateNextBuildNumber($metadata, $project, $nextBuildNumber): void
     $url = "projects/" . $project->accountName . "/" . $project->slug . "/settings/build-number";
     $updateResponse = requestAppVeyor($url, $data, true);
 
-    if ($updateResponse->statusCode !== 204) {
-        $commentBody = "AppVeyor update next build number failed: :x:\r\n\r\n```\r\n" . $updateResponse->body . "\r\n```\r\n";
+    if ($updateResponse->getStatusCode() !== 204) {
+        $commentBody = "AppVeyor update next build number failed: :x:\r\n\r\n```\r\n" . $updateResponse->getBody() . "\r\n```\r\n";
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
         return;
     }

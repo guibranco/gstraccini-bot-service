@@ -1,6 +1,7 @@
 <?php
 
 use GuiBranco\Pancake\Request;
+use GuiBranco\Pancake\Response;
 use Lcobucci\JWT\Encoding\ChainedFormatter;
 use Lcobucci\JWT\Encoding\JoseEncoder;
 use Lcobucci\JWT\Signer\Key\InMemory;
@@ -27,7 +28,7 @@ use Lcobucci\JWT\Token\Builder;
  * @return stdClass The function `doRequestGitHub` returns an object of type `stdClass` which
  * represents the response of the GitHub API request.
  */
-function doRequestGitHub(string $token, string $url, mixed $data, string $method): stdClass
+function doRequestGitHub(string $token, string $url, mixed $data, string $method): Response
 {
     global $logger;
 
@@ -68,21 +69,22 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
             $response = $request->delete($url, $headers, $data);
             break;
         default:
-            $response = new \stdCLass();
-            $response->statusCode = -2;
-            $response->error = "Invalid method: {$method}";
+            $response = Response::error("Invalid method: {$method}", $url, -2);
             break;
     }
 
-    if (($response->statusCode <= 0 || $response->statusCode >= 300) && ($response->statusCode !== 404 || $method !== "GET")) {
-        $info = json_encode($response);
-        $logger->log("Error on GitHub request", $info);
+    $statusCode = $response->getStatusCode();
+    $info = $response->toJson();
+    if ($statusCode <= 0 || ($statusCode >= 300 && $statusCode !== 404)) {
+        $logger->log("Invalid GitHub response", $info);
+    } elseif (empty($response->getBody()) && $method !== "DELETE" && $statusCode !== 204) {
+        $logger->log("Unexpected empty response", $info);
     }
 
     return $response;
 }
 
-function getPullRequestDiff(array $metadata): object
+function getPullRequestDiff(array $metadata): Response
 {
     global $logger;
 
@@ -99,9 +101,10 @@ function getPullRequestDiff(array $metadata): object
     $request = new Request();
     $response = $request->get($url, $headers);
 
-    if ($response->statusCode <= 0 || $response->statusCode >= 300) {
-        $info = json_encode($response);
-        $logger->log("Error on GitHub request", $info);
+    $statusCode = $response->getStatusCode();
+    if ($statusCode <= 0 || $statusCode >= 300) {
+        $info = $response->toJson();
+        $logger->log("Invalid GitHub response", $info);
     }
 
     return $response;
@@ -116,7 +119,7 @@ function getPullRequestDiff(array $metadata): object
  */
 function generateAppToken(): string
 {
-    global $gitHubAppId, $gitHubAppPrivateKey;
+    global $gitHubAppId, $gitHubAppPrivateKey, $logger;
 
     $tokenBuilder = new Builder(new JoseEncoder(), ChainedFormatter::default());
     $algorithm = new Sha256();
@@ -152,6 +155,8 @@ function generateAppToken(): string
  */
 function generateInstallationToken(string $installationId, string $repositoryName, array $permissions = null): string
 {
+    global $logger;
+
     $gitHubAppToken = generateAppToken();
 
     $data = new \stdClass();
@@ -163,11 +168,12 @@ function generateInstallationToken(string $installationId, string $repositoryNam
     $url = "app/installations/" . $installationId . "/access_tokens";
     $response = doRequestGitHub($gitHubAppToken, $url, $data, "POST");
 
-    if ($response->statusCode >= 300) {
-        die("Invalid GitHub response.\n" . json_encode($response));
+    if ($response->getStatusCode() >= 300) {
+        $info = $response->toJson();
+        $logger->log("Invalid GitHub response", $info);
     }
 
-    $json = json_decode($response->body);
+    $json = json_decode($response->getBody());
     return $json->token;
 }
 
@@ -192,6 +198,8 @@ function generateInstallationToken(string $installationId, string $repositoryNam
  */
 function setCheckRunInProgress(array $metadata, string $commitId, string $type): int
 {
+    global $logger;
+
     $checkRunBody = array(
         "name" => "GStraccini Checks: " . ucwords($type),
         "details_url" => $metadata["dashboardUrl"],
@@ -206,22 +214,23 @@ function setCheckRunInProgress(array $metadata, string $commitId, string $type):
 
     $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"], $checkRunBody, "POST");
 
-    if ($response->statusCode >= 300 || isset($response->body) === false) {
-        die("Invalid GitHub response.\n" . json_encode($response));
+    if ($response->getStatusCode() >= 300 || empty($response->getBody()) === true) {
+        $info = $response->toJson();
+        $logger->log("Invalid GitHub response", $info);
     }
 
-    $result = json_decode($response->body);
+    $result = json_decode($response->getBody());
     return $result->id;
 }
 
 /**
- * The function `setCheckRunFailed` updates a GitHub check run to mark it as failed with specific
+ * The function `setCheckRunFailed` updates a GitHub check run to mark it as failed with a specific
  * details.
  *
  * @param array metadata The `metadata` parameter is an array containing information needed for the
  * GitHub check run. It includes the following keys:
  * @param int checkRunId The `checkRunId` parameter is an integer that represents the unique identifier
- * of a specific check run in GitHub. It is used to identify the check run that you want to update with
+ * of a specific check run in GitHub. It identifies the check run you want to update with
  * the new status and details provided in the function `setCheckRunFailed`.
  * @param string type The `type` parameter in the `setCheckRunFailed` function represents the type of
  * check that was performed. It is used to generate the name and summary for the check run that is
@@ -232,6 +241,8 @@ function setCheckRunInProgress(array $metadata, string $commitId, string $type):
  */
 function setCheckRunFailed(array $metadata, int $checkRunId, string $type, string $details): void
 {
+    global $logger;
+
     $checkRunBody = array(
         "name" => "GStraccini Checks: " . ucwords($type),
         "details_url" => $metadata["dashboardUrl"],
@@ -246,8 +257,9 @@ function setCheckRunFailed(array $metadata, int $checkRunId, string $type, strin
 
     $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
 
-    if ($response->statusCode >= 300) {
-        die("Invalid GitHub response.\n" . json_encode($response));
+    if ($response->getStatusCode() >= 300) {
+        $info = $response->toJson();
+        $logger->log("Invalid GitHub response", $info);
     }
 }
 
@@ -255,7 +267,7 @@ function setCheckRunFailed(array $metadata, int $checkRunId, string $type, strin
  * The function `setCheckRunSucceeded` updates a GitHub check run to mark it as completed and
  * successful with specific details.
  *
- * @param array metadata The `metadata` parameter is an array containing information required for
+ * @param array metadata The `metadata` parameter is an array containing the information required for
  * setting a check run as succeeded. It includes the following keys:
  * @param int checkRunId The `checkRunId` parameter in the `setCheckRunSucceeded` function is an
  * integer that represents the unique identifier of the check run on GitHub that you want to update.
@@ -267,6 +279,8 @@ function setCheckRunFailed(array $metadata, int $checkRunId, string $type, strin
  */
 function setCheckRunSucceeded(array $metadata, int $checkRunId, string $type, string $details = null): void
 {
+    global $logger;
+
     $checkRunBody = array(
         "name" => "GStraccini Checks: " . ucwords($type),
         "details_url" => $metadata["dashboardUrl"],
@@ -281,7 +295,8 @@ function setCheckRunSucceeded(array $metadata, int $checkRunId, string $type, st
 
     $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
 
-    if ($response->statusCode >= 300) {
-        die("Invalid GitHub response.\n" . json_encode($response));
+    if ($response->getStatusCode() >= 300) {
+        $info = $response->toJson();
+        $logger->log("Invalid GitHub response", $info);
     }
 }

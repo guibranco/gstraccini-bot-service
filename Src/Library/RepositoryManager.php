@@ -10,7 +10,7 @@ class RepositoryManager
         $fileContentResponse = null;
         foreach ($paths as $path) {
             $fileContentResponse = doRequestGitHub($token, "repos/{$repositoryOwner}/{$repositoryName}/contents" . $path . ".gstraccini.toml", null, "GET");
-            if ($fileContentResponse->statusCode === 200) {
+            if ($fileContentResponse->getStatusCode() === 200) {
                 break;
             }
         }
@@ -31,20 +31,20 @@ class RepositoryManager
     public function getLabels(string $token, string $repositoryOwner, string $repositoryName): array
     {
         $labelsResponse = doRequestGitHub($token, "repos/{$repositoryOwner}/{$repositoryName}/labels", null, "GET");
-        if ($labelsResponse->statusCode !== 200) {
+        if ($labelsResponse->getStatusCode() !== 200) {
             return array();
         }
 
-        return json_decode($labelsResponse->body, true);
+        return json_decode($labelsResponse->getBody(), true);
     }
 
     public function getLanguages(string $token, string $repositoryOwner, string $repositoryName): array
     {
         $languagesResponse = doRequestGitHub($token, "repos/{$repositoryOwner}/{$repositoryName}/languages", null, "GET");
-        if ($languagesResponse->statusCode !== 200) {
+        if ($languagesResponse->getStatusCode() !== 200) {
             return array();
         }
 
-        return json_decode($languagesResponse->body, true);
+        return json_decode($languagesResponse->getBody(), true);
     }
 }
