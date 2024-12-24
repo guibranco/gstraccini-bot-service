@@ -151,14 +151,14 @@ function checkPullRequestDescription($metadata, $pullRequestUpdated)
 {
     $type = "pull request description";
     $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, $type);
-    $bodyLength = empty($pullRequestUpdated->getBody()) === false ? strlen($pullRequestUpdated->getBody()) : 0;
+    $bodyLength = empty($pullRequestUpdated->body) === false ? strlen($pullRequestUpdated->body) : 0;
     if ($bodyLength <= 250) {
         setCheckRunFailed($metadata, $checkRunId, $type, "Pull request description too short (at least 250 characters long).");
         return;
     }
 
     $validator = new MarkdownGroupCheckboxValidator();
-    $validationResult = $validator->validateCheckboxes($pullRequestUpdated->getBody());
+    $validationResult = $validator->validateCheckboxes($pullRequestUpdated->body);
     if (isset($validationResult['errors']) && !empty($validationResult['errors'])) {
         $message = $validator->generateReport($validationResult);
         setCheckRunFailed($metadata, $checkRunId, $type, $message);
