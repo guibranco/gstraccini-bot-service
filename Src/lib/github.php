@@ -117,7 +117,7 @@ function getPullRequestDiff(array $metadata): Response
  */
 function generateAppToken(): string
 {
-    global $gitHubAppId, $gitHubAppPrivateKey;
+    global $gitHubAppId, $gitHubAppPrivateKey, $logger;
 
     $tokenBuilder = new Builder(new JoseEncoder(), ChainedFormatter::default());
     $algorithm = new Sha256();
@@ -153,6 +153,8 @@ function generateAppToken(): string
  */
 function generateInstallationToken(string $installationId, string $repositoryName, array $permissions = null): string
 {
+    global $logger;
+    
     $gitHubAppToken = generateAppToken();
 
     $data = new \stdClass();
@@ -194,6 +196,8 @@ function generateInstallationToken(string $installationId, string $repositoryNam
  */
 function setCheckRunInProgress(array $metadata, string $commitId, string $type): int
 {
+    global $logger;
+    
     $checkRunBody = array(
         "name" => "GStraccini Checks: " . ucwords($type),
         "details_url" => $metadata["dashboardUrl"],
@@ -235,6 +239,8 @@ function setCheckRunInProgress(array $metadata, string $commitId, string $type):
  */
 function setCheckRunFailed(array $metadata, int $checkRunId, string $type, string $details): void
 {
+    global $logger;
+    
     $checkRunBody = array(
         "name" => "GStraccini Checks: " . ucwords($type),
         "details_url" => $metadata["dashboardUrl"],
@@ -271,6 +277,8 @@ function setCheckRunFailed(array $metadata, int $checkRunId, string $type, strin
  */
 function setCheckRunSucceeded(array $metadata, int $checkRunId, string $type, string $details = null): void
 {
+    global $logger;
+    
     $checkRunBody = array(
         "name" => "GStraccini Checks: " . ucwords($type),
         "details_url" => $metadata["dashboardUrl"],
