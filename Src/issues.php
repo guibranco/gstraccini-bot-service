@@ -22,7 +22,7 @@ function handleItem($issue)
     );
 
     $issueResponse = doRequestGitHub($metadata["token"], $metadata["issueUrl"], null, "GET");
-    $issueUpdated = json_decode($issueResponse->body);
+    $issueUpdated = json_decode($issueResponse->getBody());
 
     if ($issueUpdated->state === "closed") {
         removeLabels($issueUpdated, $metadata, true);
@@ -35,10 +35,10 @@ function handleItem($issue)
     }
 
     $repositoryResponse = doRequestGitHub($metadata["token"], $metadata["repoUrl"], null, "GET");
-    $repository = json_decode($repositoryResponse->body);
+    $repository = json_decode($repositoryResponse->getBody());
 
     $collaboratorsResponse = doRequestGitHub($metadata["token"], $metadata["collaboratorsUrl"], null, "GET");
-    $collaborators = json_decode($collaboratorsResponse->body, true);
+    $collaborators = json_decode($collaboratorsResponse->getBody(), true);
     $collaboratorsLogins = array_column($collaborators, "login");
 
     if ($repository->private) {
