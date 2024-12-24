@@ -282,7 +282,7 @@ function commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $commentT
 
     foreach ($comments as $comment) {
         if (
-            stripos($comment->getBody(), $commentToLookup) !== false &&
+            stripos($comment->body, $commentToLookup) !== false &&
             in_array($comment->user->login, $collaboratorsLogins)
         ) {
             $found = true;
