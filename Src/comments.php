@@ -64,7 +64,7 @@ function handleItem($comment): void
     }
 
     $executedAtLeastOne = false;
-    
+
     $pullRequestIsOpen = checkIfPullRequestIsOpen($metadata);
 
     foreach ($config->commands as $command) {
