@@ -40,7 +40,7 @@ class ProcessingManager
                 $item->Sequence,
                 $item->DeliveryIdText
             );
-            $this->logger->log($message, $item);
+            $this->logger->log($message, json_encode($item));
             echo $message;
         } catch (\Exception $e) {
             $this->logger->log(sprintf(
@@ -48,7 +48,7 @@ class ProcessingManager
                 $this->table,
                 $item->Sequence,
                 $e->getMessage()
-            ), $item);
+            ), json_encode($item));
             throw $e;
         }
     }
