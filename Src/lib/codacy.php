@@ -1,6 +1,7 @@
 <?php
 
 use GuiBranco\Pancake\Request;
+use GuiBranco\Pancake\Response;
 
 /**
  * The function bypassPullRequestAnalysis sends a POST request to Codacy API to bypass analysis for a
@@ -22,7 +23,7 @@ use GuiBranco\Pancake\Request;
  * which is the response from the Codacy API after attempting to bypass the pull request analysis for a
  * specific repository in a remote organization.
  */
-function bypassPullRequestAnalysis(string $remoteOrganizationName, string $repositoryName, string $pullRequestNumber): stdClass
+function bypassPullRequestAnalysis(string $remoteOrganizationName, string $repositoryName, string $pullRequestNumber): Response
 {
     global $codacyApiToken, $logger;
 
@@ -40,9 +41,8 @@ function bypassPullRequestAnalysis(string $remoteOrganizationName, string $repos
 
     $response = $request->post($baseUrl.$url, $headers);
 
-    if ($response->statusCode >= 300) {
-        $info = json_encode(array("url" => $url, "response" => $response));
-        $logger->log("Error on Codacy request (bypass)", $info);
+    if ($response->getStatusCode() >= 300) {
+        die("Invalid Codacy response.\n" . $response->toJson());
     }
 
     return $response;
@@ -67,7 +67,7 @@ function bypassPullRequestAnalysis(string $remoteOrganizationName, string $repos
  * response from the Codacy API after attempting to reanalyze the specified commit in a repository for
  * a given organization.
  */
-function reanalyzeCommit(string $remoteOrganizationName, string $repositoryName, string $commitUUID): stdClass
+function reanalyzeCommit(string $remoteOrganizationName, string $repositoryName, string $commitUUID): Response
 {
     global $codacyApiToken, $logger;
 
@@ -85,9 +85,8 @@ function reanalyzeCommit(string $remoteOrganizationName, string $repositoryName,
 
     $response = $request->post($baseUrl.$url, $headers, json_encode(["commit" => $commitUUID, "cleanCache" => false]));
 
-    if ($response->statusCode >= 300) {
-        $info = json_encode(array("url" => $url, "response" => $response));
-        $logger->log("Error on Codacy request (reanalyze)", $info);
+    if ($response->getStatusCode() >= 300) {
+        die("Invalid GitHub response.\n" . $response->toJson());
     }
 
     return $response;
