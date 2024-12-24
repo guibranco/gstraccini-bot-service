@@ -144,7 +144,7 @@ function getReferencedIssueByBranch($metadata, $branch)
           }"
     );
     $referencedIssueResponse = doRequestGitHub($metadata["token"], "graphql", $referencedIssueQuery, "POST");
-    return json_decode($referencedIssueResponse->body);
+    return json_decode($referencedIssueResponse->getBody());
 }
 
 function main(): void

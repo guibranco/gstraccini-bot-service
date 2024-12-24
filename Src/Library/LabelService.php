@@ -48,9 +48,9 @@ class LabelService
     {
         foreach ($labelsToCreateObject as $label) {
             $response = doRequestGitHub($token, $labelsUrl, $label, "POST");
-            if ($response->statusCode === 201) {
+            if ($response->getStatusCode() === 201) {
                 echo "✅ Label created: {$label["name"]}\n";
-            } elseif ($response->statusCode === 422) {
+            } elseif ($response->getStatusCode() === 422) {
                 $labelToUpdate = [];
                 $labelToUpdate["color"] = $label["color"];
                 $labelToUpdate["description"] = $label["description"];
@@ -64,7 +64,7 @@ class LabelService
 
         foreach ($labelsToUpdateObject as $oldName => $label) {
             $response = doRequestGitHub($token, $labelsUrl . "/" . str_replace(" ", "%20", $oldName), $label, "PATCH");
-            if ($response->statusCode === 200) {
+            if ($response->getStatusCode() === 200) {
                 echo "✅ Label updated: {$oldName} -> {$label["new_name"]}\n";
             } else {
                 echo "⛔ Error updating label: {$oldName}\n";
