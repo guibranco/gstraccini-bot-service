@@ -19,7 +19,7 @@ class RepositoryManager
             return $this->getDefaultBotOptions();
         }
 
-        $fileContent = json_decode($fileContentResponse->body, true);
+        $fileContent = json_decode($fileContentResponse->getBody(), true);
         return $this->getDefaultBotOptions();
     }
 
