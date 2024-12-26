@@ -695,7 +695,7 @@ function callWorkflow($config, $metadata, $comment, $workflow, $extendedParamete
     $pullRequest = json_decode($pullRequestResponse->getBody());
 
     $tokenBot = generateInstallationToken($config->botRepositoryInstallationId, $config->botRepository);
-    $url = "repos/" . $config->botRepository . "/actions/workflows/" . $workflow . "/dispatches";
+    $url = "repos/" . $config->botWorkflowsRepository . "/actions/workflows/" . $workflow . "/dispatches";
     $data = array(
         "ref" => "main",
         "inputs" => array(
