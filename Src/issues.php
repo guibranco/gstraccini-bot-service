@@ -35,7 +35,8 @@ function handleItem($issue)
     }
 }
 
-function containsAcceptanceCriteria($body) {
+function containsAcceptanceCriteria($body)
+{
     return preg_match('/##\s*Acceptance Criteria\s*\n(\s*- \[ \].+\n?)+/i', $body);
 
     if ($issueUpdated->assignee != null) {
