@@ -10,7 +10,7 @@ if (file_exists($versionFile)) {
     $version = trim(file_get_contents($versionFile));
 }
 
-define("USER_AGENT_VENDOR", "gstraccini-bot/{$version} (+https://github.com/apps/gstraccini/)");
+define("USER_AGENT_VENDOR", "gstraccini-bot-service/{$version} (+https://github.com/guibranco/gstraccini-bot-service/)");
 define("USER_AGENT", "User-Agent: " . USER_AGENT_VENDOR);
 
 require_once "vendor/autoload.php";
