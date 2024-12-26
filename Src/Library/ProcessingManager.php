@@ -41,6 +41,7 @@ class ProcessingManager
                 $item->DeliveryIdText
             );
             $this->logger->log($message, json_encode($item));
+            echo "Skipping duplicated";
             echo $message;
         } catch (\Exception $e) {
             $this->logger->log(sprintf(
@@ -49,6 +50,7 @@ class ProcessingManager
                 $item->Sequence,
                 $e->getMessage()
             ), json_encode($item));
+            echo "Error";
             throw $e;
         }
     }
