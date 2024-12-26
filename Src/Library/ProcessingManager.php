@@ -2,14 +2,14 @@
 
 namespace GuiBranco\GStracciniBot\Library;
 
-use GuiBranco\Pancake\ILogger;
+use GuiBranco\Pancake\Logger;
 
 class ProcessingManager
 {
     private $table;
     private $logger;
 
-    public function __construct(string $table, ILogger $logger)
+    public function __construct(string $table, Logger $logger)
     {
         $this->table = $table;
         $this->logger = $logger;
