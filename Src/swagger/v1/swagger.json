@@ -6,12 +6,12 @@
       "description":"🤖 A GitHub bot that runs on issues, pull requests, and pull request comments.",
       "contact":{
          "name":"API Support",
-         "url":"https://github.com/guibranco/gstraccini-bot/issues",
-         "email":"support@gstraccini.bot"
+         "url":"https://github.com/guibranco/gstraccini-bot-service/issues",
+         "email":"support@straccini.com"
       },
       "license":{
          "name":"MIT",
-         "url":"https://github.com/guibranco/gstraccini-bot/blob/main/LICENSE"
+         "url":"https://github.com/guibranco/gstraccini-bot-service/blob/main/LICENSE"
       }
    },
    "servers":[
