@@ -34,7 +34,6 @@ class ProcessingManager
                 return;
             }
 
-            $this->logger->log("Skip", "");
             $message = sprintf(
                 "Skipping item (Table: %s, Sequence: %d) since it was already handled.",
                 $this->table,
@@ -43,7 +42,6 @@ class ProcessingManager
             $this->logger->log($message, json_encode($item));
             echo $message;
         } catch (\Exception $e) {
-            $this->logger->log("Exception Skip", $e->getMessage());
             $this->logger->log(sprintf(
                 "Failed to process item (Table: %s, Sequence: %d): %s",
                 $this->table,
