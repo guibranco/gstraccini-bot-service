@@ -10,7 +10,7 @@ CREATE TABLE github_users (
     password VARCHAR(255) NOT NULL, -- User's password for bot authentication
     bot_settings JSON, -- JSON data to store bot-specific settings
     two_fa_methods JSON, -- JSON data to store enabled 2FA methods (e.g., "sms", "authenticator")
-    recovery_codes TEXT, -- JSON string to store an array of 10 recovery codes
+    recovery_codes TEXT,-- JSON string to store an array of 10 *encrypted* recovery codes
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Date user was added
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP -- Date user info was last updated
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_unicode_ci;
