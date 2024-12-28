@@ -58,6 +58,7 @@ DROP TABLE IF EXISTS notifications;
 CREATE TABLE notifications (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, -- Unique identifier for the notification
     user_id BIGINT NOT NULL, -- References github_users(id)
+    INDEX idx_notifications_user_id (user_id), -- Index for faster lookups by user_id
     message TEXT NOT NULL, -- Notification message
     type VARCHAR(50) NOT NULL, -- Type of notification (e.g., "info", "warning", "error")
     is_read BOOLEAN NOT NULL DEFAULT FALSE, -- Whether the notification has been read
