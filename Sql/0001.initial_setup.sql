@@ -33,12 +33,14 @@ CREATE TABLE github_repositories (
     id BIGINT PRIMARY KEY, -- GitHub repository ID
     installation_id BIGINT NOT NULL, -- References github_installations(id)
     name VARCHAR(255) NOT NULL, -- Repository name
-    full_name VARCHAR(255) NOT NULL, -- Full name (e.g., user/repo)
+    full_name VARCHAR(255) NOT NULL UNIQUE, -- Full name (e.g., user/repo)
     private BOOLEAN NOT NULL DEFAULT FALSE, -- Whether the repo is private
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Date repository was added
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Date repository info was last updated
     FOREIGN KEY (installation_id) REFERENCES github_installations (id) ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE INDEX idx_github_repositories_installation_id ON github_repositories(installation_id);
+CREATE INDEX idx_github_repositories_name ON github_repositories(name);
 
 -- Table to store integrations data
 DROP TABLE IF EXISTS github_integrations;
