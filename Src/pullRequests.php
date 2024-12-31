@@ -3,6 +3,7 @@
 require_once "config/config.php";
 
 use GuiBranco\GStracciniBot\Library\MarkdownGroupCheckboxValidator;
+use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\GStracciniBot\Library\PullRequestCodeScanner;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
@@ -20,7 +21,7 @@ function handleItem($pullRequest, $isRetry = false)
     $token = generateInstallationToken($pullRequest->InstallationId, $pullRequest->RepositoryName);
     $metadata = createMetadata($token, $pullRequest, $config);
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
-    $pullRequestUpdated = json_decode($pullRequestResponse->body);
+    $pullRequestUpdated = json_decode($pullRequestResponse->getBody());
 
     if ($pullRequestUpdated->state === "closed") {
         removeIssueWipLabel($metadata, $pullRequest);
@@ -51,7 +52,7 @@ function handleItem($pullRequest, $isRetry = false)
     }
 
     $collaboratorsResponse = doRequestGitHub($metadata["token"], $metadata["collaboratorsUrl"], null, "GET");
-    $collaboratorsLogins = array_column(json_decode($collaboratorsResponse->body), "login");
+    $collaboratorsLogins = array_column(json_decode($collaboratorsResponse->getBody()), "login");
 
     $botReviewed = false;
     $invokerReviewed = false;
@@ -150,7 +151,7 @@ function checkPullRequestDescription($metadata, $pullRequestUpdated)
 {
     $type = "pull request description";
     $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, $type);
-    $bodyLength = isset($pullRequestUpdated->body) ? strlen($pullRequestUpdated->body) : 0;
+    $bodyLength = empty($pullRequestUpdated->body) === false ? strlen($pullRequestUpdated->body) : 0;
     if ($bodyLength <= 250) {
         setCheckRunFailed($metadata, $checkRunId, $type, "Pull request description too short (at least 250 characters long).");
         return;
@@ -175,7 +176,7 @@ function checkPullRequestContent($metadata, $pullRequestUpdated)
     $type = "pull request content";
     $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, $type);
     $diffResponse = getPullRequestDiff($metadata);
-    $diff = $diffResponse->body;
+    $diff = $diffResponse->getBody();
     $scanner = new PullRequestCodeScanner();
     $comments = $scanner->scanDiffForKeywords($diff);
     $report = $scanner->generateReport($comments);
@@ -208,7 +209,7 @@ function removeLabels($metadata, $pullRequestUpdated)
 function checkForOtherPullRequests($metadata, $pullRequest)
 {
     $pullRequestsOpenResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestsUrl"] . "?state=open&sort=created", null, "GET");
-    $pullRequestsOpen = json_decode($pullRequestsOpenResponse->body);
+    $pullRequestsOpen = json_decode($pullRequestsOpenResponse->getBody());
     $any = false;
 
     if (count($pullRequestsOpen) === 0) {
@@ -275,7 +276,7 @@ function commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $commentT
     }
 
     $commentsRequest = doRequestGitHub($metadata["token"], $metadata["commentsUrl"], null, "GET");
-    $comments = json_decode($commentsRequest->body);
+    $comments = json_decode($commentsRequest->getBody());
 
     $found = false;
 
@@ -313,7 +314,7 @@ function removeIssueWipLabel($metadata, $pullRequest)
         $issueNumber = $node->number;
         $issueResponse = doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber, null, "GET");
 
-        $labels = array_column(json_decode($issueResponse->body)->labels, "name");
+        $labels = array_column(json_decode($issueResponse->getBody())->labels, "name");
 
         if (in_array("🛠 WIP", $labels)) {
             $url = $metadata["issuesUrl"] . "/" . $issueNumber . "/labels/🛠%20WIP";
@@ -325,7 +326,7 @@ function removeIssueWipLabel($metadata, $pullRequest)
 function getReviewsLogins($metadata)
 {
     $reviewsResponse = doRequestGitHub($metadata["token"], $metadata["reviewsUrl"], null, "GET");
-    $reviews = json_decode($reviewsResponse->body);
+    $reviews = json_decode($reviewsResponse->getBody());
     return array_map(function ($review) {
         return $review->user->login;
     }, $reviews);
@@ -348,10 +349,10 @@ function getReferencedIssue($metadata, $pullRequest)
     );
 
     $referencedIssueResponse = doRequestGitHub($metadata["token"], "graphql", $referencedIssueQuery, "POST");
-    if ($referencedIssueResponse->statusCode >= 300) {
+    if ($referencedIssueResponse->getStatusCode() >= 300) {
         return null;
     }
-    return json_decode($referencedIssueResponse->body);
+    return json_decode($referencedIssueResponse->getBody());
 }
 
 function addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated)
@@ -369,7 +370,7 @@ function addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated)
     foreach ($referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes as $node) {
         $issueNumber = $node->number;
         $issueResponse = doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber, null, "GET");
-        $issue = json_decode($issueResponse->body);
+        $issue = json_decode($issueResponse->getBody());
 
         $labelsIssue = array_column($issue->labels, "name");
         $position = array_search("🛠 WIP", $labelsIssue);
@@ -456,10 +457,10 @@ function updateBranch($metadata, $pullRequestUpdated)
     $headRef = urlencode($pullRequestUpdated->head->ref);
 
     $compareResponse = doRequestGitHub($metadata["token"], "{$metadata["compareUrl"]}{$baseRef}...{$headRef}", null, "GET");
-    if ($compareResponse->statusCode >= 300) {
+    if ($compareResponse->getStatusCode() >= 300) {
         return;
     }
-    $compare = json_decode($compareResponse->body);
+    $compare = json_decode($compareResponse->getBody());
 
     if ($compare->behind_by === 0) {
         echo "State: {$pullRequestUpdated->mergeable_state} - Commits Behind: 0 - Updating branch: No - Sender: {$pullRequestUpdated->user->login} 👎🏻\n";
@@ -472,19 +473,14 @@ function updateBranch($metadata, $pullRequestUpdated)
     doRequestGitHub($metadata["token"], $url, $body, "PUT");
 }
 
-function main()
+function main(): void
 {
     $config = loadConfig();
     ob_start();
     $table = "github_pull_requests";
-    $items = readTable($table);
-    foreach ($items as $item) {
-        echo "Sequence: {$item->Sequence}\n";
-        echo "Delivery ID: {$item->DeliveryIdText}\n";
-        updateTable($table, $item->Sequence);
-        handleItem($item);
-        echo str_repeat("=-", 50) . "=\n";
-    }
+    global $logger;
+    $processor = new ProcessingManager($table, $logger);
+    $processor->process('handleItem');
     $result = ob_get_clean();
     if ($config->debug->all === true || $config->debug->pullRequests === true) {
         echo $result;

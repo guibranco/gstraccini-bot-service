@@ -3,6 +3,7 @@ use Src\LabelHandler;
 
 require_once "config/config.php";
 
+use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\Pancake\GUIDv4;
     global $gitHubUserToken, $gitHubWebhookEndpoint, $gitHubWebhookSignature;
 use GuiBranco\Pancake\HealthChecks;
@@ -42,19 +43,14 @@ if (isset($payload['comment']['body']) && isset($payload['issue']['number'])) {
     }
 }
 
-function main()
+function main(): void
 {
     $config = loadConfig();
     ob_start();
     $table = "github_signature";
-    $items = readTable($table);
-    foreach ($items as $item) {
-        echo "Sequence: {$item->Sequence}\n";
-        echo "Delivery ID: {$item->DeliveryIdText}\n";
-        updateTable($table, $item->Sequence);
-        handleItem($item);
-        echo str_repeat("=-", 50) . "=\n";
-    }
+    global $logger;
+    $processor = new ProcessingManager($table, $logger);
+    $processor->process('handleItem');
     $result = ob_get_clean();
     if ($config->debug->all === true || $config->debug->signature === true) {
         echo $result;
@@ -64,5 +60,12 @@ function main()
 $healthCheck = new HealthChecks($healthChecksIoSignature, GUIDv4::random());
 $healthCheck->setHeaders([constant("USER_AGENT"), "Content-Type: application/json; charset=utf-8"]);
 $healthCheck->start();
-main();
+$time = time();
+while (true) {
+    main();
+    $limit = ($time + 55);
+    if ($limit < time()) {
+        break;
+    }
+}
 $healthCheck->end();
