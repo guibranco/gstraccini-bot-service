@@ -72,13 +72,11 @@ CREATE INDEX idx_github_integrations_user_id ON github_integrations(user_id);
 
 -- Table to store notifications
 DROP TABLE IF EXISTS notifications;
-CREATE ENUM notification_type AS ENUM ('info', 'warning', 'error');
 CREATE TABLE notifications (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, -- Unique identifier for the notification
-    user_id BIGINT NOT NULL, -- References github_users(id)
-    
+    user_id BIGINT NOT NULL, -- References github_users(id)    
     message TEXT NOT NULL, -- Notification message
-    type notification_type NOT NULL, -- Type of notification (e.g., "info", "warning", "error")
+    type ENUM('info', 'warning', 'error') NOT NULL, -- Type of notification (e.g., "info", "warning", "error")
     is_read BOOLEAN NOT NULL DEFAULT FALSE, -- Whether the notification has been read
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Date notification was created
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_unicode_ci;
