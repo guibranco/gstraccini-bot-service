@@ -85,7 +85,7 @@ CREATE TABLE notifications (
 CREATE INDEX idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX idx_notifications_is_read ON notifications(is_read);
 CREATE INDEX idx_notifications_type ON notifications(type);
-CREATE INDEX idx_notifications_user_unread ON notifications(user_id, is_read) WHERE is_read = FALSE;
+CREATE INDEX idx_notifications_user_unread ON notifications(user_id, is_read);
 
 -- Table to store recent activities
 DROP TABLE IF EXISTS recent_activities;
