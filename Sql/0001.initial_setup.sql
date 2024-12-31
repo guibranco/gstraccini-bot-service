@@ -1,4 +1,4 @@
-SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+ SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
 
@@ -14,7 +14,7 @@ CREATE TABLE github_users (
     username VARCHAR(255) NOT NULL UNIQUE, -- GitHub username
     first_name VARCHAR(255), -- User's first name
     last_name VARCHAR(255), -- User's last name
-    email VARCHAR(255) UNIQUE CHECK (email REGEXP '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'), -- User's email
+    email VARCHAR(255) UNIQUE NOT NULL, -- User's email
     avatar_url TEXT, -- Link to the user's avatar image
     password VARCHAR(255) NOT NULL, -- User's password for bot authentication
     bot_settings JSON, -- JSON data to store bot-specific settings
