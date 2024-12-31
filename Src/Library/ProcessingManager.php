@@ -2,14 +2,14 @@
 
 namespace GuiBranco\GStracciniBot\Library;
 
-use GuiBranco\Pancake\ILogger;
+use GuiBranco\Pancake\Logger;
 
 class ProcessingManager
 {
     private $table;
     private $logger;
 
-    public function __construct(string $table, ILogger $logger)
+    public function __construct(string $table, Logger $logger)
     {
         $this->table = $table;
         $this->logger = $logger;
@@ -35,10 +35,9 @@ class ProcessingManager
             }
 
             $message = sprintf(
-                "Skipping item (Table: %s, Sequence: %d, Delivery ID: %s) since it was already handled.",
+                "Skipping item (Table: %s, Sequence: %d) since it was already handled.",
                 $this->table,
-                $item->Sequence,
-                $item->DeliveryIdText
+                $item->Sequence
             );
             $this->logger->log($message, json_encode($item));
             echo $message;
