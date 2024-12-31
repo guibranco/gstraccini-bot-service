@@ -29,12 +29,13 @@ DROP TABLE IF EXISTS github_installations;
 CREATE TABLE github_installations (
     id BIGINT PRIMARY KEY, -- GitHub installation ID
     user_id BIGINT NOT NULL, -- References github_users(id)
-    access_token TEXT NOT NULL, -- Installation access token
+    access_token TEXT NOT NULL, -- Encrypted installation access token
     expires_at TIMESTAMP NOT NULL, -- Expiry date of the access token
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Date installation was added
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Date installation info was last updated
     FOREIGN KEY (user_id) REFERENCES github_users (id) ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE INDEX idx_github_installations_user_id ON github_installations(user_id);
 
 -- Table to store GitHub repositories
 DROP TABLE IF EXISTS github_repositories;
