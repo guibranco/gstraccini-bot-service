@@ -24,6 +24,7 @@ CREATE TABLE github_users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP -- Date user info was last updated
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE INDEX idx_github_users_user_id ON github_users(user_id);
+CREATE INDEX idx_github_users_username ON github_users(username);
 CREATE INDEX idx_github_users_email ON github_users(email);
 
 -- Table to store GitHub installations
