@@ -23,7 +23,6 @@ CREATE TABLE github_users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Date user was added
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP -- Date user info was last updated
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE INDEX idx_github_users_user_id ON github_users(user_id);
 CREATE INDEX idx_github_users_username ON github_users(username);
 CREATE INDEX idx_github_users_email ON github_users(email);
 
@@ -48,11 +47,12 @@ CREATE TABLE github_repositories (
     name VARCHAR(255) NOT NULL, -- Repository name
     full_name VARCHAR(255) NOT NULL UNIQUE, -- Full name (e.g., user/repo)
     private BOOLEAN NOT NULL DEFAULT FALSE, -- Whether the repo is private
+    status ENUM('active', 'archived', 'deleted') NOT NULL DEFAULT 'active', -- Repository status
+    last_sync_at TIMESTAMP NULL DEFAULT NULL, -- Last successful sync with GitHub
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Date repository was added
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Date repository info was last updated
     FOREIGN KEY (installation_id) REFERENCES github_installations (id) ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE INDEX idx_github_repositories_user_id ON github_repositories(user_id);
 CREATE INDEX idx_github_repositories_installation_id ON github_repositories(installation_id);
 CREATE INDEX idx_github_repositories_name ON github_repositories(name);
 
@@ -111,7 +111,6 @@ CREATE TABLE pending_actions (
     FOREIGN KEY (user_id) REFERENCES github_users (id) ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE INDEX idx_pending_actions_user_due ON pending_actions(user_id, due_date);
-CREATE INDEX idx_pending_actions_due ON pending_actions(due_date) WHERE due_date IS NOT NULL;
 
 COMMIT;
 
