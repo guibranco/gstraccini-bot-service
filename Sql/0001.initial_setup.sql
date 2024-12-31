@@ -23,6 +23,8 @@ CREATE TABLE github_users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Date user was added
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP -- Date user info was last updated
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE INDEX idx_github_users_user_id ON github_users(user_id);
+CREATE INDEX idx_github_users_email ON github_users(email);
 
 -- Table to store GitHub installations
 DROP TABLE IF EXISTS github_installations;
@@ -49,6 +51,7 @@ CREATE TABLE github_repositories (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Date repository info was last updated
     FOREIGN KEY (installation_id) REFERENCES github_installations (id) ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE INDEX idx_github_repositories_user_id ON github_repositories(user_id);
 CREATE INDEX idx_github_repositories_installation_id ON github_repositories(installation_id);
 CREATE INDEX idx_github_repositories_name ON github_repositories(name);
 
@@ -64,6 +67,7 @@ CREATE TABLE github_integrations (
     last_error TEXT, -- Description of the last error, if applicable
     FOREIGN KEY (user_id) REFERENCES github_users (id) ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE INDEX idx_github_integrations_user_id ON github_integrations(user_id);
 
 -- Table to store notifications
 DROP TABLE IF EXISTS notifications;
@@ -77,7 +81,6 @@ CREATE TABLE notifications (
     is_read BOOLEAN NOT NULL DEFAULT FALSE, -- Whether the notification has been read
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Date notification was created
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_unicode_ci;
-
 CREATE INDEX idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX idx_notifications_is_read ON notifications(is_read);
 CREATE INDEX idx_notifications_type ON notifications(type);
@@ -93,6 +96,7 @@ CREATE TABLE recent_activities (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Date the activity occurred
     FOREIGN KEY (user_id) REFERENCES github_users (id) ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE INDEX idx_recent_activities_user_id ON recent_activities(user_id);
 
 -- Table to store pending actions
 DROP TABLE IF EXISTS pending_actions;
@@ -105,6 +109,7 @@ CREATE TABLE pending_actions (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Date the action was created
     FOREIGN KEY (user_id) REFERENCES github_users (id) ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE INDEX idx_pending_actions_user_id ON pending_actions(user_id);
 
 COMMIT;
 
