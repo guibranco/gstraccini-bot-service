@@ -11,10 +11,10 @@ SET time_zone = "+00:00";
 DROP TABLE IF EXISTS github_users;
 CREATE TABLE github_users (
     id BIGINT PRIMARY KEY, -- GitHub user ID (unique identifier from GitHub)
-    username VARCHAR(255) NOT NULL, -- GitHub username
+    username VARCHAR(255) NOT NULL UNIQUE, -- GitHub username
     first_name VARCHAR(255), -- User's first name
     last_name VARCHAR(255), -- User's last name
-    email VARCHAR(255), -- User's email
+    email VARCHAR(255) UNIQUE CHECK (email REGEXP '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'), -- User's email
     avatar_url TEXT, -- Link to the user's avatar image
     password VARCHAR(255) NOT NULL, -- User's password for bot authentication
     bot_settings JSON, -- JSON data to store bot-specific settings
@@ -92,25 +92,26 @@ DROP TABLE IF EXISTS recent_activities;
 CREATE TABLE recent_activities (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, -- Unique identifier for the activity
     user_id BIGINT NOT NULL, -- References github_users(id)
-    action VARCHAR(255) NOT NULL, -- Description of the activity (e.g., "merged a pull request")
+    action ENUM('merged_pr', 'created_issue', 'commented', 'reviewed') NOT NULL, -- Description of the activity (e.g., "merged a pull request")
     metadata JSON, -- Additional data about the activity (e.g., repository, pull request ID)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Date the activity occurred
     FOREIGN KEY (user_id) REFERENCES github_users (id) ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE INDEX idx_recent_activities_user_id ON recent_activities(user_id);
+CREATE INDEX idx_recent_activities_user_created ON recent_activities(user_id, created_at DESC);
 
 -- Table to store pending actions
 DROP TABLE IF EXISTS pending_actions;
 CREATE TABLE pending_actions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, -- Unique identifier for the action
     user_id BIGINT NOT NULL, -- References github_users(id)
-    action VARCHAR(255) NOT NULL, -- Description of the action (e.g., "review a pull request")
+    action ENUM('review_pr', 'fix_issue', 'update_deps') NOT NULL, -- Description of the action (e.g., "review a pull request")
     metadata JSON, -- Additional data about the action (e.g., repository, pull request ID)
     due_date TIMESTAMP, -- Optional deadline for the action
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Date the action was created
     FOREIGN KEY (user_id) REFERENCES github_users (id) ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE INDEX idx_pending_actions_user_id ON pending_actions(user_id);
+CREATE INDEX idx_pending_actions_user_due ON pending_actions(user_id, due_date);
+CREATE INDEX idx_pending_actions_due ON pending_actions(due_date) WHERE due_date IS NOT NULL;
 
 COMMIT;
 
