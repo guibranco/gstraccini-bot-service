@@ -779,12 +779,12 @@ function handleUpdateRepoVariableCommand($comment, $config)
     if (stripos($comment->CommentBody, $commandExpression) === false) {
         return null;
     }
-        
+
     $parts = explode(" ", str_ireplace($commandExpression, "", $comment->CommentBody));
     if (count($parts) < 2) {
-         return "Error: Please provide both variable name and value.";
+        return "Error: Please provide both variable name and value.";
     }
-    
+
     $name = $parts[0];
     $value = $parts[1];
     $owner = $comment->RepositoryOwner;
