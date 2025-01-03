@@ -773,7 +773,8 @@ function updateNextBuildNumber($metadata, $project, $nextBuildNumber): void
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
 }
 
-function handleUpdateRepoVariableCommand($comment, $config) {
+function handleUpdateRepoVariableCommand($comment, $config)
+{
     $commandExpression = "@" . $config->botName . " update repo variable ";
     if (stripos($comment->CommentBody, $commandExpression) !== false) {
         $parts = explode(" ", str_ireplace($commandExpression, "", $comment->CommentBody));
