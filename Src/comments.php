@@ -1,6 +1,4 @@
 <?php
-require_once 'lib/github.php';
-
 require_once "config/config.php";
 
 use GuiBranco\GStracciniBot\Library\LabelService;
@@ -10,27 +8,6 @@ use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
 
 function handleItem($comment): void
-
-
-function handleUpdateRepoVariableCommand($comment, $config) {
-    $commandExpression = "@" . $config->botName . " update repo variable ";
-    if (stripos($comment->CommentBody, $commandExpression) !== false) {
-        $parts = explode(" ", str_ireplace($commandExpression, "", $comment->CommentBody));
-        if (count($parts) >= 2) {
-            $name = $parts[0];
-            $value = $parts[1];
-            $owner = $comment->RepositoryOwner;
-            $repo = $comment->RepositoryName;
-            updateOrCreateRepoVariable($owner, $repo, $name, $value);
-            return "Variable '{$name}' has been updated/created successfully.";
-        } else {
-            return "Error: Please provide both variable name and value.";
-        }
-    }
-    return null;
-}
-
-function processComment($comment, $config) {
 {
     echo "https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/issues/{$comment->PullRequestNumber}/#issuecomment-{$comment->CommentId}:\n\n";
     echo "Comment: {$comment->CommentBody} | Sender: {$comment->CommentSender}\n";
