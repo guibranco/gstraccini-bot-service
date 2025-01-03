@@ -199,7 +199,7 @@
         "description": "Update test snapshots (`npm test -- -u`) (only for **Node.js** projects).",
         "requiresPullRequestOpen": true
     },
-        {
+    {
         "command": "update variable",
         "description": "Updates or creates a repository action variable.",
         "parameters": [
