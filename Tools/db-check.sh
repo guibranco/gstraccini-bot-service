@@ -17,7 +17,7 @@ fi
 
 CONNECT=$(
     mysql -h "$MYSQL_HOST" --protocol tcp "--user=$MYSQL_USER" --batch --skip-column-names -e \
-        "SHOW DATABASES LIKE '$DBNAME';" | grep "$DBNAME" >/dev/null
+        "SHOW DATABASES LIKE '$MYSQL_DB';" | grep "$MYSQL_DB" >/dev/null
     echo "$?"
 )
 
@@ -35,14 +35,13 @@ echo "" >>"$GITHUB_STEP_SUMMARY"
 
 if [ "$EXISTS" -eq 1 ]; then
     MESSAGE="The \`schema version\` table **does** exist."
-    echo "::notice file=$0,line=$LINENO::$MESSAGE"
     echo ":thumbsup: $MESSAGE" >>"$GITHUB_STEP_SUMMARY"
-    echo "db_check_not_found=false" >>"$GITHUB_ENV"
     echo "not_found=false" >>"$GITHUB_OUTPUT"
 else
     MESSAGE="The \`schema version\` table **does not** exist."
-    echo "::warning file=$0,line=$LINENO::$MESSAGE"
+    if [ "$DB_ENV" == "PRD" ]; then
+        echo "::warning file=$0,line=$LINENO::$MESSAGE"
+    fi
     echo ":thumbsdown: $MESSAGE" >>"$GITHUB_STEP_SUMMARY"
-    echo "db_check_not_found=true" >>"$GITHUB_ENV"
     echo "not_found=true" >>"$GITHUB_OUTPUT"
 fi

@@ -2,6 +2,7 @@
 
 require_once "config/config.php";
 
+use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
 
@@ -21,7 +22,7 @@ function handleItem($issue)
     );
 
     $issueResponse = doRequestGitHub($metadata["token"], $metadata["issueUrl"], null, "GET");
-    $issueUpdated = json_decode($issueResponse->body);
+    $issueUpdated = json_decode($issueResponse->getBody());
 
     if ($issueUpdated->state === "closed") {
         removeLabels($issueUpdated, $metadata, true);
@@ -34,10 +35,10 @@ function handleItem($issue)
     }
 
     $repositoryResponse = doRequestGitHub($metadata["token"], $metadata["repoUrl"], null, "GET");
-    $repository = json_decode($repositoryResponse->body);
+    $repository = json_decode($repositoryResponse->getBody());
 
     $collaboratorsResponse = doRequestGitHub($metadata["token"], $metadata["collaboratorsUrl"], null, "GET");
-    $collaborators = json_decode($collaboratorsResponse->body, true);
+    $collaborators = json_decode($collaboratorsResponse->getBody(), true);
     $collaboratorsLogins = array_column($collaborators, "login");
 
     if ($repository->private) {
@@ -91,19 +92,15 @@ function removeLabels($issueUpdated, $metadata, $includeWip = false)
     }
 }
 
-function main()
+
+function main(): void
 {
     $config = loadConfig();
     ob_start();
     $table = "github_issues";
-    $items = readTable($table);
-    foreach ($items as $item) {
-        echo "Sequence: {$item->Sequence}\n";
-        echo "Delivery ID: {$item->DeliveryIdText}\n";
-        updateTable($table, $item->Sequence);
-        handleItem($item);
-        echo str_repeat("=-", 50) . "=\n";
-    }
+    global $logger;
+    $processor = new ProcessingManager($table, $logger);
+    $processor->process('handleItem');
     $result = ob_get_clean();
     if ($config->debug->all === true || $config->debug->issues === true) {
         echo $result;

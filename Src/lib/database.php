@@ -27,7 +27,7 @@ function connectToDatabase($isRetry = false)
     }
 }
 
-function readTable($tableName, $where = null)
+function readTable($tableName, $where = null): ?array
 {
     $mysqli = connectToDatabase();
     $defaultWhere = "Processed = 0 ORDER BY Sequence ASC LIMIT 10";
@@ -55,16 +55,21 @@ function readTable($tableName, $where = null)
     return $data;
 }
 
-function updateTable($tableName, $sequence)
+function updateTable($tableName, $sequence): bool
 {
     $mysqli = connectToDatabase();
-    $sql = "UPDATE " . $tableName . " SET Processed = 1, ProcessedDate = NOW() WHERE Sequence = ?";
+    $sql = "UPDATE " . $tableName . " SET Processed = 1, ProcessedDate = NOW() WHERE Sequence = ? AND Processed = 0";
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param("i", $sequence);
+    $succeeded = false;
 
-    $stmt->execute();
+    if ($stmt->execute()) {
+        $succeeded = $stmt->affected_rows === 1;
+    }
+
     $stmt->close();
     $mysqli->close();
+    return $succeeded;
 }
 
 function upsertPullRequest($pullRequest)
