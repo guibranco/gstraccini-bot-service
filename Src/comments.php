@@ -1,4 +1,5 @@
 <?php
+
 require_once "config/config.php";
 
 use GuiBranco\GStracciniBot\Library\LabelService;
