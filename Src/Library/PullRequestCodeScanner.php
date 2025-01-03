@@ -51,7 +51,7 @@ class PullRequestCodeScanner
     private function parseCommentLine(string $line): ?array
     {
         foreach (self::COMMENT_MARKERS as $marker) {
-            if (($pos = stripos($line, $marker)) !== false) {
+            if (($pos = strpos($line, $marker)) !== false) {
                 $comment = trim(substr($line, $pos + strlen($marker)));
                 foreach (self::KEYWORDS as $keyword) {
                     if (preg_match("/\b$keyword\b(:|\s+)(?<description>.+)?/i", $comment, $matches)) {
