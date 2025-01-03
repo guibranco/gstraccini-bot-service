@@ -9,27 +9,6 @@ use Lcobucci\JWT\Signer\Rsa\Sha256;
 use Lcobucci\JWT\Token\Builder;
 
 /**
-
-function updateOrCreateRepoVariable($owner, $repo, $name, $value) {
-    $request = new Request();
-    $url = "https://api.github.com/repos/{$owner}/{$repo}/actions/variables";
-
-    // Get existing variables
-    $response = $request->get($url);
-    $variables = json_decode($response->getBody(), true);
-
-    $variableExists = false;
-    foreach ($variables as $variable) {
-        if ($variable['name'] === $name) {
-            $variableExists = true;
-            break;
-        }
-    }
-}
-
-    if ($variableExists) {
-        $url .= "/{$name}";
-        $request->patch($url, ['value' => $value]);
  * The function `doRequestGitHub` sends HTTP requests to the GitHub API with specified parameters and
  * handles different HTTP methods.
  *
