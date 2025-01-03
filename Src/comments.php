@@ -776,20 +776,21 @@ function updateNextBuildNumber($metadata, $project, $nextBuildNumber): void
 function handleUpdateRepoVariableCommand($comment, $config)
 {
     $commandExpression = "@" . $config->botName . " update repo variable ";
-    if (stripos($comment->CommentBody, $commandExpression) !== false) {
-        $parts = explode(" ", str_ireplace($commandExpression, "", $comment->CommentBody));
-        if (count($parts) >= 2) {
-            $name = $parts[0];
-            $value = $parts[1];
-            $owner = $comment->RepositoryOwner;
-            $repo = $comment->RepositoryName;
-            updateOrCreateRepoVariable($owner, $repo, $name, $value);
-            return "Variable '{$name}' has been updated/created successfully.";
-        } else {
-            return "Error: Please provide both variable name and value.";
-        }
+    if (stripos($comment->CommentBody, $commandExpression) === false) {
+        return null;
     }
-    return null;
+        
+    $parts = explode(" ", str_ireplace($commandExpression, "", $comment->CommentBody));
+    if (count($parts) < 2) {
+         return "Error: Please provide both variable name and value.";
+    }
+    
+    $name = $parts[0];
+    $value = $parts[1];
+    $owner = $comment->RepositoryOwner;
+    $repo = $comment->RepositoryName;
+    updateOrCreateRepoVariable($owner, $repo, $name, $value);
+    return "Variable '{$name}' has been updated/created successfully.";
 }
 
 function updateOrCreateRepoVariable($owner, $repo, $name, $value)
