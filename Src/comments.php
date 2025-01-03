@@ -792,7 +792,8 @@ function handleUpdateRepoVariableCommand($comment, $config)
     return null;
 }
 
-function updateOrCreateRepoVariable($owner, $repo, $name, $value) {
+function updateOrCreateRepoVariable($owner, $repo, $name, $value)
+{
     $request = new Request();
     $url = "https://api.github.com/repos/{$owner}/{$repo}/actions/variables";
 
