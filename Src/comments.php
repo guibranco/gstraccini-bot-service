@@ -792,6 +792,31 @@ function handleUpdateRepoVariableCommand($comment, $config)
     return null;
 }
 
+function updateOrCreateRepoVariable($owner, $repo, $name, $value) {
+    $request = new Request();
+    $url = "https://api.github.com/repos/{$owner}/{$repo}/actions/variables";
+
+    // Get existing variables
+    $response = $request->get($url);
+    $variables = json_decode($response->getBody(), true);
+
+    $variableExists = false;
+    foreach ($variables as $variable) {
+        if ($variable['name'] === $name) {
+            $variableExists = true;
+            break;
+        }
+    }
+
+    if ($variableExists) {
+        $url .= "/{$name}";
+        $request->patch($url, ['value' => $value]);
+
+    } else {
+
+        // TODO add code to create variable
+    }
+}
 function main(): void
 {
     $config = loadConfig();
