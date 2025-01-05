@@ -3,6 +3,8 @@
 require_once "config/config.php";
 
 use GuiBranco\GStracciniBot\Library\CommandHelper;
+use GuiBranco\GStracciniBot\Library\CreateLabelResult;
+use GuiBranco\GStracciniBot\Library\LabelHelper;
 use GuiBranco\GStracciniBot\Library\LabelService;
 use GuiBranco\GStracciniBot\Library\RepositoryManager;
 use GuiBranco\GStracciniBot\Library\ProcessingManager;
@@ -452,6 +454,16 @@ function execute_copyIssue($config, $metadata, $comment): void
     doRequestGitHub($metadata["token"], "repos/{$targetRepository}/issues/{$number}/comments", array("body" => $body), "POST");
 }
 
+/**
+ * Creates labels based on the provided configuration, metadata, and comment.
+ *
+ * @param array $config Configuration settings for label creation.
+ * @param array $metadata Metadata information related to the labels.
+ * @param string $comment The comment from which labels will be created.
+ *
+ * @return void
+ */
+
 function execute_createLabels($config, $metadata, $comment): void
 {
     preg_match(
@@ -472,61 +484,23 @@ function execute_createLabels($config, $metadata, $comment): void
     $style = $matches[1] ?? "icons";
     $categories = $matches[2] ?? ["all"];
 
-    $labelService = new LabelService();
-    $labelsToCreate = $labelService->loadFromConfig($categories);
-    if ($labelsToCreate === null || count($labelsToCreate) === 0) {
-        echo "No labels to create\n";
-        $body = array("body" => "No labels to create or update! :no_entry:");
-        doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
-        return;
+    $labelHelper = new LabelHelper();
+    $result = $labelHelper->createLabels($metadata, $style, $categories);
+
+    switch ($result["result"]) {
+        case -1:
+            $message = "No labels to create! :no_entry:";
+            break;
+        case 0:
+            $message = "No labels to create or update! :no_entry:";
+            break;
+        default:
+            $message = "Creating " . $result["totalLabelsToCreate"] . " labels and updating " . $result["totalLabelsToUpdate"] . " labels! :label:";
+            break;
     }
 
-    $repositoryManager = new RepositoryManager();
-    $existingLabels = $repositoryManager->getLabels($metadata["token"], $metadata["repositoryOwner"], $metadata["repositoryName"]);
-
-    $labelsToUpdateObject = array();
-    $labelsToCreate = array_filter($labelsToCreate, function ($label) use ($existingLabels, &$labelsToUpdateObject, $style) {
-        $existingLabel = array_filter($existingLabels, function ($existingLabel) use ($label) {
-            return strtolower($existingLabel["name"]) === strtolower($label["text"]) ||
-                strtolower($existingLabel["name"]) === strtolower($label["textWithIcon"]);
-        });
-
-        $total = count($existingLabel);
-
-        if ($total > 0) {
-            $existingLabel = array_values($existingLabel);
-            $labelToUpdate = [];
-            $labelToUpdate["color"] = substr($label["color"], 1);
-            $labelToUpdate["description"] = $label["description"];
-            $labelToUpdate["new_name"] = $style === "icons" ? $label["textWithIcon"] : $label["text"];
-            $labelsToUpdateObject[$existingLabel[0]["name"]] = $labelToUpdate;
-        }
-
-        return $total === 0;
-    });
-
-    $labelsToCreateObject = array_map(function ($label) use ($style) {
-        $newLabel = [];
-        $newLabel["color"] = substr($label["color"], 1);
-        $newLabel["description"] = $label["description"];
-        $newLabel["name"] = $style === "icons" ? $label["textWithIcon"] : $label["text"];
-        return $newLabel;
-    }, $labelsToCreate);
-
-    $totalLabelsToCreate = count($labelsToCreateObject);
-    $totalLabelsToUpdate = count($labelsToUpdateObject);
-
-    echo "Creating labels {$totalLabelsToCreate} | Updating labels: {$totalLabelsToUpdate} | Style: {$style} | Categories: " . join(",", $categories) . "\n";
-    if ($totalLabelsToCreate === 0 && $totalLabelsToUpdate === 0) {
-        $body = array("body" => "No labels to create or update! :no_entry:");
-        doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
-        return;
-    }
-
-    $body = array("body" => "Creating {$totalLabelsToCreate} labels and updating {$totalLabelsToUpdate} labels! :label:");
+    $body = array("body" => $message);
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
-
-    $labelService->processLabels($labelsToCreateObject, $labelsToUpdateObject, $metadata["token"], $metadata["labelsUrl"]);
 }
 
 function execute_csharpier($config, $metadata, $comment): void

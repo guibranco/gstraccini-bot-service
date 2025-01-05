@@ -105,7 +105,7 @@ function handleResponse(Response $response, string $method): Response
     $statusCode = $response->getStatusCode();
     $info = $response->toJson();
     if ($statusCode <= 0 || ($statusCode >= 300 && $statusCode !== 404)) {
-        $logger->log(constant("Invalid GitHub response"), $info);
+        $logger->log("Invalid GitHub response", $info);
     } elseif (empty($response->getBody()) && $method !== "DELETE" && $statusCode !== 204) {
         $logger->log("Unexpected empty response", $info);
     }
