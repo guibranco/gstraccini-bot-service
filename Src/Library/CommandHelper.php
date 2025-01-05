@@ -1,5 +1,12 @@
 <?php
 
+/**
+ * Class CommandHelper
+ *
+ * This class provides helper methods for executing and managing commands.
+ *
+ * @package Library
+ */
 class CommandHelper
 {
     /**
