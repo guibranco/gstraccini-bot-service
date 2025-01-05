@@ -8,6 +8,8 @@ use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Signer\Rsa\Sha256;
 use Lcobucci\JWT\Token\Builder;
 
+define('INVALID_GITHUB_RESPONSE', 'Invalid GitHub response');
+
 /**
  * The function `doRequestGitHub` sends HTTP requests to the GitHub API with specified parameters and
  * handles different HTTP methods.
@@ -25,7 +27,7 @@ use Lcobucci\JWT\Token\Builder;
  * @param string method The `method` parameter in the `doRequestGitHub` function specifies the HTTP
  * method to be used for the request. It can be one of the following values:
  *
- * @return stdClass The function `doRequestGitHub` returns an object of type `stdClass` which
+ * @return Response The function `doRequestGitHub` returns an object of type `Response` which
  * represents the response of the GitHub API request.
  */
 function doRequestGitHub(string $token, string $url, mixed $data, string $method): Response
@@ -76,7 +78,7 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
     $statusCode = $response->getStatusCode();
     $info = $response->toJson();
     if ($statusCode <= 0 || ($statusCode >= 300 && $statusCode !== 404)) {
-        $logger->log("Invalid GitHub response", $info);
+        $logger->log(constant("INVALID_GITHUB_RESPONSE"), $info);
     } elseif (empty($response->getBody()) && $method !== "DELETE" && $statusCode !== 204) {
         $logger->log("Unexpected empty response", $info);
     }
@@ -104,7 +106,7 @@ function getPullRequestDiff(array $metadata): Response
     $statusCode = $response->getStatusCode();
     if ($statusCode <= 0 || $statusCode >= 300) {
         $info = $response->toJson();
-        $logger->log("Invalid GitHub response", $info);
+        $logger->log(constant("INVALID_GITHUB_RESPONSE"), $info);
     }
 
     return $response;
@@ -170,7 +172,7 @@ function generateInstallationToken(string $installationId, string $repositoryNam
 
     if ($response->getStatusCode() >= 300) {
         $info = $response->toJson();
-        $logger->log("Invalid GitHub response", $info);
+        $logger->log(constant("INVALID_GITHUB_RESPONSE"), $info);
     }
 
     $json = json_decode($response->getBody());
@@ -216,7 +218,7 @@ function setCheckRunInProgress(array $metadata, string $commitId, string $type):
 
     if ($response->getStatusCode() >= 300 || empty($response->getBody()) === true) {
         $info = $response->toJson();
-        $logger->log("Invalid GitHub response", $info);
+        $logger->log(constant("INVALID_GITHUB_RESPONSE"), $info);
     }
 
     $result = json_decode($response->getBody());
@@ -259,7 +261,7 @@ function setCheckRunFailed(array $metadata, int $checkRunId, string $type, strin
 
     if ($response->getStatusCode() >= 300) {
         $info = $response->toJson();
-        $logger->log("Invalid GitHub response", $info);
+        $logger->log(constant("INVALID_GITHUB_RESPONSE"), $info);
     }
 }
 
@@ -297,6 +299,6 @@ function setCheckRunSucceeded(array $metadata, int $checkRunId, string $type, st
 
     if ($response->getStatusCode() >= 300) {
         $info = $response->toJson();
-        $logger->log("Invalid GitHub response", $info);
+        $logger->log(constant("INVALID_GITHUB_RESPONSE"), $info);
     }
 }
