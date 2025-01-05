@@ -58,7 +58,7 @@ if (file_exists($rabbitMqSecretsFile)) {
     require_once $rabbitMqSecretsFile;
 }
 
-function loadConfig()
+function loadConfig(): stdClass
 {
     $fileNameConfig = "config/config.json";
     $fileNameCommands = "config/commands.json";
