@@ -82,7 +82,7 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
             break;
     }
 
-    return handleResponse($response);
+    return handleResponse($response, $method);
 }
 
 /**
@@ -91,11 +91,14 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
  * @param Response response The `response` parameter in the `handleResponse` function is an object of
  * type `Response` that represents the response received from the GitHub API request. It contains
  * information such as the status code, headers, and body of the response.
+ * @param string method The `method` parameter in the `handleResponse` function is a string that
+ * specifies the HTTP method used in the request. It is used to determine the type of response expected
+ * and validate the response accordingly.
  *
  * @return Response The function `handleResponse` returns the same `Response` object that was passed
  * as a parameter after logging and validating the response.
  */
-function handleResponse(Response $response): Response
+function handleResponse(Response $response, string $method): Response
 {
     global $logger;
 
