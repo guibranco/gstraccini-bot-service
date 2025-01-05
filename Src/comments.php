@@ -573,7 +573,7 @@ function execute_rerunWorkflows($config, $metadata, $comment): void
 {
     $commandHelper = new CommandHelper();
     $type = $commandHelper->getConclusionFromComment("workflows", $config->botName, $metadata, $comment);
-    
+
     if ($type === null) {
         return;
     }
