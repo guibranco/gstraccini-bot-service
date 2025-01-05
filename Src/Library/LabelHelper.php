@@ -11,7 +11,6 @@ namespace GuiBranco\GStracciniBot\Library;
  */
 class LabelHelper
 {
-
     /**
      * Creates labels based on the provided metadata, style, and categories.
      *
