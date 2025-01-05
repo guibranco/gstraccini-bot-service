@@ -11,21 +11,23 @@ namespace GuiBranco\GStracciniBot\Library;
  */
 class LabelHelper
 {
+
     /**
      * Creates labels based on the provided metadata, style, and categories.
      *
-     * @param array $metadata An array containing metadata information for the labels.
+     * @param array $metadata An array of metadata used to create the labels.
      * @param string $style The style to be applied to the labels.
      * @param array $categories An array of categories to which the labels belong.
-     * @return CreateLabelResult The result of the label creation process.
+     *
+     * @return array An array of created labels.
      */
-    public function createLabels(array $metadata, string $style, array $categories): CreateLabelResult
+    public function createLabels(array $metadata, string $style, array $categories): array
     {
         $labelService = new LabelService();
         $labelsToCreate = $labelService->loadFromConfig($categories);
         if ($labelsToCreate === null || count($labelsToCreate) === 0) {
             echo "⛔ No labels to create\n";
-            return CreateLabelResult::NoLabelsToCreate;
+            return ["result" => -1];
         }
 
         $repositoryManager = new RepositoryManager();
@@ -34,8 +36,8 @@ class LabelHelper
         $labelsToUpdateObject = array();
         $labelsToCreate = array_filter($labelsToCreate, function ($label) use ($existingLabels, &$labelsToUpdateObject, $style) {
             $existingLabel = array_filter($existingLabels, function ($existingLabel) use ($label) {
-                return  strtolower($existingLabel["name"]) === strtolower($label["text"]) ||
-                        strtolower($existingLabel["name"]) === strtolower($label["textWithIcon"]);
+                return strtolower($existingLabel["name"]) === strtolower($label["text"]) ||
+                    strtolower($existingLabel["name"]) === strtolower($label["textWithIcon"]);
             });
 
             $total = count($existingLabel);
@@ -69,24 +71,11 @@ class LabelHelper
         echo "Categories: " . implode(", ", $categories) . "\n";
 
         if ($totalLabelsToCreate === 0 && $totalLabelsToUpdate === 0) {
-            return CreateLabelResult::NoLabelsToCreateOrUpdate;
+            return ["result" => 0];
         }
 
         $labelService->processLabels($labelsToCreateObject, $labelsToUpdateObject, $metadata["token"], $metadata["labelsUrl"]);
 
-        return CreateLabelResult::Success;
+        return ["result" => 1, "totalLabelsToCreate" => $totalLabelsToCreate, "totalLabelsToUpdate" => $totalLabelsToUpdate];
     }
-}
-
-/**
- * Enum CreateLabelResult
- *
- * This enum represents the possible results of creating a label.
- * It can be used to handle different outcomes of the label creation process.
- */
-enum CreateLabelResult
-{
-    case NoLabelsToCreate;
-    case NoLabelsToCreateOrUpdate;
-    case Success;
 }

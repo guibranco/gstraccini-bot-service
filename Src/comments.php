@@ -454,6 +454,16 @@ function execute_copyIssue($config, $metadata, $comment): void
     doRequestGitHub($metadata["token"], "repos/{$targetRepository}/issues/{$number}/comments", array("body" => $body), "POST");
 }
 
+/**
+ * Creates labels based on the provided configuration, metadata, and comment.
+ *
+ * @param array $config Configuration settings for label creation.
+ * @param array $metadata Metadata information related to the labels.
+ * @param string $comment The comment from which labels will be created.
+ *
+ * @return void
+ */
+
 function execute_createLabels($config, $metadata, $comment): void
 {
     preg_match(
@@ -477,22 +487,20 @@ function execute_createLabels($config, $metadata, $comment): void
     $labelHelper = new LabelHelper();
     $result = $labelHelper->createLabels($metadata, $style, $categories);
 
-    if ($result === CreateLabelResult::NoLabelsToCreate) {
-        $body = array("body" => "No labels to create or update! :no_entry:");
-        doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
-        return;
+    switch ($result["result"]) {
+        case -1:
+            $message = "No labels to create! :no_entry:";
+            break;
+        case 0:
+            $message = "No labels to create or update! :no_entry:";
+            break;
+        default:
+            $message = "Creating " . $result["totalLabelsToCreate"] . " labels and updating " . $result["totalLabelsToUpdate"] . " labels! :label:";
+            break;
     }
 
-    if ($result === CreateLabelResult::NoLabelsToCreateOrUpdate) {
-        $body = array("body" => "No labels to create or update! :no_entry:");
-        doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
-        return;
-    }
-
-    $body = array("body" => "Creating and updating labels! :label:");
+    $body = array("body" => $message);
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
-
-
 }
 
 function execute_csharpier($config, $metadata, $comment): void
