@@ -58,6 +58,11 @@ if (file_exists($rabbitMqSecretsFile)) {
     require_once $rabbitMqSecretsFile;
 }
 
+/**
+ * Loads the configuration settings.
+ *
+ * @return stdClass An object containing the configuration settings.
+ */
 function loadConfig(): stdClass
 {
     $fileNameConfig = "config/config.json";
