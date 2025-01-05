@@ -560,68 +560,21 @@ function execute_prettier($config, $metadata, $comment): void
     callWorkflow($config, $metadata, $comment, "prettier.yml");
 }
 
-function execute_rerunChecks($config, $metadata, $comment): void
-{
-    $validConclusions = array("action_required", "cancelled", "timed_out", "failure", "neutral", "skipped", "stale", "startup_failure", "success");
-    preg_match(
-        "/@" . $config->botName . "\srerun\schecks(?:\s(\w+))?/",
-        $comment->CommentBody,
-        $matches
-    );
-
-    $type = count($matches) === 1 ? "failure" : $matches[1];
-
-    if (!in_array($type, $validConclusions)) {
-        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
-        $body = $metadata["errorMessages"]["invalidParameter"];
-        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-        return;
-    }
-
-    $filter = function ($checkRun) use ($type): bool {
-        return $checkRun->conclusion === $type && $checkRun->status === "completed" && $checkRun->app->slug !== "github-actions";
-    };
-    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
-    $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
-    $pullRequestUpdated = json_decode($pullRequestResponse->getBody());
-    $commitSha1 = $pullRequestUpdated->head->sha;
-    $checkRunsResponse = doRequestGitHub($metadata["token"], $metadata["repoPrefix"] . "/commits/" . $commitSha1 . "/check-runs?status=completed", null, "GET");
-    $checkRuns = json_decode($checkRunsResponse->getBody());
-    $failedCheckRuns = array_filter($checkRuns->check_runs, $filter);
-    $total = count($failedCheckRuns);
-
-    $body = "Rerunning " . $total . " " . $type . " check" . ($total === 1 ? "" : "s") . " on the commit `" . $commitSha1 . "`! :repeat:";
-    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-    if ($total === 0) {
-        return;
-    }
-
-    $checksToRerun = "Rerunning the following checks: \n";
-    foreach ($failedCheckRuns as $failedCheckRun) {
-        $url = $metadata["repoPrefix"] . "/check-runs/" . $failedCheckRun->id . "/rerequest";
-        $response = doRequestGitHub($metadata["token"], $url, null, "POST");
-        $status = $response->getStatusCode() === 201 ? "🔄" : "❌";
-        $checksToRerun .= "- [" . $failedCheckRun->name . "](" . $failedCheckRun->details_url . ") ([" . $failedCheckRun->app->name . " ](" . $failedCheckRun->app->html_url . " )) - " . $status . "\n";
-    }
-
-    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $checksToRerun), "POST");
-}
-
+/**
+ * Executes rerun checks based on the provided configuration, metadata, and comment.
+ *
+ * @param array $config Configuration settings for the rerun checks.
+ * @param array $metadata Metadata information related to the rerun checks.
+ * @param string $comment The comment triggering the rerun checks.
+ *
+ * @return void
+ */
 function execute_rerunWorkflows($config, $metadata, $comment): void
 {
-    $validConclusions = array("action_required", "cancelled", "timed_out", "failure", "neutral", "skipped", "stale", "startup_failure", "success");
-    preg_match(
-        "/@" . $config->botName . "\srerun\sworkflows(?:\s(\w+))?/",
-        $comment->CommentBody,
-        $matches
-    );
-
-    $type = count($matches) === 1 ? "failure" : $matches[1];
-
-    if (!in_array($type, $validConclusions)) {
-        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
-        $body = $metadata["errorMessages"]["invalidParameter"];
-        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    $commandHelper = new CommandHelper();
+    $type = $commandHelper->getConclusionFromComment("workflows", $config->botName, $metadata, $comment);
+    
+    if ($type === null) {
         return;
     }
 
