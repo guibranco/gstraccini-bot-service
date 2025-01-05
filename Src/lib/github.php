@@ -34,6 +34,11 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
 {
     global $logger;
 
+    if ($token === null || $token === "") {
+        $logger->log("Invalid GitHub token", null);
+        return Response::error("Invalid GitHub token", $url, -1);
+    }
+
     $baseUrl = "https://api.github.com/";
     $url = $baseUrl . $url;
 
