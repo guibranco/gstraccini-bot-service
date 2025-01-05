@@ -2,6 +2,7 @@
 
 require_once "config/config.php";
 
+use GuiBranco\GStracciniBot\Library\LabelHelper;
 use GuiBranco\GStracciniBot\Library\LabelService;
 use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\GStracciniBot\Library\RepositoryManager;
@@ -53,51 +54,8 @@ function createRepositoryLabels($metadata, $options)
     $style = $options["labels"]["style"] ?? "icons";
     $categories = $options["labels"]["categories"] ?? ["all"];
 
-    $labelService = new LabelService();
-    $labelsToCreate = $labelService->loadFromConfig($categories);
-    if ($labelsToCreate === null || count($labelsToCreate) === 0) {
-        echo "⛔ No labels to create\n";
-        return;
-    }
-
-    $repositoryManager = new RepositoryManager();
-    $existingLabels = $repositoryManager->getLabels($metadata["userToken"], $metadata["repositoryOwner"], $metadata["repositoryName"]);
-
-    $labelsToUpdateObject = array();
-    $labelsToCreate = array_filter($labelsToCreate, function ($label) use ($existingLabels, &$labelsToUpdateObject, $style) {
-        $existingLabel = array_filter($existingLabels, function ($existingLabel) use ($label) {
-            return  strtolower($existingLabel["name"]) === strtolower($label["text"]) ||
-                    strtolower($existingLabel["name"]) === strtolower($label["textWithIcon"]);
-        });
-
-        $total = count($existingLabel);
-
-        if ($total > 0) {
-            $existingLabel = array_values($existingLabel);
-            $labelToUpdate = [];
-            $labelToUpdate["color"] = substr($label["color"], 1);
-            $labelToUpdate["description"] = $label["description"];
-            $labelToUpdate["new_name"] = $style === "icons" ? $label["textWithIcon"] : $label["text"];
-            $labelsToUpdateObject[$existingLabel[0]["name"]] = $labelToUpdate;
-        }
-
-        return $total === 0;
-    });
-
-    $labelsToCreateObject = array_map(function ($label) use ($style) {
-        $newLabel = [];
-        $newLabel["color"] = substr($label["color"], 1);
-        $newLabel["description"] = $label["description"];
-        $newLabel["name"] = $style === "icons" ? $label["textWithIcon"] : $label["text"];
-        return $newLabel;
-    }, $labelsToCreate);
-
-    $totalLabelsToCreate = count($labelsToCreateObject);
-    $totalLabelsToUpdate = count($labelsToUpdateObject);
-
-    echo "🏃‍♂️ Creating labels {$totalLabelsToCreate} | Updating labels: {$totalLabelsToUpdate} | Style: {$style} | Categories: ".join(",", $categories)."\n";
-
-    $labelService->processLabels($labelsToCreateObject, $labelsToUpdateObject, $metadata["token"], $metadata["labelsUrl"]);
+    $labelHelper = new LabelHelper();
+    $labelHelper->createLabels($metadata, $style, $categories);
 }
 
 function main(): void
