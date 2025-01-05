@@ -1,5 +1,7 @@
 <?php
 
+namespace GuiBranco\GStracciniBot\Library;
+
 /**
  * Class CommandHelper
  *
