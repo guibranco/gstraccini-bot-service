@@ -2,6 +2,7 @@
 
 require_once "config/config.php";
 
+use GuiBranco\GStracciniBot\Library\CommandHelper;
 use GuiBranco\GStracciniBot\Library\LabelService;
 use GuiBranco\GStracciniBot\Library\RepositoryManager;
 use GuiBranco\GStracciniBot\Library\ProcessingManager;
