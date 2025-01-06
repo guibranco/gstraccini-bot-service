@@ -33,6 +33,16 @@ class CodeClimate
             "Authorization: Token token={$this->apiToken}",
         $request =  new Request();
         $response = $request->get($url, $headers);
+    /**
+     * Bypasses the CodeClimate PR check for a specific pull request.
+     *
+     * @param string $repositoryId      The ID of the repository.
+     * @param string $pullRequestNumber The number of the pull request.
+     * 
+     * @return Response Returns the response from the CodeClimate API.
+     * 
+     * @throws \Exception If bypassing the PR check fails.
+     */
 
         if ($response->getStatusCode() >= 300) {
             $this->logger->log("Error retrieving CodeClimate repository ID", json_encode($response));
