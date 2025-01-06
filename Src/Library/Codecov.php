@@ -9,6 +9,7 @@ use GuiBranco\Pancake\Request;
  *
  * @category CodeAnalysis
  * Handles interactions with the Codecov API, including retrieving repository IDs
+ * @package GuiBranco\GStracciniBot\Library
  * and bypassing PR checks when necessary.
  */
 class Codecov
