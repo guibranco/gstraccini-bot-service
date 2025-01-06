@@ -53,7 +53,8 @@ class CodeClimate
         $response = $request->post($url, $headers, $data);
 
         if ($response->getStatusCode() >= 300) {
-            $this->logger->log("Error bypassing CodeClimate PR check", json_encode($response));
+            $this->logger->log(
+                "Error bypassing CodeClimate PR check", json_encode($response)
             throw new \Exception("Failed to bypass PR check in CodeClimate");
         }
 
