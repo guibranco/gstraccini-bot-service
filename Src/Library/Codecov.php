@@ -4,7 +4,7 @@ namespace GuiBranco\GStracciniBot\Library;
 
 use GuiBranco\Pancake\Request;
 
-class CodecovApiService
+class Codecov
 {
     private $apiBaseUrl = 'https://api.codecov.io/v2';
     private $headers;
