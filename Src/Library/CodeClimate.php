@@ -5,6 +5,12 @@ namespace GuiBranco\GStracciniBot\Library;
 use GuiBranco\Pancake\Request;
 use GuiBranco\Pancake\Response;
 
+/**
+ * Class CodeClimate
+ *
+ * Handles interactions with the CodeClimate API, including retrieving repository IDs
+ * and bypassing PR checks when necessary.
+ */
 class CodeClimate
 {
     private $apiToken;
