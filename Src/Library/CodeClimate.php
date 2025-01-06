@@ -26,7 +26,11 @@ class CodeClimate
     public function getRepositoryId(string $githubSlug): string
     {
         $url = "{$this->baseUrl}repos?github_slug={$githubSlug}";
-        $headers = [constant("USER_AGENT"), "Accept: application/json", "Accept: application/vnd.api+json", "Authorization: Token token={$this->apiToken}"];
+        $headers = [
+            constant("USER_AGENT"),
+            "Accept: application/json",
+            "Accept: application/vnd.api+json",
+            "Authorization: Token token={$this->apiToken}",
         $request =  new Request();
         $response = $request->get($url, $headers);
 
