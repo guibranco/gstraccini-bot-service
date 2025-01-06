@@ -28,6 +28,8 @@ function bypassPullRequestAnalysis(string $remoteOrganizationName, string $repos
     global $codacyApiToken, $logger;
 
     $baseUrl = "https://api.codacy.com/api/v3/";
+$organizationPath = "organizations/gh/{$remoteOrganizationName}/";
+$repositoryPath = "repositories/{$repositoryName}/pull-requests/{$pullRequestNumber}/bypass";
     $url = "{$baseUrl}analysis/organizations/gh/{$remoteOrganizationName}/repositories/{$repositoryName}/pull-requests/{$pullRequestNumber}/bypass";
     $headers = [
         constant("USER_AGENT"),
