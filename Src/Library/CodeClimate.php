@@ -39,7 +39,7 @@ class CodeClimate
     {
         $url = "{$this->baseUrl}repos/{$repositoryId}/pulls/{$pullRequestNumber}/approvals";
         $headers = [constant("USER_AGENT"), "Accept: application/json", "Accept: application/vnd.api+json", "Authorization: Token token={$this->apiToken}"];
-        $data = http_build_query(["data[attributes][reason]" => "merge"]);
+        $data = json_encode(["data[attributes][reason]" => "merge"]);
         $request =  new Request();
         $response = $request->post($url, $headers, $data);
 
