@@ -9,6 +9,7 @@ use GuiBranco\Pancake\Request;
  *
  * Handles interactions with the Codecov API, including retrieving repository IDs
  * and bypassing PR checks when necessary.
+ */
 class Codecov
 {
     private $apiBaseUrl = 'https://api.codecov.io/v2';
