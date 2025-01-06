@@ -68,7 +68,11 @@ function reanalyzeCommit(string $remoteOrganizationName, string $repositoryName,
     $url = "{$baseUrl}organizations/gh/{$remoteOrganizationName}/repositories/{$repositoryName}/reanalyzeCommit";
     $headers = [constant("USER_AGENT"), "Accept: application/json", "Content-Type: application/json", "api-token: {$codacyApiToken}"];
     $request = new Request();
-    $response = $request->post($url, $headers, json_encode(["commit" => $commitUUID, "cleanCache" => false]));
+    $response = $request->post(
+        $url,
+        $headers,
+        json_encode([
+            "commit" => $commitUUID, "cleanCache" => false
 
     if ($response->getStatusCode() >= 300) {
         $info = $response->toJson();
