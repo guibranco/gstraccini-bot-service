@@ -12,7 +12,7 @@ class Codecov
 
     public function __construct($token)
     {
-        $this->headers = ['Authorization: Bearer '.$token, 'Content-Type: application/json'];
+        $this->headers =  [constant("USER_AGENT"), "Accept: application/json", "Content-Type: application/json", "Authorization: Bearer {$token}"];
         $this->request = new Request();
     }
 
