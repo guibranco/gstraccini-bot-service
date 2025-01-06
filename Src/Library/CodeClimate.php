@@ -15,7 +15,7 @@ class CodeClimate
 {
     private $apiToken;
     private $logger;
-    private $baseUrl = "https://api.codeclimate.com/v1/";
+    private $_baseUrl = "https://api.codeclimate.com/v1/";
 
     public function __construct($apiToken, $logger)
     {
@@ -25,7 +25,7 @@ class CodeClimate
 
     public function getRepositoryId(string $githubSlug): string
     {
-        $url = "{$this->baseUrl}repos?github_slug={$githubSlug}";
+        $url = "{$this->_baseUrl}repos?github_slug={$githubSlug}";
         $headers = [
             constant("USER_AGENT"),
             "Accept: application/json",
@@ -56,7 +56,7 @@ class CodeClimate
 
     public function bypassPRCheck(string $repositoryId, string $pullRequestNumber): Response
     {
-        $url = "{$this->baseUrl}repos/{$repositoryId}/pulls/{$pullRequestNumber}/approvals";
+        $url = "{$this->_baseUrl}repos/{$repositoryId}/pulls/{$pullRequestNumber}/approvals";
         $headers = [constant("USER_AGENT"), "Accept: application/json", "Accept: application/vnd.api+json", "Authorization: Token token={$this->apiToken}"];
         $data = json_encode(["data[attributes][reason]" => "merge"]);
         $request =  new Request();
