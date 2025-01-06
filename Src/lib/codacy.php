@@ -28,18 +28,10 @@ function bypassPullRequestAnalysis(string $remoteOrganizationName, string $repos
     global $codacyApiToken, $logger;
 
     $baseUrl = "https://api.codacy.com/api/v3/";
-    $url = "analysis/organizations/gh/{$remoteOrganizationName}/repositories/{$repositoryName}/pull-requests/{$pullRequestNumber}/bypass";
-
-    $headers = array(
-        constant("USER_AGENT"),
-        "api-token: " . $codacyApiToken,
-        "Accept: application/json",
-        "Content-Type: application/json",
-    );
-
+    $url = "{$baseUrl}analysis/organizations/gh/{$remoteOrganizationName}/repositories/{$repositoryName}/pull-requests/{$pullRequestNumber}/bypass";    
+    $headers = [constant("USER_AGENT"), "Accept: application/json", "Content-Type: application/json", "api-token: {$codacyApiToken}"];
     $request = new Request();
-
-    $response = $request->post($baseUrl.$url, $headers);
+    $response = $request->post($url, $headers);
 
     if ($response->getStatusCode() >= 300) {
         $info = $response->toJson();
@@ -73,18 +65,10 @@ function reanalyzeCommit(string $remoteOrganizationName, string $repositoryName,
     global $codacyApiToken, $logger;
 
     $baseUrl = "https://api.codacy.com/api/v3/";
-    $url = "organizations/gh/{$remoteOrganizationName}/repositories/{$repositoryName}/reanalyzeCommit";
-
-    $headers = array(
-        constant("USER_AGENT"),
-        "api-token: " . $codacyApiToken,
-        "Accept: application/json",
-        "Content-Type: application/json",
-    );
-
+    $url = "{$baseUrl}organizations/gh/{$remoteOrganizationName}/repositories/{$repositoryName}/reanalyzeCommit";
+    $headers = [constant("USER_AGENT"), "Accept: application/json", "Content-Type: application/json", "api-token: {$codacyApiToken}"]; 
     $request = new Request();
-
-    $response = $request->post($baseUrl.$url, $headers, json_encode(["commit" => $commitUUID, "cleanCache" => false]));
+    $response = $request->post($url, $headers, json_encode(["commit" => $commitUUID, "cleanCache" => false]));
 
     if ($response->getStatusCode() >= 300) {
         $info = $response->toJson();
