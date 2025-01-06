@@ -29,7 +29,11 @@ function bypassPullRequestAnalysis(string $remoteOrganizationName, string $repos
 
     $baseUrl = "https://api.codacy.com/api/v3/";
     $url = "{$baseUrl}analysis/organizations/gh/{$remoteOrganizationName}/repositories/{$repositoryName}/pull-requests/{$pullRequestNumber}/bypass";
-    $headers = [constant("USER_AGENT"), "Accept: application/json", "Content-Type: application/json", "api-token: {$codacyApiToken}"];
+    $headers = [
+        constant("USER_AGENT"),
+        "Accept: application/json",
+        "Content-Type: application/json",
+        "api-token: {$codacyApiToken}"
     $request = new Request();
     $response = $request->post($url, $headers);
 
