@@ -28,14 +28,13 @@ function bypassPullRequestAnalysis(string $remoteOrganizationName, string $repos
     global $codacyApiToken, $logger;
 
     $baseUrl = "https://api.codacy.com/api/v3/";
-$organizationPath = "organizations/gh/{$remoteOrganizationName}/";
-$repositoryPath = "repositories/{$repositoryName}/pull-requests/{$pullRequestNumber}/bypass";
     $url = "{$baseUrl}analysis/organizations/gh/{$remoteOrganizationName}/repositories/{$repositoryName}/pull-requests/{$pullRequestNumber}/bypass";
     $headers = [
         constant("USER_AGENT"),
         "Accept: application/json",
         "Content-Type: application/json",
         "api-token: {$codacyApiToken}"
+    ];
     $request = new Request();
     $response = $request->post($url, $headers);
 
@@ -73,12 +72,9 @@ function reanalyzeCommit(string $remoteOrganizationName, string $repositoryName,
     $baseUrl = "https://api.codacy.com/api/v3/";
     $url = "{$baseUrl}organizations/gh/{$remoteOrganizationName}/repositories/{$repositoryName}/reanalyzeCommit";
     $headers = [constant("USER_AGENT"), "Accept: application/json", "Content-Type: application/json", "api-token: {$codacyApiToken}"];
+    $data = json_encode(["commit" => $commitUUID, "cleanCache" => false]);
     $request = new Request();
-    $response = $request->post(
-        $url,
-        $headers,
-        json_encode([
-            "commit" => $commitUUID, "cleanCache" => false
+    $response = $request->post($url, $headers, $data);
 
     if ($response->getStatusCode() >= 300) {
         $info = $response->toJson();
