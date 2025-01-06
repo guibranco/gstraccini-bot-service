@@ -2,6 +2,9 @@
 
 require_once "config/config.php";
 
+use GuiBranco\GStracciniBot\Library\CommandHelper;
+use GuiBranco\GStracciniBot\Library\CreateLabelResult;
+use GuiBranco\GStracciniBot\Library\LabelHelper;
 use GuiBranco\GStracciniBot\Library\LabelService;
 use GuiBranco\GStracciniBot\Library\RepositoryManager;
 use GuiBranco\GStracciniBot\Library\ProcessingManager;
@@ -451,6 +454,16 @@ function execute_copyIssue($config, $metadata, $comment): void
     doRequestGitHub($metadata["token"], "repos/{$targetRepository}/issues/{$number}/comments", array("body" => $body), "POST");
 }
 
+/**
+ * Creates labels based on the provided configuration, metadata, and comment.
+ *
+ * @param array $config Configuration settings for label creation.
+ * @param array $metadata Metadata information related to the labels.
+ * @param string $comment The comment from which labels will be created.
+ *
+ * @return void
+ */
+
 function execute_createLabels($config, $metadata, $comment): void
 {
     preg_match(
@@ -471,61 +484,23 @@ function execute_createLabels($config, $metadata, $comment): void
     $style = $matches[1] ?? "icons";
     $categories = $matches[2] ?? ["all"];
 
-    $labelService = new LabelService();
-    $labelsToCreate = $labelService->loadFromConfig($categories);
-    if ($labelsToCreate === null || count($labelsToCreate) === 0) {
-        echo "No labels to create\n";
-        $body = array("body" => "No labels to create or update! :no_entry:");
-        doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
-        return;
+    $labelHelper = new LabelHelper();
+    $result = $labelHelper->createLabels($metadata, $style, $categories);
+
+    switch ($result["result"]) {
+        case -1:
+            $message = "No labels to create! :no_entry:";
+            break;
+        case 0:
+            $message = "No labels to create or update! :no_entry:";
+            break;
+        default:
+            $message = "Creating " . $result["totalLabelsToCreate"] . " labels and updating " . $result["totalLabelsToUpdate"] . " labels! :label:";
+            break;
     }
 
-    $repositoryManager = new RepositoryManager();
-    $existingLabels = $repositoryManager->getLabels($metadata["token"], $metadata["repositoryOwner"], $metadata["repositoryName"]);
-
-    $labelsToUpdateObject = array();
-    $labelsToCreate = array_filter($labelsToCreate, function ($label) use ($existingLabels, &$labelsToUpdateObject, $style) {
-        $existingLabel = array_filter($existingLabels, function ($existingLabel) use ($label) {
-            return strtolower($existingLabel["name"]) === strtolower($label["text"]) ||
-                strtolower($existingLabel["name"]) === strtolower($label["textWithIcon"]);
-        });
-
-        $total = count($existingLabel);
-
-        if ($total > 0) {
-            $existingLabel = array_values($existingLabel);
-            $labelToUpdate = [];
-            $labelToUpdate["color"] = substr($label["color"], 1);
-            $labelToUpdate["description"] = $label["description"];
-            $labelToUpdate["new_name"] = $style === "icons" ? $label["textWithIcon"] : $label["text"];
-            $labelsToUpdateObject[$existingLabel[0]["name"]] = $labelToUpdate;
-        }
-
-        return $total === 0;
-    });
-
-    $labelsToCreateObject = array_map(function ($label) use ($style) {
-        $newLabel = [];
-        $newLabel["color"] = substr($label["color"], 1);
-        $newLabel["description"] = $label["description"];
-        $newLabel["name"] = $style === "icons" ? $label["textWithIcon"] : $label["text"];
-        return $newLabel;
-    }, $labelsToCreate);
-
-    $totalLabelsToCreate = count($labelsToCreateObject);
-    $totalLabelsToUpdate = count($labelsToUpdateObject);
-
-    echo "Creating labels {$totalLabelsToCreate} | Updating labels: {$totalLabelsToUpdate} | Style: {$style} | Categories: " . join(",", $categories) . "\n";
-    if ($totalLabelsToCreate === 0 && $totalLabelsToUpdate === 0) {
-        $body = array("body" => "No labels to create or update! :no_entry:");
-        doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
-        return;
-    }
-
-    $body = array("body" => "Creating {$totalLabelsToCreate} labels and updating {$totalLabelsToUpdate} labels! :label:");
+    $body = array("body" => $message);
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
-
-    $labelService->processLabels($labelsToCreateObject, $labelsToUpdateObject, $metadata["token"], $metadata["labelsUrl"]);
 }
 
 function execute_csharpier($config, $metadata, $comment): void
@@ -560,48 +535,33 @@ function execute_prettier($config, $metadata, $comment): void
     callWorkflow($config, $metadata, $comment, "prettier.yml");
 }
 
-function execute_rerunFailedChecks($config, $metadata, $comment): void
+/**
+ * Executes rerun checks based on the provided configuration, metadata, and comment.
+ *
+ * @param array $config Configuration settings for the rerun checks.
+ * @param array $metadata Metadata information related to the rerun checks.
+ * @param string $comment The comment triggering the rerun checks.
+ *
+ * @return void
+ */
+function execute_rerunWorkflows($config, $metadata, $comment): void
 {
-    $filter = function ($checkRun) {
-        return $checkRun->conclusion === "failure" && $checkRun->status === "completed" && $checkRun->app->slug !== "github-actions";
-    };
-    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
-    $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
-    $pullRequestUpdated = json_decode($pullRequestResponse->getBody());
-    $commitSha1 = $pullRequestUpdated->head->sha;
-    $checkRunsResponse = doRequestGitHub($metadata["token"], $metadata["repoPrefix"] . "/commits/" . $commitSha1 . "/check-runs?status=completed", null, "GET");
-    $checkRuns = json_decode($checkRunsResponse->getBody());
-    $failedCheckRuns = array_filter($checkRuns->check_runs, $filter);
-    $total = count($failedCheckRuns);
+    $commandHelper = new CommandHelper();
+    $type = $commandHelper->getConclusionFromComment("workflows", $config->botName, $metadata, $comment);
 
-    $body = "Rerunning " . $total . " failed check" . ($total === 1 ? "" : "s") . " on the commit `" . $commitSha1 . "`! :repeat:";
-    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-    if ($total === 0) {
+    if ($type === null) {
         return;
     }
 
-    $checksToRerun = "Rerunning the following checks: \n";
-    foreach ($failedCheckRuns as $failedCheckRun) {
-        $url = $metadata["repoPrefix"] . "/check-runs/" . $failedCheckRun->id . "/rerequest";
-        $response = doRequestGitHub($metadata["token"], $url, null, "POST");
-        $status = $response->getStatusCode() === 201 ? "🔄" : "❌";
-        $checksToRerun .= "- [" . $failedCheckRun->name . "](" . $failedCheckRun->details_url . ") ([" . $failedCheckRun->app->name . " ](" . $failedCheckRun->app->html_url . " )) - " . $status . "\n";
-    }
-
-    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $checksToRerun), "POST");
-}
-
-function execute_rerunFailedWorkflows($config, $metadata, $comment): void
-{
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     $pullRequestUpdated = json_decode($pullRequestResponse->getBody());
     $commitSha1 = $pullRequestUpdated->head->sha;
-    $failedWorkflowRunsResponse = doRequestGitHub($metadata["token"], $metadata["repoPrefix"] . "/actions/runs?head_sha=" . $commitSha1 . "&status=failure", null, "GET");
+    $failedWorkflowRunsResponse = doRequestGitHub($metadata["token"], $metadata["repoPrefix"] . "/actions/runs?head_sha=" . $commitSha1 . "&status=" . $type, null, "GET");
     $failedWorkflowRuns = json_decode($failedWorkflowRunsResponse->getBody());
     $total = $failedWorkflowRuns->total_count;
 
-    $body = "Rerunning " . $total . " failed workflow" . ($total === 1 ? "" : "s") . " on the commit `" . $commitSha1 . "`! :repeat:";
+    $body = "Rerunning " . $total . " " . $type . " workflow" . ($total === 1 ? "" : "s") . " on the commit `" . $commitSha1 . "`! :repeat:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
     if ($total === 0) {
         return;
@@ -661,7 +621,7 @@ function execute_review($config, $metadata, $comment): void
         $commit->HeadCommitAuthorName = $commitItem->commit->author->name;
         $commit->HeadCommitAuthorEmail = $commitItem->commit->author->email;
         $commit->HeadCommitCommitterName = $commitItem->commit->committer->name;
-        $commit->HeadCommitCommiterEmail = $commitItem->commit->committer->email;
+        $commit->HeadCommitCommitterEmail = $commitItem->commit->committer->email;
         $commit->InstallationId = $comment->InstallationId;
 
         $commitsList .= "SHA: `{$commitItem->sha}`\n";
@@ -672,14 +632,6 @@ function execute_review($config, $metadata, $comment): void
     $body .= "Mergeable state: {$pullRequestUpdated->mergeable_state}\n\n";
     $body .= "Commits included:\n {$commitsList}";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-}
-
-function execute_track($config, $metadata, $comment): void
-{
-    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
-    $body = array("body" => "Tracking this pull request! :repeat:");
-    doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
-    callWorkflow($config, $metadata, $comment, "track.yml");
 }
 
 function execute_updateSnapshot($config, $metadata, $comment): void

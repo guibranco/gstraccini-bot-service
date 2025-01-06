@@ -179,24 +179,32 @@
         "requiresPullRequestOpen": true
     },
     {
-        "command": "rerun failed checks",
-        "description": "This option reruns the failed checks in the target pull request.",
-        "requiresPullRequestOpen": true
+        "command": "rerun checks",
+        "description": "This option reruns the checks in the target pull request upon current status.",
+        "requiresPullRequestOpen": true,
+        "parameters": [
+            {
+                "parameter": "conclusion",
+                "description": "The conclusion of the checks to rerun (success, failure, neutral, cancelled, timed_out, or action_required).",
+                "required": false
+            }
+        ]
     },
     {
-        "command": "rerun failed workflows",
-        "description": "This option reruns the failed workflows (action) in the target pull request. It is only available for GitHub Actions!",
-        "requiresPullRequestOpen": true
+        "command": "rerun workflows",
+        "description": "This option reruns the workflows (action) in the target pull request. It is only available for GitHub Actions!",
+        "requiresPullRequestOpen": true,
+        "parameters": [
+            {
+                "parameter": "conclusion",
+                "description": "The conclusion of the checks to rerun (success, failure, neutral, cancelled, timed_out, or action_required).",
+                "required": false
+            }
+        ]
     },
     {
         "command": "review",
         "description": "Enable review for the target pull request. This is useful when the PR submitter wasn't on the watch list, the webhook was not captured, or some failed scenario occurred.",
-        "requiresPullRequestOpen": true
-    },    
-    {
-        "command": "track",
-        "description": "Tracks the specified pull request. Queue a build, raise a **[dependabot](https://github.com/dependabot) recreate** comment to resolve conflicts, and synchronize merge branches.",
-        "dev": true,
         "requiresPullRequestOpen": true
     },
     {
