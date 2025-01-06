@@ -5,7 +5,6 @@ namespace GuiBranco\GStracciniBot\Library;
 use GuiBranco\Pancake\Request;
 use GuiBranco\Pancake\Response;
 use Exception;
-use Exception;
 
 class CodeClimate
 {
