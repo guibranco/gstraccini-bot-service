@@ -28,17 +28,15 @@ class ProcessingManager
 
     private function processItem($item, callable $handler): void
     {
-        $details = json_encode($item);
-        if ($details === false) {
-            $jsonError = json_last_error_msg();
-            throw new \RuntimeException("Failed to encode item: {$jsonError}");
-        }
         try {
             if (updateTable($this->table, $item->Sequence)) {
                 $handler($item);
                 return;
             }
-
+            $details = json_encode($item);
+            if ($details === false) {
+                $details = json_last_error_msg();
+            }
             $message = sprintf(
                 "Skipping item (Table: %s, Sequence: %d) since it was already handled.",
                 $this->table,
@@ -52,7 +50,16 @@ class ProcessingManager
                 $this->table,
                 $item->Sequence,
                 $e->getMessage()
-            ), $details);
+            ), 
+            [
+                'error' => [
+                    'message' => $e->getMessage(),
+                    'code' => $e->getCode(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ],
+                'item' => json_decode($details, true)
+            ]);
             throw $e;
         }
     }
