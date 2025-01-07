@@ -32,12 +32,12 @@ class ProcessingManager
         if ($details === false) {
             $details = json_last_error_msg();
         }
-        
+
         try {
             if (updateTable($this->table, $item->Sequence)) {
                 $handler($item);
                 return;
-            }           
+            }
             $message = sprintf(
                 "Skipping item (Table: %s, Sequence: %d) since it was already handled.",
                 $this->table,
