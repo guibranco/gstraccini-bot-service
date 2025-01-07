@@ -29,6 +29,10 @@ class ProcessingManager
     private function processItem($item, callable $handler): void
     {
         $details = json_encode($item);
+        if ($details === false) {
+            $jsonError = json_last_error_msg();
+            throw new \RuntimeException("Failed to encode item: {$jsonError}");
+        }
         try {
             if (updateTable($this->table, $item->Sequence)) {
                 $handler($item);
