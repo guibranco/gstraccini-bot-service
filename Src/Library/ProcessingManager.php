@@ -28,6 +28,7 @@ class ProcessingManager
 
     private function processItem($item, callable $handler): void
     {
+        $details = json_encode($item);
         try {
             if (updateTable($this->table, $item->Sequence)) {
                 $handler($item);
@@ -38,16 +39,16 @@ class ProcessingManager
                 "Skipping item (Table: %s, Sequence: %d) since it was already handled.",
                 $this->table,
                 $item->Sequence
-            );
-            $this->logger->log($message, json_encode($item));
-            echo $message;
+            );            
+            $this->logger->log($message, $details);
+            echo $message . "\n";
         } catch (\Exception $e) {
             $this->logger->log(sprintf(
                 "Failed to process item (Table: %s, Sequence: %d): %s",
                 $this->table,
                 $item->Sequence,
                 $e->getMessage()
-            ), json_encode($item));
+            ), $details);
             throw $e;
         }
     }
