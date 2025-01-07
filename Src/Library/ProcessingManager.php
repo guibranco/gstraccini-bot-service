@@ -39,7 +39,7 @@ class ProcessingManager
                 "Skipping item (Table: %s, Sequence: %d) since it was already handled.",
                 $this->table,
                 $item->Sequence
-            );            
+            );
             $this->logger->log($message, $details);
             echo $message . "\n";
         } catch (\Exception $e) {
