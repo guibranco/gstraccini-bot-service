@@ -45,13 +45,14 @@ class ProcessingManager
             $this->logger->log($message, $details);
             echo $message . "\n";
         } catch (\Exception $e) {
-            $this->logger->log(sprintf(
-                "Failed to process item (Table: %s, Sequence: %d): %s",
-                $this->table,
-                $item->Sequence,
-                $e->getMessage()
-            ), 
-            [
+            $this->logger->log(
+                sprintf(
+                    "Failed to process item (Table: %s, Sequence: %d): %s",
+                    $this->table,
+                    $item->Sequence,
+                    $e->getMessage()
+                ),
+                [
                 'error' => [
                     'message' => $e->getMessage(),
                     'code' => $e->getCode(),
@@ -59,7 +60,8 @@ class ProcessingManager
                     'line' => $e->getLine()
                 ],
                 'item' => json_decode($details, true)
-            ]);
+            ]
+            );
             throw $e;
         }
     }
