@@ -28,26 +28,41 @@ class ProcessingManager
 
     private function processItem($item, callable $handler): void
     {
+        $details = json_encode($item);
+        if ($details === false) {
+            $details = json_last_error_msg();
+        }
+
         try {
             if (updateTable($this->table, $item->Sequence)) {
                 $handler($item);
                 return;
             }
-
             $message = sprintf(
                 "Skipping item (Table: %s, Sequence: %d) since it was already handled.",
                 $this->table,
                 $item->Sequence
             );
-            $this->logger->log($message, json_encode($item));
-            echo $message;
+            $this->logger->log($message, $details);
+            echo $message . "\n";
         } catch (\Exception $e) {
-            $this->logger->log(sprintf(
-                "Failed to process item (Table: %s, Sequence: %d): %s",
-                $this->table,
-                $item->Sequence,
-                $e->getMessage()
-            ), json_encode($item));
+            $this->logger->log(
+                sprintf(
+                    "Failed to process item (Table: %s, Sequence: %d): %s",
+                    $this->table,
+                    $item->Sequence,
+                    $e->getMessage()
+                ),
+                [
+                'error' => [
+                    'message' => $e->getMessage(),
+                    'code' => $e->getCode(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ],
+                'item' => json_decode($details, true)
+            ]
+            );
             throw $e;
         }
     }
