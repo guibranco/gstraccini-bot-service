@@ -343,6 +343,36 @@
             "description": "Kobit AI code analysis label.",
             "text": "korbit-code-analysis",
             "textWithIcon": "korbit-code-analysis"
+        },
+        {
+            "color": "#44CC11",
+            "description": "Minimal review effort required for this pull request (effort level: 1)",
+            "text": "Review effort [1-5]: 1",
+            "textWithIcon": "Review effort [1-5]: 1"
+        },
+        {
+            "color": "#FFD700",
+            "description": "Low review effort required for this pull request (effort level: 2)",
+            "text": "Review effort [1-5]: 2",
+            "textWithIcon": "Review effort [1-5]: 2"
+        },
+        {
+            "color": "#FF9900",
+            "description": "Moderate review effort required for this pull request (effort level: 3)",
+            "text": "Review effort [1-5]: 3",
+            "textWithIcon": "Review effort [1-5]: 3"
+        },
+        {
+            "color": "#FF4500",
+            "description": "High review effort required for this pull request (effort level: 4)",
+            "text": "Review effort [1-5]: 4",
+            "textWithIcon": "Review effort [1-5]: 4"
+        },
+        {
+            "color": "#D72638",
+            "description": "Very high review effort required for this pull request (effort level: 5)",
+            "text": "Review effort [1-5]: 5",
+            "textWithIcon": "Review effort [1-5]: 5"
         }
     ]
 }
