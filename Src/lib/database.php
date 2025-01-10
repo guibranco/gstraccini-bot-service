@@ -30,7 +30,7 @@ function connectToDatabase($isRetry = false)
 function readTable($tableName, $where = null): ?array
 {
     $mysqli = connectToDatabase();
-    $defaultWhere = "Processed = 0 ORDER BY Sequence ASC LIMIT 10";
+    $defaultWhere = "ProcessingState IN ('New', 'Re_requested', 'Updated') OR Processed = 0 ORDER BY Sequence ASC LIMIT 10";
     $sql = "SELECT * FROM " . $tableName . " WHERE ";
     if ($where == null) {
         $sql .= $defaultWhere;
@@ -58,7 +58,24 @@ function readTable($tableName, $where = null): ?array
 function updateTable($tableName, $sequence): bool
 {
     $mysqli = connectToDatabase();
-    $sql = "UPDATE " . $tableName . " SET Processed = 1, ProcessedDate = NOW() WHERE Sequence = ? AND Processed = 0";
+    $sql = "UPDATE " . $tableName . " SET ProcessingState = 'PROCESSING', Processed = 1, ProcessedDate = NOW() WHERE Sequence = ? AND Processed = 0";
+    $stmt = $mysqli->prepare($sql);
+    $stmt->bind_param("i", $sequence);
+    $succeeded = false;
+
+    if ($stmt->execute()) {
+        $succeeded = $stmt->affected_rows === 1;
+    }
+
+    $stmt->close();
+    $mysqli->close();
+    return $succeeded;
+}
+
+function finalizeProcessing($tableName, $sequence): bool
+{
+    $mysqli = connectToDatabase();
+    $sql = "UPDATE " . $tableName . " SET ProcessingState = 'PROCESSED', Processed = 1, ProcessedDate = NOW() WHERE Sequence = ? AND Processed = 1 AND ProcessingState = 'PROCESSING'";
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param("i", $sequence);
     $succeeded = false;
