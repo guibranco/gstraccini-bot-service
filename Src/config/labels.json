@@ -13,6 +13,12 @@
             "textWithIcon": "☑️ auto-merge"
         },
         {
+            "color": "#5319E7",
+            "description": "Do not merge / work in progress / auto-merge disabled (gstraccini-bot)",
+            "text": "do-not-merge",
+            "textWithIcon": "🫷 do-not-merge"
+        },
+        {
             "color": "#FF0000",
             "description": "Prevents automatic merging of pull requests (gstraccini-bot)",
             "text": "do-not-merge",
