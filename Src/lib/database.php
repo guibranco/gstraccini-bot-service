@@ -238,7 +238,7 @@ function upsertPush($commit)
         $headCommitAuthorName = $commit->HeadCommitAuthorName;
         $headCommitAuthorEmail = $commit->HeadCommitAuthorEmail;
         $headCommitCommitterName = $commit->HeadCommitCommitterName;
-        $headCommitCommitterEmail = $commit->HeadCommitCommiterEmail;
+        $headCommitCommitterEmail = $commit->HeadCommitCommitterEmail;
         $installationId = $commit->InstallationId;
 
         if (!$stmt->execute()) {
