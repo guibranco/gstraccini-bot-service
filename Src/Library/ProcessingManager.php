@@ -43,30 +43,22 @@ class ProcessingManager
                 }
                 return;
             }
-            $message = sprintf(
-                "Skipping item (Table: %s, Sequence: %d) since it was already handled.",
-                $this->table,
-                $item->Sequence
-            );
+
+            $message = "Skipping item (Table: {$this->table}, Sequence: {$item->Sequence}) since it was already handled.";
             $this->logger->log($message, $details);
             echo $message . "\n";
         } catch (\Exception $e) {
             $this->logger->log(
-                sprintf(
-                    "Failed to process item (Table: %s, Sequence: %d): %s",
-                    $this->table,
-                    $item->Sequence,
-                    $e->getMessage()
-                ),
+                "Failed to process item (Table: {$this->table}, Sequence: {$item->Sequence}): {$e->getMessage()}.",
                 [
-                'error' => [
-                    'message' => $e->getMessage(),
-                    'code' => $e->getCode(),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine()
-                ],
-                'item' => json_decode($details, true)
-            ]
+                    'error' => [
+                        'message' => $e->getMessage(),
+                        'code' => $e->getCode(),
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine()
+                    ],
+                    'item' => json_decode($details, true)
+                ]
             );
             throw $e;
         }
