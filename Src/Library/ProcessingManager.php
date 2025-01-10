@@ -36,6 +36,11 @@ class ProcessingManager
         try {
             if (updateTable($this->table, $item->Sequence)) {
                 $handler($item);
+                if(finalizeProcessing($this->table, $item->Sequence)) {
+                    echo "Item processed!\n";
+                } else {
+                    echo "Item updated by another hook!\n";
+                }
                 return;
             }
             $message = sprintf(
