@@ -30,7 +30,7 @@ function connectToDatabase($isRetry = false)
 function readTable($tableName, $where = null): ?array
 {
     $mysqli = connectToDatabase();
-    $defaultWhere = "ProcessingState IN ('New', 'Re_requested', 'Updated') ORDER BY Sequence ASC LIMIT 10";
+    $defaultWhere = "ProcessingState IN ('NEW', 'RE_REQUESTED', 'UPDATED') ORDER BY Sequence ASC LIMIT 10";
     $sql = "SELECT * FROM " . $tableName . " WHERE ";
     if ($where == null) {
         $sql .= $defaultWhere;
