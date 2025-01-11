@@ -166,7 +166,7 @@ jobs:
           localDir: "Src"
           remoteDir: "/"
 
-      - nmae: Create release file
+      - name: Create release file
         run: |
           rm Lock/updating.lock
           date +"%Y-%m-%d %H:%M:%S" > Lock/updating.release
