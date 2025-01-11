@@ -18,9 +18,9 @@ function checkSystemUpdating(): void
         unlink($updatingReleaseFile);
         return;
     }
-        
+
     $fileTime = filemtime($updatingLockFile);
-        
+
     if ($fileTime < strtotime("-15 minute")) {
         die("System updating since {$date}");
     }
