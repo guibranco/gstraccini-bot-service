@@ -30,7 +30,7 @@ function connectToDatabase($isRetry = false)
 function readTable($tableName, $where = null): ?array
 {
     $mysqli = connectToDatabase();
-    $defaultWhere = "ProcessingState IN ('New', 'Re_requested', 'Updated') AND Processed = 0 ORDER BY Sequence ASC LIMIT 10";
+    $defaultWhere = "ProcessingState IN ('NEW', 'RE_REQUESTED', 'UPDATED') ORDER BY Sequence ASC LIMIT 10";
     $sql = "SELECT * FROM " . $tableName . " WHERE ";
     if ($where == null) {
         $sql .= $defaultWhere;
@@ -58,7 +58,7 @@ function readTable($tableName, $where = null): ?array
 function updateTable($tableName, $sequence): bool
 {
     $mysqli = connectToDatabase();
-    $sql = "UPDATE " . $tableName . " SET ProcessingState = 'PROCESSING', Processed = 1, ProcessedDate = NOW() WHERE Sequence = ? AND Processed = 0";
+    $sql = "UPDATE " . $tableName . " SET ProcessingState = 'PROCESSING', ProcessingDate = NOW() WHERE Sequence = ?";
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param("i", $sequence);
     $succeeded = false;
@@ -75,7 +75,7 @@ function updateTable($tableName, $sequence): bool
 function finalizeProcessing($tableName, $sequence): bool
 {
     $mysqli = connectToDatabase();
-    $sql = "UPDATE " . $tableName . " SET ProcessingState = 'PROCESSED', Processed = 1, ProcessedDate = NOW() WHERE Sequence = ? AND Processed = 1 AND ProcessingState = 'PROCESSING'";
+    $sql = "UPDATE " . $tableName . " SET ProcessingState = 'PROCESSED', ProcessedDate = NOW() WHERE Sequence = ? AND ProcessingState = 'PROCESSING' AND ProcessingDate IS NOT NULL";
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param("i", $sequence);
     $succeeded = false;
@@ -105,7 +105,7 @@ function upsertPullRequest($pullRequest)
     $stmt->close();
 
     if ($row) {
-        $sql = "UPDATE github_pull_requests SET Processed = 0, ProcessedDate = NULL WHERE Sequence = ?";
+        $sql = "UPDATE github_pull_requests SET ProcessingState = 'RE_REQUESTED', ProcessingDate = NULL WHERE Sequence = ?";
         $stmt = $mysqli->prepare($sql);
         $stmt->bind_param("i", $sequence);
         $sequence = $row["Sequence"];
@@ -189,7 +189,7 @@ function upsertPush($commit)
     $stmt->close();
 
     if ($row) {
-        $sql = "UPDATE github_pushes SET Processed = 0, ProcessedDate = NULL WHERE Sequence = ?";
+        $sql = "UPDATE github_pushes SET ProcessingState = 'RE_REQUESTED', ProcessingDate = NULL WHERE Sequence = ?";
         $stmt = $mysqli->prepare($sql);
         $stmt->bind_param("i", $sequence);
         $sequence = $row["Sequence"];
