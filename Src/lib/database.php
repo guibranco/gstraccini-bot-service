@@ -58,7 +58,7 @@ function readTable($tableName, $where = null): ?array
 function updateTable($tableName, $sequence): bool
 {
     $mysqli = connectToDatabase();
-    $sql = "UPDATE " . $tableName . " SET ProcessingState = 'PROCESSING', Processed = 1, ProcessedDate = NOW() WHERE Sequence = ? AND Processed = 0";
+    $sql = "UPDATE " . $tableName . " SET ProcessingState = 'PROCESSING', Processed = 1, ProcessedDate = NOW() WHERE Sequence = ?";
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param("i", $sequence);
     $succeeded = false;
