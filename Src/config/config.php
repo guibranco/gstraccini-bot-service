@@ -21,7 +21,14 @@ function checkSystemUpdating(): void
 
     $fileTime = filemtime($updatingLockFile);
 
+    if ($fileTime === false) {
+        $error = "Error: Unable to read update lock file timestamp";
+        error_log($error);
+        die($error);
+    }
+
     if ($fileTime < strtotime("-15 minute")) {
+        $date = date("H:i;s d/m/Y", $fileTime);
         die("System updating since {$date}");
     }
 
