@@ -30,7 +30,7 @@ function requestAppVeyor($url, $data = null, $isPut = false): Response
 
     if ($response->getStatusCode() >= 300) {
         $info = $response->toJson();
-        $logger->log("Invalid AppVeyor response", $info);
+        $logger->log("Invalid AppVeyor response. HTTP Status Code: {$response->getStatusCode()}", $info);
     }
 
     return $response;
