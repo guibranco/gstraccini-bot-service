@@ -114,6 +114,11 @@
         "requiresPullRequestOpen": true
     },
     {
+        "command": "codeclimate bypass",
+        "description": "Bypasses the [CodeClimate](https://codeclimate.com) analysis for the target commit and/or pull request.",
+        "requiresPullRequestOpen": true
+    },
+    {
         "command": "copy labels",
         "description": "Copy the labels from another repository.",
         "parameters": [
