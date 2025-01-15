@@ -21,7 +21,7 @@ function handleItem($pullRequest, $isRetry = false)
     $token = generateInstallationToken($pullRequest->InstallationId, $pullRequest->RepositoryName);
     $metadata = createMetadata($token, $pullRequest, $config);
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
-    $pulRequestResponse->ensureSuccessStatus();
+    $pullRequestResponse->ensureSuccessStatus();
     $pullRequestUpdated = json_decode($pullRequestResponse->getBody());
 
     if ($pullRequestUpdated->state === "closed") {
