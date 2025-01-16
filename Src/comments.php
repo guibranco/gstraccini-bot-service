@@ -725,29 +725,6 @@ function updateNextBuildNumber($metadata, $project, $nextBuildNumber): void
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
 }
 
-function main(): void
-{
-    $config = loadConfig();
-    ob_start();
-    $table = "github_comments";
-    global $logger;
-    $processor = new ProcessingManager($table, $logger);
-    $processor->process('handleItem');
-    $result = ob_get_clean();
-    if ($config->debug->all === true || $config->debug->comments === true) {
-        echo $result;
-    }
-}
-
 $healthCheck = new HealthChecks($healthChecksIoComments, GUIDv4::random());
-$healthCheck->setHeaders([constant("USER_AGENT"), "Content-Type: application/json; charset=utf-8"]);
-$healthCheck->start();
-$time = time();
-while (true) {
-    main();
-    $limit = ($time + 55);
-    if ($limit < time()) {
-        break;
-    }
-}
-$healthCheck->end();
+$processor = new ProcessingManager("comments", $healthCheck, $logger);
+$processor->initialize("handleItem", 55);
