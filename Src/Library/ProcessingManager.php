@@ -8,16 +8,44 @@ class ProcessingManager
 {
     private $config;
     private $entity;
+    private $healthChecks;
     private $logger;
 
-    public function __construct(string $entity, Logger $logger)
+    public function __construct(string $entity, HealthChecks $healthChecks, Logger $logger)
     {
         $this->config = loadConfig();
         $this->entity = $entity;
+        $this->healthChecks = $healthChecks;
         $this->logger = $logger;
+
+        $this->healthChecks->setHeaders([constant("USER_AGENT"), "Content-Type: application/json; charset=utf-8"]);
     }
 
-    public function process(callable $handler): void
+    public function initialize(callable $handler, int $timeout): void
+    {
+        $healthChecks->start();
+        $time = time();
+        while (true) {
+            $this->batch($handler);
+            $limit = ($time + $timeout);
+            if ($limit < time()) {
+                break;
+            }
+        }
+        $this->healthChecks->end();
+    }
+
+    private function batch(callable $handler): void
+    {
+        ob_start();
+        $this->process($handler);
+        $result = ob_get_clean();
+        if ($this->config->debug->all === true || $this->config->debug->{$this->entity} === true) {
+            echo $result;
+        }
+    }
+
+    private function process(callable $handler): void
     {
         $items = readTable("github_{$this->entity}");
         foreach ($items as $item) {
