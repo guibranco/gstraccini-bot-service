@@ -6,18 +6,20 @@ use GuiBranco\Pancake\Logger;
 
 class ProcessingManager
 {
-    private $table;
+    private $config;
+    private $entity;
     private $logger;
 
-    public function __construct(string $table, Logger $logger)
+    public function __construct(string $entity, Logger $logger)
     {
-        $this->table = $table;
+        $this->config = loadConfig();
+        $this->entity = $entity;
         $this->logger = $logger;
     }
 
     public function process(callable $handler): void
     {
-        $items = readTable($this->table);
+        $items = readTable("github_{$this->entity}");
         foreach ($items as $item) {
             echo "Sequence: {$item->Sequence}\n";
             echo "Delivery ID: {$item->DeliveryIdText}\n";
@@ -34,9 +36,9 @@ class ProcessingManager
         }
 
         try {
-            if (updateTable($this->table, $item->Sequence)) {
+            if (updateTable("github_{$this->entity}", $item->Sequence)) {
                 $handler($item);
-                if(finalizeProcessing($this->table, $item->Sequence)) {
+                if(finalizeProcessing("github_{$this->entity}", $item->Sequence)) {
                     echo "Item processed!\n";
                 } else {
                     echo "Item updated by another hook!\n";
@@ -44,12 +46,12 @@ class ProcessingManager
                 return;
             }
 
-            $message = "Skipping item (Table: {$this->table}, Sequence: {$item->Sequence}) since it was already handled.";
+            $message = "Skipping item (Entity: {$this->entity}, Sequence: {$item->Sequence}) since it was already handled.";
             $this->logger->log($message, $details);
             echo $message . "\n";
         } catch (\Exception $e) {
             $this->logger->log(
-                "Failed to process item (Table: {$this->table}, Sequence: {$item->Sequence}): {$e->getMessage()}.",
+                "Failed to process item (Entity: {$this->entity}, Sequence: {$item->Sequence}): {$e->getMessage()}.",
                 [
                     'error' => [
                         'message' => $e->getMessage(),
