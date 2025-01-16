@@ -108,14 +108,6 @@ function main(): void
 }
 
 $healthCheck = new HealthChecks($healthChecksIoIssues, GUIDv4::random());
-$healthCheck->setHeaders([constant("USER_AGENT"), "Content-Type: application/json; charset=utf-8"]);
-$healthCheck->start();
-$time = time();
-while (true) {
-    main();
-    $limit = ($time + 55);
-    if ($limit < time()) {
-        break;
-    }
-}
-$healthCheck->end();
+$processor = new ProcessingManager("issues", $healthCheck, $logger);
+$processor->initialize("handleItem", 55);
+
