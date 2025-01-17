@@ -14,11 +14,11 @@ use GuiBranco\Pancake\HealthChecks;
 function toCamelCase($inputString)
 {
     return preg_replace_callback(
-        '/(?:^|_| )(\w)/',
+        '/(?:^|_| )+(\w)/',
         function ($matches) {
             return strtoupper($matches[1]);
         },
-        $inputString
+        strtolower($inputString)
     );
 }
 
