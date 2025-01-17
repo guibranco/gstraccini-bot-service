@@ -4,6 +4,8 @@ namespace GuiBranco\GStracciniBot\Library;
 
 use GuiBranco\Pancake\HealthChecks;
 use GuiBranco\Pancake\Logger;
+use InvalidArgumentException;
+use RuntimeException;
 
 class ProcessingManager
 {
@@ -21,18 +23,13 @@ class ProcessingManager
     */
     public function __construct(string $entity, HealthChecks $healthChecks, Logger $logger)
     {
-use InvalidArgumentException;
-use RuntimeException;
-
-class ProcessingManager
-{
         if (empty($entity)) {
-            throw new \InvalidArgumentException('Entity name cannot be empty');
+            throw new InvalidArgumentException('Entity name cannot be empty');
         }
 
         $config = loadConfig();
         if ($config === false) {
-            throw new \RuntimeException('Failed to load configuration');
+            throw new RuntimeException('Failed to load configuration');
         }
 
         $this->config = $config;
