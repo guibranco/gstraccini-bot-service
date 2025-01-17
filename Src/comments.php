@@ -11,16 +11,29 @@ use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
 
-function toCamelCase($inputString)
-{
-    return preg_replace_callback(
-        '/(?:^|_| )(\w)/',
-        function ($matches) {
-            return strtoupper($matches[1]);
-        },
-        strtolower($inputString)
-    );
-}
+/**
+ * Converts a string to camel case format.
+ *
+ * @param string $inputString The input string to convert
+ * @return string The camel case formatted string
+ * @throws InvalidArgumentException If the input is not a string
+ */
+ function toCamelCase($inputString)
+ {
+    if (!is_string($inputString)) {
+        throw new InvalidArgumentException('Input must be a string');
+    }
+    if (empty($inputString)) {
+        return '';
+    }
+     return preg_replace_callback(
+         '/(?:^|_| )(\w)/',
+         function ($matches) {
+             return strtoupper($matches[1]);
+         },
+         $inputString
+     );
+ }
 
 function handleItem($comment): void
 {
