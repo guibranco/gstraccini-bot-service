@@ -21,7 +21,7 @@ use GuiBranco\Pancake\HealthChecks;
 function toCamelCase($inputString)
 {
     if (!is_string($inputString)) {
-        throw new InvalidArgumentException('Input must be a string');
+        throw new \InvalidArgumentException('Input must be a string');
     }
     if (empty($inputString)) {
         return '';
