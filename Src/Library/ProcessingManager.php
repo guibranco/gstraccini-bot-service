@@ -22,16 +22,23 @@ class ProcessingManager
         $this->healthChecks->setHeaders([constant("USER_AGENT"), "Content-Type: application/json; charset=utf-8"]);
     }
 
+    /**
+     * Initialize processing with timeout.
+     *
+     * @param callable $handler Item processing callback
+     * @param int $timeout Maximum processing time in seconds
+     */
     public function initialize(callable $handler, int $timeout): void
     {
         $this->healthChecks->start();
-        $time = time();
+        $endTime = time() + $timeout;
         while (true) {
             $this->batch($handler);
-            $limit = ($time + $timeout);
-            if ($limit < time()) {
+            if (time() >= $endTime) {
                 break;
             }
+            // Add delay to prevent excessive CPU usage
+            usleep(100000); // 100ms delay
         }
         $this->healthChecks->end();
     }
