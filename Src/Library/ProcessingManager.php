@@ -2,22 +2,82 @@
 
 namespace GuiBranco\GStracciniBot\Library;
 
+use GuiBranco\Pancake\HealthChecks;
 use GuiBranco\Pancake\Logger;
+use InvalidArgumentException;
+use RuntimeException;
 
 class ProcessingManager
 {
-    private $table;
+    private $config;
+    private $entity;
+    private $healthChecks;
     private $logger;
 
-    public function __construct(string $table, Logger $logger)
+    /**
+    * @param string $entity Entity name for processing
+    * @param HealthChecks $healthChecks Health monitoring instance
+    * @param Logger $logger Logger instance
+    * @throws \InvalidArgumentException If entity name is invalid
+    * @throws \RuntimeException If config loading fails
+    */
+    public function __construct(string $entity, HealthChecks $healthChecks, Logger $logger)
     {
-        $this->table = $table;
+        if (empty($entity)) {
+            throw new InvalidArgumentException('Entity name cannot be empty');
+        }
+
+        $config = loadConfig();
+        if ($config === false) {
+            throw new RuntimeException('Failed to load configuration');
+        }
+
+        $this->config = $config;
+        $this->entity = $entity;
+        $this->healthChecks = $healthChecks;
         $this->logger = $logger;
+
+        $this->healthChecks->setHeaders([constant("USER_AGENT"), "Content-Type: application/json; charset=utf-8"]);
     }
 
-    public function process(callable $handler): void
+    /**
+     * Initialize processing with timeout.
+     *
+     * @param callable $handler Item processing callback
+     * @param int $timeout Maximum processing time in seconds
+     */
+    public function initialize(callable $handler, int $timeout): void
     {
-        $items = readTable($this->table);
+        $this->healthChecks->start();
+        $endTime = time() + $timeout;
+        while (true) {
+            $this->batch($handler);
+            if (time() >= $endTime) {
+                break;
+            }
+            usleep(100000);
+        }
+        $this->healthChecks->end();
+    }
+
+    /**
+     * Process a batch of items.
+     *
+     * @param callable $handler Item processing callback
+     */
+    private function batch(callable $handler): void
+    {
+        ob_start();
+        $this->process($handler);
+        $result = ob_get_clean();
+        if ($this->config->debug->all === true || $this->config->debug->{$this->entity} === true) {
+            echo htmlspecialchars($result, ENT_QUOTES, 'UTF-8') . PHP_EOL;
+        }
+    }
+
+    private function process(callable $handler): void
+    {
+        $items = readTable("github_{$this->entity}");
         foreach ($items as $item) {
             echo "Sequence: {$item->Sequence}\n";
             echo "Delivery ID: {$item->DeliveryIdText}\n";
@@ -34,22 +94,24 @@ class ProcessingManager
         }
 
         try {
-            if (updateTable($this->table, $item->Sequence)) {
+            $updateResult = updateTable("github_{$this->entity}", $item->Sequence);
+            if ($updateResult === true) {
                 $handler($item);
-                if(finalizeProcessing($this->table, $item->Sequence)) {
+                $finalizeResult = finalizeProcessing("github_{$this->entity}", $item->Sequence);
+                if($finalizeResult === true) {
                     echo "Item processed!\n";
                 } else {
-                    echo "Item updated by another hook!\n";
+                    echo "Item updated by another process!\n";
                 }
                 return;
             }
 
-            $message = "Skipping item (Table: {$this->table}, Sequence: {$item->Sequence}) since it was already handled.";
+            $message = "Skipping item (Entity: {$this->entity}, Sequence: {$item->Sequence}) since it was already handled.";
             $this->logger->log($message, $details);
             echo $message . "\n";
         } catch (\Exception $e) {
             $this->logger->log(
-                "Failed to process item (Table: {$this->table}, Sequence: {$item->Sequence}): {$e->getMessage()}.",
+                "Failed to process item (Entity: {$this->entity}, Sequence: {$item->Sequence}): {$e->getMessage()}.",
                 [
                     'error' => [
                         'message' => $e->getMessage(),

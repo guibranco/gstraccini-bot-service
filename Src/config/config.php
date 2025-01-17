@@ -122,7 +122,6 @@ function loadConfig(): stdClass
     return $config;
 }
 
-require_once "lib/functions.php";
 require_once "lib/database.php";
 require_once "lib/appveyor.php";
 require_once "lib/codacy.php";
