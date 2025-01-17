@@ -16,6 +16,7 @@ use GuiBranco\Pancake\HealthChecks;
  *
  * @param string $inputString The input string to convert
  * @return string The camel case formatted string
+ *
  * @throws InvalidArgumentException If the input is not a string
  */
 function toCamelCase($inputString)
