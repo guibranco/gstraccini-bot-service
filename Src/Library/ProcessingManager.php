@@ -12,13 +12,13 @@ class ProcessingManager
     private $healthChecks;
     private $logger;
 
-     /**
-     * @param string $entity Entity name for processing
-     * @param HealthChecks $healthChecks Health monitoring instance
-     * @param Logger $logger Logger instance
-     * @throws \InvalidArgumentException If entity name is invalid
-     * @throws \RuntimeException If config loading fails
-     */
+    /**
+    * @param string $entity Entity name for processing
+    * @param HealthChecks $healthChecks Health monitoring instance
+    * @param Logger $logger Logger instance
+    * @throws \InvalidArgumentException If entity name is invalid
+    * @throws \RuntimeException If config loading fails
+    */
     public function __construct(string $entity, HealthChecks $healthChecks, Logger $logger)
     {
         if (empty($entity)) {
@@ -29,7 +29,7 @@ class ProcessingManager
         if ($config === false) {
             throw new \RuntimeException('Failed to load configuration');
         }
-    
+
         $this->config = $config;
         $this->entity = $entity;
         $this->healthChecks = $healthChecks;
