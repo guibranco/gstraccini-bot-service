@@ -150,4 +150,3 @@ function getReferencedIssueByBranch($metadata, $branch)
 $healthCheck = new HealthChecks($healthChecksIoBranches, GUIDv4::random());
 $processor = new ProcessingManager("branches", $healthCheck, $logger);
 $processor->initialize("handleItem", 55);
-

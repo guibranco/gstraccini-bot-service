@@ -110,4 +110,3 @@ function main(): void
 $healthCheck = new HealthChecks($healthChecksIoIssues, GUIDv4::random());
 $processor = new ProcessingManager("issues", $healthCheck, $logger);
 $processor->initialize("handleItem", 55);
-
