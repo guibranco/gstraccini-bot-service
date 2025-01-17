@@ -18,22 +18,22 @@ use GuiBranco\Pancake\HealthChecks;
  * @return string The camel case formatted string
  * @throws InvalidArgumentException If the input is not a string
  */
- function toCamelCase($inputString)
- {
+function toCamelCase($inputString)
+{
     if (!is_string($inputString)) {
         throw new InvalidArgumentException('Input must be a string');
     }
     if (empty($inputString)) {
         return '';
     }
-     return preg_replace_callback(
-         '/(?:^|_| )(\w)/',
-         function ($matches) {
-             return strtoupper($matches[1]);
-         },
-         $inputString
-     );
- }
+    return preg_replace_callback(
+        '/(?:^|_| )(\w)/',
+        function ($matches) {
+            return strtoupper($matches[1]);
+        },
+        $inputString
+    );
+}
 
 function handleItem($comment): void
 {
