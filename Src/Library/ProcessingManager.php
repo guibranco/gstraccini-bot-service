@@ -12,9 +12,25 @@ class ProcessingManager
     private $healthChecks;
     private $logger;
 
+     /**
+     * @param string $entity Entity name for processing
+     * @param HealthChecks $healthChecks Health monitoring instance
+     * @param Logger $logger Logger instance
+     * @throws \InvalidArgumentException If entity name is invalid
+     * @throws \RuntimeException If config loading fails
+     */
     public function __construct(string $entity, HealthChecks $healthChecks, Logger $logger)
     {
-        $this->config = loadConfig();
+        if (empty($entity)) {
+            throw new \InvalidArgumentException('Entity name cannot be empty');
+        }
+
+        $config = loadConfig();
+        if ($config === false) {
+            throw new \RuntimeException('Failed to load configuration');
+        }
+    
+        $this->config = $config;
         $this->entity = $entity;
         $this->healthChecks = $healthChecks;
         $this->logger = $logger;
@@ -37,8 +53,7 @@ class ProcessingManager
             if (time() >= $endTime) {
                 break;
             }
-            // Add delay to prevent excessive CPU usage
-            usleep(100000); // 100ms delay
+            usleep(100000);
         }
         $this->healthChecks->end();
     }
