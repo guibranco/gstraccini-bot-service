@@ -69,7 +69,7 @@ class ProcessingManager
         $this->process($handler);
         $result = ob_get_clean();
         if ($this->config->debug->all === true || $this->config->debug->{$this->entity} === true) {
-            echo htmlspecialchars(result, ENT_QUOTES, 'UTF-8') . PHP_EOL;
+            echo htmlspecialchars($result, ENT_QUOTES, 'UTF-8') . PHP_EOL;
         }
     }
 
