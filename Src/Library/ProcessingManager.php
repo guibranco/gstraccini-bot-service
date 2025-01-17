@@ -23,7 +23,7 @@ class ProcessingManager
 
     public function initialize(callable $handler, int $timeout): void
     {
-        $healthChecks->start();
+        $this->healthChecks->start();
         $time = time();
         while (true) {
             $this->batch($handler);
