@@ -58,13 +58,18 @@ class ProcessingManager
         $this->healthChecks->end();
     }
 
+    /**
+     * Process a batch of items.
+     *
+     * @param callable $handler Item processing callback
+     */
     private function batch(callable $handler): void
     {
         ob_start();
         $this->process($handler);
         $result = ob_get_clean();
         if ($this->config->debug->all === true || $this->config->debug->{$this->entity} === true) {
-            echo $result;
+            echo htmlspecialchars(result, ENT_QUOTES, 'UTF-8') . PHP_EOL;
         }
     }
 
