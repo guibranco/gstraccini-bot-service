@@ -21,6 +21,11 @@ class ProcessingManager
     */
     public function __construct(string $entity, HealthChecks $healthChecks, Logger $logger)
     {
+use InvalidArgumentException;
+use RuntimeException;
+
+class ProcessingManager
+{
         if (empty($entity)) {
             throw new \InvalidArgumentException('Entity name cannot be empty');
         }
