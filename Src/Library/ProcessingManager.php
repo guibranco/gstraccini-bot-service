@@ -94,12 +94,14 @@ class ProcessingManager
         }
 
         try {
-            if (updateTable("github_{$this->entity}", $item->Sequence)) {
+            $updateResult = updateTable("github_{$this->entity}", $item->Sequence);
+            if ($updateResult === true) {
                 $handler($item);
-                if(finalizeProcessing("github_{$this->entity}", $item->Sequence)) {
+                $finalizeResult = finalizeProcessing("github_{$this->entity}", $item->Sequence);
+                if($finalizeResult === true) {
                     echo "Item processed!\n";
                 } else {
-                    echo "Item updated by another hook!\n";
+                    echo "Item updated by another process!\n";
                 }
                 return;
             }
