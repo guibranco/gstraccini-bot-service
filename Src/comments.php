@@ -11,6 +11,17 @@ use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
 
+function toCamelCase($inputString)
+{
+    return preg_replace_callback(
+        '/(?:^|_| )(\w)/',
+        function ($matches) {
+            return strtoupper($matches[1]);
+        },
+        $inputString
+    );
+}
+
 function handleItem($comment): void
 {
     echo "https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/issues/{$comment->PullRequestNumber}/#issuecomment-{$comment->CommentId}:\n\n";
