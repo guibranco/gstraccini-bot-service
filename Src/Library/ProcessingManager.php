@@ -2,6 +2,7 @@
 
 namespace GuiBranco\GStracciniBot\Library;
 
+use GuiBranco\Pancake\HealthChecks;
 use GuiBranco\Pancake\Logger;
 
 class ProcessingManager
