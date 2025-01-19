@@ -65,9 +65,9 @@ class CodeClimate
      *
      * @param string $repositoryId      The ID of the repository.
      * @param string $pullRequestNumber The number of the pull request.
-     * 
+     *
      * @return Response Returns the response from the CodeClimate API.
-     * 
+     *
      * @throws \Exception If bypassing the PR check fails.
      */
     public function bypassPRCheck(string $repositoryId, string $pullRequestNumber): Response
