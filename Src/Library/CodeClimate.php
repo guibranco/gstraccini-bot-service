@@ -23,6 +23,7 @@ class CodeClimate
     /**
      * Retrieves the repository ID from CodeClimate using the GitHub repository slug.
      *
+ *
      * @param string $githubSlug The GitHub repository slug (e.g., "owner/repo").
      * @return string The repository ID from CodeClimate.
      * @throws \Exception If the repository ID cannot be retrieved.
