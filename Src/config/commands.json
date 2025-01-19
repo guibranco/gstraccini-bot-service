@@ -165,7 +165,7 @@
     },
     {
         "command": "npm check updates",
-        "description": "Run the command `npm-check-updates` to check & update dependencies (prod and dev). Updates the `package.json` and `package.lock` files.",
+        "description": "Update dependencies in a `package.json` and `package-lock.json` using the [npm-check-updates](https://github.com/raineorshine/npm-check-updates) (only for **NPM** projects).",
         "requiresPullRequestOpen": true
     },
     {
