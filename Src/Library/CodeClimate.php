@@ -8,6 +8,7 @@ use GuiBranco\Pancake\Response;
 /**
  * Class CodeClimate
  *
+ * @category CodeAnalysis
  * Handles interactions with the CodeClimate API, including retrieving repository IDs
  * and bypassing PR checks when necessary.
  */
