@@ -6,7 +6,6 @@ use GuiBranco\Pancake\Logger;
 use GuiBranco\Pancake\Request;
 use GuiBranco\Pancake\Response;
 use Exception;
-use Exception;
 
 /**
  * Class CodeClimate
