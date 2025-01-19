@@ -22,6 +22,8 @@ class CodeClimate
 
     /**
      * Retrieves the repository ID from CodeClimate using the GitHub repository slug.
+ * @param string $apiToken The API token for CodeClimate API access.
+ * @param Logger $logger The logger instance.
      *
  *
      * @param string $githubSlug The GitHub repository slug (e.g., "owner/repo").
