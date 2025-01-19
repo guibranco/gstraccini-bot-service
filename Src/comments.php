@@ -11,7 +11,7 @@ use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
 use GuiBranco\GStracciniBot\Library\Codacy;
-use GuiBranco\GStracciniBot\Library\Codacy;
+use GuiBranco\GStracciniBot\Library\CodeClimate;
 
 /**
  * Converts a string to camel case format.
