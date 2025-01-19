@@ -331,11 +331,14 @@ function execute_cargoClippy($config, $metadata, $comment): void
 
 function execute_codacyBypass($config, $metadata, $comment): void
 {
+    global $codacyApiToken, $logger;
+
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
     $codacyUrl = "https://app.codacy.com/gh/{$comment->RepositoryOwner}/{$comment->RepositoryName}/pull-requests/{$comment->PullRequestNumber}/issues";
     $body = "Bypassing the Codacy analysis for this [pull request]({$codacyUrl})! :warning:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-    bypassPullRequestAnalysis($comment->RepositoryOwner, $comment->RepositoryName, $comment->PullRequestNumber);
+    $codacy = new Codacy($codacyApiToken, $logger);
+    $codacy->bypassPullRequestAnalysis($comment->RepositoryOwner, $comment->RepositoryName, $comment->PullRequestNumber);
 }
 
 /**
@@ -356,11 +359,14 @@ function execute_codacyBypass($config, $metadata, $comment): void
  */
 function execute_codacyReanalyzeCommit($config, $metadata, $comment): void
 {
+    global $codacyApiToken, $logger;
+
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
     $codacyUrl = "https://app.codacy.com/gh/{$comment->RepositoryOwner}/{$comment->RepositoryName}/commits/{$metadata["headSha"]}/issues";
     $body = "Reanalyzing the commit {$metadata["headSha"]} in [Codacy]({$codacyUrl})! :warning:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-    reanalyzeCommit($comment->RepositoryOwner, $comment->RepositoryName, $metadata["headSha"]);
+    $codacy = new Codacy($codacyApiToken, $logger);
+    $codacy->reanalyzeCommit($comment->RepositoryOwner, $comment->RepositoryName, $metadata["headSha"]);
 }
 
 function execute_copyLabels($config, $metadata, $comment): void

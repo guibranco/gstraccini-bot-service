@@ -39,6 +39,12 @@ class CodeClimate
         $this->logger = $logger;
     }
 
+    /**
+     * Retrieves the repository ID from CodeClimate using the provided GitHub slug.
+     *
+     * @param string $githubSlug The GitHub repository slug (e.g., "username/repository").
+     * @return string The repository ID from CodeClimate.
+     */
     public function getRepositoryId(string $githubSlug): string
     {
         $url = "{$this->_baseUrl}repos?github_slug={$githubSlug}";
