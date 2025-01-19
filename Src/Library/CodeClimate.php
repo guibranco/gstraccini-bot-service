@@ -2,6 +2,7 @@
 
 namespace GuiBranco\GStracciniBot\Library;
 
+use GuiBranco\Pancake\Logger;
 use GuiBranco\Pancake\Request;
 use GuiBranco\Pancake\Response;
 
@@ -17,25 +18,24 @@ use GuiBranco\Pancake\Response;
 class CodeClimate
 {
     private $apiToken;
+    private $headers;
     private $logger;
-    private $_baseUrl = "https://api.codeclimate.com/v1/";
+    private $baseUrl = "https://api.codeclimate.com/v1/";
 
     /**
-     * @param string $apiToken API token for CodeClimate.
-     * @param Logger $logger   Logger instance for logging errors.
-     */
      * Retrieves the repository ID from CodeClimate using the GitHub repository slug.
- * @param string $apiToken The API token for CodeClimate API access.
- * @param Logger $logger The logger instance.
-     *
- *
-     * @param string $githubSlug The GitHub repository slug (e.g., "owner/repo").
-     * @return string The repository ID from CodeClimate.
-     * @throws \Exception If the repository ID cannot be retrieved.
+     * @param string $apiToken The API token for CodeClimate API access.
+     * @param Logger $logger The logger instance.
      */
-    public function __construct($apiToken, $logger)
+    public function __construct(string $apiToken, Logger $logger)
     {
         $this->apiToken = $apiToken;
+        $this->headers = [
+            constant("USER_AGENT"),
+            "Accept: application/json",
+            "Accept: application/vnd.api+json",
+            "Authorization: Token token={$this->apiToken}"
+        ];
         $this->logger = $logger;
     }
 
@@ -47,19 +47,13 @@ class CodeClimate
      */
     public function getRepositoryId(string $githubSlug): string
     {
-        $url = "{$this->_baseUrl}repos?github_slug={$githubSlug}";
-        $headers = [
-            constant("USER_AGENT"),
-            "Accept: application/json",
-            "Accept: application/vnd.api+json",
-            "Authorization: Token token={$this->apiToken}",
-        $request =  new Request();
-        $response = $request->get($url, $headers);
+        $url = "{$this->baseUrl}repos?github_slug={$githubSlug}";
+        $request = new Request();
+        $response = $request->get($url, $this->headers);
 
         if ($response->getStatusCode() >= 300) {
             $this->logger->log("Error retrieving CodeClimate repository ID", json_encode($response));
-            throw new \Exception(
-                "Failed to retrieve repository ID from CodeClimate"
+            throw new \Exception("Failed to retrieve repository ID from CodeClimate");
         }
 
         $body = json_decode($response->getBody());
@@ -78,19 +72,13 @@ class CodeClimate
      */
     public function bypassPRCheck(string $repositoryId, string $pullRequestNumber): Response
     {
-        $url = "{$this->_baseUrl}repos/{$repositoryId}/pulls/{$pullRequestNumber}/approvals";
-        $headers = [
-            constant("USER_AGENT"),
-            "Accept: application/json",
-            "Accept: application/vnd.api+json",
-            "Authorization: Token token={$this->apiToken}"
+        $url = "{$this->baseUrl}repos/{$repositoryId}/pulls/{$pullRequestNumber}/approvals";
         $data = json_encode(["data[attributes][reason]" => "merge"]);
-        $request =  new Request();
-        $response = $request->post($url, $headers, $data);
+        $request = new Request();
+        $response = $request->post($url, $this->headers, $data);
 
         if ($response->getStatusCode() >= 300) {
-            $this->logger->log(
-                "Error bypassing CodeClimate PR check", json_encode($response)
+            $this->logger->log("Error bypassing CodeClimate PR check", json_encode($response));
             throw new \Exception("Failed to bypass PR check in CodeClimate");
         }
 
