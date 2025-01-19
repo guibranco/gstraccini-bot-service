@@ -6,6 +6,7 @@ use GuiBranco\Pancake\Logger;
 use GuiBranco\Pancake\Request;
 use GuiBranco\Pancake\Response;
 use Exception;
+use Exception;
 
 /**
  * Class CodeClimate
@@ -54,7 +55,7 @@ class CodeClimate
 
         if ($response->getStatusCode() >= 300) {
             $this->logger->log("Error retrieving CodeClimate repository ID", json_encode($response));
-            throw new \Exception("Failed to retrieve repository ID from CodeClimate");
+            throw new Exception("Failed to retrieve repository ID from CodeClimate");
         }
 
         $body = json_decode($response->getBody());
