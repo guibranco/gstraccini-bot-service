@@ -10,6 +10,7 @@ use GuiBranco\GStracciniBot\Library\RepositoryManager;
 use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
+use GuiBranco\GStracciniBot\Library\Codacy;
 
 /**
  * Converts a string to camel case format.
