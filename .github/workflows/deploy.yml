@@ -143,6 +143,20 @@ jobs:
           cd Src       
           echo ${{ env.fullSemVer }} > version.txt
 
+      - name: Create lock file
+        run: |
+          mkdir -p Lock
+          date +"%Y-%m-%d %H:%M:%S" > Lock/updating.lock
+
+      - name: Upload updating.lock
+        uses: sebastianpopp/ftp-action@releases/v2
+        with:
+          host: ${{ secrets.FTP_SERVER }}
+          user: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          localDir: "Lock"
+          remoteDir: "/"
+
       - name: Upload service
         uses: sebastianpopp/ftp-action@releases/v2
         with:
@@ -150,6 +164,20 @@ jobs:
           user: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           localDir: "Src"
+          remoteDir: "/"
+
+      - name: Create release file
+        run: |
+          rm -f Lock/updating.lock
+          date +"%Y-%m-%d %H:%M:%S" > Lock/updating.release
+
+      - name: Upload updating.release
+        uses: sebastianpopp/ftp-action@releases/v2
+        with:
+          host: ${{ secrets.FTP_SERVER }}
+          user: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          localDir: "Lock"
           remoteDir: "/"
 
   create_release:
@@ -160,7 +188,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Create Release
-        uses: ncipollo/release-action@v1.14.0
+        uses: ncipollo/release-action@v1.15.0
         with:
           allowUpdates: false
           skipIfReleaseExists: true

@@ -82,7 +82,7 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
             break;
     }
 
-    return handleResponse($response, $method);
+    return handleResponse($response, $method, $accept);
 }
 
 /**
@@ -94,19 +94,22 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
  * @param string method The `method` parameter in the `handleResponse` function is a string that
  * specifies the HTTP method used in the request. It is used to determine the type of response expected
  * and validate the response accordingly.
+ * @param string accept The `accept` parameter in the `doRequestGitHub` function specifies the HTTP
+ * Accept header value to be used for the request. It can be used to specify the media type of the
+ * response expected from the GitHub API. The default value is "application/vnd.github+json".
  *
  * @return Response The function `handleResponse` returns the same `Response` object that was passed
  * as a parameter after logging and validating the response.
  */
-function handleResponse(Response $response, string $method): Response
+function handleResponse(Response $response, string $method, string $accept): Response
 {
     global $logger;
 
     $statusCode = $response->getStatusCode();
     $info = $response->toJson();
     if ($statusCode <= 0 || ($statusCode >= 300 && $statusCode !== 404)) {
-        $logger->log("Invalid GitHub response", $info);
-    } elseif (empty($response->getBody()) && $method !== "DELETE" && $statusCode !== 204) {
+        $logger->log("Invalid GitHub response. HTTP Status Code: {$statusCode}", $info);
+    } elseif (empty($response->getBody()) && $method !== "DELETE" && $statusCode !== 204 && $accept !== "application/vnd.github.v3.diff") {
         $logger->log("Unexpected empty response", $info);
     }
 

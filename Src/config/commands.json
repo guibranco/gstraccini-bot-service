@@ -169,6 +169,11 @@
         "requiresPullRequestOpen": true
     },
     {
+        "command": "npm check updates",
+        "description": "Update dependencies in a `package.json` and `package-lock.json` using the [npm-check-updates](https://github.com/raineorshine/npm-check-updates) (only for **NPM** projects).",
+        "requiresPullRequestOpen": true
+    },
+    {
         "command": "npm dist",
         "description": "Generate or regenerate the `dist` files. It will run the following NPM command: `npm run package`.",
         "requiresPullRequestOpen": true

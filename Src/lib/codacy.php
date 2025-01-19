@@ -40,7 +40,7 @@ function bypassPullRequestAnalysis(string $remoteOrganizationName, string $repos
 
     if ($response->getStatusCode() >= 300) {
         $info = $response->toJson();
-        $logger->log("Invalid Codacy response", $info);
+        $logger->log("Invalid Codacy response. HTTP Status Code: {$response->getStatusCode()}", $info);
     }
 
     return $response;

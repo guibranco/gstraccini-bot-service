@@ -11,6 +11,31 @@ use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
 
+/**
+ * Converts a string to camel case format.
+ *
+ * @param string $inputString The input string to convert
+ * @return string The camel case formatted string
+ *
+ * @throws InvalidArgumentException If the input is not a string
+ */
+function toCamelCase($inputString)
+{
+    if (!is_string($inputString)) {
+        throw new \InvalidArgumentException('Input must be a string');
+    }
+    if (empty($inputString)) {
+        return '';
+    }
+    return preg_replace_callback(
+        '/(?:^|_| )(\w)/',
+        function ($matches) {
+            return strtoupper($matches[1]);
+        },
+        $inputString
+    );
+}
+
 function handleItem($comment): void
 {
     echo "https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/issues/{$comment->PullRequestNumber}/#issuecomment-{$comment->CommentId}:\n\n";
@@ -519,6 +544,14 @@ function execute_fixCsproj($config, $metadata, $comment): void
     callWorkflow($config, $metadata, $comment, "fix-csproj.yml");
 }
 
+function execute_npmCheckUpdates($config, $metadata, $comment): void
+{
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
+    $body = "Running the command [npm-check-updates](https://github.com/raineorshine/npm-check-updates) to update dependencies via NPM! :building_construction:";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    callWorkflow($config, $metadata, $comment, "npm-check-updates.yml");
+}
+
 function execute_npmDist($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
@@ -725,29 +758,6 @@ function updateNextBuildNumber($metadata, $project, $nextBuildNumber): void
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
 }
 
-function main(): void
-{
-    $config = loadConfig();
-    ob_start();
-    $table = "github_comments";
-    global $logger;
-    $processor = new ProcessingManager($table, $logger);
-    $processor->process('handleItem');
-    $result = ob_get_clean();
-    if ($config->debug->all === true || $config->debug->comments === true) {
-        echo $result;
-    }
-}
-
 $healthCheck = new HealthChecks($healthChecksIoComments, GUIDv4::random());
-$healthCheck->setHeaders([constant("USER_AGENT"), "Content-Type: application/json; charset=utf-8"]);
-$healthCheck->start();
-$time = time();
-while (true) {
-    main();
-    $limit = ($time + 55);
-    if ($limit < time()) {
-        break;
-    }
-}
-$healthCheck->end();
+$processor = new ProcessingManager("comments", $healthCheck, $logger);
+$processor->initialize("handleItem", 55);
