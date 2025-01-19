@@ -10,6 +10,7 @@ use GuiBranco\Pancake\Response;
  *
  * @category CodeAnalysis
  * Handles interactions with the CodeClimate API, including retrieving repository IDs
+ * @package GuiBranco\GStracciniBot\Library
  * and bypassing PR checks when necessary.
  */
 class CodeClimate
