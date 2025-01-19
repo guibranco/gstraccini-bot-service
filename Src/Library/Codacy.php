@@ -51,7 +51,7 @@ class Codacy
      */
     public function bypassPullRequestAnalysis(string $orgName, string $repositoryName, string $pullRequestNumber): Response
     {
-        $url = "{$this->baseUrl}analysis/organizations/gh/{$remoteOrganizationName}/repositories/{$repositoryName}/pull-requests/{$pullRequestNumber}/bypass";
+        $url = "{$this->baseUrl}analysis/organizations/gh/{$orgName}/repositories/{$repositoryName}/pull-requests/{$pullRequestNumber}/bypass";
         $request = new Request();
         $response = $request->post($url, $this->headers);
 
