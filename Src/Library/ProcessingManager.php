@@ -110,7 +110,10 @@ class ProcessingManager
             }
 
             $message = "Skipping item (Entity: {$this->entity}, Sequence: {$item->Sequence}) since it was already handled.";
-            $this->logger->log($message, $details);
+            $logResult = $this->logger->log($message, $details);
+            if ($logResult === false) {
+                echo "Error submitting log\n";
+            }
             echo $message . "\n";
         } catch (\Exception $e) {
             $this->logger->log(
