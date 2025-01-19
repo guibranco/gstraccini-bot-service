@@ -49,7 +49,7 @@ class Codacy
      * which is the response from the Codacy API after attempting to bypass the pull request analysis for a
      * specific repository in a remote organization.
      */
-    public function bypassPullRequestAnalysis(string $remoteOrganizationName, string $repositoryName, string $pullRequestNumber): Response
+    public function bypassPullRequestAnalysis(string $orgName, string $repositoryName, string $pullRequestNumber): Response
     {
         $url = "{$this->baseUrl}analysis/organizations/gh/{$remoteOrganizationName}/repositories/{$repositoryName}/pull-requests/{$pullRequestNumber}/bypass";
         $request = new Request();
