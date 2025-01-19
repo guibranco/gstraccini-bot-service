@@ -2,16 +2,15 @@
 
 require_once "config/config.php";
 
+use GuiBranco\GStracciniBot\Library\Codacy;
 use GuiBranco\GStracciniBot\Library\CommandHelper;
-use GuiBranco\GStracciniBot\Library\CreateLabelResult;
 use GuiBranco\GStracciniBot\Library\LabelHelper;
 use GuiBranco\GStracciniBot\Library\LabelService;
 use GuiBranco\GStracciniBot\Library\RepositoryManager;
 use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
-use GuiBranco\GStracciniBot\Library\Codacy;
-use GuiBranco\GStracciniBot\Library\CodeClimate;
+
 
 /**
  * Converts a string to camel case format.

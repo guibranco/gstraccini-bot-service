@@ -1,5 +1,7 @@
 <?php
 
+namespace GuiBranco\GStracciniBot\Library;
+
 use GuiBranco\Pancake\Logger;
 use GuiBranco\Pancake\Request;
 use GuiBranco\Pancake\Response;
@@ -62,7 +64,6 @@ class Codacy
 
         return $response;
     }
-
 
     /**
      * The function reanalyzeCommit sends a POST request to the Codacy API to reanalyze a specific commit
