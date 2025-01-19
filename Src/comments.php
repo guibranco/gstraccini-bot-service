@@ -544,6 +544,14 @@ function execute_fixCsproj($config, $metadata, $comment): void
     callWorkflow($config, $metadata, $comment, "fix-csproj.yml");
 }
 
+function execute_npmCheckUpdates($config, $metadata, $comment): void
+{
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
+    $body = "Running the command [npm-check-updates](https://github.com/raineorshine/npm-check-updates) to update dependencies via NPM! :building_construction:";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    callWorkflow($config, $metadata, $comment, "npm-check-updates.yml");
+}
+
 function execute_npmDist($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
