@@ -21,6 +21,9 @@ class CodeClimate
     private $_baseUrl = "https://api.codeclimate.com/v1/";
 
     /**
+     * @param string $apiToken API token for CodeClimate.
+     * @param Logger $logger   Logger instance for logging errors.
+     */
      * Retrieves the repository ID from CodeClimate using the GitHub repository slug.
  * @param string $apiToken The API token for CodeClimate API access.
  * @param Logger $logger The logger instance.
