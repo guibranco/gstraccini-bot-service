@@ -4,14 +4,6 @@
         "description": "Shows the help message with available commands."
     },
     {
-        "command": "hello",
-        "description": "Says hello to the invoker."
-    },
-    {
-        "command": "thank you",
-        "description": "Replies with you are welcome message to the invoker."
-    },
-    {
         "command": "add project",
         "description": "Adds a project to the solution file (only for **.NET** projects).",
         "parameters": [
