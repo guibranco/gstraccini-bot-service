@@ -37,8 +37,6 @@ You can see an updated list of available commands by commenting `@gstraccini hel
 GStraccini-bot can handle various tasks. Here’s a list of commands:
 
 - `@gstraccini help`: Shows available commands.
-- `@gstraccini hello`: Greets the invoker.
-- `@gstraccini thank you`: Replies with a "You're welcome" message.
 - `@gstraccini add project <projectPath>`: Adds a project to the solution file (for **.NET** projects).
 - `@gstraccini appveyor build <type>`: Runs an [AppVeyor](https://ci.appveyor.com) build for a target commit/pull request.
 - `@gstraccini appveyor bump version <component>`: Bumps the version in AppVeyor.
