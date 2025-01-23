@@ -117,20 +117,6 @@ function handleItem($comment): void
     }
 }
 
-function execute_hello($config, $metadata, $comment): void
-{
-    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "heart"), "POST");
-    $body = "Hello @" . $comment->CommentSender . "! :wave:";
-    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-}
-
-function execute_thankYou($config, $metadata, $comment): void
-{
-    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"), "POST");
-    $body = "You're welcome @" . $comment->CommentSender . "! :pray:";
-    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-}
-
 function execute_help($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
