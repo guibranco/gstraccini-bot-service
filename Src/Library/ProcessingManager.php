@@ -110,7 +110,7 @@ class ProcessingManager
             }
 
             $message = "Skipping item (Entity: {$this->entity}, Sequence: {$item->Sequence}) since it was already handled.";
-            $this->logger->log($message, null);
+            $this->logger->log($message, json_encode($item));
             echo $message . "\n";
         } catch (\Exception $e) {
             $this->logger->log(
