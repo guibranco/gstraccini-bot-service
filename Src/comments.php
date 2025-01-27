@@ -84,8 +84,8 @@ function handleItem($comment): void
 
     $collaboratorUrl = $repoPrefix . "/collaborators/" . $comment->CommentSender;
     $collaboratorResponse = doRequestGitHub($metadata["token"], $collaboratorUrl, null, "GET");
-    if ($collaboratorResponse->getStatusCode() === 404) {        
-        if ($comment->CommentSender !== "dependabot[bot]"){
+    if ($collaboratorResponse->getStatusCode() === 404) {
+        if ($comment->CommentSender !== "dependabot[bot]") {
             doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
             $body = $metadata["errorMessages"]["notCollaborator"];
             doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
