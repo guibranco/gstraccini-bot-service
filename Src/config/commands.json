@@ -151,23 +151,28 @@
     },
     {
         "command": "csharpier",
-        "description": "Formats the C# code using [CSharpier](https://csharpier.com) (only for **.NET** projects).",
+        "description": "Formats the C# code using [CSharpier](https://csharpier.com). (only for **.NET** projects.)",
         "requiresPullRequestOpen": true
     },
     {
         "command": "fix csproj",
-        "description": "Updates the `.csproj` file with the `packages.config` version of [NuGet packages](https://nuget.org) (only for **.NET Framework** projects).",
+        "description": "Updates the `.csproj` file with the `packages.config` version of [NuGet packages](https://nuget.org). (only for **.NET Framework** projects.)",
         "dev": true,
         "requiresPullRequestOpen": true
     },
     {
         "command": "npm check updates",
-        "description": "Update dependencies in a `package.json` and `package-lock.json` using the [npm-check-updates](https://github.com/raineorshine/npm-check-updates) (only for **NPM** projects).",
+        "description": "Update dependencies in a `package.json` and `package-lock.json` using the [npm-check-updates](https://github.com/raineorshine/npm-check-updates) (only for **NPM** projects.)",
         "requiresPullRequestOpen": true
     },
     {
         "command": "npm dist",
-        "description": "Generate or regenerate the `dist` files. It will run the following NPM command: `npm run package`.",
+        "description": "Generate or regenerate the `dist` files. It will run the following NPM command: `npm run package`. (only for **NPM** projects.)",
+        "requiresPullRequestOpen": true
+    },
+    {
+        "command": "npm lint fix",
+        "description": "Trigger a workflow to automatically fix linting issues by running the following NPM command: `npm run lint -- --fix`. (only for **NPM** projects.)",
         "requiresPullRequestOpen": true
     },
     {
