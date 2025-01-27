@@ -559,6 +559,14 @@ function execute_npmDist($config, $metadata, $comment): void
     callWorkflow($config, $metadata, $comment, "npm-dist.yml");
 }
 
+function execute_npmLintFix($config, $metadata, $comment): void
+{
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
+    $body = "Fixing lint problems via `npm run lint -- --fix`! :building_construction:";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    callWorkflow($config, $metadata, $comment, "npm-lint-fix.yml");
+}
+
 function execute_prettier($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
