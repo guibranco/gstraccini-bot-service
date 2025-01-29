@@ -43,6 +43,12 @@
             "textWithIcon": "🎲 database"
         },
         {
+            "color": "#0052CC",
+            "description": "Dependencies",
+            "text": "dependencies",
+            "textWithIcon": "dependencies"
+        },
+        {
             "color": "#F92288",
             "description": "Task or issue is currently blocked",
             "text": "blocked",
