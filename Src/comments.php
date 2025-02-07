@@ -664,7 +664,7 @@ function execute_review($config, $metadata, $comment): void
         $commit->HeadCommitCommitterEmail = $commitItem->commit->committer->email;
         $commit->InstallationId = $comment->InstallationId;
 
-        $commitsList .= "SHA: `{$commitItem->sha}`\n";
+        $commitsList .= "SHA: [{$commitItem->sha}](https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/pull/{$comment->PullRequestNumber}/commits/{$commitItem->sha})\n";
 
         upsertPush($commit);
     }
