@@ -32,6 +32,10 @@ function handleItem($pullRequest, $isRetry = false)
 
     if ($pullRequestUpdated->state != "open") {
         echo "PR State: {$pullRequestUpdated->state} ⛔\n";
+        if ($pullRequest->State !== "CLOSED") {
+            closePullRequest($pullRequest->Sequence);
+        }
+
         return;
     }
 
