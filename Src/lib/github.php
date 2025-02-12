@@ -9,6 +9,7 @@ use Lcobucci\JWT\Signer\Rsa\Sha256;
 use Lcobucci\JWT\Token\Builder;
 
 define("BOT_CHECK_MESSAGE_PREFIX", "GStraccini Checks: ");
+
 /**
  * The function `doRequestGitHub` sends HTTP requests to the GitHub API with specified parameters and
  * handles different HTTP methods.
@@ -85,6 +86,14 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
     return handleResponse($response, $method, $accept);
 }
 
+function doPagedRequestGitHub(string $token, string $url, int $perPage = 100, int $page = 1): Response {
+
+}
+
+function loadAllPages(string $token, string $url): Response {
+    
+}
+
 /**
  * The function `handleResponse` logs and validates the response from the GitHub API request.
  *
@@ -149,9 +158,9 @@ function generateAppToken(): string
  * function is the unique identifier for the GitHub App installation. This ID is used to specify which
  * installation of the GitHub App you want to generate an access token for.
  * @param string repositoryName The `repositoryName` parameter in the `generateInstallationToken`
- * function is a string that represents the name of the repository for which you want to generate an
- * installation token. This token can be used to authenticate and authorize access to the specified
- * repository on GitHub.
+ * function is an optional string that represents the name of the repository for which you want to
+ * generate an installation token.
+ * This token can be used to authenticate and authorize access to the specified repository on GitHub.
  * @param array permissions The `permissions` parameter in the `generateInstallationToken` function is
  * an optional array that allows you to specify the permissions you want to grant to the installation
  * token. These permissions determine what actions the token can perform on the repository.
@@ -159,12 +168,16 @@ function generateAppToken(): string
  * @return string The function `generateInstallationToken` returns a string, which is the access token
  * generated for the specified installation ID and repository name with optional permissions.
  */
-function generateInstallationToken(string $installationId, string $repositoryName, array $permissions = null): string
+function generateInstallationToken(string $installationId, string $repositoryName = null, array $permissions = null): string
 {
     $gitHubAppToken = generateAppToken();
 
     $data = new \stdClass();
-    $data->repository = $repositoryName;
+    
+    if (!is_null($repositoryName)) {
+        $data->repository = $repositoryName;
+    }
+
     if (!is_null($permissions) && !empty($permissions)) {
         $data->permissions = $permissions;
     }
