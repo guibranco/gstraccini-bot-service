@@ -89,7 +89,7 @@ function finalizeProcessing($tableName, $sequence): bool
     return $succeeded;
 }
 
-function updaetStateToClosedInTable($table, $sequence): bool
+function updateStateToClosedInTable($table, $sequence): bool
 {
     $mysqli = connectToDatabase();
 
