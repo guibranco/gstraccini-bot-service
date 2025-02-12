@@ -26,6 +26,10 @@ function handleItem($issue)
 
     if ($issueUpdated->state === "closed") {
         removeLabels($issueUpdated, $metadata, true);
+        if ($issue->State === "OPEN") {
+            updateStateToClosedInTable("issues", $issue->Sequence);
+        }
+
         return;
     }
 

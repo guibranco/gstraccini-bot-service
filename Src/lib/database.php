@@ -89,11 +89,11 @@ function finalizeProcessing($tableName, $sequence): bool
     return $succeeded;
 }
 
-function closePullRequest($sequence): bool
+function updateStateToClosedInTable($table, $sequence): bool
 {
     $mysqli = connectToDatabase();
 
-    $sql = "UPDATE github_pull_requests SET State = 'CLOSED'  WHERE Sequence = ? AND State = 'OPEN'";
+    $sql = "UPDATE github_{$table} SET State = 'CLOSED'  WHERE Sequence = ? AND State = 'OPEN'";
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param("i", $sequence);
     $succeeded = false;
