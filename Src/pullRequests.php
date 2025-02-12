@@ -35,7 +35,7 @@ function handleItem($pullRequest, $isRetry = false)
         if ($pullRequest->State !== "CLOSED") {
             closePullRequest($pullRequest->Sequence);
         }
-        
+
         return;
     }
 
