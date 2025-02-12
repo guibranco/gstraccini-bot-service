@@ -14,6 +14,7 @@ function handleItem($signature)
         "content_type" => "json",
         "insecure_ssl" => "0",
         "url" => $gitHubWebhookEndpoint,
+        "secret" => $gitHubWebhookSignature
     );
 
     $repoPrefix = "repos/" . $signature->RepositoryOwner . "/" . $signature->RepositoryName;
