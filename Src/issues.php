@@ -29,7 +29,7 @@ function handleItem($issue)
         if ($issue->State === "OPEN") {
             updaetStateToClosedInTable("issues", $issue->Sequence);
         }
-        
+
         return;
     }
 
