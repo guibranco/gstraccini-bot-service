@@ -93,7 +93,7 @@ function updaetStateToClosedInTable($table, $sequence): bool
 {
     $mysqli = connectToDatabase();
 
-    $sql = "UPDATE {$table} SET State = 'CLOSED'  WHERE Sequence = ? AND State = 'OPEN'";
+    $sql = "UPDATE github_{$table} SET State = 'CLOSED'  WHERE Sequence = ? AND State = 'OPEN'";
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param("i", $sequence);
     $succeeded = false;
