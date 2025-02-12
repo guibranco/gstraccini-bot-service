@@ -1,7 +1,7 @@
 <?php
 
 use PHPUnit\Framework\TestCase;
-use Src\LabelHandler;
+use GuiBranco\GStracciniBot\Library\LabelHandler;
 
 class LabelHandlerTest extends TestCase
 {
