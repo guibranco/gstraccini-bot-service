@@ -327,7 +327,7 @@ function execute_codacyBypass($config, $metadata, $comment): void
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
     $codacy = new Codacy($codacyApiToken, $logger);
     $response = $codacy->bypassPullRequestAnalysis($comment->RepositoryOwner, $comment->RepositoryName, $comment->PullRequestNumber);
-    if (!$response->isSuccessStatusCode() === false) {
+    if ($response->isSuccessStatusCode() === false) {
         $body = "Bypass the Codacy analysis for this [pull request]({$codacyUrl}) failed! ☠️\r\nDo you want to retry?\r\n- [ ] Yes, retry!";
         $commentResponse = doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
         // TODO: Store comment ID in the table of bot-interactions
