@@ -46,7 +46,7 @@ function handleItem($issue)
     $collaboratorsLogins = array_column($collaborators, "login");
 
     $wellKnowSenders = array("pixeebot[bot]");
-    
+
     if ($repository->private || in_array($issueUpdated->user->login, $wellKnowSenders)) {
         $body = array("assignees" => $collaboratorsLogins);
         doRequestGitHub($metadata["token"], $metadata["assigneesUrl"], $body, "POST");
