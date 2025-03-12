@@ -45,9 +45,9 @@ function handleItem($issue)
     $collaborators = json_decode($collaboratorsResponse->getBody(), true);
     $collaboratorsLogins = array_column($collaborators, "login");
 
-    $wellKnowSenders = array("pixeebot[bot]");
+    $autoAssignSenders = array("pixeebot[bot]");
 
-    if ($repository->private || in_array($issueUpdated->user->login, $wellKnowSenders)) {
+    if ($repository->private || in_array($issueUpdated->user->login, $autoAssignSenders, true)) {
         $body = array("assignees" => $collaboratorsLogins);
         doRequestGitHub($metadata["token"], $metadata["assigneesUrl"], $body, "POST");
         removeLabels($issueUpdated, $metadata);
