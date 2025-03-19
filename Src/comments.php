@@ -546,7 +546,7 @@ function execute_fixCsproj($config, $metadata, $comment): void
 function execute_npmCheckUpdates($config, $metadata, $comment): void
 {
     preg_match(
-        "/@" . $config->botName . "\snpm\scheck\supdates\s(.*?)(?:\s+@" . $config->botName . "|$)/",
+        "/@" . $config->botName . "\snpm\scheck\supdates\s((?:(?!\s+@" . $config->botName . ").)*)/",
         $comment->CommentBody,
         $matches
     );
