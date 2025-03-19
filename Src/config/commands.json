@@ -163,6 +163,13 @@
     {
         "command": "npm check updates",
         "description": "Update dependencies in a `package.json` and `package-lock.json` using the [npm-check-updates](https://github.com/raineorshine/npm-check-updates) (only for **NPM** projects.)",
+        "parameters": [
+            {
+                "parameter": "filter",
+                "description": "The packages to filter",
+                "required": false
+            }
+        ],
         "requiresPullRequestOpen": true
     },
     {
