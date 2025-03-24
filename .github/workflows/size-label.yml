@@ -5,13 +5,11 @@ on:
   workflow_dispatch:
   
 jobs:
-  size-label:
-    permissions: write-all
-    runs-on: ubuntu-latest
-
-    steps:
-
-      - name: size-label
-        uses: "pascalgn/size-label-action@v0.5.5"
-        env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+    label_pr:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Apply size label
+              uses: pascalgn/size-label-action@v0.5.4
+              with:
+                  github_token: ${{ secrets.MY_SECRET }}
+                  sizes: '0:SMALL, 10:SMALL, 50:SMALL, 200:MEDIUM, 500:MEDIUM, 1000:LARGE'
