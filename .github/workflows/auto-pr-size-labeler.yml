@@ -1,0 +1,51 @@
+name: PR Labeler
+
+on:
+    pull_request:
+        types:
+            - opened
+            - synchronize
+            - reopened
+
+permissions:
+    pull-requests: write
+    contents: read
+
+jobs:
+    label_pr:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Get PR details
+              id: pr_details
+              run: |
+                  CHANGED_LINES=$(curl -s -H "Authorization: token ${{ secrets.MY_SECRET }}" \
+                    -H "Accept: application/vnd.github.v3+json" \
+                    "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}" \
+                    | jq '.additions + .deletions')
+                  
+                  if [ -z "$CHANGED_LINES" ] || [ "$CHANGED_LINES" == "null" ]; then
+                    echo "Error: Failed to retrieve PR details." >&2
+                    exit 1
+                  fi
+                  
+                  echo "CHANGED_LINES=$CHANGED_LINES" >> "$GITHUB_ENV"
+
+            - name: Determine label
+              id: set_label
+              run: |
+                  case $CHANGED_LINES in
+                    [0-9]|[1-4][0-9]) LABEL="small" ;;
+                    [5-9][0-9]|1[0-9][0-9]) LABEL="medium" ;;
+                    *) LABEL="large" ;;
+                  esac
+                  echo "LABEL=$LABEL" >> "$GITHUB_ENV"
+
+            - name: Add label to PR
+              run: |
+                  curl -s -X POST -H "Authorization: token ${{ secrets.MY_SECRET }}" \
+                    -H "Accept: application/vnd.github.v3+json" \
+                    "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels" \
+                    -d "{\"labels\":[\"${{ env.LABEL }}\"]}"
