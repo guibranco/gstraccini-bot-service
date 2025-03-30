@@ -86,12 +86,58 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
     return handleResponse($response, $method, $accept);
 }
 
-function doPagedRequestGitHub(string $token, string $url, int $perPage = 100, int $page = 1): Response {
+function doPagedRequestGitHub(string $token, string $url, int $perPage = 100, int $page = 1): Response
+{
+    global $logger;
+
+    if ($token === null || $token === "") {
+        $logger->log("Invalid GitHub token", null);
+        return Response::error("Invalid GitHub token", $url, -1);
+    }
+
+    $baseUrl = "https://api.github.com/";
+    $url = $baseUrl . $url . "?per_page={$perPage}&page={$page}";
+    $headers = array(
+        constant("USER_AGENT"),
+        "Content-type: application/json",
+        "Accept: application/vnd.github+json",
+        "X-GitHub-Api-Version: 2022-11-28",
+        "Authorization: Bearer {$token}"
+    );
+
+    $request = new Request();
+    $response = $request->get($url, $headers);
+
+    if ($response->getStatusCode() === 200) {
+        return handleResponse($response, "GET", "application/vnd.github+json");
+    } else {
+        return Response::error("Invalid GitHub response", $url, -1);
+    }
 
 }
 
-function loadAllPages(string $token, string $url): Response {
-    
+function loadAllPages(string $token, string $url): array|null
+{
+    $allPages = array();
+    $page = 1;
+    $perPage = 100;
+
+    do {
+        $response = doPagedRequestGitHub($token, $url, $perPage, $page);
+        if ($response->getStatusCode() !== 200) {
+            return null;
+        }
+
+        $data = json_decode($response->getBody(), true);
+        if (empty($data)) {
+            break;
+        }
+
+        $allPages = array_merge($allPages, $data);
+        $page++;
+    } while (count($data) === $perPage);
+
+    return $allPages;
 }
 
 /**
@@ -173,7 +219,7 @@ function generateInstallationToken(string $installationId, string $repositoryNam
     $gitHubAppToken = generateAppToken();
 
     $data = new \stdClass();
-    
+
     if (!is_null($repositoryName)) {
         $data->repository = $repositoryName;
     }

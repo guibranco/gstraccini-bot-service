@@ -2,9 +2,8 @@
 
 require_once "config/config.php";
 
-use GuiBranco\GStracciniBot\Library\LabelHelper;
 use GuiBranco\GStracciniBot\Library\ProcessingManager;
-use GuiBranco\GStracciniBot\Library\RepositoryManager;
+use GuiBranco\GStracciniBot\Repositories\RepositoryRepository;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
 
@@ -14,11 +13,13 @@ function handleItem($installation)
 
     $token = generateInstallationToken($installation->InstallationId);
 
-    $metadata = array(
-        "token" => $token
-    );
+    $repositories = loadAllPages($token, "installation/repositories");
 
-    $repositories = doPagedRequestGitHub($metadata["token"], "installation/repositories", 100);
+    $repository = new RepositoryRepository();
+
+    foreach ($repositories as $repository) {
+        $repository->upsert($repository);
+    }
 }
 
 $healthCheck = new HealthChecks($healthChecksIoInstallations, GUIDv4::random());
