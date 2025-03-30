@@ -11,7 +11,7 @@
     "comments": true,
     "installations": true,
     "issues": false,
-    "pull_requests": false,
+    "pull_requests": true,
     "pushes": false,
     "repositories": true,
     "signature": false

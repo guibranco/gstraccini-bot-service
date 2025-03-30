@@ -85,9 +85,11 @@ function handleItem($comment): void
     $collaboratorUrl = $repoPrefix . "/collaborators/" . $comment->CommentSender;
     $collaboratorResponse = doRequestGitHub($metadata["token"], $collaboratorUrl, null, "GET");
     if ($collaboratorResponse->getStatusCode() === 404) {
-        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
-        $body = $metadata["errorMessages"]["notCollaborator"];
-        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+        if ($comment->CommentSender !== "dependabot[bot]") {
+            doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
+            $body = $metadata["errorMessages"]["notCollaborator"];
+            doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+        }
         return;
     }
 
@@ -115,20 +117,6 @@ function handleItem($comment): void
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
     }
-}
-
-function execute_hello($config, $metadata, $comment): void
-{
-    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "heart"), "POST");
-    $body = "Hello @" . $comment->CommentSender . "! :wave:";
-    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-}
-
-function execute_thankYou($config, $metadata, $comment): void
-{
-    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"), "POST");
-    $body = "You're welcome @" . $comment->CommentSender . "! :pray:";
-    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
 }
 
 function execute_help($config, $metadata, $comment): void
@@ -338,7 +326,12 @@ function execute_codacyBypass($config, $metadata, $comment): void
     $body = "Bypassing the Codacy analysis for this [pull request]({$codacyUrl})! :warning:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
     $codacy = new Codacy($codacyApiToken, $logger);
-    $codacy->bypassPullRequestAnalysis($comment->RepositoryOwner, $comment->RepositoryName, $comment->PullRequestNumber);
+    $response = $codacy->bypassPullRequestAnalysis($comment->RepositoryOwner, $comment->RepositoryName, $comment->PullRequestNumber);
+    if ($response->isSuccessStatusCode() === false) {
+        $body = "Bypass the Codacy analysis for this [pull request]({$codacyUrl}) failed! ☠️\r\nDo you want to retry?\r\n- [ ] Yes, retry!";
+        $commentResponse = doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+        // TODO: Store comment ID in the table of bot-interactions
+    }
 }
 
 /**
@@ -552,10 +545,21 @@ function execute_fixCsproj($config, $metadata, $comment): void
 
 function execute_npmCheckUpdates($config, $metadata, $comment): void
 {
+    preg_match(
+        "/@" . $config->botName . "\snpm\scheck\supdates\s((?:(?!\s+@" . $config->botName . ").)*)/",
+        $comment->CommentBody,
+        $matches
+    );
+    $parameters = array();
+
+    if (count($matches) == 2) {
+        $parameters["filter"] = $matches[1];
+    }
+
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
     $body = "Running the command [npm-check-updates](https://github.com/raineorshine/npm-check-updates) to update dependencies via NPM! :building_construction:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-    callWorkflow($config, $metadata, $comment, "npm-check-updates.yml");
+    callWorkflow($config, $metadata, $comment, "npm-check-updates.yml", $parameters);
 }
 
 function execute_npmDist($config, $metadata, $comment): void
@@ -564,6 +568,14 @@ function execute_npmDist($config, $metadata, $comment): void
     $body = "Generating the `dist` files via NPM! :building_construction:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
     callWorkflow($config, $metadata, $comment, "npm-dist.yml");
+}
+
+function execute_npmLintFix($config, $metadata, $comment): void
+{
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
+    $body = "Fixing lint problems via `npm run lint -- --fix`! :building_construction:";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    callWorkflow($config, $metadata, $comment, "npm-lint-fix.yml");
 }
 
 function execute_prettier($config, $metadata, $comment): void
@@ -663,7 +675,7 @@ function execute_review($config, $metadata, $comment): void
         $commit->HeadCommitCommitterEmail = $commitItem->commit->committer->email;
         $commit->InstallationId = $comment->InstallationId;
 
-        $commitsList .= "SHA: `{$commitItem->sha}`\n";
+        $commitsList .= "SHA: [{$commitItem->sha}](https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/pull/{$comment->PullRequestNumber}/commits/{$commitItem->sha})\n";
 
         upsertPush($commit);
     }

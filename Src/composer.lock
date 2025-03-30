@@ -8,20 +8,20 @@
     "packages": [
         {
             "name": "guibranco/pancake",
-            "version": "v1.2.0",
+            "version": "v1.2.28",
             "source": {
                 "type": "git",
                 "url": "https://github.com/guibranco/pancake.git",
-                "reference": "24d10d7c56adee55345c51804115ca288bdae5fc"
+                "reference": "e59a2ca2ca0ba7d295091ed62418fd2b4a083e65"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/guibranco/pancake/zipball/24d10d7c56adee55345c51804115ca288bdae5fc",
-                "reference": "24d10d7c56adee55345c51804115ca288bdae5fc",
+                "url": "https://api.github.com/repos/guibranco/pancake/zipball/e59a2ca2ca0ba7d295091ed62418fd2b4a083e65",
+                "reference": "e59a2ca2ca0ba7d295091ed62418fd2b4a083e65",
                 "shasum": ""
             },
             "require-dev": {
-                "phpunit/phpunit": "11"
+                "phpunit/phpunit": "11.5.6"
             },
             "type": "library",
             "autoload": {
@@ -42,22 +42,22 @@
             "description": "The Pancake project, a toolkit for PHP projects",
             "support": {
                 "issues": "https://github.com/guibranco/pancake/issues",
-                "source": "https://github.com/guibranco/pancake/tree/v1.2.0"
+                "source": "https://github.com/guibranco/pancake/tree/v1.2.28"
             },
-            "time": "2025-01-18T21:47:10+00:00"
+            "time": "2025-03-24T04:06:50+00:00"
         },
         {
             "name": "lcobucci/jwt",
-            "version": "5.4.2",
+            "version": "5.5.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/lcobucci/jwt.git",
-                "reference": "ea1ce71cbf9741e445a5914e2f67cdbb484ff712"
+                "reference": "a835af59b030d3f2967725697cf88300f579088e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/lcobucci/jwt/zipball/ea1ce71cbf9741e445a5914e2f67cdbb484ff712",
-                "reference": "ea1ce71cbf9741e445a5914e2f67cdbb484ff712",
+                "url": "https://api.github.com/repos/lcobucci/jwt/zipball/a835af59b030d3f2967725697cf88300f579088e",
+                "reference": "a835af59b030d3f2967725697cf88300f579088e",
                 "shasum": ""
             },
             "require": {
@@ -105,7 +105,7 @@
             ],
             "support": {
                 "issues": "https://github.com/lcobucci/jwt/issues",
-                "source": "https://github.com/lcobucci/jwt/tree/5.4.2"
+                "source": "https://github.com/lcobucci/jwt/tree/5.5.0"
             },
             "funding": [
                 {
@@ -117,7 +117,7 @@
                     "type": "patreon"
                 }
             ],
-            "time": "2024-11-07T12:54:35+00:00"
+            "time": "2025-01-26T21:29:45+00:00"
         },
         {
             "name": "paragonie/constant_time_encoding",
@@ -238,16 +238,16 @@
         },
         {
             "name": "php-amqplib/php-amqplib",
-            "version": "v3.7.2",
+            "version": "v3.7.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/php-amqplib/php-amqplib.git",
-                "reference": "738a73eb0019b6c99d9bc25d7a0c0dd8f56a5199"
+                "reference": "9f50fe69a9f1a19e2cb25596a354d705de36fe59"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/php-amqplib/php-amqplib/zipball/738a73eb0019b6c99d9bc25d7a0c0dd8f56a5199",
-                "reference": "738a73eb0019b6c99d9bc25d7a0c0dd8f56a5199",
+                "url": "https://api.github.com/repos/php-amqplib/php-amqplib/zipball/9f50fe69a9f1a19e2cb25596a354d705de36fe59",
+                "reference": "9f50fe69a9f1a19e2cb25596a354d705de36fe59",
                 "shasum": ""
             },
             "require": {
@@ -313,9 +313,9 @@
             ],
             "support": {
                 "issues": "https://github.com/php-amqplib/php-amqplib/issues",
-                "source": "https://github.com/php-amqplib/php-amqplib/tree/v3.7.2"
+                "source": "https://github.com/php-amqplib/php-amqplib/tree/v3.7.3"
             },
-            "time": "2024-11-21T09:21:41+00:00"
+            "time": "2025-02-18T20:11:13+00:00"
         },
         {
             "name": "phpseclib/phpseclib",
@@ -489,5 +489,5 @@
     "platform-overrides": {
         "php": "8.2.0"
     },
-    "plugin-api-version": "2.6.0"
+    "plugin-api-version": "2.3.0"
 }

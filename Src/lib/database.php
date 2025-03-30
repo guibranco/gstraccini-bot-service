@@ -89,6 +89,24 @@ function finalizeProcessing($tableName, $sequence): bool
     return $succeeded;
 }
 
+function updateStateToClosedInTable($table, $sequence): bool
+{
+    $mysqli = connectToDatabase();
+
+    $sql = "UPDATE github_{$table} SET State = 'CLOSED'  WHERE Sequence = ? AND State = 'OPEN'";
+    $stmt = $mysqli->prepare($sql);
+    $stmt->bind_param("i", $sequence);
+    $succeeded = false;
+
+    if ($stmt->execute()) {
+        $succeeded = $stmt->affected_rows === 1;
+    }
+
+    $stmt->close();
+    $mysqli->close();
+    return $succeeded;
+}
+
 function upsertPullRequest($pullRequest)
 {
     $mysqli = connectToDatabase();
