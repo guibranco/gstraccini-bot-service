@@ -451,7 +451,7 @@ function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
             echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Already requested to recreate - Sender: " . $pullRequest->Sender . " ⚠️\n";
             return;
         }
-        
+
         if ($pullRequest->Sender === "dependabot[bot]") {
             $comment = array("body" => "{$prefix}@dependabot recreate");
         } else {
@@ -464,14 +464,14 @@ function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
     }
 }
 
-function findCommentByContent($metadata, $pullRequestUpdated, $prefix) : bool
+function findCommentByContent($metadata, $pullRequestUpdated, $prefix): bool
 {
     $url = "{$metadata["commentsUrl"]}?per_page=100&page=1";
     $commentsResponse = doRequestGitHub($metada["token"], $url, null, "GET");
     $commentsResponse->ensureSuccessStatus();
     $comments = json_decode($commentsResponse->getBody());
 
-    foreach ($comments as $comment){
+    foreach ($comments as $comment) {
         if (strpos($comment->body, $prefix) !== false) {
             return true;
         }
