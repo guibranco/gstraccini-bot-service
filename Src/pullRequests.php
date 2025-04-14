@@ -444,10 +444,11 @@ function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
         }
         echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Recreate via bot - Sender: " . $pullRequest->Sender . " ☢️\n";
 
+        $prefix = "<!--GStraccini:{$pullRequestUpdated->head->ref}-->\n";
         if ($pullRequest->Sender === "dependabot[bot]") {
-            $comment = array("body" => "@dependabot recreate");
+            $comment = array("body" => "{$prefix}@dependabot recreate");
         } else {
-            $comment = array("body" => "@depfu recreate");
+            $comment = array("body" => "{$prefix}@depfu recreate");
         }
 
         doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
