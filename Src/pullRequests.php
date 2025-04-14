@@ -444,7 +444,14 @@ function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
         }
         echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Recreate via bot - Sender: " . $pullRequest->Sender . " ☢️\n";
 
-        $prefix = "<!--GStraccini:{$pullRequestUpdated->head->ref}-->\n";
+        $prefix = "<!--GStraccini:{$pullRequestUpdated->head->sha}-->\n";
+        $commentExists = findCommentByContent($metadata, $pullRequestUpdated, $prefix);
+
+        if ($commentExists) {
+            echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Already requested to recreate - Sender: " . $pullRequest->Sender . " ⚠️\n";
+            return;
+        }
+
         if ($pullRequest->Sender === "dependabot[bot]") {
             $comment = array("body" => "{$prefix}@dependabot recreate");
         } else {
@@ -457,6 +464,67 @@ function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
     }
 }
 
+/**
+ * Checks if a comment containing a specific prefix exists in a pull request.
+ *
+ * This function fetches the first page of comments from a given pull request's
+ * `commentsUrl` and searches through each comment to determine whether any
+ * contains the specified prefix in its body.
+ *
+ * @param array  $metadata            An associative array containing metadata about the pull request.
+ *                                    Must include:
+ *                                    - 'commentsUrl' (string): The GitHub API URL to fetch comments.
+ *                                    - 'token' (string): The GitHub API token used for authentication.
+ * @param bool   $pullRequestUpdated  A boolean indicating if the pull request was updated. *(Currently unused in logic.)*
+ * @param string $prefix              The string prefix to search for within the comment bodies.
+ *
+ * @return bool  Returns `true` if a comment containing the prefix is found, `false` otherwise.
+ *
+ * @throws SomeException              If the `doRequestGitHub` function or response status fails (based on actual implementation).
+ */
+function findCommentByContent($metadata, $pullRequestUpdated, $prefix): bool
+{
+    $url = "{$metadata["commentsUrl"]}?per_page=100&page=1";
+    $commentsResponse = doRequestGitHub($metadata["token"], $url, null, "GET");
+    $commentsResponse->ensureSuccessStatus();
+    $comments = json_decode($commentsResponse->getBody());
+
+    foreach ($comments as $comment) {
+        if (strpos($comment->body, $prefix) !== false) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Updates a pull request branch if it is behind the base branch.
+ *
+ * This function compares the base and head references of a pull request to determine
+ * how many commits the head is behind. If the branch is behind, it sends a request
+ * to update the pull request branch using the GitHub API.
+ *
+ * Diagnostic output is printed to indicate whether an update was needed and performed,
+ * including mergeable state, number of commits behind, and sender info.
+ *
+ * @param array $metadata An associative array containing metadata required to perform the update.
+ *                        Must include:
+ *                        - 'token' (string): The GitHub API token.
+ *                        - 'compareUrl' (string): The API base URL for comparing refs.
+ *                        - 'pullRequestUrl' (string): The API URL for the pull request being updated.
+ * @param object $pullRequestUpdated An object representing the updated pull request data.
+ *                                   Required properties:
+ *                                   - base->ref (string): The base branch name.
+ *                                   - head->ref (string): The head branch name.
+ *                                   - head->sha (string): The SHA of the head commit.
+ *                                   - mergeable_state (string): The pull request's mergeable state.
+ *                                   - user->login (string): The GitHub username of the sender.
+ *
+ * @return void
+ *
+ * @throws SomeException If the `doRequestGitHub` function fails or returns an unexpected response.
+ */
 function updateBranch($metadata, $pullRequestUpdated)
 {
     $baseRef = urlencode($pullRequestUpdated->base->ref);
