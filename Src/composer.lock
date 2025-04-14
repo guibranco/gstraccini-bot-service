@@ -8,20 +8,20 @@
     "packages": [
         {
             "name": "guibranco/pancake",
-            "version": "v1.0.5",
+            "version": "v1.2.35",
             "source": {
                 "type": "git",
                 "url": "https://github.com/guibranco/pancake.git",
-                "reference": "7c917a399c86d0fd49b4e5cbf14b83af92541f2f"
+                "reference": "e14e4e6b836d3550faf5df06f0367f5b3fe2c620"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/guibranco/pancake/zipball/7c917a399c86d0fd49b4e5cbf14b83af92541f2f",
-                "reference": "7c917a399c86d0fd49b4e5cbf14b83af92541f2f",
+                "url": "https://api.github.com/repos/guibranco/pancake/zipball/e14e4e6b836d3550faf5df06f0367f5b3fe2c620",
+                "reference": "e14e4e6b836d3550faf5df06f0367f5b3fe2c620",
                 "shasum": ""
             },
             "require-dev": {
-                "phpunit/phpunit": "11"
+                "phpunit/phpunit": "11.5.6"
             },
             "type": "library",
             "autoload": {
@@ -42,22 +42,22 @@
             "description": "The Pancake project, a toolkit for PHP projects",
             "support": {
                 "issues": "https://github.com/guibranco/pancake/issues",
-                "source": "https://github.com/guibranco/pancake/tree/v1.0.5"
+                "source": "https://github.com/guibranco/pancake/tree/v1.2.35"
             },
-            "time": "2024-12-30T04:28:22+00:00"
+            "time": "2025-04-14T03:42:02+00:00"
         },
         {
             "name": "lcobucci/jwt",
-            "version": "5.4.2",
+            "version": "5.5.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/lcobucci/jwt.git",
-                "reference": "ea1ce71cbf9741e445a5914e2f67cdbb484ff712"
+                "reference": "a835af59b030d3f2967725697cf88300f579088e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/lcobucci/jwt/zipball/ea1ce71cbf9741e445a5914e2f67cdbb484ff712",
-                "reference": "ea1ce71cbf9741e445a5914e2f67cdbb484ff712",
+                "url": "https://api.github.com/repos/lcobucci/jwt/zipball/a835af59b030d3f2967725697cf88300f579088e",
+                "reference": "a835af59b030d3f2967725697cf88300f579088e",
                 "shasum": ""
             },
             "require": {
@@ -105,7 +105,7 @@
             ],
             "support": {
                 "issues": "https://github.com/lcobucci/jwt/issues",
-                "source": "https://github.com/lcobucci/jwt/tree/5.4.2"
+                "source": "https://github.com/lcobucci/jwt/tree/5.5.0"
             },
             "funding": [
                 {
@@ -117,7 +117,7 @@
                     "type": "patreon"
                 }
             ],
-            "time": "2024-11-07T12:54:35+00:00"
+            "time": "2025-01-26T21:29:45+00:00"
         },
         {
             "name": "paragonie/constant_time_encoding",
@@ -238,16 +238,16 @@
         },
         {
             "name": "php-amqplib/php-amqplib",
-            "version": "v3.7.2",
+            "version": "v3.7.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/php-amqplib/php-amqplib.git",
-                "reference": "738a73eb0019b6c99d9bc25d7a0c0dd8f56a5199"
+                "reference": "9f50fe69a9f1a19e2cb25596a354d705de36fe59"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/php-amqplib/php-amqplib/zipball/738a73eb0019b6c99d9bc25d7a0c0dd8f56a5199",
-                "reference": "738a73eb0019b6c99d9bc25d7a0c0dd8f56a5199",
+                "url": "https://api.github.com/repos/php-amqplib/php-amqplib/zipball/9f50fe69a9f1a19e2cb25596a354d705de36fe59",
+                "reference": "9f50fe69a9f1a19e2cb25596a354d705de36fe59",
                 "shasum": ""
             },
             "require": {
@@ -313,22 +313,22 @@
             ],
             "support": {
                 "issues": "https://github.com/php-amqplib/php-amqplib/issues",
-                "source": "https://github.com/php-amqplib/php-amqplib/tree/v3.7.2"
+                "source": "https://github.com/php-amqplib/php-amqplib/tree/v3.7.3"
             },
-            "time": "2024-11-21T09:21:41+00:00"
+            "time": "2025-02-18T20:11:13+00:00"
         },
         {
             "name": "phpseclib/phpseclib",
-            "version": "3.0.42",
+            "version": "3.0.43",
             "source": {
                 "type": "git",
                 "url": "https://github.com/phpseclib/phpseclib.git",
-                "reference": "db92f1b1987b12b13f248fe76c3a52cadb67bb98"
+                "reference": "709ec107af3cb2f385b9617be72af8cf62441d02"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpseclib/phpseclib/zipball/db92f1b1987b12b13f248fe76c3a52cadb67bb98",
-                "reference": "db92f1b1987b12b13f248fe76c3a52cadb67bb98",
+                "url": "https://api.github.com/repos/phpseclib/phpseclib/zipball/709ec107af3cb2f385b9617be72af8cf62441d02",
+                "reference": "709ec107af3cb2f385b9617be72af8cf62441d02",
                 "shasum": ""
             },
             "require": {
@@ -409,7 +409,7 @@
             ],
             "support": {
                 "issues": "https://github.com/phpseclib/phpseclib/issues",
-                "source": "https://github.com/phpseclib/phpseclib/tree/3.0.42"
+                "source": "https://github.com/phpseclib/phpseclib/tree/3.0.43"
             },
             "funding": [
                 {
@@ -425,7 +425,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2024-09-16T03:06:04+00:00"
+            "time": "2024-12-14T21:12:59+00:00"
         },
         {
             "name": "psr/clock",
@@ -489,5 +489,5 @@
     "platform-overrides": {
         "php": "8.2.0"
     },
-    "plugin-api-version": "2.6.0"
+    "plugin-api-version": "2.3.0"
 }

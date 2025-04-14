@@ -24,17 +24,25 @@
         "projectKey": "guibranco_gstraccini-bot"
     },
     "cSpell.words": [
+        "APIKEY",
+        "APITOKEN",
+        "Clippy",
         "codacy",
         "CURLOPT",
         "FOLLOWLOCATION",
+        "gitauto",
         "gstraccini",
         "guibranco",
+        "HEALTHCHECKSIO",
         "HTTPHEADER",
         "Lcobucci",
         "MAXREDIRS",
+        "ncipollo",
         "neckbeard",
         "POSTFIELDS",
         "RETURNTRANSFER",
+        "sebastianpopp",
+        "startswith",
         "VERIFYHOST",
         "VERIFYPEER"
     ]

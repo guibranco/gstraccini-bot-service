@@ -4,14 +4,6 @@
         "description": "Shows the help message with available commands."
     },
     {
-        "command": "hello",
-        "description": "Says hello to the invoker."
-    },
-    {
-        "command": "thank you",
-        "description": "Replies with you are welcome message to the invoker."
-    },
-    {
         "command": "add project",
         "description": "Adds a project to the solution file (only for **.NET** projects).",
         "parameters": [
@@ -114,6 +106,11 @@
         "requiresPullRequestOpen": true
     },
     {
+        "command": "codeclimate bypass",
+        "description": "Bypasses the [CodeClimate](https://codeclimate.com) analysis for the target commit and/or pull request.",
+        "requiresPullRequestOpen": true
+    },
+    {
         "command": "copy labels",
         "description": "Copy the labels from another repository.",
         "parameters": [
@@ -154,18 +151,35 @@
     },
     {
         "command": "csharpier",
-        "description": "Formats the C# code using [CSharpier](https://csharpier.com) (only for **.NET** projects).",
+        "description": "Formats the C# code using [CSharpier](https://csharpier.com). (only for **.NET** projects.)",
         "requiresPullRequestOpen": true
     },
     {
         "command": "fix csproj",
-        "description": "Updates the `.csproj` file with the `packages.config` version of [NuGet packages](https://nuget.org) (only for **.NET Framework** projects).",
+        "description": "Updates the `.csproj` file with the `packages.config` version of [NuGet packages](https://nuget.org). (only for **.NET Framework** projects.)",
         "dev": true,
         "requiresPullRequestOpen": true
     },
     {
+        "command": "npm check updates",
+        "description": "Update dependencies in a `package.json` and `package-lock.json` using the [npm-check-updates](https://github.com/raineorshine/npm-check-updates) (only for **NPM** projects.)",
+        "parameters": [
+            {
+                "parameter": "filter",
+                "description": "The packages to filter",
+                "required": false
+            }
+        ],
+        "requiresPullRequestOpen": true
+    },
+    {
         "command": "npm dist",
-        "description": "Generate or regenerate the `dist` files. It will run the following NPM command: `npm run package`.",
+        "description": "Generate or regenerate the `dist` files. It will run the following NPM command: `npm run package`. (only for **NPM** projects.)",
+        "requiresPullRequestOpen": true
+    },
+    {
+        "command": "npm lint fix",
+        "description": "Trigger a workflow to automatically fix linting issues by running the following NPM command: `npm run lint -- --fix`. (only for **NPM** projects.)",
         "requiresPullRequestOpen": true
     },
     {
@@ -174,24 +188,32 @@
         "requiresPullRequestOpen": true
     },
     {
-        "command": "rerun failed checks",
-        "description": "This option reruns the failed checks in the target pull request.",
-        "requiresPullRequestOpen": true
+        "command": "rerun checks",
+        "description": "This option reruns the checks in the target pull request upon current status.",
+        "requiresPullRequestOpen": true,
+        "parameters": [
+            {
+                "parameter": "conclusion",
+                "description": "The conclusion of the checks to rerun (success, failure, neutral, cancelled, timed_out, or action_required).",
+                "required": false
+            }
+        ]
     },
     {
-        "command": "rerun failed workflows",
-        "description": "This option reruns the failed workflows (action) in the target pull request. It is only available for GitHub Actions!",
-        "requiresPullRequestOpen": true
+        "command": "rerun workflows",
+        "description": "This option reruns the workflows (action) in the target pull request. It is only available for GitHub Actions!",
+        "requiresPullRequestOpen": true,
+        "parameters": [
+            {
+                "parameter": "conclusion",
+                "description": "The conclusion of the checks to rerun (success, failure, neutral, cancelled, timed_out, or action_required).",
+                "required": false
+            }
+        ]
     },
     {
         "command": "review",
         "description": "Enable review for the target pull request. This is useful when the PR submitter wasn't on the watch list, the webhook was not captured, or some failed scenario occurred.",
-        "requiresPullRequestOpen": true
-    },    
-    {
-        "command": "track",
-        "description": "Tracks the specified pull request. Queue a build, raise a **[dependabot](https://github.com/dependabot) recreate** comment to resolve conflicts, and synchronize merge branches.",
-        "dev": true,
         "requiresPullRequestOpen": true
     },
     {

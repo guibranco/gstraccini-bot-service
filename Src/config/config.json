@@ -10,7 +10,7 @@
     "branches": false,
     "comments": true,
     "issues": false,
-    "pullRequests": false,
+    "pull_requests": true,
     "pushes": false,
     "repositories": true,
     "signature": false
