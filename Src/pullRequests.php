@@ -498,6 +498,33 @@ function findCommentByContent($metadata, $pullRequestUpdated, $prefix): bool
     return false;
 }
 
+/**
+ * Updates a pull request branch if it is behind the base branch.
+ *
+ * This function compares the base and head references of a pull request to determine
+ * how many commits the head is behind. If the branch is behind, it sends a request
+ * to update the pull request branch using the GitHub API.
+ *
+ * Diagnostic output is printed to indicate whether an update was needed and performed,
+ * including mergeable state, number of commits behind, and sender info.
+ *
+ * @param array $metadata An associative array containing metadata required to perform the update.
+ *                        Must include:
+ *                        - 'token' (string): The GitHub API token.
+ *                        - 'compareUrl' (string): The API base URL for comparing refs.
+ *                        - 'pullRequestUrl' (string): The API URL for the pull request being updated.
+ * @param object $pullRequestUpdated An object representing the updated pull request data.
+ *                                   Required properties:
+ *                                   - base->ref (string): The base branch name.
+ *                                   - head->ref (string): The head branch name.
+ *                                   - head->sha (string): The SHA of the head commit.
+ *                                   - mergeable_state (string): The pull request's mergeable state.
+ *                                   - user->login (string): The GitHub username of the sender.
+ *
+ * @return void
+ *
+ * @throws SomeException If the `doRequestGitHub` function fails or returns an unexpected response.
+ */
 function updateBranch($metadata, $pullRequestUpdated)
 {
     $baseRef = urlencode($pullRequestUpdated->base->ref);
