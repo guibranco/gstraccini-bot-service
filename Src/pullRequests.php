@@ -71,6 +71,7 @@ function handleItem($pullRequest, $isRetry = false)
                 doRequestGitHub($metadata['token'], $metadata['pullRequestUrl'], $body, 'PATCH');
         }
         }
+    }
     $labelsToAdd = [];
     if (strtolower($pullRequestUpdated->user->type) === "bot") {
         $labelsToAdd[] = "🤖 bot";
