@@ -69,7 +69,7 @@ function handleItem($pullRequest, $isRetry = false)
             if ($acceptanceCriteria) {
                 $body = array('body' => $acceptanceCriteria);
                 doRequestGitHub($metadata['token'], $metadata['pullRequestUrl'], $body, 'PATCH');
-        }
+            }
         }
     }
     $labelsToAdd = [];
