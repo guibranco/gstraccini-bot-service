@@ -72,10 +72,10 @@ function handleItem($pullRequest, $isRetry = false)
             }
         }
     }
-        $labelsToAdd = [];
-        if (strtolower($pullRequestUpdated->user->type) === "bot") {
-            $labelsToAdd[] = "🤖 bot";
-        }
+    $labelsToAdd = [];
+    if (strtolower($pullRequestUpdated->user->type) === "bot") {
+        $labelsToAdd[] = "🤖 bot";
+    }
 
     $collaboratorsResponse = doRequestGitHub($metadata["token"], $metadata["collaboratorsUrl"], null, "GET");
     $collaboratorsLogins = array_column(json_decode($collaboratorsResponse->getBody()), "login");
