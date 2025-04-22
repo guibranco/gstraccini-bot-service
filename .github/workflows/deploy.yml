@@ -204,7 +204,7 @@ jobs:
     name: Create release
     needs: [deploy-service, deploy-api]
     env:
-      SEMVER: ${{ needs.deploy.outputs.semVer }}
+      SEMVER: ${{ needs.deploy-service.outputs.semVer }}
     runs-on: ubuntu-latest
     steps:
       - name: Create Release
