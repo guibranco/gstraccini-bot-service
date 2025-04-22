@@ -9,7 +9,7 @@ concurrency:
   group: build-deploy
 
 jobs:
-  deploy:
+  deploy-service:
     name: Deploy service to FTP
     runs-on: ubuntu-latest
     outputs:
@@ -181,9 +181,28 @@ jobs:
           localDir: "Lock"
           remoteDir: "/"
 
+  deploy-api:
+    name: Deploy API to FTP
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0    
+      
+      - name: Upload API
+        uses: sebastianpopp/ftp-action@releases/v2
+        with:
+          host: ${{ secrets.FTP_SERVER }}
+          user: ${{ secrets.FTP_USERNAME_API }}
+          password: ${{ secrets.FTP_PASSWORD_API }}
+          localDir: "Src/api/"
+          remoteDir: "/"
+  
   create_release:
     name: Create release
-    needs: deploy
+    needs: [deploy-service, deploy-api]
     env:
       SEMVER: ${{ needs.deploy.outputs.semVer }}
     runs-on: ubuntu-latest
