@@ -1,0 +1,9 @@
+Options -Indexes
+
+RewriteEngine On
+
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME} !-f
+
+RewriteRule ^commands$ commands.php [NC,L]
+RewriteRule ^health$ health.php [NC,L]
