@@ -50,6 +50,7 @@ function handleItem($pullRequest, $isRetry = false)
     enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config);
     addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated);
     updateBranch($metadata, $pullRequestUpdated);
+    autoLabelDependency($metadata, $pullRequest, $pullRequestUpdated);
 
     $labelsToAdd = [];
     if (strtolower($pullRequestUpdated->user->type) === "bot") {
