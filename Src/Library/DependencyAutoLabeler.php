@@ -79,7 +79,7 @@ class DependencyAutoLabeler
         doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $body, "POST");
     }
 
-    private function getPullRequestDiff($metadata)
+    private static function getPullRequestDiff($metadata)
     {
         return doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"] . ".diff", null, "GET");
     }
