@@ -4,7 +4,7 @@ namespace GuiBranco\GStracciniBot\Library;
 
 class DependencyAutoLabeler
 {
-    private $dependencyMapping = [
+    private static $dependencyMapping = [
         '.csproj' => ['nuget'],
         'CMakeLists.txt' => ['cmake'],
         'conanfile.txt' => ['conan'],
@@ -39,10 +39,10 @@ class DependencyAutoLabeler
         'meson.build' => ['meson']
     ];
 
-    public function autoLabel($metadata, $pullRequest)
+    public static function autoLabel($metadata)
     {
         // Get the pull request diff
-        $diffResponse = $this->getPullRequestDiff($metadata);
+        $diffResponse = self::getPullRequestDiff($metadata);
         $diff = $diffResponse->getBody();
 
         $lines = explode("\n", $diff);
