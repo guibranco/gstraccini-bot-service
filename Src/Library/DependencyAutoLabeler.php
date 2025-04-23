@@ -1,4 +1,5 @@
 <?php
+
 namespace GuiBranco\GStracciniBot\Library;
 
 class DependencyAutoLabeler
@@ -37,13 +38,13 @@ class DependencyAutoLabeler
         'Package.swift' => ['spm'],
         'meson.build' => ['meson']
     ];
-    
+
     public static function autoLabel($metadata, $pullRequest, $pullRequestUpdated)
     {
         // Get the pull request diff
         $diffResponse = self::getPullRequestDiff($metadata);
         $diff = $diffResponse->getBody();
-        
+
         $lines = explode("\n", $diff);
         $changedFiles = [];
         foreach ($lines as $line) {
@@ -52,7 +53,7 @@ class DependencyAutoLabeler
                 $changedFiles[] = $filePath;
             }
         }
-        
+
         $labelsToAdd = [];
         foreach ($changedFiles as $file) {
             $basename = basename($file);
@@ -64,20 +65,20 @@ class DependencyAutoLabeler
                 }
             }
         }
-        
+
         if (empty($labelsToAdd)) {
             return;
         }
-        
+
         // Always add general dependencies label
         if (!in_array('dependencies', $labelsToAdd)) {
             array_unshift($labelsToAdd, 'dependencies');
         }
-        
+
         $body = array("labels" => $labelsToAdd);
         doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $body, "POST");
     }
-    
+
     private static function getPullRequestDiff($metadata)
     {
         return doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"] . ".diff", null, "GET");
