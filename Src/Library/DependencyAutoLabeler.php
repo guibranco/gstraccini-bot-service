@@ -39,10 +39,10 @@ class DependencyAutoLabeler
         'meson.build' => ['meson']
     ];
 
-    public static function autoLabel($metadata)
+    public function autoLabel($metadata, $pullRequest)
     {
         // Get the pull request diff
-        $diffResponse = self::getPullRequestDiff($metadata);
+        $diffResponse = $this->getPullRequestDiff($metadata);
         $diff = $diffResponse->getBody();
 
         $lines = explode("\n", $diff);
