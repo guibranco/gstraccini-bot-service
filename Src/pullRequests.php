@@ -51,7 +51,7 @@ function handleItem($pullRequest, $isRetry = false)
     enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config);
     addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated);
     updateBranch($metadata, $pullRequestUpdated);
-    autoLabelDependency($metadata, $pullRequest);
+    autoLabelDependency($metadata);
 
     $labelsToAdd = [];
     if (strtolower($pullRequestUpdated->user->type) === "bot") {
@@ -557,12 +557,9 @@ $processor->initialize("handleItem", 55);
  * Auto-labels pull requests based on dependency file changes
  *
  * @param array $metadata The metadata for the pull request
- * @param object $pullRequest The pull request object
- * @param object $pullRequestUpdated The updated pull request object
  * @return void
  */
-function autoLabelDependency($metadata, $pullRequest)
+function autoLabelDependency($metadata)
 {
-    $depLabeler = new DependencyAutoLabeler();
-    $depLabeler->autoLabel($metadata, $pullRequest);
+    DependencyAutoLabeler::autoLabel($metadata);
 }
