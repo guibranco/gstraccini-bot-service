@@ -57,8 +57,8 @@ class DependencyAutoLabeler
         $labelsToAdd = [];
         foreach ($changedFiles as $file) {
             $basename = basename($file);
-            if (isset(self::$dependencyMapping[$basename])) {
-                foreach (self::$dependencyMapping[$basename] as $label) {
+            if (isset($this->dependencyMapping[$basename])) {
+                foreach ($this->dependencyMapping[$basename] as $label) {
                     if (!in_array($label, $labelsToAdd)) {
                         $labelsToAdd[] = $label;
                     }
@@ -79,7 +79,7 @@ class DependencyAutoLabeler
         doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $body, "POST");
     }
 
-    private static function getPullRequestDiff($metadata)
+    private function getPullRequestDiff($metadata)
     {
         return doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"] . ".diff", null, "GET");
     }
