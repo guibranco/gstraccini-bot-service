@@ -561,7 +561,7 @@ $processor->initialize("handleItem", 55);
  * @param object $pullRequestUpdated The updated pull request object
  * @return void
  */
-function autoLabelDependency($metadata, $pullRequest, $pullRequestUpdated)
+function autoLabelDependency($metadata, $pullRequest)
 {
     DependencyAutoLabeler::autoLabel($metadata);
 }
