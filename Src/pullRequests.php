@@ -7,6 +7,7 @@ use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\GStracciniBot\Library\PullRequestCodeScanner;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
+use GuiBranco\GStracciniBot\Library\DependencyAutoLabeler;
 
 define("ISSUES", "/issues/");
 define("PULLS", "/pulls/");
