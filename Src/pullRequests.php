@@ -563,5 +563,5 @@ $processor->initialize("handleItem", 55);
  */
 function autoLabelDependency($metadata, $pullRequest, $pullRequestUpdated)
 {
-    DependencyAutoLabeler::autoLabel($metadata, $pullRequest);
+    DependencyAutoLabeler::autoLabel($metadata);
 }
