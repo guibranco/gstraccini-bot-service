@@ -552,3 +552,16 @@ function updateBranch($metadata, $pullRequestUpdated)
 $healthCheck = new HealthChecks($healthChecksIoPullRequests, GUIDv4::random());
 $processor = new ProcessingManager("pull_requests", $healthCheck, $logger);
 $processor->initialize("handleItem", 55);
+
+/**
+ * Auto-labels pull requests based on dependency file changes
+ *
+ * @param array $metadata The metadata for the pull request
+ * @param object $pullRequest The pull request object
+ * @param object $pullRequestUpdated The updated pull request object
+ * @return void
+ */
+function autoLabelDependency($metadata, $pullRequest, $pullRequestUpdated)
+{
+    DependencyAutoLabeler::autoLabel($metadata, $pullRequest, $pullRequestUpdated);
+}
