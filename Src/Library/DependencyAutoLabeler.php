@@ -4,7 +4,7 @@ namespace GuiBranco\GStracciniBot\Library;
 
 class DependencyAutoLabeler
 {
-    private static $dependencyMapping = [
+    private $dependencyMapping = [
         '.csproj' => ['nuget'],
         'CMakeLists.txt' => ['cmake'],
         'conanfile.txt' => ['conan'],
