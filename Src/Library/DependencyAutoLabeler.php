@@ -6,6 +6,7 @@
  *
  * @category  Automation
  * @package   GStracciniBot
+ * @license   MIT
  */
 
 namespace GuiBranco\GStracciniBot\Library;
