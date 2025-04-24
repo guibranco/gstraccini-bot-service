@@ -13,7 +13,8 @@
 
 namespace GuiBranco\GStracciniBot\Library;
 
-/** Automatically labels pull requests based on dependency file changes.
+/**
+ * Automatically labels pull requests based on dependency file changes.
  *
  * Provides functionality to auto-label pull requests based on dependency file changes.
  *
