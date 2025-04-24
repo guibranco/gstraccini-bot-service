@@ -52,6 +52,15 @@ class DependencyAutoLabeler
         'meson.build' => ['meson']
     ];
 
+    /**
+     * Auto-labels pull requests based on dependency file changes.
+     *
+     * This method processes the pull request diff, identifies any dependency files that have been modified,
+     * and applies appropriate labels associated with those files. It always ensures the 'dependencies' label is included.
+     *
+     * @param array $metadata Metadata for the pull request including token and URLs.
+     * @return void
+     */
     public static function autoLabel($metadata)
     {
         // Get the pull request diff
