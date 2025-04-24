@@ -93,6 +93,12 @@ class DependencyAutoLabeler
     }
 
     private static function _getPullRequestDiff($metadata)
+    /**
+     * Retrieve the pull request diff using the provided metadata.
+     *
+     * @param array $metadata Array containing GitHub token and pull request URL.
+     * @return object Response object from doRequestGitHub containing the diff.
+     */
     {
         $url = $metadata["pullRequestUrl"] . ".diff";
         return doRequestGitHub($metadata["token"], $url, null, "GET");
