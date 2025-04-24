@@ -6,7 +6,7 @@
  *
  * @category Automation
  * @package  GStracciniBot
- * @link      https://github.com/guibranco/gstraccini-bot-service
+ * @link     https://github.com/guibranco/gstraccini-bot-service
  * @license   MIT
  * @author GuiBranco <gui.branco@example.com>
  */
