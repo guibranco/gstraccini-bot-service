@@ -63,7 +63,7 @@ class DependencyAutoLabeler
      * Processes the PR diff to find modified dependency files,
      * and applies relevant labels, always including 'dependencies'.
      *
-     * @param array $metadata Metadata for the pull request including token and URLs.
+     *  @param array $metadata Metadata for the pull request including token and URLs.
      * @return void
      */
     public static function autoLabel($metadata)
