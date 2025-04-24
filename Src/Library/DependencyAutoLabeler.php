@@ -12,6 +12,7 @@
 namespace GuiBranco\GStracciniBot\Library;
 
 /**
+ * @category Automation
  * Class DependencyAutoLabeler
  * Provides functionality to auto-label pull requests
  * based on dependency file changes.
