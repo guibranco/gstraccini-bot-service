@@ -5,7 +5,7 @@
  * PHP version 7.4+
  *
  * @category Automation
- * @package   GStracciniBot
+ * @package  GStracciniBot
  * @link      https://github.com/guibranco/gstraccini-bot-service
  * @license   MIT
  * @author GuiBranco <gui.branco@example.com>
