@@ -4,7 +4,7 @@
  *
  * PHP version 7.4+
  *
- * @category  Automation
+ * @category Automation
  * @package   GStracciniBot
  * @license   MIT
  */
