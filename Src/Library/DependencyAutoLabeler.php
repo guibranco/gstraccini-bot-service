@@ -19,7 +19,7 @@ namespace GuiBranco\GStracciniBot\Library;
  *
  * @category Automation
  * @package GStracciniBot
- * @license   https://opensource.org/licenses/MIT MIT License
+ * @license  https://opensource.org/licenses/MIT MIT License
  * @link      https://github.com/guibranco/gstraccini-bot-service
  */
 class DependencyAutoLabeler
