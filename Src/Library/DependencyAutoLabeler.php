@@ -15,12 +15,12 @@ namespace GuiBranco\GStracciniBot\Library;
 
 /**
  * @category Automation
- * Class DependencyAutoLabeler
+ * @package GStracciniBot
  * @license   https://opensource.org/licenses/MIT MIT License
+ * @link      https://github.com/guibranco/gstraccini-bot-service
+ *
  * Provides functionality to auto-label pull requests
  * based on dependency file changes.
- * @link      https://github.com/guibranco/gstraccini-bot-service
- * @package GStracciniBot
  */
 class DependencyAutoLabeler
 {
