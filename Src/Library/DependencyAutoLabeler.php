@@ -21,6 +21,7 @@ namespace GuiBranco\GStracciniBot\Library;
  * based on dependency file changes.
  * @link https://github.com/guibranco/gstraccini-bot-service
  * @package GStracciniBot
+ * @author GuiBranco
  */
 class DependencyAutoLabeler
 {
