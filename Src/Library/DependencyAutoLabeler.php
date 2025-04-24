@@ -51,7 +51,6 @@ class DependencyAutoLabeler
         'meson.build' => ['meson']
     ];
 
-
     /**
      * Auto-labels pull requests based on dependency file changes.
      *
@@ -64,7 +63,7 @@ class DependencyAutoLabeler
     public static function autoLabel($metadata)
     {
         // Get the pull request diff
-        $diffResponse = self::_getPullRequestDiff($metadata);
+        $diffResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"].".diff", null, "GET");
         $diff = $diffResponse->getBody();
 
         $lines = explode("\n", $diff);
@@ -99,17 +98,5 @@ class DependencyAutoLabeler
 
         $body = array("labels" => $labelsToAdd);
         doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $body, "POST");
-    }
-
-    private static function _getPullRequestDiff($metadata)
-    /**
-     * Retrieve the pull request diff using the provided metadata.
-     *
-     * @param array $metadata Array containing GitHub token and pull request URL.
-     * @return object Response object from doRequestGitHub containing the diff.
-     */
-    {
-        $url = $metadata["pullRequestUrl"] . ".diff";
-        return doRequestGitHub($metadata["token"], $url, null, "GET");
     }
 }
