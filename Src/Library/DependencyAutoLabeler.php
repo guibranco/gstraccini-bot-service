@@ -6,7 +6,7 @@
  *
  * @category Automation
  * @package   GStracciniBot
-* @link      https://github.com/guibranco/gstraccini-bot-service
+ * @link      https://github.com/guibranco/gstraccini-bot-service
  * @license   MIT
  * @author GuiBranco
  */
@@ -21,7 +21,6 @@ namespace GuiBranco\GStracciniBot\Library;
  * based on dependency file changes.
  * @link https://github.com/guibranco/gstraccini-bot-service
  * @package GStracciniBot
- * @author GuiBranco
  */
 class DependencyAutoLabeler
 {
@@ -64,9 +63,9 @@ class DependencyAutoLabeler
      * Auto-labels pull requests based on dependency file changes.
      *
      * Processes the PR diff to find modified dependency files,
-     * and applies relevant labels, always including 'dependencies'.
+     * applies labels and always includes the 'dependencies' label.
      *
-     *  @param array $metadata Metadata for the pull request including token and URLs.
+     * @param array $metadata Metadata for the pull request including token and URLs.
      * @return void
      */
     public static function autoLabel($metadata)
