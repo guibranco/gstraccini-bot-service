@@ -16,8 +16,8 @@ namespace GuiBranco\GStracciniBot\Library;
 /**
  * @category Automation
  * @package GStracciniBot
- * @license   https://opensource.org/licenses/MIT MIT License
  * @link      https://github.com/guibranco/gstraccini-bot-service
+ * @license   https://opensource.org/licenses/MIT MIT License
  *
  * Provides functionality to auto-label pull requests
  * based on dependency file changes.
