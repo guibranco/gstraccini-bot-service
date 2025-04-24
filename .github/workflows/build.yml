@@ -45,10 +45,10 @@ jobs:
         run: docker compose up -d
 
       - name: Make script executable
-        run: chmod +x tools/wait-for-healthy.sh
+        run: chmod +x Tools/wait-for-healthy.sh
             
       - name: Wait for healthy containers
-        run: tools/wait-for-healthy.sh
+        run: Tools/wait-for-healthy.sh
 
       - name: Check database
         env:
