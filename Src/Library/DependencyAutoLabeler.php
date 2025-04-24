@@ -13,14 +13,13 @@
 
 namespace GuiBranco\GStracciniBot\Library;
 
-/**
- * Automatically labels pull requests based on dependency file changes.
+/** Automatically labels pull requests based on dependency file changes.
  *
  * Provides functionality to auto-label pull requests based on dependency file changes.
  *
  * @category Automation
  * @package GStracciniBot
- * @license  https://opensource.org/licenses/MIT MIT License
+ * @license   https://opensource.org/licenses/MIT MIT License
  * @link      https://github.com/guibranco/gstraccini-bot-service
  */
 class DependencyAutoLabeler
