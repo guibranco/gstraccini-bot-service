@@ -51,7 +51,7 @@ class DependencyAutoLabeler
         'meson.build' => ['meson']
     ];
 
-    
+
     /**
      * Auto-labels pull requests based on dependency file changes.
      *
