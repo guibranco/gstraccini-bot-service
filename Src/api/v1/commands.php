@@ -1,6 +1,6 @@
 <?php
 
-$commandsContent = file_get_contents("../../../config/commands.json");
+$commandsContent = file_get_contents("commands.json");
 $commands = json_decode($commandsContent);
 
 $format = $_GET['format'] ?? 'markdown';

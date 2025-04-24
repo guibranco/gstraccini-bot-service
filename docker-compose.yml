@@ -1,5 +1,3 @@
-version: "3.1"
-
 services:
   www:
     container_name: www
@@ -11,6 +9,12 @@ services:
       - ./uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
     networks:
       - default
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
 
   database:
     container_name: database
@@ -27,6 +31,12 @@ services:
       - my-db:/var/lib/mysql
     networks:
       - default
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
   queue:
     container_name: queue
@@ -37,6 +47,12 @@ services:
     restart: unless-stopped
     networks:
       - default
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_listener", "amqp"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
 
   mailhog:
     image: mailhog/mailhog:latest
@@ -45,6 +61,12 @@ services:
       - "8025:8025"
     networks:
       - default
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8025"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
 
 volumes:
   my-db:

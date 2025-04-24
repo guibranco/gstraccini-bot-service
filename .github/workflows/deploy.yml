@@ -190,6 +190,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0    
+
+      - name: Copy commands.json to API
+        run: cp Src/config/commands.json Src/api/v1/
       
       - name: Upload API
         uses: sebastianpopp/ftp-action@releases/v2
