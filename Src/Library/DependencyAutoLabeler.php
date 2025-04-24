@@ -1,4 +1,12 @@
 <?php
+/**
+ * This file contains the DependencyAutoLabeler class which automatically labels pull requests based on detected dependency file changes.
+ *
+ * PHP version 7.4+
+ *
+ * @category  Automation
+ * @package   GStracciniBot
+ */
 
 namespace GuiBranco\GStracciniBot\Library;
 
