@@ -556,7 +556,7 @@ $processor->initialize("handleItem", 55);
 /**
  * Auto-labels pull requests based on dependency file changes
  *
- * @param array $metadata The metadata for the pull request
+ * @param array  $metadata  The metadata for the pull request
  *
  * @return void
  */
