@@ -55,7 +55,7 @@ class DependencyAutoLabeler
     public static function autoLabel($metadata)
     {
         // Get the pull request diff
-        $diffResponse = self::_getPullRequestDiff($metadata);
+        $diffResponse = self::getPullRequestDiff($metadata);
         $diff = $diffResponse->getBody();
 
         $lines = explode("\n", $diff);
