@@ -1,6 +1,6 @@
 <?php
 /**
- * This file contains the DependencyAutoLabeler class which automatically labels pull requests based on detected dependency file changes.
+ * Auto-labels PRs for dependency file changes.
  *
  * PHP version 7.4+
  *
