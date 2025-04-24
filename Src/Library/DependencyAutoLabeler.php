@@ -8,7 +8,7 @@
  * @package   GStracciniBot
  * @link      https://github.com/guibranco/gstraccini-bot-service
  * @license   MIT
- * @author GuiBranco
+ * @author GuiBranco <gui.branco@example.com>
  */
 
 namespace GuiBranco\GStracciniBot\Library;
