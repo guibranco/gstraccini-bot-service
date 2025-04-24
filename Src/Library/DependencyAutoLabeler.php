@@ -71,7 +71,7 @@ class DependencyAutoLabeler
         foreach ($changedFiles as $file) {
             $basename = basename($file);
             if (isset(self::$dependencyMapping[$basename])) {
-                foreach (self::$_dependencyMapping[$basename] as $label) {
+                foreach (self::$dependencyMapping[$basename] as $label) {
                     if (!in_array($label, $labelsToAdd)) {
                         $labelsToAdd[] = $label;
                     }
