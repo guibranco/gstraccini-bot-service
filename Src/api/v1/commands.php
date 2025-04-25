@@ -1,7 +1,7 @@
 <?php
 
 $commandsContent = file_get_contents("commands.json");
-$commands = json_decode($commandsContent);
+$commands = json_decode($commandsContent, true);
 
 $format = $_GET['format'] ?? 'markdown';
 
