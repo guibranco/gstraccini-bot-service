@@ -168,5 +168,3 @@ function execute_updateSnapshot($config, $metadata, $comment): void
 }
 
 // Other existing functions remain unchanged...
-
-?>
