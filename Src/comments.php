@@ -700,6 +700,8 @@ function execute_updateSnapshot($config, $metadata, $comment): void
 
 function callWorkflow($config, $metadata, $comment, $workflow, $extendedParameters = null): void
 {
+    global $logger;
+    
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     $pullRequest = json_decode($pullRequestResponse->getBody());
 
@@ -722,7 +724,13 @@ function callWorkflow($config, $metadata, $comment, $workflow, $extendedParamete
     if ($extendedParameters !== null) {
         $data["inputs"] = array_merge($data["inputs"], $extendedParameters);
     }
-    doRequestGitHub($tokenBot, $url, $data, "POST");
+    
+    $response = doRequestGitHub($tokenBot, $url, $data, "POST");
+    $statusCode = $response->getStatusCode();
+    if ($statusCode === 422) {
+        $paramters = json_encode($data, true);
+        $logger->log("Invalid GitHub response. HTTP Status Code: {$statusCode}. Request parameters: {$parameters}", $info);
+    }
 }
 
 function checkIfPullRequestIsOpen(&$metadata): bool
