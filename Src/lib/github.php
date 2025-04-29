@@ -266,7 +266,7 @@ function setCheckRunFailed(array $metadata, int $checkRunId, string $type, strin
  *
  * @param array $metadata SetCheckRunQueued metadata array for GitHub request.
  * @param string $commitId The commitId parameter in the setCheckRunQueued function is a string that represents a commit's unique identifier.
- * @param string $type     The type parameter in the setCheckRunQueued function represents the checks being run.
+ * @param string $type Check type for queued run.
  *
  * @return int ID of the created check run.
  */
