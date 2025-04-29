@@ -718,19 +718,14 @@ function callWorkflow($config, $metadata, $comment, $workflow, $extendedParamete
             "branch" => $pullRequest->head->ref,
             "pull_request" => $comment->PullRequestNumber,
             "installationId" => $comment->InstallationId,
-            "check_run_id" => $checkRunId
+            "checkRunId" => $checkRunId
         )
     );
     if ($extendedParameters !== null) {
         $data["inputs"] = array_merge($data["inputs"], $extendedParameters);
     }
 
-    $response = doRequestGitHub($tokenBot, $url, $data, "POST");
-    $statusCode = $response->getStatusCode();
-    if ($statusCode === 422) {
-        $parameters = json_encode($data, true);
-        $logger->log("Invalid GitHub response. HTTP Status Code: {$statusCode}. Request parameters: {$parameters}");
-    }
+    doRequestGitHub($tokenBot, $url, $data, "POST");
 }
 
 function checkIfPullRequestIsOpen(&$metadata): bool
