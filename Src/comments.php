@@ -729,7 +729,7 @@ function callWorkflow($config, $metadata, $comment, $workflow, $extendedParamete
     $statusCode = $response->getStatusCode();
     if ($statusCode === 422) {
         $parameters = json_encode($data, true);
-        $logger->log("Invalid GitHub response. HTTP Status Code: {$statusCode}. Request parameters: {$parameters}", $info);
+        $logger->log("Invalid GitHub response. HTTP Status Code: {$statusCode}. Request parameters: {$parameters}");
     }
 }
 
