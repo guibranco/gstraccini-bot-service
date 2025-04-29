@@ -262,22 +262,32 @@ function setCheckRunFailed(array $metadata, int $checkRunId, string $type, strin
     doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
 }
 /**
- * The function `setCheckRunQueued` sends a request to GitHub API to create a new check run in queued status for a specific commit.
+ * The function `setCheckRunQueued` requests the GitHub API to create a new check run in queued status for a specific commit.
  *
- * @param array $metadata The metadata parameter in the setCheckRunQueued function is an array containing information needed to make a request to the GitHub API.
- * @param string $commitId The commitId parameter in the setCheckRunQueued function is a string that represents the unique identifier of a commit.
- * @param string $type The type parameter in the setCheckRunQueued function represents the type of checks being run.
+ * @param array $metadata The setCheckRunQueued function's metadata parameter is an array containing information needed to request the GitHub API.
+ * @param string $commitId The commitId parameter in the setCheckRunQueued function is a string that represents a commit's unique identifier.
+ * @param string $type The type parameter in the setCheckRunQueued function represents the checks being run.
  *
- * @return int The function returns an integer, which is the ID of the check run created on GitHub.
+ * @return int The function returns an integer, the ID of the check run created on GitHub.
  */
-function setCheckRunQueued(array $metadata, string $commitId, string $type): int {
+function setCheckRunQueued(array $metadata, string $commitId, string $type): int
+{
     $checkRunBody = array(
         "name" => constant("BOT_CHECK_MESSAGE_PREFIX") . ucwords($type),
         "details_url" => $metadata["dashboardUrl"],
         "head_sha" => $commitId,
         "status" => "queued",
         "output" => array(
-            "title" => "Checks queued 🕕",
+            "title" => "Checks queued 🕓",
+            "summary" => "GStraccini is preparing to check this " . strtolower($type) . "!",
+            "text" => ""
+        )
+    );
+
+    $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"], $checkRunBody, "POST");
+    $result = json_decode($response->getBody());
+    return $result->id;
+}
 
 /**
  * The function `setCheckRunSucceeded` updates a GitHub check run to mark it as completed and
