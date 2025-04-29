@@ -264,11 +264,11 @@ function setCheckRunFailed(array $metadata, int $checkRunId, string $type, strin
 /**
  * The function `setCheckRunQueued` requests the GitHub API to create a new check run in queued status for a specific commit.
  *
- * @param array $metadata SetCheckRunQueued metadata array for GitHub request.
- * @param string $commitId A string uniquely identifying the commit.
- * @param string $type Check type for queued run.
+ * @param array  $metadata The setCheckRunQueued function's metadata parameter is an array containing information needed to request the GitHub API.
+ * @param string  $commitId The commitId parameter in the setCheckRunQueued function is a string that represents a commit's unique identifier.
+ * @param string  $type The type parameter in the setCheckRunQueued function represents the checks being run.
  *
- * @return int ID of the created check run.
+ * @return int The function returns an integer, the ID of the check run created on GitHub.
  */
 function setCheckRunQueued(array $metadata, string $commitId, string $type): int
 {
@@ -284,9 +284,7 @@ function setCheckRunQueued(array $metadata, string $commitId, string $type): int
         )
     );
 
-    $token = $metadata["token"];
-    $url   = $metadata["checkRunUrl"];
-    $response = doRequestGitHub($token, $url, $checkRunBody, "POST");
+    $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"], $checkRunBody, "POST");
     $result = json_decode($response->getBody());
     return $result->id;
 }
