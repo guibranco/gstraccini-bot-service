@@ -699,6 +699,9 @@ function callWorkflow($config, $metadata, $comment, $workflow, $extendedParamete
 
     $tokenBot = generateInstallationToken($config->botRepositoryInstallationId, $config->botRepository);
     $url = "repos/" . $config->botWorkflowsRepository . "/actions/workflows/" . $workflow . "/dispatches";
+
+    $checkRunId = setCheckRunQueued($metadata, $pullRequest->head->sha, "Workflow");
+
     $data = array(
         "ref" => "main",
         "inputs" => array(
@@ -706,7 +709,8 @@ function callWorkflow($config, $metadata, $comment, $workflow, $extendedParamete
             "repository" => $comment->RepositoryName,
             "branch" => $pullRequest->head->ref,
             "pull_request" => $comment->PullRequestNumber,
-            "installationId" => $comment->InstallationId
+            "installationId" => $comment->InstallationId,
+            "check_run_id" => $checkRunId
         )
     );
     if ($extendedParameters !== null) {

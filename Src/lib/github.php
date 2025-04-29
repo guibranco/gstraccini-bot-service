@@ -261,6 +261,33 @@ function setCheckRunFailed(array $metadata, int $checkRunId, string $type, strin
     );
     doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
 }
+/**
+ * Creates a new check run in queued status via the GitHub API.
+ *
+ * @param array  $metadata Metadata array for GitHub check run creation.
+ * @param string $commitId A unique identifier for the commit.
+ * @param string $type     Check type for queued run.
+ *
+ * @return int ID of the created check run.
+ */
+function setCheckRunQueued(array $metadata, string $commitId, string $type): int
+{
+    $checkRunBody = array(
+        "name" => constant("BOT_CHECK_MESSAGE_PREFIX") . ucwords($type),
+        "details_url" => $metadata["dashboardUrl"],
+        "head_sha" => $commitId,
+        "status" => "queued",
+        "output" => array(
+            "title" => "Checks queued 🕓",
+            "summary" => "Preparing check for " . strtolower($type) . "!",
+            "text" => ""
+        )
+    );
+
+    $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"], $checkRunBody, "POST");
+    $result = json_decode($response->getBody());
+    return $result->id;
+}
 
 /**
  * The function `setCheckRunSucceeded` updates a GitHub check run to mark it as completed and
