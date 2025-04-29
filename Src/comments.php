@@ -62,6 +62,7 @@ function handleItem($comment): void
         "issueUrl" => $repoPrefix . "/issues/" . $comment->PullRequestNumber,
         "commentUrl" => $repoPrefix . "/issues/" . $comment->PullRequestNumber . "/comments",
         "labelsUrl" => $repoPrefix . "/labels",
+        "checkRunUrl" => $repoPrefix . "/check-runs",
         "errorMessages" => array(
             "notCollaborator" => $prefix . $suffix . " You aren't a collaborator in this repository." . $emoji,
             "invalidParameter" => $prefix . $suffix . " Invalid parameter." . $emoji,
