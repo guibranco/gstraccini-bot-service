@@ -697,12 +697,11 @@ function callWorkflow($config, $metadata, $comment, $workflow, $extendedParamete
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     $pullRequest = json_decode($pullRequestResponse->getBody());
 
-    // Create the Check Run first with queued status
-    $checkRunId = setCheckRunQueued($metadata, $pullRequest->head->sha, "Workflow");
-
-    // Generate token and prepare workflow dispatch
     $tokenBot = generateInstallationToken($config->botRepositoryInstallationId, $config->botRepository);
     $url = "repos/" . $config->botWorkflowsRepository . "/actions/workflows/" . $workflow . "/dispatches";
+
+    $checkRunId = setCheckRunQueued($metadata, $pullRequest->head->sha, "Workflow");
+
     $data = array(
         "ref" => "main",
         "inputs" => array(
