@@ -221,4 +221,16 @@
         "description": "Update test snapshots (`npm test -- -u`) (only for **Node.js** projects).",
         "requiresPullRequestOpen": true
     }
-]
+    },
+    {
+        "command": "bump",
+        "description": "Bumps the version in the repository using either AppVeyor or GitVersion.",
+        "parameters": [
+            {
+                "parameter": "type",
+                "description": "The semver component to bump (major or minor).",
+                "required": true
+            }
+        ],
+        "requiresPullRequestOpen": false
+    }
