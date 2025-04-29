@@ -699,7 +699,7 @@ function callWorkflow($config, $metadata, $comment, $workflow, $extendedParamete
 
     // Create the Check Run first with queued status
     $checkRunId = setCheckRunQueued($metadata, $pullRequest->head->sha, "Workflow");
-    
+
     // Generate token and prepare workflow dispatch
     $tokenBot = generateInstallationToken($config->botRepositoryInstallationId, $config->botRepository);
     $url = "repos/" . $config->botWorkflowsRepository . "/actions/workflows/" . $workflow . "/dispatches";
