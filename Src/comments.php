@@ -52,6 +52,10 @@ function handleItem($comment): void
     $emoji = " :pleading_face:";
 
     $repoPrefix = "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName;
+    $prQueryString =
+        "pull-requests/?owner=" . $comment->RepositoryOwner .
+        "&repo=" .  $comment->RepositoryName .
+        "&pullRequest=" . $comment->PullRequestNumber;
     $metadata = array(
         "token" => generateInstallationToken($comment->InstallationId, $comment->RepositoryName),
         "repoPrefix" => $repoPrefix,
@@ -63,6 +67,7 @@ function handleItem($comment): void
         "commentUrl" => $repoPrefix . "/issues/" . $comment->PullRequestNumber . "/comments",
         "labelsUrl" => $repoPrefix . "/labels",
         "checkRunUrl" => $repoPrefix . "/check-runs",
+        "dashboardUrl" => $config->dashboardUrl . $prQueryString
         "errorMessages" => array(
             "notCollaborator" => $prefix . $suffix . " You aren't a collaborator in this repository." . $emoji,
             "invalidParameter" => $prefix . $suffix . " Invalid parameter." . $emoji,
