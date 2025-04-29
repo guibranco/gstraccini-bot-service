@@ -718,7 +718,7 @@ function callWorkflow($config, $metadata, $comment, $workflow, $extendedParamete
             "branch" => $pullRequest->head->ref,
             "pull_request" => $comment->PullRequestNumber,
             "installationId" => $comment->InstallationId,
-            "check_run_id" => $checkRunId
+            "checkRunId" => $checkRunId
         )
     );
     if ($extendedParameters !== null) {
