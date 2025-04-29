@@ -279,7 +279,7 @@ function setCheckRunQueued(array $metadata, string $commitId, string $type): int
         "status" => "queued",
         "output" => array(
             "title" => "Checks queued 🕓",
-            "summary" => "Preparing check for " . strtolower($type) . "!",
+            "summary" => "GStraccini is preparing to check this " . strtolower($type) . "!",
             "text" => ""
         )
     );
