@@ -284,7 +284,9 @@ function setCheckRunQueued(array $metadata, string $commitId, string $type): int
         )
     );
 
-    $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"], $checkRunBody, "POST");
+    $token = $metadata["token"];
+    $url   = $metadata["checkRunUrl"];
+    $response = doRequestGitHub($token, $url, $checkRunBody, "POST");
     $result = json_decode($response->getBody());
     return $result->id;
 }
