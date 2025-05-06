@@ -273,13 +273,13 @@ function setCheckRunFailed(array $metadata, int $checkRunId, string $type, strin
 function setCheckRunQueued(array $metadata, string $commitId, string $type): int
 {
     $checkRunBody = array(
-        "name" => constant("BOT_CHECK_MESSAGE_PREFIX") . ucwords($type),
+        "name" => "GStraccini Workflow: ". ucwords($type),
         "details_url" => $metadata["dashboardUrl"],
         "head_sha" => $commitId,
         "status" => "queued",
         "output" => array(
-            "title" => "Checks queued 🕓",
-            "summary" => "Preparing check for " . strtolower($type) . "!",
+            "title" => "Workflow run queued 🕓",
+            "summary" => "Preparing workflow run for " . strtolower($type) . "!",
             "text" => ""
         )
     );
