@@ -726,7 +726,7 @@ function callWorkflow($config, $metadata, $comment, $workflow, $extendedParamete
     }
 
     $response = doRequestGitHub($tokenBot, $url, $data, "POST");
-    if ($response->getStatusCode() !== 201) {
+    if ($response->getStatusCode() !== 204) {
         $body = "Workflow {$workflow} failed: :x:\r\n\r\n```\r\n" . $response->getBody() . "\r\n```\r\n";
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
         setCheckRunFailed($metadata, $checkRunId, $workflow, "Workflow failed to start: " . $response->getBody());
