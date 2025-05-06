@@ -54,7 +54,7 @@ function handleItem($comment): void
     $repoPrefix = "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName;
     $prQueryString =
         "pull-requests/?owner=" . $comment->RepositoryOwner .
-        "&repo=" .  $comment->RepositoryName .
+        "&repo=" . $comment->RepositoryName .
         "&pullRequest=" . $comment->PullRequestNumber;
     $metadata = array(
         "token" => generateInstallationToken($comment->InstallationId, $comment->RepositoryName),
@@ -708,7 +708,7 @@ function callWorkflow($config, $metadata, $comment, $workflow, $extendedParamete
     $tokenBot = generateInstallationToken($config->botRepositoryInstallationId, $config->botRepository);
     $url = "repos/" . $config->botWorkflowsRepository . "/actions/workflows/" . $workflow . "/dispatches";
 
-    $checkRunId = setCheckRunQueued($metadata, $pullRequest->head->sha, "Workflow");
+    $checkRunId = setCheckRunQueued($metadata, $pullRequest->head->sha, $workflow);
 
     $data = array(
         "ref" => "main",
@@ -718,14 +718,19 @@ function callWorkflow($config, $metadata, $comment, $workflow, $extendedParamete
             "branch" => $pullRequest->head->ref,
             "pull_request" => $comment->PullRequestNumber,
             "installationId" => $comment->InstallationId,
-            "checkRunId" => (string)$checkRunId
+            "checkRunId" => (string) $checkRunId
         )
     );
     if ($extendedParameters !== null) {
         $data["inputs"] = array_merge($data["inputs"], $extendedParameters);
     }
 
-    doRequestGitHub($tokenBot, $url, $data, "POST");
+    $response = doRequestGitHub($tokenBot, $url, $data, "POST");
+    if ($response->getStatusCode() !== 201) {
+        $body = "Workflow {$workflow} failed: :x:\r\n\r\n```\r\n" . $response->getBody() . "\r\n```\r\n";
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+        setCheckRunFailed($metadata, $checkRunId, $workflow, "Workflow failed to start: " . $response->getBody());
+    }
 }
 
 function checkIfPullRequestIsOpen(&$metadata): bool
