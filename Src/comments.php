@@ -36,6 +36,21 @@ function toCamelCase($inputString)
     );
 }
 
+/**
+ * Handles a GitHub comment to determine whether a bot command should be executed.
+ * Skips bot comments, validates collaborator status, and triggers the matching command logic.
+ *
+ * @param object $comment Comment object with properties such as:
+ *                        - RepositoryOwner
+ *                        - RepositoryName
+ *                        - PullRequestNumber
+ *                        - CommentId
+ *                        - CommentBody
+ *                        - CommentSender
+ *                        - InstallationId
+ *
+ * @return void
+ */
 function handleItem($comment): void
 {
     $repoUrl = "https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/issues/{$comment->PullRequestNumber}/#issuecomment-{$comment->CommentId}";
@@ -52,16 +67,16 @@ function handleItem($comment): void
     $ignoredBots = ["github-actions[bot]", "AppVeyorBot", "gitauto-ai[bot]"];
     if (in_array($sender, $ignoredBots, true)) {
         echo "Skipping this comment! 🚷\n";
-        $this->reactToComment($comment, "-1");
+        reactToComment($comment, "-1");
         return;
     }
 
-    $metadata = $this->buildMetadata($comment, $config);
+    $metadata = buildMetadata($comment, $config);
 
-    if (!$this->isCollaborator($comment, $metadata)) {
+    if (!isCollaborator($comment, $metadata)) {
         if ($sender !== "dependabot[bot]") {
-            $this->reactToComment($comment, "-1");
-            $this->postComment($metadata, $metadata["errorMessages"]["notCollaborator"]);
+            reactToComment($comment, "-1");
+            postComment($metadata, $metadata["errorMessages"]["notCollaborator"]);
         }
         return;
     }
@@ -78,8 +93,8 @@ function handleItem($comment): void
         $executedAtLeastOne = true;
 
         if (!empty($command->requiresPullRequestOpen) && !$pullRequestIsOpen) {
-            $this->reactToComment($comment, "-1");
-            $this->postComment($metadata, $metadata["errorMessages"]["notOpen"]);
+            reactToComment($comment, "-1");
+            postComment($metadata, $metadata["errorMessages"]["notOpen"]);
             continue;
         }
 
@@ -88,33 +103,67 @@ function handleItem($comment): void
     }
 
     if (!$executedAtLeastOne) {
-        $this->postComment($metadata, $metadata["errorMessages"]["commandNotFound"]);
-        $this->reactToComment($comment, "-1");
+        postComment($metadata, $metadata["errorMessages"]["commandNotFound"]);
+        reactToComment($comment, "-1");
     }
 }
 
-private function reactToComment($comment, string $reaction): void
+/**
+ * Sends a reaction emoji to a GitHub comment.
+ *
+ * @param object $comment  The comment object with RepositoryOwner, RepositoryName, and CommentId.
+ * @param string $reaction The GitHub reaction content value (e.g., "+1", "-1", "rocket").
+ *
+ * @return void
+ */
+function reactToComment($comment, string $reaction): void
 {
     $config = loadConfig();
     $repoPrefix = "repos/{$comment->RepositoryOwner}/{$comment->RepositoryName}";
     $reactionUrl = "{$repoPrefix}/issues/comments/{$comment->CommentId}/reactions";
     $token = generateInstallationToken($comment->InstallationId, $comment->RepositoryName);
+
     doRequestGitHub($token, $reactionUrl, ["content" => $reaction], "POST");
 }
 
-private function postComment(array $metadata, string $body): void
+/**
+ * Posts a comment message back to a GitHub issue or PR.
+ *
+ * @param array  $metadata Metadata array including 'token' and 'commentUrl'.
+ * @param string $body     The comment body to send.
+ *
+ * @return void
+ */
+function postComment(array $metadata, string $body): void
 {
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], ["body" => $body], "POST");
 }
 
-private function isCollaborator($comment, array $metadata): bool
+/**
+ * Checks if the comment sender is a collaborator in the repository.
+ *
+ * @param object $comment   The comment object with CommentSender and repo identifiers.
+ * @param array  $metadata  Metadata containing token and repoPrefix.
+ *
+ * @return bool True if the user is a collaborator, false otherwise.
+ */
+function isCollaborator($comment, array $metadata): bool
 {
     $collaboratorUrl = $metadata["repoPrefix"] . "/collaborators/" . $comment->CommentSender;
     $response = doRequestGitHub($metadata["token"], $collaboratorUrl, null, "GET");
+
     return $response->getStatusCode() !== 404;
 }
 
-private function buildMetadata($comment, $config): array
+/**
+ * Builds a metadata array for use across GitHub API calls and command execution.
+ *
+ * @param object $comment The comment object with repository and user details.
+ * @param object $config  The bot config object (e.g., botName, dashboardUrl).
+ *
+ * @return array Associative array with token, URLs, and common error messages.
+ */
+function buildMetadata($comment, $config): array
 {
     $repoPrefix = "repos/{$comment->RepositoryOwner}/{$comment->RepositoryName}";
     $prQuery = http_build_query([
