@@ -28,7 +28,7 @@ services:
       MARIADB_USER: test
       MARIADB_PASSWORD: test
     volumes:
-      - webboks-db:/var/lib/mysql
+      - my-db:/var/lib/mysql
     networks:
       - default
     healthcheck:
