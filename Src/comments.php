@@ -665,8 +665,14 @@ function execute_revertCommit($config, $metadata, $comment): void
 
     if (count($matches) === 2) {
         $parameters["sha1"] = $matches[1];
+        $commitUrl = $metadata["repoPrefix"] . "/commits/" . $matches[1];
+        $response = doRequestGitHub($metadata["token"], $commitUrl, null, "GET");
+        if ($response->getStatusCode() !== 200) {
+            doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "❌ Invalid commit SHA: Commit not found in repository"), "POST");
+            return;
+        }
     } else {
-        $errorMessage = "❌ Could not extract a valid commit SHA1 from the comment.";
+        $errorMessage = "❌ Could not extract a valid commit SHA1 from comment. Expected format: @{$config->botName} revert commit <sha1>";
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $errorMessage), "POST");
         return;
     }
