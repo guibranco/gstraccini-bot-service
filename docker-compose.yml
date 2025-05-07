@@ -10,7 +10,7 @@ services:
     networks:
       - default
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://www"]
+      test: ["CMD", "curl", "-f", "http://localhost:8007/api/v1/commands"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -18,25 +18,25 @@ services:
 
   database:
     container_name: database
-    image: mysql:5.7
+    image: mariadb:latest
     restart: always
     ports:
       - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: test
-      MYSQL_USER: test
-      MYSQL_PASSWORD: test
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: test
+      MARIADB_USER: test
+      MARIADB_PASSWORD: test
     volumes:
       - my-db:/var/lib/mysql
     networks:
       - default
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 30s
+      start_period: 15s
 
   queue:
     container_name: queue
