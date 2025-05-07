@@ -655,7 +655,6 @@ function execute_rerunWorkflows($config, $metadata, $comment): void
  * @return void
  */
 function execute_revertCommit($config, $metadata, $comment): void
-
 {
     preg_match(
         "/@" . $config->botName . "\srevert\scommit\s([a-fA-F0-9]{7,40})/",
