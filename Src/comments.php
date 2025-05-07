@@ -635,6 +635,31 @@ function execute_rerunWorkflows($config, $metadata, $comment): void
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $actionsToRerun), "POST");
 }
 
+function execute_revertCommit($config, $metadata, $comment): void
+{
+    preg_match(
+        "/@" . $config->botName . "\srevert\scommit\s([a-fA-F0-9]{7,40})/",
+        $comment->CommentBody,
+        $matches
+    );
+    $parameters = array();
+
+    if (count($matches) === 2) {
+        $parameters["sha1"] = $matches[1];
+    } else {
+        $errorMessage = "❌ Could not extract a valid commit SHA1 from the comment.";
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $errorMessage), "POST");
+        return;
+    }
+
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
+
+    $body = "Running the `git revert` operation for commit `${matches[1]}`! :rewind:";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+
+    callWorkflow($config, $metadata, $comment, "revert-commit.yml", $parameters);
+}
+
 function execute_review($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"), "POST");
