@@ -635,6 +635,56 @@ function execute_rerunWorkflows($config, $metadata, $comment): void
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $actionsToRerun), "POST");
 }
 
+/**
+ * Handles a GitHub comment command to revert a specific commit using a GitHub Actions workflow.
+ *
+ * This function parses a comment for a command in the format `@botName revert commit <SHA1>`.
+ * If a valid commit SHA1 is found, it triggers a GitHub Actions workflow named `revert-commit.yml`
+ * with the SHA1 as a parameter. It also reacts to the comment and posts feedback messages.
+ *
+ * If no valid SHA1 is found, an error message is posted instead.
+ *
+ * @param object $config   Configuration object containing the bot name and other settings.
+ * @param array  $metadata Associative array with keys:
+ *                         - 'token' (string): GitHub API token.
+ *                         - 'commentUrl' (string): URL to post comments.
+ *                         - 'reactionUrl' (string): URL to post reactions.
+ * @param object $comment  Comment object with at least the property:
+ *                         - CommentBody (string): The text body of the GitHub comment.
+ *
+ * @return void
+ */
+function execute_revertCommit($config, $metadata, $comment): void
+{
+    preg_match(
+        "/@" . $config->botName . "\srevert\scommit\s([a-fA-F0-9]{7,40})/",
+        $comment->CommentBody,
+        $matches
+    );
+    $parameters = array();
+
+    if (count($matches) === 2) {
+        $parameters["sha1"] = $matches[1];
+        $commitUrl = $metadata["repoPrefix"] . "/commits/" . $matches[1];
+        $response = doRequestGitHub($metadata["token"], $commitUrl, null, "GET");
+        if ($response->getStatusCode() !== 200) {
+            doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "❌ Invalid commit SHA: Commit not found in repository"), "POST");
+            return;
+        }
+    } else {
+        $errorMessage = "❌ Could not extract a valid commit SHA1 from comment. Expected format: @{$config->botName} revert commit <sha1>";
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $errorMessage), "POST");
+        return;
+    }
+
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
+
+    $body = "Running the `git revert` operation for commit `${matches[1]}`! :rewind:";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+
+    callWorkflow($config, $metadata, $comment, "revert-commit.yml", $parameters);
+}
+
 function execute_review($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"), "POST");
