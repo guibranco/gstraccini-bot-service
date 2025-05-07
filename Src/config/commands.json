@@ -210,6 +210,18 @@
                 "required": false
             }
         ]
+        },
+    {
+        "command": "revert commit",
+        "description": "Reverts a commit using its SHA1 in the repository (requires an open pull request). The revert is committed directly into the PR branch.",
+        "parameters": [
+            {
+                "parameter": "sha1",
+                "description": "The SHA1 of the commit to revert",
+                "required": true
+            }
+        ],
+        "requiresPullRequestOpen": true
     },
     {
         "command": "review",
