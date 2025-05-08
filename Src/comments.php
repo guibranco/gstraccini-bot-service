@@ -151,8 +151,19 @@ function isCollaborator($comment, array $metadata): bool
 {
     $collaboratorUrl = $metadata["repoPrefix"] . "/collaborators/" . $comment->CommentSender;
     $response = doRequestGitHub($metadata["token"], $collaboratorUrl, null, "GET");
+    $status   = $response->getStatusCode();
 
-    return $response->getStatusCode() !== 404;
+    # 204 → collaborator; 404 → not collaborator; anything else → treat as failure / not collaborator
+    if ($status === 204) {
+        return true;
+    }
+    if ($status === 404) {
+        return false;
+    }
+
+    # Log unexpected status codes and fall back to “not collaborator”
+    error_log("isCollaborator(): unexpected status {$status} for {$collaboratorUrl}");
+    return false;
 }
 
 /**
