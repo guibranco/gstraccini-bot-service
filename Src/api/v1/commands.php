@@ -77,9 +77,41 @@ function generateSimpleMarkdown($commands)
 }
 
 /**
+ * Simple function to convert basic Markdown to HTML
+ *
+ * Handles common Markdown features found in the descriptions:
+ * - Links: [text](url)
+ * - Code: `code`
+ * - Bold: **text**
+ * - Italic: *text*
+ *
+ * @param string $markdown Markdown text to convert
+ * @return string Converted HTML
+ */
+function markdownToHtml($markdown)
+{
+    $text = htmlspecialchars($markdown);
+
+    // Convert links [text](url) to <a href="url">text</a>
+    $text = preg_replace('/\[([^\]]+)\]\(([^)]+)\)/', '<a href="$2" target="_blank">$1</a>', $text);
+
+    // Convert inline code `text` to <code>text</code>
+    $text = preg_replace('/`([^`]+)`/', '<code>$1</code>', $text);
+
+    // Convert bold **text** to <strong>text</strong>
+    $text = preg_replace('/\*\*([^*]+)\*\*/', '<strong>$1</strong>', $text);
+
+    // Convert italic *text* to <em>text</em> (careful not to match **)
+    $text = preg_replace('/(?<!\*)\*([^*]+)\*(?!\*)/', '<em>$1</em>', $text);
+
+    return $text;
+}
+
+/**
  * Generates HTML documentation for the commands
  *
- * Creates a complete HTML page with styling and formatted command details
+ * Creates a complete HTML page with styling and formatted command details.
+ * Converts Markdown in descriptions to HTML.
  *
  * @param array $commands Array of command objects
  * @return string Complete HTML document
@@ -100,6 +132,9 @@ function generateHTML($commands)
     $output .= ".tag { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 12px; margin-right: 5px; }\n";
     $output .= ".pr-required { background: #ffebe9; color: #cf222e; }\n";
     $output .= ".dev-command { background: #ddf4ff; color: #0969da; }\n";
+    $output .= "code { background: #f6f8fa; padding: 2px 5px; border-radius: 3px; font-family: monospace; }\n";
+    $output .= "a { color: #0366d6; text-decoration: none; }\n";
+    $output .= "a:hover { text-decoration: underline; }\n";
     $output .= "</style>\n";
     $output .= "</head>\n<body>\n";
 
@@ -114,11 +149,11 @@ function generateHTML($commands)
             $output .= " <span class='tag pr-required'>PR Required</span>";
         }
         if (isset($command['dev']) && $command['dev']) {
-            $output .= " <span class='tag dev-command'>NOT IMPLEMENTED</span>";
+            $output .= " <span class='tag dev-command'>Developer</span>";
         }
 
         $output .= "</h3>\n";
-        $output .= "<p><strong>Description:</strong> " . htmlspecialchars($command['description']) . "</p>\n";
+        $output .= "<p><strong>Description:</strong> " . markdownToHtml($command['description']) . "</p>\n";
 
         if (isset($command['parameters']) && is_array($command['parameters'])) {
             $output .= "<p><strong>Parameters:</strong></p>\n<ul>\n";
@@ -127,7 +162,7 @@ function generateHTML($commands)
                 $requiredText = isset($param['required']) && $param['required'] ? "Required" : "Optional";
                 $output .= "<li><span class='param-name'>" . htmlspecialchars($param['parameter']) . "</span> - ";
                 $output .= "<span class='" . $requiredClass . "'>(" . $requiredText . ")</span>: ";
-                $output .= htmlspecialchars($param['description']) . "</li>\n";
+                $output .= markdownToHtml($param['description']) . "</li>\n";
             }
             $output .= "</ul>\n";
         } else {
