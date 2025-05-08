@@ -99,7 +99,19 @@ function handleItem($comment): void
         }
 
         $method = "execute_" . toCamelCase($command->command);
-        $method($config, $metadata, $comment);
+        if (is_callable($method)) {
+            $method($config, $metadata, $comment);
+        } else {
+            reactToComment($comment, "-1");
+            postComment(
+                $metadata,
+                sprintf(
+                    "%s Command `%s` not implemented. :construction:",
+                    $metadata['errorMessages']['notImplemented'],
+                    $command->command
+                )
+            );
+        }
     }
 
     if (!$executedAtLeastOne) {
