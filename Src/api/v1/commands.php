@@ -70,7 +70,7 @@ function generateSimpleMarkdown($commands)
     $output = "## Available Commands\n\n";
     foreach ($commands as $command) {
         $output .= "- **" . $command['command'] . "**: " . $command['description'] . "\n";
-    }    
+    }
     return $output;
 }
 
