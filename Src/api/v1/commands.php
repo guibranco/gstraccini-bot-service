@@ -9,10 +9,12 @@
  * - JSON
  *
  * Usage:
- *   /path/to/commands.php              # Default markdown output
- *   /path/to/commands.php?format=html  # HTML output
- *   /path/to/commands.php?format=text  # Simple text list
- *   /path/to/commands.php?format=json  # JSON output
+ *   /path/to/commands.php                  # Default markdown output
+ *   /path/to/commands.php?format=markdown  # Markdown output
+ *   /path/to/commands.php?format=simplemd  # Simple/tiny Markdown output
+ *   /path/to/commands.php?format=html      # HTML output
+ *   /path/to/commands.php?format=text      # Simple text list
+ *   /path/to/commands.php?format=json      # JSON output
  *
  * @author Guilherme Branco Stracini guilherme(at)guilhermebranco(dot)com(dot)br
  * @version 1.0
