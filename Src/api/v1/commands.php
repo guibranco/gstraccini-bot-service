@@ -11,7 +11,7 @@ function generateMarkdown($commands)
     foreach ($commands as $command) {
         $output .= "### " . htmlspecialchars($command['command']) . "\n";
         $output .= "- **Description**: " . htmlspecialchars($command['description']) . "\n";
-        
+
         if (isset($command['parameters']) && is_array($command['parameters'])) {
             $output .= "- **Parameters**:\n";
             foreach ($command['parameters'] as $param) {
@@ -19,15 +19,15 @@ function generateMarkdown($commands)
                 $output .= "  - `" . htmlspecialchars($param['parameter']) . "`" . $required . ": " . htmlspecialchars($param['description']) . "\n";
             }
         }
-        
+
         if (isset($command['requiresPullRequestOpen']) && $command['requiresPullRequestOpen']) {
             $output .= "- **Requires Pull Request Open**: Yes\n";
         }
-        
+
         if (isset($command['dev']) && $command['dev']) {
             $output .= "- **Developer Command**: Yes\n";
         }
-        
+
         $output .= "\n";
     }
     return $output;
@@ -51,13 +51,13 @@ function generateHTML($commands)
     $output .= ".dev-command { background: #ddf4ff; color: #0969da; }\n";
     $output .= "</style>\n";
     $output .= "</head>\n<body>\n";
-    
+
     $output .= "<h2>Available Commands</h2>\n";
-    
+
     foreach ($commands as $command) {
         $output .= "<div class='command'>\n";
         $output .= "<h3>" . htmlspecialchars($command['command']);
-        
+
         // Add tags for PR required and dev command
         if (isset($command['requiresPullRequestOpen']) && $command['requiresPullRequestOpen']) {
             $output .= " <span class='tag pr-required'>PR Required</span>";
@@ -65,10 +65,10 @@ function generateHTML($commands)
         if (isset($command['dev']) && $command['dev']) {
             $output .= " <span class='tag dev-command'>Developer</span>";
         }
-        
+
         $output .= "</h3>\n";
         $output .= "<p><strong>Description:</strong> " . htmlspecialchars($command['description']) . "</p>\n";
-        
+
         if (isset($command['parameters']) && is_array($command['parameters'])) {
             $output .= "<p><strong>Parameters:</strong></p>\n<ul>\n";
             foreach ($command['parameters'] as $param) {
@@ -82,10 +82,10 @@ function generateHTML($commands)
         } else {
             $output .= "<p><em>No parameters required</em></p>\n";
         }
-        
+
         $output .= "</div>\n";
     }
-    
+
     $output .= "</body>\n</html>";
     return $output;
 }
