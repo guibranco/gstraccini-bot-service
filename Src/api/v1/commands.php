@@ -9,10 +9,12 @@
  * - JSON
  *
  * Usage:
- *   /path/to/commands.php              # Default markdown output
- *   /path/to/commands.php?format=html  # HTML output
- *   /path/to/commands.php?format=text  # Simple text list
- *   /path/to/commands.php?format=json  # JSON output
+ *   /path/to/commands.php                  # Default markdown output
+ *   /path/to/commands.php?format=markdown  # Markdown output
+ *   /path/to/commands.php?format=simplemd  # Simple/tiny Markdown output
+ *   /path/to/commands.php?format=html      # HTML output
+ *   /path/to/commands.php?format=text      # Simple text list
+ *   /path/to/commands.php?format=json      # JSON output
  *
  * @author Guilherme Branco Stracini guilherme(at)guilhermebranco(dot)com(dot)br
  * @version 1.0
@@ -60,6 +62,21 @@ function generateMarkdown($commands)
 }
 
 /**
+ * Generates simple markdown documentation for the commands
+ *
+ * @param array $commands Array of command objects
+ * @return string Formatted markdown
+ */
+function generateSimpleMarkdown($commands)
+{
+    $output = "## Available Commands\n\n";
+    foreach ($commands as $command) {
+        $output .= "- **" . $command['command'] . "**: " . $command['description'] . "\n";
+    }
+    return $output;
+}
+
+/**
  * Generates HTML documentation for the commands
  *
  * Creates a complete HTML page with styling and formatted command details
@@ -97,7 +114,7 @@ function generateHTML($commands)
             $output .= " <span class='tag pr-required'>PR Required</span>";
         }
         if (isset($command['dev']) && $command['dev']) {
-            $output .= " <span class='tag dev-command'>Developer</span>";
+            $output .= " <span class='tag dev-command'>NOT IMPLEMENTED</span>";
         }
 
         $output .= "</h3>\n";
@@ -163,6 +180,10 @@ switch ($format) {
     case 'text':
         header('Content-Type: text/plain');
         echo generateSimpleList($commands);
+        break;
+    case 'simplemd':
+        header('Content-Type: text/markdown');
+        echo generateSimpleMarkdown($commands);
         break;
     case 'markdown':
     default:
