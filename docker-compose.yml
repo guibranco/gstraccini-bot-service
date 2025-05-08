@@ -10,7 +10,7 @@ services:
     networks:
       - default
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8007/api/v1/commands"]
+      test: ["CMD", "curl", "-f", "http://localhost/api/v1/commands"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -63,7 +63,7 @@ services:
     networks:
       - default
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://smtp:8025"]
+      test: ["CMD", "curl", "-f", "http://localhost:8025"]
       interval: 30s
       timeout: 10s
       retries: 5
