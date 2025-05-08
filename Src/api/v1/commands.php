@@ -1,19 +1,19 @@
 <?php
 /**
  * Command Documentation Generator
- * 
+ *
  * This script reads a commands.json file and formats the commands in various output formats:
  * - Markdown (default)
  * - HTML
  * - Plain text
  * - JSON
- * 
+ *
  * Usage:
  *   /path/to/commands.php              # Default markdown output
  *   /path/to/commands.php?format=html  # HTML output
  *   /path/to/commands.php?format=text  # Simple text list
  *   /path/to/commands.php?format=json  # JSON output
- * 
+ *
  * @author Guilherme Branco Stracini guilherme(at)guilhermebranco(dot)com(dot)br
  * @version 1.0
  */
@@ -27,7 +27,7 @@ $format = $_GET['format'] ?? 'markdown';
 
 /**
  * Generates markdown documentation for the commands
- * 
+ *
  * @param array $commands Array of command objects
  * @return string Formatted markdown
  */
@@ -37,7 +37,7 @@ function generateMarkdown($commands)
     foreach ($commands as $command) {
         $output .= "### " . htmlspecialchars($command['command']) . "\n";
         $output .= "- **Description**: " . htmlspecialchars($command['description']) . "\n";
-        
+
         if (isset($command['parameters']) && is_array($command['parameters'])) {
             $output .= "- **Parameters**:\n";
             foreach ($command['parameters'] as $param) {
@@ -45,15 +45,15 @@ function generateMarkdown($commands)
                 $output .= "  - `" . htmlspecialchars($param['parameter']) . "`" . $required . ": " . htmlspecialchars($param['description']) . "\n";
             }
         }
-        
+
         if (isset($command['requiresPullRequestOpen']) && $command['requiresPullRequestOpen']) {
             $output .= "- **Requires Pull Request Open**: Yes\n";
         }
-        
+
         if (isset($command['dev']) && $command['dev']) {
             $output .= "- **Developer Command**: Yes\n";
         }
-        
+
         $output .= "\n";
     }
     return $output;
@@ -61,9 +61,9 @@ function generateMarkdown($commands)
 
 /**
  * Generates HTML documentation for the commands
- * 
+ *
  * Creates a complete HTML page with styling and formatted command details
- * 
+ *
  * @param array $commands Array of command objects
  * @return string Complete HTML document
  */
@@ -85,13 +85,13 @@ function generateHTML($commands)
     $output .= ".dev-command { background: #ddf4ff; color: #0969da; }\n";
     $output .= "</style>\n";
     $output .= "</head>\n<body>\n";
-    
+
     $output .= "<h2>Available Commands</h2>\n";
-    
+
     foreach ($commands as $command) {
         $output .= "<div class='command'>\n";
         $output .= "<h3>" . htmlspecialchars($command['command']);
-        
+
         // Add tags for PR required and dev command
         if (isset($command['requiresPullRequestOpen']) && $command['requiresPullRequestOpen']) {
             $output .= " <span class='tag pr-required'>PR Required</span>";
@@ -99,10 +99,10 @@ function generateHTML($commands)
         if (isset($command['dev']) && $command['dev']) {
             $output .= " <span class='tag dev-command'>Developer</span>";
         }
-        
+
         $output .= "</h3>\n";
         $output .= "<p><strong>Description:</strong> " . htmlspecialchars($command['description']) . "</p>\n";
-        
+
         if (isset($command['parameters']) && is_array($command['parameters'])) {
             $output .= "<p><strong>Parameters:</strong></p>\n<ul>\n";
             foreach ($command['parameters'] as $param) {
@@ -116,17 +116,17 @@ function generateHTML($commands)
         } else {
             $output .= "<p><em>No parameters required</em></p>\n";
         }
-        
+
         $output .= "</div>\n";
     }
-    
+
     $output .= "</body>\n</html>";
     return $output;
 }
 
 /**
  * Generates a simple text list of commands and descriptions
- * 
+ *
  * @param array $commands Array of command objects
  * @return string Text listing each command and its description
  */
@@ -141,7 +141,7 @@ function generateSimpleList($commands)
 
 /**
  * Outputs the commands as formatted JSON
- * 
+ *
  * @param array $commands Array of command objects
  * @return string JSON-encoded string of commands
  */
