@@ -130,7 +130,6 @@ function handleItem($comment): void
  */
 function reactToComment($comment, string $reaction): void
 {
-    $config = loadConfig();
     $repoPrefix = "repos/{$comment->RepositoryOwner}/{$comment->RepositoryName}";
     $reactionUrl = "{$repoPrefix}/issues/comments/{$comment->CommentId}/reactions";
     $token = generateInstallationToken($comment->InstallationId, $comment->RepositoryName);
