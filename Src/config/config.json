@@ -8,9 +8,9 @@
   "debug": {
     "all": false,
     "branches": false,
-    "comments": true,
+    "comments": false,
     "issues": false,
-    "pull_requests": true,
+    "pull_requests": false,
     "pushes": false,
     "repositories": true,
     "signature": false
