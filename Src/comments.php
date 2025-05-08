@@ -776,7 +776,7 @@ function execute_revertCommit($config, $metadata, $comment): void
 
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
 
-    $body = "Running the `git revert` operation for commit `${matches[1]}`! :rewind:";
+    $body = "Running the `git revert` operation for commit `{$matches[1]}`! :rewind:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
 
     callWorkflow($config, $metadata, $comment, "revert-commit.yml", $parameters);
