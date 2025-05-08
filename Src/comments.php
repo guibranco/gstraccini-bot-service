@@ -36,93 +36,190 @@ function toCamelCase($inputString)
     );
 }
 
+/**
+ * Handles a GitHub comment to determine whether a bot command should be executed.
+ * Skips bot comments, validates collaborator status, and triggers the matching command logic.
+ *
+ * @param object $comment Comment object with properties such as:
+ *                        - RepositoryOwner
+ *                        - RepositoryName
+ *                        - PullRequestNumber
+ *                        - CommentId
+ *                        - CommentBody
+ *                        - CommentSender
+ *                        - InstallationId
+ *
+ * @return void
+ */
 function handleItem($comment): void
 {
-    echo "https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/issues/{$comment->PullRequestNumber}/#issuecomment-{$comment->CommentId}:\n\n";
+    $repoUrl = "https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/issues/{$comment->PullRequestNumber}/#issuecomment-{$comment->CommentId}";
+    echo "{$repoUrl}:\n\n";
     echo "Comment: {$comment->CommentBody} | Sender: {$comment->CommentSender}\n";
 
     $config = loadConfig();
+    $sender = $comment->CommentSender;
 
-    if ($comment->CommentSender === $config->botName . "[bot]") {
+    if ($sender === $config->botName . "[bot]") {
         return;
     }
+
+    $ignoredBots = ["github-actions[bot]", "AppVeyorBot", "gitauto-ai[bot]"];
+    if (in_array($sender, $ignoredBots, true)) {
+        echo "Skipping this comment! 🚷\n";
+        reactToComment($comment, "-1");
+        return;
+    }
+
+    $metadata = buildMetadata($comment, $config);
+
+    if (!isCollaborator($comment, $metadata)) {
+        if ($sender !== "dependabot[bot]") {
+            reactToComment($comment, "-1");
+            postComment($metadata, $metadata["errorMessages"]["notCollaborator"]);
+        }
+        return;
+    }
+
+    $pullRequestIsOpen = checkIfPullRequestIsOpen($metadata);
+    $executedAtLeastOne = false;
+
+    foreach ($config->commands as $command) {
+        $expression = "@" . $config->botName . " " . $command->command;
+        if (stripos($comment->CommentBody, $expression) === false) {
+            continue;
+        }
+
+        $executedAtLeastOne = true;
+
+        if (!empty($command->requiresPullRequestOpen) && !$pullRequestIsOpen) {
+            reactToComment($comment, "-1");
+            postComment($metadata, $metadata["errorMessages"]["notOpen"]);
+            continue;
+        }
+
+        $method = "execute_" . toCamelCase($command->command);
+        if (is_callable($method)) {
+            $method($config, $metadata, $comment);
+        } else {
+            reactToComment($comment, "-1");
+            postComment(
+                $metadata,
+                sprintf(
+                    "%s Command `%s` not implemented. :construction:",
+                    $metadata['errorMessages']['notImplemented'],
+                    $command->command
+                )
+            );
+        }
+    }
+
+    if (!$executedAtLeastOne) {
+        postComment($metadata, $metadata["errorMessages"]["commandNotFound"]);
+        reactToComment($comment, "-1");
+    }
+}
+
+/**
+ * Sends a reaction emoji to a GitHub comment.
+ *
+ * @param object $comment  The comment object with RepositoryOwner, RepositoryName, and CommentId.
+ * @param string $reaction The GitHub reaction content value (e.g., "+1", "-1", "rocket").
+ *
+ * @return void
+ */
+function reactToComment($comment, string $reaction): void
+{
+    $repoPrefix = "repos/{$comment->RepositoryOwner}/{$comment->RepositoryName}";
+    $reactionUrl = "{$repoPrefix}/issues/comments/{$comment->CommentId}/reactions";
+    $token = generateInstallationToken($comment->InstallationId, $comment->RepositoryName);
+
+    doRequestGitHub($token, $reactionUrl, ["content" => $reaction], "POST");
+}
+
+/**
+ * Posts a comment message back to a GitHub issue or PR.
+ *
+ * @param array  $metadata Metadata array including 'token' and 'commentUrl'.
+ * @param string $body     The comment body to send.
+ *
+ * @return void
+ */
+function postComment(array $metadata, string $body): void
+{
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], ["body" => $body], "POST");
+}
+
+/**
+ * Checks if the comment sender is a collaborator in the repository.
+ *
+ * @param object $comment   The comment object with CommentSender and repo identifiers.
+ * @param array  $metadata  Metadata containing token and repoPrefix.
+ *
+ * @return bool True if the user is a collaborator, false otherwise.
+ */
+function isCollaborator($comment, array $metadata): bool
+{
+    $collaboratorUrl = $metadata["repoPrefix"] . "/collaborators/" . $comment->CommentSender;
+    $response = doRequestGitHub($metadata["token"], $collaboratorUrl, null, "GET");
+    $status   = $response->getStatusCode();
+
+    # 204 → collaborator; 404 → not collaborator; anything else → treat as failure / not collaborator
+    if ($status === 204) {
+        return true;
+    }
+    if ($status === 404) {
+        return false;
+    }
+
+    # Log unexpected status codes and fall back to “not collaborator”
+    error_log("isCollaborator(): unexpected status {$status} for {$collaboratorUrl}");
+    return false;
+}
+
+/**
+ * Builds a metadata array for use across GitHub API calls and command execution.
+ *
+ * @param object $comment The comment object with repository and user details.
+ * @param object $config  The bot config object (e.g., botName, dashboardUrl).
+ *
+ * @return array Associative array with token, URLs, and common error messages.
+ */
+function buildMetadata($comment, $config): array
+{
+    $repoPrefix = "repos/{$comment->RepositoryOwner}/{$comment->RepositoryName}";
+    $prQuery = http_build_query([
+        'owner' => $comment->RepositoryOwner,
+        'repo' => $comment->RepositoryName,
+        'pullRequest' => $comment->PullRequestNumber
+    ]);
+    $token = generateInstallationToken($comment->InstallationId, $comment->RepositoryName);
 
     $prefix = "I'm sorry @" . $comment->CommentSender;
     $suffix = ", I can't do that.";
     $emoji = " :pleading_face:";
 
-    $repoPrefix = "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName;
-    $prQueryString =
-        "pull-requests/?owner=" . $comment->RepositoryOwner .
-        "&repo=" . $comment->RepositoryName .
-        "&pullRequest=" . $comment->PullRequestNumber;
-    $metadata = array(
-        "token" => generateInstallationToken($comment->InstallationId, $comment->RepositoryName),
+    return [
+        "token" => $token,
         "repoPrefix" => $repoPrefix,
         "repositoryOwner" => $comment->RepositoryOwner,
         "repositoryName" => $comment->RepositoryName,
-        "reactionUrl" => $repoPrefix . "/issues/comments/" . $comment->CommentId . "/reactions",
-        "pullRequestUrl" => $repoPrefix . "/pulls/" . $comment->PullRequestNumber,
-        "issueUrl" => $repoPrefix . "/issues/" . $comment->PullRequestNumber,
-        "commentUrl" => $repoPrefix . "/issues/" . $comment->PullRequestNumber . "/comments",
-        "labelsUrl" => $repoPrefix . "/labels",
-        "checkRunUrl" => $repoPrefix . "/check-runs",
-        "dashboardUrl" => $config->dashboardUrl . $prQueryString,
-        "errorMessages" => array(
+        "reactionUrl" => "{$repoPrefix}/issues/comments/{$comment->CommentId}/reactions",
+        "pullRequestUrl" => "{$repoPrefix}/pulls/{$comment->PullRequestNumber}",
+        "issueUrl" => "{$repoPrefix}/issues/{$comment->PullRequestNumber}",
+        "commentUrl" => "{$repoPrefix}/issues/{$comment->PullRequestNumber}/comments",
+        "labelsUrl" => "{$repoPrefix}/labels",
+        "checkRunUrl" => "{$repoPrefix}/check-runs",
+        "dashboardUrl" => $config->dashboardUrl . $prQuery,
+        "errorMessages" => [
             "notCollaborator" => $prefix . $suffix . " You aren't a collaborator in this repository." . $emoji,
             "invalidParameter" => $prefix . $suffix . " Invalid parameter." . $emoji,
             "notOpen" => $prefix . $suffix . " This pull request is no longer open. :no_entry:",
             "notAllowed" => $prefix . $suffix . " You aren't allowed to use this bot." . $emoji,
             "commandNotFound" => $prefix . $suffix . " Command not found." . $emoji,
-            "notImplemented" => $prefix . $suffix . " Feature not implemented yet." . $emoji
-        )
-    );
-
-    if (
-        $comment->CommentSender === "github-actions[bot]" ||
-        $comment->CommentSender === "AppVeyorBot" ||
-        $comment->CommentSender === "gitauto-ai[bot]"
-    ) {
-        echo "Skipping this comment! 🚷\n";
-        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
-        return;
-    }
-
-    $collaboratorUrl = $repoPrefix . "/collaborators/" . $comment->CommentSender;
-    $collaboratorResponse = doRequestGitHub($metadata["token"], $collaboratorUrl, null, "GET");
-    if ($collaboratorResponse->getStatusCode() === 404) {
-        if ($comment->CommentSender !== "dependabot[bot]") {
-            doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
-            $body = $metadata["errorMessages"]["notCollaborator"];
-            doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-        }
-        return;
-    }
-
-    $executedAtLeastOne = false;
-
-    $pullRequestIsOpen = checkIfPullRequestIsOpen($metadata);
-
-    foreach ($config->commands as $command) {
-        $commandExpression = "@" . $config->botName . " " . $command->command;
-        if (stripos($comment->CommentBody, $commandExpression) !== false) {
-            $executedAtLeastOne = true;
-            if (isset($command->requiresPullRequestOpen) && $command->requiresPullRequestOpen && !$pullRequestIsOpen) {
-                doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
-                $body = $metadata["errorMessages"]["notOpen"];
-                doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-                continue;
-            }
-            $method = "execute_" . toCamelCase($command->command);
-            $method($config, $metadata, $comment);
-        }
-    }
-
-    if (!$executedAtLeastOne) {
-        $body = $metadata["errorMessages"]["commandNotFound"];
-        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
-    }
+            "notImplemented" => $prefix . $suffix . " Feature not implemented yet." . $emoji,
+        ]
+    ];
 }
 
 function execute_help($config, $metadata, $comment): void
