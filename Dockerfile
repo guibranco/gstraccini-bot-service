@@ -62,8 +62,11 @@ COPY --chown=www-data:www-data ./Src /var/www/html/
 # Set proper permissions
 RUN find /var/www/html -type d -exec chmod 755 {} \; \
     && find /var/www/html -type f -exec chmod 644 {} \;
-# Expose port (documentation only)
+
+# User www-data instead of root
 USER www-data
+
+# Expose port (documentation only)
 EXPOSE 80
 
 # Set healthcheck
