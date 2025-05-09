@@ -58,7 +58,7 @@ function handleItem($issue)
 function addLabels($issueUpdated, $collaboratorsLogins, $metadata)
 {
     $labels = [];
-    if (!in_array($issueUpdated->user->login, $collaboratorsLogins) && $issueUpdated->user=>login !== "pixeebot[bot]") {
+    if (!in_array($issueUpdated->user->login, $collaboratorsLogins) && $issueUpdated->user->login !== "pixeebot[bot]") {
         $labels[] = "🚦 awaiting triage";
     }
 
