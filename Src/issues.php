@@ -49,7 +49,7 @@ function handleItem($issue)
 
     if ($repository->private || in_array($issueUpdated->user->login, $autoAssignSenders, true)) {
         $body = array("assignees" => $collaboratorsLogins);
-        doRequestGitHub($metadata["token"], $metadata["assigneesUrl"], $body, "POST");        
+        doRequestGitHub($metadata["token"], $metadata["assigneesUrl"], $body, "POST");
     }
 
     addLabels($issueUpdated, $collaboratorsLogins, $metadata);
