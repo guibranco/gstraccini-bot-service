@@ -7,6 +7,12 @@
             "textWithIcon": ":octocat: github-actions"
         },
         {
+            "color": "#CFD3D7",
+            "description": "Automated scripts, workflows, or CI processes",
+            "name": "automation",
+            "textWithIcon": "🛠️ automation"
+        },
+        {
             "color": "#5319E7",
             "description": "Automatic merging of pull requests (gstraccini-bot)",
             "text": "auto-merge",
@@ -35,6 +41,12 @@
             "description": "Code quality-related tasks or issues",
             "text": "code quality",
             "textWithIcon": "♻️ code quality"
+        },
+        {
+            "color": "#0366D6",
+            "description": "Features or changes related to UI dashboards and data displays",
+            "text": "dashboard",
+            "textWithIcon": "📊 dashboard"
         },
         {
             "color": "#006B75",
@@ -91,7 +103,7 @@
             "textWithIcon": "🧠 backlog"
         },
         {
-            "color": "#0075ca",
+            "color": "#0075CA",
             "description": "Tasks related to writing or updating documentation",
             "text": "documentation",
             "textWithIcon": "📝 documentation"
@@ -343,6 +355,12 @@
             "description": "Kobit AI code analysis label.",
             "text": "korbit-code-analysis",
             "textWithIcon": "korbit-code-analysis"
+        },
+        {
+            "color": "#0E8A16",
+            "description": "Issues or PRs created by or related to the PixeeBot tool.",
+            "text": "pixeebot",
+            "textWithIcon": "🤖 pixeebot"
         },
         {
             "color": "#44CC11",
