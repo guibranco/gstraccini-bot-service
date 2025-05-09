@@ -220,7 +220,6 @@
         "command": "update snapshot",
         "description": "Update test snapshots (`npm test -- -u`) (only for **Node.js** projects).",
         "requiresPullRequestOpen": true
-    }
     },
     {
         "command": "bump",
