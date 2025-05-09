@@ -9,7 +9,7 @@
         {
             "color": "#CFD3D7",
             "description": "Automated scripts, workflows, or CI processes",
-            "name": "automation",
+            "text": "automation",
             "textWithIcon": "🛠️ automation"
         },
         {
