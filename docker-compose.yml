@@ -6,11 +6,11 @@ services:
       - "8007:80"
     volumes:
       - ./Src:/var/www/html/
-      - ./uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
+      - ./uploads.ini:/usr/local/etc/php/conf.d/99-uploads.ini:ro
     networks:
       - default
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/api/v1/commands"]
+      test: ["CMD", "curl", "-f", "http://localhost"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -32,11 +32,11 @@ services:
     networks:
       - default
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      test: ["CMD", "mariadb", "--user=root", "--password=root", "-e", "SELECT 1"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 15s
+      start_period: 10s
 
   queue:
     container_name: queue
@@ -63,7 +63,7 @@ services:
     networks:
       - default
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8025"]
+      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:8025/"]
       interval: 30s
       timeout: 10s
       retries: 5
