@@ -135,10 +135,8 @@
     {
       "color": "#B60205",
       "description": "Technical debt that needs to be addressed",
--     "text": "tech-debit",
--     "textWithIcon": "🧑‍💻 tech-debit"
-+     "text": "tech-debt",
-+     "textWithIcon": "🧑‍💻 tech-debt"
+      "text": "tech-debt",
+      "textWithIcon": "🧑‍💻 tech-debt"
     },
     {
       "color": "#B60205",
