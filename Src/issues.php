@@ -51,6 +51,7 @@ function handleItem($issue)
         $body = array("assignees" => $collaboratorsLogins);
         doRequestGitHub($metadata["token"], $metadata["assigneesUrl"], $body, "POST");
         removeLabels($issueUpdated, $metadata);
+        addPixeebotLabels($issueUpdated, $metadata);
         return;
     }
 
@@ -59,6 +60,17 @@ function handleItem($issue)
     if(in_array($issueUpdated->user->login, $collaboratorsLogins)) {
         removeLabels($issueUpdated, $metadata);
     }
+}
+
+function addPixeebotLabels($issueUpdated, $metadata): void
+{
+    if ($issueUpdated->user->login !== "pixeebot[bot]") {
+        return;
+    }
+    
+    $labels = ["🤖 bot", "🛠️ automation", "📊 dashboard", "🧪 code quality", "🤖 pixeebot"];
+    $body = array("labels" => $labels);
+    doRequestGitHub($metadata["token"], $metadata["issueUrl"] . "/labels", $body, "POST");
 }
 
 function addLabels($issueUpdated, $collaboratorsLogins, $metadata)
