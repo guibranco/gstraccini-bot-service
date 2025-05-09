@@ -67,7 +67,7 @@ function addPixeebotLabels($issueUpdated, $metadata): void
     if ($issueUpdated->user->login !== "pixeebot[bot]") {
         return;
     }
-    
+
     $labels = ["🤖 bot", "🛠️ automation", "📊 dashboard", "♻️ code quality", "🤖 pixeebot"];
     $body = array("labels" => $labels);
     doRequestGitHub($metadata["token"], $metadata["issueUrl"] . "/labels", $body, "POST");
