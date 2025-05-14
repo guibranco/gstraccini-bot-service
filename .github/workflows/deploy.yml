@@ -5,11 +5,8 @@ on:
     branches: main
   workflow_dispatch:
 
-concurrency:
-  group: build-deploy
-
 jobs:
-  deploy:
+  deploy-service:
     name: Deploy service to FTP
     runs-on: ubuntu-latest
     outputs:
@@ -95,13 +92,14 @@ jobs:
           mkdir -p secrets
           cd secrets
           echo "<?php" >> healthChecksIo.secrets.php
-          echo "\$healthChecksIoBranches     = \"${{ secrets.HEALTHCHECKSIO_BRANCHES }}\";" >> healthChecksIo.secrets.php
-          echo "\$healthChecksIoIssues       = \"${{ secrets.HEALTHCHECKSIO_ISSUES }}\";" >> healthChecksIo.secrets.php
-          echo "\$healthChecksIoComments     = \"${{ secrets.HEALTHCHECKSIO_COMMENTS }}\";" >> healthChecksIo.secrets.php
-          echo "\$healthChecksIoPushes       = \"${{ secrets.HEALTHCHECKSIO_PUSHES }}\";" >> healthChecksIo.secrets.php
-          echo "\$healthChecksIoPullRequests = \"${{ secrets.HEALTHCHECKSIO_PULL_REQUESTS }}\";" >> healthChecksIo.secrets.php
-          echo "\$healthChecksIoRepositories = \"${{ secrets.HEALTHCHECKSIO_REPOSITORIES }}\";" >> healthChecksIo.secrets.php
-          echo "\$healthChecksIoSignature    = \"${{ secrets.HEALTHCHECKSIO_SIGNATURE }}\";" >> healthChecksIo.secrets.php
+          echo "\$healthChecksIoBranches      = \"${{ secrets.HEALTHCHECKSIO_BRANCHES }}\";" >> healthChecksIo.secrets.php
+          echo "\$healthChecksIoIssues        = \"${{ secrets.HEALTHCHECKSIO_ISSUES }}\";" >> healthChecksIo.secrets.php
+          echo "\$healthChecksIoComments      = \"${{ secrets.HEALTHCHECKSIO_COMMENTS }}\";" >> healthChecksIo.secrets.php
+          echo "\$healthChecksIoInstallations = \"${{ secrets.HEALTHCHECKSIO_INSTALLATIONS }}\";" >> healthChecksIo.secrets.php
+          echo "\$healthChecksIoPushes        = \"${{ secrets.HEALTHCHECKSIO_PUSHES }}\";" >> healthChecksIo.secrets.php
+          echo "\$healthChecksIoPullRequests  = \"${{ secrets.HEALTHCHECKSIO_PULL_REQUESTS }}\";" >> healthChecksIo.secrets.php
+          echo "\$healthChecksIoRepositories  = \"${{ secrets.HEALTHCHECKSIO_REPOSITORIES }}\";" >> healthChecksIo.secrets.php
+          echo "\$healthChecksIoSignature     = \"${{ secrets.HEALTHCHECKSIO_SIGNATURE }}\";" >> healthChecksIo.secrets.php
 
       - name: Create Logger secrets file
         run: |
@@ -143,6 +141,20 @@ jobs:
           cd Src       
           echo ${{ env.fullSemVer }} > version.txt
 
+      - name: Create lock file
+        run: |
+          mkdir -p Lock
+          date +"%Y-%m-%d %H:%M:%S" > Lock/updating.lock
+
+      - name: Upload updating.lock
+        uses: sebastianpopp/ftp-action@releases/v2
+        with:
+          host: ${{ secrets.FTP_SERVER }}
+          user: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          localDir: "Lock"
+          remoteDir: "/"
+
       - name: Upload service
         uses: sebastianpopp/ftp-action@releases/v2
         with:
@@ -152,15 +164,51 @@ jobs:
           localDir: "Src"
           remoteDir: "/"
 
+      - name: Create release file
+        run: |
+          rm -f Lock/updating.lock
+          date +"%Y-%m-%d %H:%M:%S" > Lock/updating.release
+
+      - name: Upload updating.release
+        uses: sebastianpopp/ftp-action@releases/v2
+        with:
+          host: ${{ secrets.FTP_SERVER }}
+          user: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          localDir: "Lock"
+          remoteDir: "/"
+
+  deploy-api:
+    name: Deploy API to FTP
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0    
+
+      - name: Copy commands.json to API
+        run: cp Src/config/commands.json Src/api/v1/
+      
+      - name: Upload API
+        uses: sebastianpopp/ftp-action@releases/v2
+        with:
+          host: ${{ secrets.FTP_SERVER }}
+          user: ${{ secrets.FTP_USERNAME_API }}
+          password: ${{ secrets.FTP_PASSWORD_API }}
+          localDir: "Src/api/"
+          remoteDir: "/"
+  
   create_release:
     name: Create release
-    needs: deploy
+    needs: [deploy-service, deploy-api]
     env:
-      SEMVER: ${{ needs.deploy.outputs.semVer }}
+      SEMVER: ${{ needs.deploy-service.outputs.semVer }}
     runs-on: ubuntu-latest
     steps:
       - name: Create Release
-        uses: ncipollo/release-action@v1.14.0
+        uses: ncipollo/release-action@v1.16.0
         with:
           allowUpdates: false
           skipIfReleaseExists: true

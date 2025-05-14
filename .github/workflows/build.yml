@@ -4,9 +4,6 @@ on:
   pull_request:
   workflow_dispatch:
 
-concurrency:
-  group: build-deploy
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -42,7 +39,13 @@ jobs:
           echo "\$mySqlDatabase = \"test\";" >> mySql.secrets.php
 
       - name: Docker compose up
-        run: docker compose up -d && sleep 10
+        run: docker compose up -d
+
+      - name: Make script executable
+        run: chmod +x Tools/wait-for-healthy.sh
+            
+      - name: Wait for healthy containers
+        run: Tools/wait-for-healthy.sh
 
       - name: Check database
         env:

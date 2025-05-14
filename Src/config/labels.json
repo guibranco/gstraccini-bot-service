@@ -1,342 +1,420 @@
 {
-    "context": [
-        {
-            "color": "#000000",
-            "description": "GitHub Actions for automation and CI/CD",
-            "text": "github-actions",
-            "textWithIcon": ":octocat: github-actions"
-        },
-        {
-            "color": "#5319E7",
-            "description": "Automatic merging of pull requests (gstraccini-bot)",
-            "text": "auto-merge",
-            "textWithIcon": "☑️ auto-merge"
-        },
-        {
-            "color": "#FF0000",
-            "description": "Prevents automatic merging of pull requests (gstraccini-bot)",
-            "text": "do-not-merge",
-            "textWithIcon": "🫷 do-not-merge"
-        },
-        {
-            "color": "#5319E7",
-            "description": "Automated processes or integrations",
-            "text": "bot",
-            "textWithIcon": "🤖 bot"
-        },
-        {
-            "color": "#15E6EF",
-            "description": "Infrastructure-related tasks or issues",
-            "text": "infrastructure",
-            "textWithIcon": "👷🏼 infrastructure"
-        },
-        {
-            "color": "#FBCA04",
-            "description": "Code quality-related tasks or issues",
-            "text": "code quality",
-            "textWithIcon": "♻️ code quality"
-        },
-        {
-            "color": "#006B75",
-            "description": "Database-related operations",
-            "text": "database",
-            "textWithIcon": "🎲 database"
-        },
-        {
-            "color": "#F92288",
-            "description": "Task or issue is currently blocked",
-            "text": "blocked",
-            "textWithIcon": "🚷 blocked"
-        },
-        {
-            "color": "#B60205",
-            "description": "Issues related to bugs or errors",
-            "text": "bug",
-            "textWithIcon": "🐛 bug"
-        },
-        {
-            "color": "#FBCA04",
-            "description": "Work in progress",
-            "text": "WIP",
-            "textWithIcon": "🛠 WIP"
-        },
-        {
-            "color": "#ADCAB2",
-            "description": "Tasks related to testing",
-            "text": "tests",
-            "textWithIcon": "🧪 tests"
-        },
-        {
-            "color": "#B60205",
-            "description": "Security-related issues or improvements",
-            "text": "security",
-            "textWithIcon": "🚨 security"
-        },
-        {
-            "color": "#9425A1",
-            "description": "Continuous Integration/Continuous Deployment processes",
-            "text": "CI/CD",
-            "textWithIcon": "⚙️ CI/CD"
-        },
-        {
-            "color": "#E99695",
-            "description": "Items that are in the backlog for future work",
-            "text": "backlog",
-            "textWithIcon": "🧠 backlog"
-        },
-        {
-            "color": "#0075ca",
-            "description": "Tasks related to writing or updating documentation",
-            "text": "documentation",
-            "textWithIcon": "📝 documentation"
-        },
-        {
-            "color": "#B60205",
-            "description": "Technical debt that needs to be addressed",
-            "text": "tech-debit",
-            "textWithIcon": "🧑‍💻 tech-debit"
-        },
-        {
-            "color": "#B60205",
-            "description": "Waiting on a response from another party",
-            "text": "waiting response",
-            "textWithIcon": "⏳ waiting response"
-        },
-        {
-            "color": "#D93F0B",
-            "description": "Items that are awaiting triage or categorization",
-            "text": "awaiting triage",
-            "textWithIcon": "🚦 awaiting triage"
-        },
-        {
-            "color": "#D93F0B",
-            "description": "Participation in the Hacktoberfest event",
-            "text": "hacktoberfest",
-            "textWithIcon": "hacktoberfest"
-        },
-        {
-            "color": "#FFCC00",
-            "description": "Issue or bug report is under investigation",
-            "text": "under investigation",
-            "textWithIcon": "🔍 under investigation"
-        }
-    ],
-    "effort": [
-        {
-            "color": "#FF0000",
-            "description": "A task that can be completed in a few minutes",
-            "text": "low effort",
-            "textWithIcon": "🕒 low effort"
-        },
-        {
-            "color": "#FFA500",
-            "description": "A task that can be completed in a few hours",
-            "text": "medium effort",
-            "textWithIcon": "🕓 medium effort"
-        },
-        {
-            "color": "#008000",
-            "description": "A task that can be completed in a few days",
-            "text": "high-effort",
-            "textWithIcon": "🕔 high effort"
-        },
-        {
-            "color": "#0000FF",
-            "description": "A task that can be completed in a few weeks",
-            "text": "very high effort",
-            "textWithIcon": "🕕 very high effort"
-        }
-    ],
-    "language": [
-        {
-            "color": "#777BB3",
-            "description": "PHP programming language",
-            "text": "PHP",
-            "textWithIcon": "🐘 PHP"
-        },
-        {
-            "color": "#0DB7ED",
-            "description": "Docker images, Dockerfile and Docker compose",
-            "text": "Docker",
-            "textWithIcon": "🐳 Docker"
-        },
-        {
-            "color": "#F28D1A",
-            "description": "PHP package manager",
-            "text": "packagist",
-            "textWithIcon": "📦 packagist"
-        },
-        {
-            "color": "#5FA04E",
-            "description": "JavaScript runtime environment",
-            "text": "NodeJs",
-            "textWithIcon": "🟨 NodeJs"
-        },
-        {
-            "color": "#CB3837",
-            "description": "Node package manager",
-            "text": "NPM",
-            "textWithIcon": "📦 NPM"
-        },
-        {
-            "color": "#512BD4",
-            "description": "Microsoft .NET",
-            "text": ".NET",
-            "textWithIcon": "#️⃣ .NET"
-        },
-        {
-            "color": "#004880",
-            "description": ".NET package manager",
-            "text": "NuGet",
-            "textWithIcon": "📦 NuGet"
-        },
-        {
-            "color": "#F7DF1E",
-            "description": "JavaScript programming language",
-            "text": "JavaScript",
-            "textWithIcon": "🟨 JavaScript"
-        },
-        {
-            "color": "#3776AB",
-            "description": "Python programming language",
-            "text": "Python",
-            "textWithIcon": "🐍 Python"
-        },
-        {
-            "color": "#3776AB",
-            "description": "Python package manager",
-            "text": "pip",
-            "textWithIcon": "📦 PIP"
-        },
-        {
-            "color": "#2B7489",
-            "description": "Ruby programming language",
-            "text": "Ruby",
-            "textWithIcon": "💎 Ruby"
-        },
-        {
-            "color": "#701516",
-            "description": "Ruby package manager",
-            "text": "RubyGems",
-            "textWithIcon": "📦 RubyGems"
-        },
-        {
-            "color": "#E34F26",
-            "description": "HTML markup language",
-            "text": "HTML",
-            "textWithIcon": "🦴 HTML"
-        },
-        {
-            "color": "#563D7C",
-            "description": "CSS style sheet language",
-            "text": "CSS",
-            "textWithIcon": "💄 CSS"
-        },
-        {
-            "color": "#F16529",
-            "description": "Java programming language",
-            "text": "Java",
-            "textWithIcon": "☕ Java"
-        },
-        {
-            "color": "#007396",
-            "description": "Java package manager",
-            "text": "Maven",
-            "textWithIcon": "📦 Maven"
-        },
-        {
-            "color": "#2B7489",
-            "description": "Go programming language",
-            "text": "Go",
-            "textWithIcon": "🐿️ Go"
-        },
-        {
-            "color": "#00ADD8",
-            "description": "Go package manager",
-            "text": "Go Modules",
-            "textWithIcon": "📦 Go Modules"
-        },
-        {
-            "color": "#F34B7D",
-            "description": "Swift programming language",
-            "text": "Swift",
-            "textWithIcon": "🐦‍⬛ Swift"
-        },
-        {
-            "color": "#F34B7D",
-            "description": "Swift package manager",
-            "text": "Swift Package Manager",
-            "textWithIcon": "📦 Swift Package Manager"
-        },
-        {
-            "color": "#2B7489",
-            "description": "Rust programming language",
-            "text": "Rust",
-            "textWithIcon": "🦀 Rust"
-        },
-        {
-            "color": "#2B7489",
-            "description": "Rust package manager",
-            "text": "Cargo",
-            "textWithIcon": "📦 Cargo"
-        },
-        {
-            "color": "#3178C6",
-            "description": "Typed superset of JavaScript",
-            "text": "TypeScript",
-            "textWithIcon": "🟨 TypeScript"
-        }
-    ],
-    "size": [
-        {
-            "color": "#009900",
-            "description": "Denotes a PR that changes 0-9 lines, ignoring generated files.",
-            "text": "size/XS",
-            "textWithIcon": "size/XS"
-        },
-        {
-            "color": "#77bb00",
-            "description": "Denotes a PR that changes 10-29 lines, ignoring generated files.",
-            "text": "size/S",
-            "textWithIcon": "size/S"
-        },
-        {
-            "color": "#eebb00",
-            "description": "Denotes a PR that changes 30-99 lines, ignoring generated files.",
-            "text": "size/M",
-            "textWithIcon": "size/M"
-        },
-        {
-            "color": "#ee9900",
-            "description": "Denotes a PR that changes 100-499 lines, ignoring generated files.",
-            "text": "size/L",
-            "textWithIcon": "size/L"
-        },
-        {
-            "color": "#ee5500",
-            "description": "Denotes a PR that changes 500-999 lines, ignoring generated files.",
-            "text": "size/XL",
-            "textWithIcon": "size/XL"
-        },
-        {
-            "color": "#ee0000",
-            "description": "Denotes a PR that changes 1000+ lines, ignoring generated files.",
-            "text": "size/XXL",
-            "textWithIcon": "size/XXL"
-        }
-    ],
-    "apps": [
-        {
-            "color": "#db2777",
-            "description": "GitAuto label to trigger the app in a issue.",
-            "text": "gitauto",
-            "textWithIcon": "gitauto"
-        },
-        {
-            "color": "#FFFF00",
-            "description": "Kobit AI code analysis label.",
-            "text": "korbit-code-analysis",
-            "textWithIcon": "korbit-code-analysis"
-        }
-    ]
+  "context": [
+    {
+      "color": "#000000",
+      "description": "GitHub Actions for automation and CI/CD",
+      "text": "github-actions",
+      "textWithIcon": ":octocat: github-actions"
+    },
+    {
+      "color": "#f7c843",
+      "description": "Performance optimizations or regressions",
+      "text": "performance",
+      "textWithIcon": "🚀 performance"
+    },
+    {
+      "color": "#a2eeef",
+      "description": "User experience enhancements or design-related work",
+      "text": "ux",
+      "textWithIcon": "🎨 ux"
+    },
+    {
+      "color": "#0e8a16",
+      "description": "New feature requests or implementations",
+      "text": "feature",
+      "textWithIcon": "✨ feature"
+    },
+    {
+      "color": "#ededed",
+      "description": "Codebase maintenance tasks and technical debt",
+      "text": "chore",
+      "textWithIcon": "🧹 chore"
+    },
+    {
+      "color": "#CFD3D7",
+      "description": "Automated scripts, workflows, or CI processes",
+      "text": "automation",
+      "textWithIcon": "🛠️ automation"
+    },
+    {
+      "color": "#5319E7",
+      "description": "Automatic merging of pull requests (gstraccini-bot)",
+      "text": "auto-merge",
+      "textWithIcon": "☑️ auto-merge"
+    },
+    {
+      "color": "#5319E7",
+      "description": "Do not merge / work in progress / auto-merge disabled (gstraccini-bot)",
+      "text": "do-not-merge",
+      "textWithIcon": "🫷 do-not-merge"
+    },
+    {
+      "color": "#5319E7",
+      "description": "Automated processes or integrations",
+      "text": "bot",
+      "textWithIcon": "🤖 bot"
+    },
+    {
+      "color": "#15E6EF",
+      "description": "Infrastructure-related tasks or issues",
+      "text": "infrastructure",
+      "textWithIcon": "👷🏼 infrastructure"
+    },
+    {
+      "color": "#FBCA04",
+      "description": "Code quality-related tasks or issues",
+      "text": "code quality",
+      "textWithIcon": "♻️ code quality"
+    },
+    {
+      "color": "#0366D6",
+      "description": "Features or changes related to UI dashboards and data displays",
+      "text": "dashboard",
+      "textWithIcon": "📊 dashboard"
+    },
+    {
+      "color": "#006B75",
+      "description": "Database-related operations",
+      "text": "database",
+      "textWithIcon": "🎲 database"
+    },
+    {
+      "color": "#0052CC",
+      "description": "Dependencies",
+      "text": "dependencies",
+      "textWithIcon": "📦 dependencies"
+    },
+    {
+      "color": "#F92288",
+      "description": "Task or issue is currently blocked",
+      "text": "blocked",
+      "textWithIcon": "🚷 blocked"
+    },
+    {
+      "color": "#B60205",
+      "description": "Issues related to bugs or errors",
+      "text": "bug",
+      "textWithIcon": "🐛 bug"
+    },
+    {
+      "color": "#FBCA04",
+      "description": "Work in progress",
+      "text": "WIP",
+      "textWithIcon": "🛠 WIP"
+    },
+    {
+      "color": "#ADCAB2",
+      "description": "Tasks related to testing",
+      "text": "tests",
+      "textWithIcon": "🧪 tests"
+    },
+    {
+      "color": "#B60205",
+      "description": "Security-related issues or improvements",
+      "text": "security",
+      "textWithIcon": "🚨 security"
+    },
+    {
+      "color": "#9425A1",
+      "description": "Continuous Integration/Continuous Deployment processes",
+      "text": "CI/CD",
+      "textWithIcon": "⚙️ CI/CD"
+    },
+    {
+      "color": "#E99695",
+      "description": "Items that are in the backlog for future work",
+      "text": "backlog",
+      "textWithIcon": "🧠 backlog"
+    },
+    {
+      "color": "#0075CA",
+      "description": "Tasks related to writing or updating documentation",
+      "text": "documentation",
+      "textWithIcon": "📝 documentation"
+    },
+    {
+      "color": "#B60205",
+      "description": "Technical debt that needs to be addressed",
+      "text": "tech-debt",
+      "textWithIcon": "🧑‍💻 tech-debt"
+    },
+    {
+      "color": "#B60205",
+      "description": "Waiting on a response from another party",
+      "text": "waiting response",
+      "textWithIcon": "⏳ waiting response"
+    },
+    {
+      "color": "#D93F0B",
+      "description": "Items that are awaiting triage or categorization",
+      "text": "awaiting triage",
+      "textWithIcon": "🚦 awaiting triage"
+    },
+    {
+      "color": "#D93F0B",
+      "description": "Participation in the Hacktoberfest event",
+      "text": "hacktoberfest",
+      "textWithIcon": "hacktoberfest"
+    },
+    {
+      "color": "#FFCC00",
+      "description": "Issue or bug report is under investigation",
+      "text": "under investigation",
+      "textWithIcon": "🔍 under investigation"
+    }
+  ],
+  "effort": [
+    {
+      "color": "#FF0000",
+      "description": "A task that can be completed in a few minutes",
+      "text": "low effort",
+      "textWithIcon": "🕒 low effort"
+    },
+    {
+      "color": "#FFA500",
+      "description": "A task that can be completed in a few hours",
+      "text": "medium effort",
+      "textWithIcon": "🕓 medium effort"
+    },
+    {
+      "color": "#008000",
+      "description": "A task that can be completed in a few days",
+      "text": "high-effort",
+      "textWithIcon": "🕔 high effort"
+    },
+    {
+      "color": "#0000FF",
+      "description": "A task that can be completed in a few weeks",
+      "text": "very high effort",
+      "textWithIcon": "🕕 very high effort"
+    }
+  ],
+  "language": [
+    {
+      "color": "#777BB3",
+      "description": "PHP programming language",
+      "text": "PHP",
+      "textWithIcon": "🐘 PHP"
+    },
+    {
+      "color": "#0DB7ED",
+      "description": "Docker images, Dockerfile and Docker compose",
+      "text": "Docker",
+      "textWithIcon": "🐳 Docker"
+    },
+    {
+      "color": "#F28D1A",
+      "description": "PHP package manager",
+      "text": "packagist",
+      "textWithIcon": "📦 packagist"
+    },
+    {
+      "color": "#5FA04E",
+      "description": "JavaScript runtime environment",
+      "text": "NodeJs",
+      "textWithIcon": "🟨 NodeJs"
+    },
+    {
+      "color": "#CB3837",
+      "description": "Node package manager",
+      "text": "NPM",
+      "textWithIcon": "📦 NPM"
+    },
+    {
+      "color": "#512BD4",
+      "description": "Microsoft .NET",
+      "text": ".NET",
+      "textWithIcon": "#️⃣ .NET"
+    },
+    {
+      "color": "#004880",
+      "description": ".NET package manager",
+      "text": "NuGet",
+      "textWithIcon": "📦 NuGet"
+    },
+    {
+      "color": "#F7DF1E",
+      "description": "JavaScript programming language",
+      "text": "JavaScript",
+      "textWithIcon": "🟨 JavaScript"
+    },
+    {
+      "color": "#3776AB",
+      "description": "Python programming language",
+      "text": "Python",
+      "textWithIcon": "🐍 Python"
+    },
+    {
+      "color": "#3776AB",
+      "description": "Python package manager",
+      "text": "pip",
+      "textWithIcon": "📦 PIP"
+    },
+    {
+      "color": "#2B7489",
+      "description": "Ruby programming language",
+      "text": "Ruby",
+      "textWithIcon": "💎 Ruby"
+    },
+    {
+      "color": "#701516",
+      "description": "Ruby package manager",
+      "text": "RubyGems",
+      "textWithIcon": "📦 RubyGems"
+    },
+    {
+      "color": "#E34F26",
+      "description": "HTML markup language",
+      "text": "HTML",
+      "textWithIcon": "🦴 HTML"
+    },
+    {
+      "color": "#563D7C",
+      "description": "CSS style sheet language",
+      "text": "CSS",
+      "textWithIcon": "💄 CSS"
+    },
+    {
+      "color": "#F16529",
+      "description": "Java programming language",
+      "text": "Java",
+      "textWithIcon": "☕ Java"
+    },
+    {
+      "color": "#007396",
+      "description": "Java package manager",
+      "text": "Maven",
+      "textWithIcon": "📦 Maven"
+    },
+    {
+      "color": "#2B7489",
+      "description": "Go programming language",
+      "text": "Go",
+      "textWithIcon": "🐿️ Go"
+    },
+    {
+      "color": "#00ADD8",
+      "description": "Go package manager",
+      "text": "Go Modules",
+      "textWithIcon": "📦 Go Modules"
+    },
+    {
+      "color": "#F34B7D",
+      "description": "Swift programming language",
+      "text": "Swift",
+      "textWithIcon": "🐦‍⬛ Swift"
+    },
+    {
+      "color": "#F34B7D",
+      "description": "Swift package manager",
+      "text": "Swift Package Manager",
+      "textWithIcon": "📦 Swift Package Manager"
+    },
+    {
+      "color": "#2B7489",
+      "description": "Rust programming language",
+      "text": "Rust",
+      "textWithIcon": "🦀 Rust"
+    },
+    {
+      "color": "#2B7489",
+      "description": "Rust package manager",
+      "text": "Cargo",
+      "textWithIcon": "📦 Cargo"
+    },
+    {
+      "color": "#3178C6",
+      "description": "Typed superset of JavaScript",
+      "text": "TypeScript",
+      "textWithIcon": "🟨 TypeScript"
+    }
+  ],
+  "size": [
+    {
+      "color": "#009900",
+      "description": "Denotes a PR that changes 0-9 lines, ignoring generated files.",
+      "text": "size/XS",
+      "textWithIcon": "size/XS"
+    },
+    {
+      "color": "#77bb00",
+      "description": "Denotes a PR that changes 10-29 lines, ignoring generated files.",
+      "text": "size/S",
+      "textWithIcon": "size/S"
+    },
+    {
+      "color": "#eebb00",
+      "description": "Denotes a PR that changes 30-99 lines, ignoring generated files.",
+      "text": "size/M",
+      "textWithIcon": "size/M"
+    },
+    {
+      "color": "#ee9900",
+      "description": "Denotes a PR that changes 100-499 lines, ignoring generated files.",
+      "text": "size/L",
+      "textWithIcon": "size/L"
+    },
+    {
+      "color": "#ee5500",
+      "description": "Denotes a PR that changes 500-999 lines, ignoring generated files.",
+      "text": "size/XL",
+      "textWithIcon": "size/XL"
+    },
+    {
+      "color": "#ee0000",
+      "description": "Denotes a PR that changes 1000+ lines, ignoring generated files.",
+      "text": "size/XXL",
+      "textWithIcon": "size/XXL"
+    }
+  ],
+  "apps": [
+    {
+      "color": "#db2777",
+      "description": "GitAuto label to trigger the app in a issue.",
+      "text": "gitauto",
+      "textWithIcon": "gitauto"
+    },
+    {
+      "color": "#FFFF00",
+      "description": "Kobit AI code analysis label.",
+      "text": "korbit-code-analysis",
+      "textWithIcon": "korbit-code-analysis"
+    },
+    {
+      "color": "#0E8A16",
+      "description": "Issues or PRs created by or related to the PixeeBot tool.",
+      "text": "pixeebot",
+      "textWithIcon": "🤖 pixeebot"
+    },
+    {
+      "color": "#44CC11",
+      "description": "Minimal review effort required for this pull request (effort level: 1)",
+      "text": "Review effort [1-5]: 1",
+      "textWithIcon": "Review effort [1-5]: 1"
+    },
+    {
+      "color": "#FFD700",
+      "description": "Low review effort required for this pull request (effort level: 2)",
+      "text": "Review effort [1-5]: 2",
+      "textWithIcon": "Review effort [1-5]: 2"
+    },
+    {
+      "color": "#FF9900",
+      "description": "Moderate review effort required for this pull request (effort level: 3)",
+      "text": "Review effort [1-5]: 3",
+      "textWithIcon": "Review effort [1-5]: 3"
+    },
+    {
+      "color": "#FF4500",
+      "description": "High review effort required for this pull request (effort level: 4)",
+      "text": "Review effort [1-5]: 4",
+      "textWithIcon": "Review effort [1-5]: 4"
+    },
+    {
+      "color": "#D72638",
+      "description": "Very high review effort required for this pull request (effort level: 5)",
+      "text": "Review effort [1-5]: 5",
+      "textWithIcon": "Review effort [1-5]: 5"
+    }
+  ]
 }

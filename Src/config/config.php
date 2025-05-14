@@ -4,6 +4,40 @@ ini_set("default_charset", "UTF-8");
 ini_set("date.timezone", "Europe/Dublin");
 mb_internal_encoding("UTF-8");
 
+function checkSystemUpdating(): void
+{
+    $updatingLockFile = "updating.lock";
+    $updatingReleaseFile = "updating.release";
+
+    if (!file_exists($updatingLockFile)) {
+        return;
+    }
+
+    if (file_exists($updatingReleaseFile)) {
+        unlink($updatingLockFile);
+        unlink($updatingReleaseFile);
+        return;
+    }
+
+    $fileTime = filemtime($updatingLockFile);
+
+    if ($fileTime === false) {
+        $error = "Error: Unable to read update lock file timestamp";
+        error_log($error);
+        die($error);
+    }
+
+    if ($fileTime < strtotime("-15 minute")) {
+        $date = date("H:i;s d/m/Y", $fileTime);
+        die("System updating since {$date}");
+    }
+
+    unlink($updatingLockFile);
+    unlink($updatingReleaseFile);
+}
+
+checkSystemUpdating();
+
 $version = "1.0.0";
 $versionFile = "version.txt";
 if (file_exists($versionFile)) {
@@ -58,7 +92,12 @@ if (file_exists($rabbitMqSecretsFile)) {
     require_once $rabbitMqSecretsFile;
 }
 
-function loadConfig()
+/**
+ * Loads the configuration settings.
+ *
+ * @return stdClass An object containing the configuration settings.
+ */
+function loadConfig(): stdClass
 {
     $fileNameConfig = "config/config.json";
     $fileNameCommands = "config/commands.json";
@@ -83,9 +122,7 @@ function loadConfig()
     return $config;
 }
 
-require_once "lib/functions.php";
 require_once "lib/database.php";
 require_once "lib/appveyor.php";
-require_once "lib/codacy.php";
 require_once "lib/github.php";
 require_once "lib/queue.php";

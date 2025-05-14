@@ -26,6 +26,10 @@ function handleItem($issue)
 
     if ($issueUpdated->state === "closed") {
         removeLabels($issueUpdated, $metadata, true);
+        if ($issue->State === "OPEN") {
+            updateStateToClosedInTable("issues", $issue->Sequence);
+        }
+
         return;
     }
 
@@ -41,29 +45,29 @@ function handleItem($issue)
     $collaborators = json_decode($collaboratorsResponse->getBody(), true);
     $collaboratorsLogins = array_column($collaborators, "login");
 
-    if ($repository->private) {
+    $autoAssignSenders = array("pixeebot[bot]");
+
+    if ($repository->private || in_array($issueUpdated->user->login, $autoAssignSenders, true)) {
         $body = array("assignees" => $collaboratorsLogins);
         doRequestGitHub($metadata["token"], $metadata["assigneesUrl"], $body, "POST");
-        removeLabels($issueUpdated, $metadata);
-        return;
     }
 
     addLabels($issueUpdated, $collaboratorsLogins, $metadata);
-
-    if(in_array($issueUpdated->user->login, $collaboratorsLogins)) {
-        removeLabels($issueUpdated, $metadata);
-    }
 }
 
 function addLabels($issueUpdated, $collaboratorsLogins, $metadata)
 {
     $labels = [];
-    if (!in_array($issueUpdated->user->login, $collaboratorsLogins)) {
+    if (!in_array($issueUpdated->user->login, $collaboratorsLogins) && $issueUpdated->user->login !== "pixeebot[bot]") {
         $labels[] = "🚦 awaiting triage";
     }
 
     if ($issueUpdated->user->type === "Bot") {
         $labels[] = "🤖 bot";
+    }
+
+    if ($issueUpdated->user->login === "pixeebot[bot]") {
+        $labels = array_merge($labels, ["🛠️ automation", "📊 dashboard", "♻️ code quality", "🤖 pixeebot"]);
     }
 
     if (count($labels) > 0) {
@@ -92,30 +96,6 @@ function removeLabels($issueUpdated, $metadata, $includeWip = false)
     }
 }
 
-
-function main(): void
-{
-    $config = loadConfig();
-    ob_start();
-    $table = "github_issues";
-    global $logger;
-    $processor = new ProcessingManager($table, $logger);
-    $processor->process('handleItem');
-    $result = ob_get_clean();
-    if ($config->debug->all === true || $config->debug->issues === true) {
-        echo $result;
-    }
-}
-
 $healthCheck = new HealthChecks($healthChecksIoIssues, GUIDv4::random());
-$healthCheck->setHeaders([constant("USER_AGENT"), "Content-Type: application/json; charset=utf-8"]);
-$healthCheck->start();
-$time = time();
-while (true) {
-    main();
-    $limit = ($time + 55);
-    if ($limit < time()) {
-        break;
-    }
-}
-$healthCheck->end();
+$processor = new ProcessingManager("issues", $healthCheck, $logger);
+$processor->initialize("handleItem", 55);

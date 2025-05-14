@@ -1,5 +1,3 @@
-version: "3.1"
-
 services:
   www:
     container_name: www
@@ -8,25 +6,37 @@ services:
       - "8007:80"
     volumes:
       - ./Src:/var/www/html/
-      - ./uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
+      - ./uploads.ini:/usr/local/etc/php/conf.d/99-uploads.ini:ro
     networks:
       - default
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
 
   database:
     container_name: database
-    image: mysql:5.7
+    image: mariadb:latest
     restart: always
     ports:
       - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: test
-      MYSQL_USER: test
-      MYSQL_PASSWORD: test
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: test
+      MARIADB_USER: test
+      MARIADB_PASSWORD: test
     volumes:
       - my-db:/var/lib/mysql
     networks:
       - default
+    healthcheck:
+      test: ["CMD", "mariadb", "--user=root", "--password=root", "-e", "SELECT 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
 
   queue:
     container_name: queue
@@ -37,14 +47,27 @@ services:
     restart: unless-stopped
     networks:
       - default
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_listener", "5672"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
 
-  mailhog:
+  smtp:
+    container_name: smtp
     image: mailhog/mailhog:latest
     ports:
       - "1025:1025"
       - "8025:8025"
     networks:
       - default
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:8025/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
 
 volumes:
   my-db:
