@@ -60,26 +60,24 @@ function containsAcceptanceCriteria($body)
     if ($repository->private || in_array($issueUpdated->user->login, $autoAssignSenders, true)) {
         $body = array("assignees" => $collaboratorsLogins);
         doRequestGitHub($metadata["token"], $metadata["assigneesUrl"], $body, "POST");
-        removeLabels($issueUpdated, $metadata);
-        return;
     }
 
     addLabels($issueUpdated, $collaboratorsLogins, $metadata);
-
-    if(in_array($issueUpdated->user->login, $collaboratorsLogins)) {
-        removeLabels($issueUpdated, $metadata);
-    }
 }
 
 function addLabels($issueUpdated, $collaboratorsLogins, $metadata)
 {
     $labels = [];
-    if (!in_array($issueUpdated->user->login, $collaboratorsLogins)) {
+    if (!in_array($issueUpdated->user->login, $collaboratorsLogins) && $issueUpdated->user->login !== "pixeebot[bot]") {
         $labels[] = "🚦 awaiting triage";
     }
 
     if ($issueUpdated->user->type === "Bot") {
         $labels[] = "🤖 bot";
+    }
+
+    if ($issueUpdated->user->login === "pixeebot[bot]") {
+        $labels = array_merge($labels, ["🛠️ automation", "📊 dashboard", "♻️ code quality", "🤖 pixeebot"]);
     }
 
     if (count($labels) > 0) {
