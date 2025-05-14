@@ -50,7 +50,6 @@ define("USER_AGENT", "User-Agent: " . USER_AGENT_VENDOR);
 require_once "vendor/autoload.php";
 
 use GuiBranco\Pancake\Logger;
-use Yosymfony\Toml\Toml;
 
 $appVeyorSecretsFile = "secrets/appVeyor.secrets.php";
 if (file_exists($appVeyorSecretsFile)) {
