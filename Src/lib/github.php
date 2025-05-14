@@ -1,12 +1,14 @@
 <?php
 
 use GuiBranco\Pancake\Request;
+use GuiBranco\Pancake\Response;
 use Lcobucci\JWT\Encoding\ChainedFormatter;
 use Lcobucci\JWT\Encoding\JoseEncoder;
 use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Signer\Rsa\Sha256;
 use Lcobucci\JWT\Token\Builder;
 
+define("BOT_CHECK_MESSAGE_PREFIX", "GStraccini Checks: ");
 /**
  * The function `doRequestGitHub` sends HTTP requests to the GitHub API with specified parameters and
  * handles different HTTP methods.
@@ -23,13 +25,21 @@ use Lcobucci\JWT\Token\Builder;
  * request to the GitHub API. It can be an array, object, or any other type that can be
  * @param string method The `method` parameter in the `doRequestGitHub` function specifies the HTTP
  * method to be used for the request. It can be one of the following values:
+ * @param string accept The `accept` parameter in the `doRequestGitHub` function specifies the HTTP
+ * Accept header value to be used for the request. It can be used to specify the media type of the
+ * response expected from the GitHub API. The default value is "application/vnd.github+json".
  *
- * @return stdClass The function `doRequestGitHub` returns an object of type `stdClass` which
+ * @return Response The function `doRequestGitHub` returns an object of type `Response` which
  * represents the response of the GitHub API request.
  */
-function doRequestGitHub(string $token, string $url, mixed $data, string $method): stdClass
+function doRequestGitHub(string $token, string $url, mixed $data, string $method, string $accept = "application/vnd.github+json"): Response
 {
     global $logger;
+
+    if ($token === null || $token === "") {
+        $logger->log("Invalid GitHub token", null);
+        return Response::error("Invalid GitHub token", $url, -1);
+    }
 
     $baseUrl = "https://api.github.com/";
     $url = $baseUrl . $url;
@@ -41,9 +51,9 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
     $headers = array(
         constant("USER_AGENT"),
         "Content-type: application/json",
-        "Accept: application/vnd.github+json",
+        "Accept: {$accept}",
         "X-GitHub-Api-Version: 2022-11-28",
-        "Authorization: Bearer " . $token
+        "Authorization: Bearer {$token}"
     );
 
     $request = new Request();
@@ -68,40 +78,39 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
             $response = $request->delete($url, $headers, $data);
             break;
         default:
-            $response = new \stdCLass();
-            $response->statusCode = -2;
-            $response->error = "Invalid method: {$method}";
+            $response = Response::error("Invalid method: {$method}", $url, -2);
             break;
     }
 
-    if (($response->statusCode <= 0 || $response->statusCode >= 300) && ($response->statusCode !== 404 || $method !== "GET")) {
-        $info = json_encode($response);
-        $logger->log("Error on GitHub request", $info);
-    }
-
-    return $response;
+    return handleResponse($response, $method, $accept);
 }
 
-function getPullRequestDiff(array $metadata): object
+/**
+ * The function `handleResponse` logs and validates the response from the GitHub API request.
+ *
+ * @param Response response The `response` parameter in the `handleResponse` function is an object of
+ * type `Response` that represents the response received from the GitHub API request. It contains
+ * information such as the status code, headers, and body of the response.
+ * @param string method The `method` parameter in the `handleResponse` function is a string that
+ * specifies the HTTP method used in the request. It is used to determine the type of response expected
+ * and validate the response accordingly.
+ * @param string accept The `accept` parameter in the `doRequestGitHub` function specifies the HTTP
+ * Accept header value to be used for the request. It can be used to specify the media type of the
+ * response expected from the GitHub API. The default value is "application/vnd.github+json".
+ *
+ * @return Response The function `handleResponse` returns the same `Response` object that was passed
+ * as a parameter after logging and validating the response.
+ */
+function handleResponse(Response $response, string $method, string $accept): Response
 {
     global $logger;
 
-    $baseUrl = "https://api.github.com/";
-    $url = $baseUrl . $metadata["pullRequestUrl"];
-
-    $headers = array(
-        constant("USER_AGENT"),
-        "Accept: application/vnd.github.v3.diff",
-        "X-GitHub-Api-Version: 2022-11-28",
-        "Authorization: Bearer " . $metadata["token"]
-    );
-
-    $request = new Request();
-    $response = $request->get($url, $headers);
-
-    if ($response->statusCode <= 0 || $response->statusCode >= 300) {
-        $info = json_encode($response);
-        $logger->log("Error on GitHub request", $info);
+    $statusCode = $response->getStatusCode();
+    $info = $response->toJson();
+    if ($statusCode <= 0 || ($statusCode >= 300 && $statusCode !== 404)) {
+        $logger->log("Invalid GitHub response. HTTP Status Code: {$statusCode}", $info);
+    } elseif (empty($response->getBody()) && $method !== "DELETE" && $statusCode !== 204 && $accept !== "application/vnd.github.v3.diff") {
+        $logger->log("Unexpected empty response", $info);
     }
 
     return $response;
@@ -116,7 +125,7 @@ function getPullRequestDiff(array $metadata): object
  */
 function generateAppToken(): string
 {
-    global $gitHubAppId, $gitHubAppPrivateKey;
+    global $gitHubAppId, $gitHubAppPrivateKey, $logger;
 
     $tokenBuilder = new Builder(new JoseEncoder(), ChainedFormatter::default());
     $algorithm = new Sha256();
@@ -162,13 +171,25 @@ function generateInstallationToken(string $installationId, string $repositoryNam
 
     $url = "app/installations/" . $installationId . "/access_tokens";
     $response = doRequestGitHub($gitHubAppToken, $url, $data, "POST");
-
-    if ($response->statusCode >= 300) {
-        die("Invalid GitHub response.\n" . json_encode($response));
-    }
-
-    $json = json_decode($response->body);
+    $json = json_decode($response->getBody());
     return $json->token;
+}
+
+/**
+ * The function `getPullRequestDiff` retrieves the diff of a pull request from the GitHub API using
+ * the provided metadata.
+ *
+ * @param array metadata The `metadata` parameter in the `getPullRequestDiff` function is an array
+ * containing information needed to make a request to the GitHub API. It typically includes the GitHub
+ * token and the URL for the pull request endpoint. This information is used to authenticate the request
+ * and specify which pull request's diff should be retrieved.
+ *
+ * @return Response The function `getPullRequestDiff` returns an object of type `Response` which
+ * represents the response of the GitHub API request to retrieve the diff of a pull request.
+ */
+function getPullRequestDiff(array $metadata): Response
+{
+    return doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET", "application/vnd.github.v3.diff");
 }
 
 /**
@@ -193,35 +214,30 @@ function generateInstallationToken(string $installationId, string $repositoryNam
 function setCheckRunInProgress(array $metadata, string $commitId, string $type): int
 {
     $checkRunBody = array(
-        "name" => "GStraccini Checks: " . ucwords($type),
+        "name" => constant("BOT_CHECK_MESSAGE_PREFIX") . ucwords($type),
         "details_url" => $metadata["dashboardUrl"],
         "head_sha" => $commitId,
         "status" => "in_progress",
         "output" => array(
-            "title" => "Running checks...",
+            "title" => "Checks in progress ⏳",
             "summary" => "GStraccini is checking this " . strtolower($type) . "!",
             "text" => ""
         )
     );
 
     $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"], $checkRunBody, "POST");
-
-    if ($response->statusCode >= 300 || isset($response->body) === false) {
-        die("Invalid GitHub response.\n" . json_encode($response));
-    }
-
-    $result = json_decode($response->body);
+    $result = json_decode($response->getBody());
     return $result->id;
 }
 
 /**
- * The function `setCheckRunFailed` updates a GitHub check run to mark it as failed with specific
+ * The function `setCheckRunFailed` updates a GitHub check run to mark it as failed with a specific
  * details.
  *
  * @param array metadata The `metadata` parameter is an array containing information needed for the
  * GitHub check run. It includes the following keys:
  * @param int checkRunId The `checkRunId` parameter is an integer that represents the unique identifier
- * of a specific check run in GitHub. It is used to identify the check run that you want to update with
+ * of a specific check run in GitHub. It identifies the check run you want to update with
  * the new status and details provided in the function `setCheckRunFailed`.
  * @param string type The `type` parameter in the `setCheckRunFailed` function represents the type of
  * check that was performed. It is used to generate the name and summary for the check run that is
@@ -233,7 +249,7 @@ function setCheckRunInProgress(array $metadata, string $commitId, string $type):
 function setCheckRunFailed(array $metadata, int $checkRunId, string $type, string $details): void
 {
     $checkRunBody = array(
-        "name" => "GStraccini Checks: " . ucwords($type),
+        "name" => constant("BOT_CHECK_MESSAGE_PREFIX") . ucwords($type),
         "details_url" => $metadata["dashboardUrl"],
         "status" => "completed",
         "conclusion" => "failure",
@@ -243,19 +259,41 @@ function setCheckRunFailed(array $metadata, int $checkRunId, string $type, strin
             "text" => $details
         )
     );
+    doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
+}
+/**
+ * Creates a new check run in queued status via the GitHub API.
+ *
+ * @param array  $metadata Metadata array for GitHub check run creation.
+ * @param string $commitId A unique identifier for the commit.
+ * @param string $type     Check type for queued run.
+ *
+ * @return int ID of the created check run.
+ */
+function setCheckRunQueued(array $metadata, string $commitId, string $type): int
+{
+    $checkRunBody = array(
+        "name" => "GStraccini Workflow: ". ucwords($type),
+        "details_url" => $metadata["dashboardUrl"],
+        "head_sha" => $commitId,
+        "status" => "queued",
+        "output" => array(
+            "title" => "Workflow run queued 🕓",
+            "summary" => "Preparing workflow run for " . strtolower($type) . "!",
+            "text" => ""
+        )
+    );
 
-    $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
-
-    if ($response->statusCode >= 300) {
-        die("Invalid GitHub response.\n" . json_encode($response));
-    }
+    $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"], $checkRunBody, "POST");
+    $result = json_decode($response->getBody());
+    return $result->id;
 }
 
 /**
  * The function `setCheckRunSucceeded` updates a GitHub check run to mark it as completed and
  * successful with specific details.
  *
- * @param array metadata The `metadata` parameter is an array containing information required for
+ * @param array metadata The `metadata` parameter is an array containing the information required for
  * setting a check run as succeeded. It includes the following keys:
  * @param int checkRunId The `checkRunId` parameter in the `setCheckRunSucceeded` function is an
  * integer that represents the unique identifier of the check run on GitHub that you want to update.
@@ -268,7 +306,7 @@ function setCheckRunFailed(array $metadata, int $checkRunId, string $type, strin
 function setCheckRunSucceeded(array $metadata, int $checkRunId, string $type, string $details = null): void
 {
     $checkRunBody = array(
-        "name" => "GStraccini Checks: " . ucwords($type),
+        "name" => constant("BOT_CHECK_MESSAGE_PREFIX") . ucwords($type),
         "details_url" => $metadata["dashboardUrl"],
         "status" => "completed",
         "conclusion" => "success",
@@ -279,9 +317,5 @@ function setCheckRunSucceeded(array $metadata, int $checkRunId, string $type, st
         )
     );
 
-    $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
-
-    if ($response->statusCode >= 300) {
-        die("Invalid GitHub response.\n" . json_encode($response));
-    }
+    doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
 }

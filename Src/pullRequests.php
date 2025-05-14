@@ -21,7 +21,8 @@ function handleItem($pullRequest, $isRetry = false)
     $token = generateInstallationToken($pullRequest->InstallationId, $pullRequest->RepositoryName);
     $metadata = createMetadata($token, $pullRequest, $config);
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
-    $pullRequestUpdated = json_decode($pullRequestResponse->body);
+    $pullRequestResponse->ensureSuccessStatus();
+    $pullRequestUpdated = json_decode($pullRequestResponse->getBody());
 
     if ($pullRequestUpdated->state === "closed") {
         removeIssueWipLabel($metadata, $pullRequest);
@@ -31,6 +32,10 @@ function handleItem($pullRequest, $isRetry = false)
 
     if ($pullRequestUpdated->state != "open") {
         echo "PR State: {$pullRequestUpdated->state} ⛔\n";
+        if ($pullRequest->State !== "CLOSED") {
+            updateStateToClosedInTable("pull_requests", $pullRequest->Sequence);
+        }
+
         return;
     }
 
@@ -52,7 +57,7 @@ function handleItem($pullRequest, $isRetry = false)
     }
 
     $collaboratorsResponse = doRequestGitHub($metadata["token"], $metadata["collaboratorsUrl"], null, "GET");
-    $collaboratorsLogins = array_column(json_decode($collaboratorsResponse->body), "login");
+    $collaboratorsLogins = array_column(json_decode($collaboratorsResponse->getBody()), "login");
 
     $botReviewed = false;
     $invokerReviewed = false;
@@ -166,7 +171,7 @@ function checkPullRequestDescription($metadata, $pullRequestUpdated)
     }
 
     if ($bodyLength <= 250) {
-        setCheckRunFailed($metadata, $checkRunId, $type, "Pull request description too short (at least 250 characters long).");
+        setCheckRunFailed($metadata, $checkRunId, $type, "Pull request description too short: {$bodyLength} characters (at least 250 characters long required).");
         return;
     }
 
@@ -189,7 +194,7 @@ function checkPullRequestContent($metadata, $pullRequestUpdated)
     $type = "pull request content";
     $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, $type);
     $diffResponse = getPullRequestDiff($metadata);
-    $diff = $diffResponse->body;
+    $diff = $diffResponse->getBody();
     $scanner = new PullRequestCodeScanner();
     $comments = $scanner->scanDiffForKeywords($diff);
     $report = $scanner->generateReport($comments);
@@ -222,7 +227,7 @@ function removeLabels($metadata, $pullRequestUpdated)
 function checkForOtherPullRequests($metadata, $pullRequest)
 {
     $pullRequestsOpenResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestsUrl"] . "?state=open&sort=created", null, "GET");
-    $pullRequestsOpen = json_decode($pullRequestsOpenResponse->body);
+    $pullRequestsOpen = json_decode($pullRequestsOpenResponse->getBody());
     $any = false;
 
     if (count($pullRequestsOpen) === 0) {
@@ -289,7 +294,7 @@ function commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $commentT
     }
 
     $commentsRequest = doRequestGitHub($metadata["token"], $metadata["commentsUrl"], null, "GET");
-    $comments = json_decode($commentsRequest->body);
+    $comments = json_decode($commentsRequest->getBody());
 
     $found = false;
 
@@ -327,7 +332,7 @@ function removeIssueWipLabel($metadata, $pullRequest)
         $issueNumber = $node->number;
         $issueResponse = doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber, null, "GET");
 
-        $labels = array_column(json_decode($issueResponse->body)->labels, "name");
+        $labels = array_column(json_decode($issueResponse->getBody())->labels, "name");
 
         if (in_array("🛠 WIP", $labels)) {
             $url = $metadata["issuesUrl"] . "/" . $issueNumber . "/labels/🛠%20WIP";
@@ -339,7 +344,7 @@ function removeIssueWipLabel($metadata, $pullRequest)
 function getReviewsLogins($metadata)
 {
     $reviewsResponse = doRequestGitHub($metadata["token"], $metadata["reviewsUrl"], null, "GET");
-    $reviews = json_decode($reviewsResponse->body);
+    $reviews = json_decode($reviewsResponse->getBody());
     return array_map(function ($review) {
         return $review->user->login;
     }, $reviews);
@@ -362,10 +367,10 @@ function getReferencedIssue($metadata, $pullRequest)
     );
 
     $referencedIssueResponse = doRequestGitHub($metadata["token"], "graphql", $referencedIssueQuery, "POST");
-    if ($referencedIssueResponse->statusCode >= 300) {
+    if ($referencedIssueResponse->getStatusCode() >= 300) {
         return null;
     }
-    return json_decode($referencedIssueResponse->body);
+    return json_decode($referencedIssueResponse->getBody());
 }
 
 function addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated)
@@ -383,7 +388,7 @@ function addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated)
     foreach ($referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes as $node) {
         $issueNumber = $node->number;
         $issueResponse = doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber, null, "GET");
-        $issue = json_decode($issueResponse->body);
+        $issue = json_decode($issueResponse->getBody());
 
         $labelsIssue = array_column($issue->labels, "name");
         $position = array_search("🛠 WIP", $labelsIssue);
@@ -452,10 +457,18 @@ function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
         }
         echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Recreate via bot - Sender: " . $pullRequest->Sender . " ☢️\n";
 
+        $prefix = "<!--GStraccini:{$pullRequestUpdated->head->sha}-->\n";
+        $commentExists = findCommentByContent($metadata, $pullRequestUpdated, $prefix);
+
+        if ($commentExists) {
+            echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Already requested to recreate - Sender: " . $pullRequest->Sender . " ⚠️\n";
+            return;
+        }
+
         if ($pullRequest->Sender === "dependabot[bot]") {
-            $comment = array("body" => "@dependabot recreate");
+            $comment = array("body" => "{$prefix}@dependabot recreate");
         } else {
-            $comment = array("body" => "@depfu recreate");
+            $comment = array("body" => "{$prefix}@depfu recreate");
         }
 
         doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
@@ -464,16 +477,77 @@ function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
     }
 }
 
+/**
+ * Checks if a comment containing a specific prefix exists in a pull request.
+ *
+ * This function fetches the first page of comments from a given pull request's
+ * `commentsUrl` and searches through each comment to determine whether any
+ * contains the specified prefix in its body.
+ *
+ * @param array  $metadata            An associative array containing metadata about the pull request.
+ *                                    Must include:
+ *                                    - 'commentsUrl' (string): The GitHub API URL to fetch comments.
+ *                                    - 'token' (string): The GitHub API token used for authentication.
+ * @param bool   $pullRequestUpdated  A boolean indicating if the pull request was updated. *(Currently unused in logic.)*
+ * @param string $prefix              The string prefix to search for within the comment bodies.
+ *
+ * @return bool  Returns `true` if a comment containing the prefix is found, `false` otherwise.
+ *
+ * @throws SomeException              If the `doRequestGitHub` function or response status fails (based on actual implementation).
+ */
+function findCommentByContent($metadata, $pullRequestUpdated, $prefix): bool
+{
+    $url = "{$metadata["commentsUrl"]}?per_page=100&page=1";
+    $commentsResponse = doRequestGitHub($metadata["token"], $url, null, "GET");
+    $commentsResponse->ensureSuccessStatus();
+    $comments = json_decode($commentsResponse->getBody());
+
+    foreach ($comments as $comment) {
+        if (strpos($comment->body, $prefix) !== false) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Updates a pull request branch if it is behind the base branch.
+ *
+ * This function compares the base and head references of a pull request to determine
+ * how many commits the head is behind. If the branch is behind, it sends a request
+ * to update the pull request branch using the GitHub API.
+ *
+ * Diagnostic output is printed to indicate whether an update was needed and performed,
+ * including mergeable state, number of commits behind, and sender info.
+ *
+ * @param array $metadata An associative array containing metadata required to perform the update.
+ *                        Must include:
+ *                        - 'token' (string): The GitHub API token.
+ *                        - 'compareUrl' (string): The API base URL for comparing refs.
+ *                        - 'pullRequestUrl' (string): The API URL for the pull request being updated.
+ * @param object $pullRequestUpdated An object representing the updated pull request data.
+ *                                   Required properties:
+ *                                   - base->ref (string): The base branch name.
+ *                                   - head->ref (string): The head branch name.
+ *                                   - head->sha (string): The SHA of the head commit.
+ *                                   - mergeable_state (string): The pull request's mergeable state.
+ *                                   - user->login (string): The GitHub username of the sender.
+ *
+ * @return void
+ *
+ * @throws SomeException If the `doRequestGitHub` function fails or returns an unexpected response.
+ */
 function updateBranch($metadata, $pullRequestUpdated)
 {
     $baseRef = urlencode($pullRequestUpdated->base->ref);
     $headRef = urlencode($pullRequestUpdated->head->ref);
 
     $compareResponse = doRequestGitHub($metadata["token"], "{$metadata["compareUrl"]}{$baseRef}...{$headRef}", null, "GET");
-    if ($compareResponse->statusCode >= 300) {
+    if ($compareResponse->getStatusCode() >= 300) {
         return;
     }
-    $compare = json_decode($compareResponse->body);
+    $compare = json_decode($compareResponse->getBody());
 
     if ($compare->behind_by === 0) {
         echo "State: {$pullRequestUpdated->mergeable_state} - Commits Behind: 0 - Updating branch: No - Sender: {$pullRequestUpdated->user->login} 👎🏻\n";
@@ -486,29 +560,6 @@ function updateBranch($metadata, $pullRequestUpdated)
     doRequestGitHub($metadata["token"], $url, $body, "PUT");
 }
 
-function main(): void
-{
-    $config = loadConfig();
-    ob_start();
-    $table = "github_pull_requests";
-    global $logger;
-    $processor = new ProcessingManager($table, $logger);
-    $processor->process('handleItem');
-    $result = ob_get_clean();
-    if ($config->debug->all === true || $config->debug->pullRequests === true) {
-        echo $result;
-    }
-}
-
 $healthCheck = new HealthChecks($healthChecksIoPullRequests, GUIDv4::random());
-$healthCheck->setHeaders([constant("USER_AGENT"), "Content-Type: application/json; charset=utf-8"]);
-$healthCheck->start();
-$time = time();
-while (true) {
-    main();
-    $limit = ($time + 55);
-    if ($limit < time()) {
-        break;
-    }
-}
-$healthCheck->end();
+$processor = new ProcessingManager("pull_requests", $healthCheck, $logger);
+$processor->initialize("handleItem", 55);

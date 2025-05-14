@@ -2,105 +2,224 @@
 
 require_once "config/config.php";
 
+use GuiBranco\GStracciniBot\Library\Codacy;
+use GuiBranco\GStracciniBot\Library\CommandHelper;
+use GuiBranco\GStracciniBot\Library\LabelHelper;
 use GuiBranco\GStracciniBot\Library\LabelService;
 use GuiBranco\GStracciniBot\Library\RepositoryManager;
 use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
 
+/**
+ * Converts a string to camel case format.
+ *
+ * @param string $inputString The input string to convert
+ * @return string The camel case formatted string
+ *
+ * @throws InvalidArgumentException If the input is not a string
+ */
+function toCamelCase($inputString)
+{
+    if (!is_string($inputString)) {
+        throw new \InvalidArgumentException('Input must be a string');
+    }
+    if (empty($inputString)) {
+        return '';
+    }
+    return preg_replace_callback(
+        '/(?:^|_| )(\w)/',
+        function ($matches) {
+            return strtoupper($matches[1]);
+        },
+        $inputString
+    );
+}
+
+/**
+ * Handles a GitHub comment to determine whether a bot command should be executed.
+ * Skips bot comments, validates collaborator status, and triggers the matching command logic.
+ *
+ * @param object $comment Comment object with properties such as:
+ *                        - RepositoryOwner
+ *                        - RepositoryName
+ *                        - PullRequestNumber
+ *                        - CommentId
+ *                        - CommentBody
+ *                        - CommentSender
+ *                        - InstallationId
+ *
+ * @return void
+ */
 function handleItem($comment): void
 {
-    echo "https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/issues/{$comment->PullRequestNumber}/#issuecomment-{$comment->CommentId}:\n\n";
+    $repoUrl = "https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/issues/{$comment->PullRequestNumber}/#issuecomment-{$comment->CommentId}";
+    echo "{$repoUrl}:\n\n";
     echo "Comment: {$comment->CommentBody} | Sender: {$comment->CommentSender}\n";
 
     $config = loadConfig();
+    $sender = $comment->CommentSender;
 
-    if ($comment->CommentSender === $config->botName . "[bot]") {
+    if ($sender === $config->botName . "[bot]") {
         return;
     }
+
+    $ignoredBots = ["github-actions[bot]", "AppVeyorBot", "gitauto-ai[bot]"];
+    if (in_array($sender, $ignoredBots, true)) {
+        echo "Skipping this comment! 🚷\n";
+        reactToComment($comment, "-1");
+        return;
+    }
+
+    $metadata = buildMetadata($comment, $config);
+
+    if (!isCollaborator($comment, $metadata)) {
+        if ($sender !== "dependabot[bot]") {
+            reactToComment($comment, "-1");
+            postComment($metadata, $metadata["errorMessages"]["notCollaborator"]);
+        }
+        return;
+    }
+
+    $pullRequestIsOpen = checkIfPullRequestIsOpen($metadata);
+    $executedAtLeastOne = false;
+
+    foreach ($config->commands as $command) {
+        $expression = "@" . $config->botName . " " . $command->command;
+        if (stripos($comment->CommentBody, $expression) === false) {
+            continue;
+        }
+
+        $executedAtLeastOne = true;
+
+        if (!empty($command->requiresPullRequestOpen) && !$pullRequestIsOpen) {
+            reactToComment($comment, "-1");
+            postComment($metadata, $metadata["errorMessages"]["notOpen"]);
+            continue;
+        }
+
+        $method = "execute_" . toCamelCase($command->command);
+        if (is_callable($method)) {
+            $method($config, $metadata, $comment);
+        } else {
+            reactToComment($comment, "-1");
+            postComment(
+                $metadata,
+                sprintf(
+                    "%s Command `%s` not implemented. :construction:",
+                    $metadata['errorMessages']['notImplemented'],
+                    $command->command
+                )
+            );
+        }
+    }
+
+    if (!$executedAtLeastOne) {
+        postComment($metadata, $metadata["errorMessages"]["commandNotFound"]);
+        reactToComment($comment, "-1");
+    }
+}
+
+/**
+ * Sends a reaction emoji to a GitHub comment.
+ *
+ * @param object $comment  The comment object with RepositoryOwner, RepositoryName, and CommentId.
+ * @param string $reaction The GitHub reaction content value (e.g., "+1", "-1", "rocket").
+ *
+ * @return void
+ */
+function reactToComment($comment, string $reaction): void
+{
+    $repoPrefix = "repos/{$comment->RepositoryOwner}/{$comment->RepositoryName}";
+    $reactionUrl = "{$repoPrefix}/issues/comments/{$comment->CommentId}/reactions";
+    $token = generateInstallationToken($comment->InstallationId, $comment->RepositoryName);
+
+    doRequestGitHub($token, $reactionUrl, ["content" => $reaction], "POST");
+}
+
+/**
+ * Posts a comment message back to a GitHub issue or PR.
+ *
+ * @param array  $metadata Metadata array including 'token' and 'commentUrl'.
+ * @param string $body     The comment body to send.
+ *
+ * @return void
+ */
+function postComment(array $metadata, string $body): void
+{
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], ["body" => $body], "POST");
+}
+
+/**
+ * Checks if the comment sender is a collaborator in the repository.
+ *
+ * @param object $comment   The comment object with CommentSender and repo identifiers.
+ * @param array  $metadata  Metadata containing token and repoPrefix.
+ *
+ * @return bool True if the user is a collaborator, false otherwise.
+ */
+function isCollaborator($comment, array $metadata): bool
+{
+    $collaboratorUrl = $metadata["repoPrefix"] . "/collaborators/" . $comment->CommentSender;
+    $response = doRequestGitHub($metadata["token"], $collaboratorUrl, null, "GET");
+    $status   = $response->getStatusCode();
+
+    # 204 → collaborator; 404 → not collaborator; anything else → treat as failure / not collaborator
+    if ($status === 204) {
+        return true;
+    }
+    if ($status === 404) {
+        return false;
+    }
+
+    # Log unexpected status codes and fall back to “not collaborator”
+    error_log("isCollaborator(): unexpected status {$status} for {$collaboratorUrl}");
+    return false;
+}
+
+/**
+ * Builds a metadata array for use across GitHub API calls and command execution.
+ *
+ * @param object $comment The comment object with repository and user details.
+ * @param object $config  The bot config object (e.g., botName, dashboardUrl).
+ *
+ * @return array Associative array with token, URLs, and common error messages.
+ */
+function buildMetadata($comment, $config): array
+{
+    $repoPrefix = "repos/{$comment->RepositoryOwner}/{$comment->RepositoryName}";
+    $prQuery = http_build_query([
+        'owner' => $comment->RepositoryOwner,
+        'repo' => $comment->RepositoryName,
+        'pullRequest' => $comment->PullRequestNumber
+    ]);
+    $token = generateInstallationToken($comment->InstallationId, $comment->RepositoryName);
 
     $prefix = "I'm sorry @" . $comment->CommentSender;
     $suffix = ", I can't do that.";
     $emoji = " :pleading_face:";
 
-    $repoPrefix = "repos/" . $comment->RepositoryOwner . "/" . $comment->RepositoryName;
-    $metadata = array(
-        "token" => generateInstallationToken($comment->InstallationId, $comment->RepositoryName),
+    return [
+        "token" => $token,
         "repoPrefix" => $repoPrefix,
         "repositoryOwner" => $comment->RepositoryOwner,
         "repositoryName" => $comment->RepositoryName,
-        "reactionUrl" => $repoPrefix . "/issues/comments/" . $comment->CommentId . "/reactions",
-        "pullRequestUrl" => $repoPrefix . "/pulls/" . $comment->PullRequestNumber,
-        "issueUrl" => $repoPrefix . "/issues/" . $comment->PullRequestNumber,
-        "commentUrl" => $repoPrefix . "/issues/" . $comment->PullRequestNumber . "/comments",
-        "labelsUrl" => $repoPrefix . "/labels",
-        "errorMessages" => array(
+        "reactionUrl" => "{$repoPrefix}/issues/comments/{$comment->CommentId}/reactions",
+        "pullRequestUrl" => "{$repoPrefix}/pulls/{$comment->PullRequestNumber}",
+        "issueUrl" => "{$repoPrefix}/issues/{$comment->PullRequestNumber}",
+        "commentUrl" => "{$repoPrefix}/issues/{$comment->PullRequestNumber}/comments",
+        "labelsUrl" => "{$repoPrefix}/labels",
+        "checkRunUrl" => "{$repoPrefix}/check-runs",
+        "dashboardUrl" => $config->dashboardUrl . $prQuery,
+        "errorMessages" => [
             "notCollaborator" => $prefix . $suffix . " You aren't a collaborator in this repository." . $emoji,
             "invalidParameter" => $prefix . $suffix . " Invalid parameter." . $emoji,
             "notOpen" => $prefix . $suffix . " This pull request is no longer open. :no_entry:",
             "notAllowed" => $prefix . $suffix . " You aren't allowed to use this bot." . $emoji,
             "commandNotFound" => $prefix . $suffix . " Command not found." . $emoji,
-            "notImplemented" => $prefix . $suffix . " Feature not implemented yet." . $emoji
-        )
-    );
-
-    if (
-        $comment->CommentSender === "github-actions[bot]" ||
-        $comment->CommentSender === "AppVeyorBot" ||
-        $comment->CommentSender === "gitauto-ai[bot]"
-    ) {
-        echo "Skipping this comment! 🚷\n";
-        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
-        return;
-    }
-
-    $collaboratorUrl = $repoPrefix . "/collaborators/" . $comment->CommentSender;
-    $collaboratorResponse = doRequestGitHub($metadata["token"], $collaboratorUrl, null, "GET");
-    if ($collaboratorResponse->statusCode === 404) {
-        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
-        $body = $metadata["errorMessages"]["notCollaborator"];
-        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-        return;
-    }
-
-    $executedAtLeastOne = false;
-
-    $pullRequestIsOpen = checkIfPullRequestIsOpen($metadata);
-
-    foreach ($config->commands as $command) {
-        $commandExpression = "@" . $config->botName . " " . $command->command;
-        if (stripos($comment->CommentBody, $commandExpression) !== false) {
-            $executedAtLeastOne = true;
-            if (isset($command->requiresPullRequestOpen) && $command->requiresPullRequestOpen && !$pullRequestIsOpen) {
-                doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
-                $body = $metadata["errorMessages"]["notOpen"];
-                doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-                continue;
-            }
-            $method = "execute_" . toCamelCase($command->command);
-            $method($config, $metadata, $comment);
-        }
-    }
-
-    if (!$executedAtLeastOne) {
-        $body = $metadata["errorMessages"]["commandNotFound"];
-        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
-    }
-}
-
-function execute_hello($config, $metadata, $comment): void
-{
-    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "heart"), "POST");
-    $body = "Hello @" . $comment->CommentSender . "! :wave:";
-    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-}
-
-function execute_thankYou($config, $metadata, $comment): void
-{
-    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"), "POST");
-    $body = "You're welcome @" . $comment->CommentSender . "! :pray:";
-    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+            "notImplemented" => $prefix . $suffix . " Feature not implemented yet." . $emoji,
+        ]
+    ];
 }
 
 function execute_help($config, $metadata, $comment): void
@@ -197,12 +316,12 @@ function execute_appveyorBuild($config, $metadata, $comment): void
     }
 
     $buildResponse = requestAppVeyor("builds", $data);
-    if ($buildResponse->statusCode !== 200) {
-        $commentBody = "AppVeyor build failed: :x:\r\n\r\n```\r\n" . $buildResponse->body . "\r\n```\r\n";
+    if ($buildResponse->getStatusCode() !== 200) {
+        $commentBody = "AppVeyor build failed: :x:\r\n\r\n```\r\n" . $buildResponse->getBody() . "\r\n```\r\n";
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
         return;
     }
-    $build = json_decode($buildResponse->body);
+    $build = json_decode($buildResponse->getBody());
     $buildId = $build->buildId;
     $version = $build->version;
     $link = "https://ci.appveyor.com/project/" . $project->accountName . "/" . $project->slug . "/builds/" . $buildId;
@@ -228,14 +347,14 @@ function execute_appveyorBumpVersion($config, $metadata, $comment): void
 
     $url = "projects/" . $project->accountName . "/" . $project->slug . "/settings";
     $settingsResponse = requestAppVeyor($url);
-    if ($settingsResponse->statusCode !== 200) {
+    if ($settingsResponse->getStatusCode() !== 200) {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
-        $commentBody = "AppVeyor bump version failed: :x:\r\n\r\n```\r\n" . $settingsResponse->body . "\r\n```\r\n";
+        $commentBody = "AppVeyor bump version failed: :x:\r\n\r\n```\r\n" . $settingsResponse->getBody() . "\r\n```\r\n";
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
         return;
     }
 
-    $settings = json_decode($settingsResponse->body);
+    $settings = json_decode($settingsResponse->getBody());
 
     if (count($matches) === 2 && $matches[1] === "build") {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
@@ -258,12 +377,12 @@ function execute_appveyorRegister($config, $metadata, $comment): void
         "repositoryName" => $comment->RepositoryOwner . "/" . $comment->RepositoryName,
     );
     $registerResponse = requestAppVeyor("projects", $data);
-    if ($registerResponse->statusCode !== 200) {
-        $commentBody = "AppVeyor registration failed: :x:\r\n\r\n```\r\n" . $registerResponse->body . "\r\n```\r\n";
+    if ($registerResponse->getStatusCode() !== 200) {
+        $commentBody = "AppVeyor registration failed: :x:\r\n\r\n```\r\n" . $registerResponse->getBody() . "\r\n```\r\n";
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
         return;
     }
-    $register = json_decode($registerResponse->body);
+    $register = json_decode($registerResponse->getBody());
 
     $link = "https://ci.appveyor.com/project/" .
         $register->accountName . "/" . $register->slug;
@@ -303,11 +422,19 @@ function execute_cargoClippy($config, $metadata, $comment): void
 
 function execute_codacyBypass($config, $metadata, $comment): void
 {
+    global $codacyApiToken, $logger;
+
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
     $codacyUrl = "https://app.codacy.com/gh/{$comment->RepositoryOwner}/{$comment->RepositoryName}/pull-requests/{$comment->PullRequestNumber}/issues";
     $body = "Bypassing the Codacy analysis for this [pull request]({$codacyUrl})! :warning:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-    bypassPullRequestAnalysis($comment->RepositoryOwner, $comment->RepositoryName, $comment->PullRequestNumber);
+    $codacy = new Codacy($codacyApiToken, $logger);
+    $response = $codacy->bypassPullRequestAnalysis($comment->RepositoryOwner, $comment->RepositoryName, $comment->PullRequestNumber);
+    if ($response->isSuccessStatusCode() === false) {
+        $body = "Bypass the Codacy analysis for this [pull request]({$codacyUrl}) failed! ☠️\r\nDo you want to retry?\r\n- [ ] Yes, retry!";
+        $commentResponse = doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+        // TODO: Store comment ID in the table of bot-interactions
+    }
 }
 
 /**
@@ -328,11 +455,14 @@ function execute_codacyBypass($config, $metadata, $comment): void
  */
 function execute_codacyReanalyzeCommit($config, $metadata, $comment): void
 {
+    global $codacyApiToken, $logger;
+
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
     $codacyUrl = "https://app.codacy.com/gh/{$comment->RepositoryOwner}/{$comment->RepositoryName}/commits/{$metadata["headSha"]}/issues";
     $body = "Reanalyzing the commit {$metadata["headSha"]} in [Codacy]({$codacyUrl})! :warning:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-    reanalyzeCommit($comment->RepositoryOwner, $comment->RepositoryName, $metadata["headSha"]);
+    $codacy = new Codacy($codacyApiToken, $logger);
+    $codacy->reanalyzeCommit($comment->RepositoryOwner, $comment->RepositoryName, $metadata["headSha"]);
 }
 
 function execute_copyLabels($config, $metadata, $comment): void
@@ -421,20 +551,20 @@ function execute_copyIssue($config, $metadata, $comment): void
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"), "POST");
 
     $issueUpdatedResponse = doRequestGitHub($metadata["token"], $metadata["issueUrl"], null, "GET");
-    $issueUpdated = json_decode($issueUpdatedResponse->body);
+    $issueUpdated = json_decode($issueUpdatedResponse->getBody());
 
     $targetRepository = $matches[1] . "/" . $matches[2];
     $newIssueUrl = "repos/" . $targetRepository . "/issues";
     $newIssue = array("title" => $issueUpdated->title, "body" => $issueUpdated->body, "labels" => $issueUpdated->labels);
 
     $createdIssueResponse = doRequestGitHub($metadata["token"], $newIssueUrl, $newIssue, "POST");
-    if ($createdIssueResponse->statusCode !== 201) {
-        $body = "Error copying issue: {$createdIssueResponse->statusCode}";
+    if ($createdIssueResponse->getStatusCode() !== 201) {
+        $body = "Error copying issue: {$createdIssueResponse->getStatusCode()}";
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
         return;
     }
 
-    $createdIssue = json_decode($createdIssueResponse->body);
+    $createdIssue = json_decode($createdIssueResponse->getBody());
 
     $number = $createdIssue->number;
 
@@ -450,6 +580,16 @@ function execute_copyIssue($config, $metadata, $comment): void
     $body = "Issue copied from [$source]($sourceUrl)";
     doRequestGitHub($metadata["token"], "repos/{$targetRepository}/issues/{$number}/comments", array("body" => $body), "POST");
 }
+
+/**
+ * Creates labels based on the provided configuration, metadata, and comment.
+ *
+ * @param array $config Configuration settings for label creation.
+ * @param array $metadata Metadata information related to the labels.
+ * @param string $comment The comment from which labels will be created.
+ *
+ * @return void
+ */
 
 function execute_createLabels($config, $metadata, $comment): void
 {
@@ -471,61 +611,23 @@ function execute_createLabels($config, $metadata, $comment): void
     $style = $matches[1] ?? "icons";
     $categories = $matches[2] ?? ["all"];
 
-    $labelService = new LabelService();
-    $labelsToCreate = $labelService->loadFromConfig($categories);
-    if ($labelsToCreate === null || count($labelsToCreate) === 0) {
-        echo "No labels to create\n";
-        $body = array("body" => "No labels to create or update! :no_entry:");
-        doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
-        return;
+    $labelHelper = new LabelHelper();
+    $result = $labelHelper->createLabels($metadata, $style, $categories);
+
+    switch ($result["result"]) {
+        case -1:
+            $message = "No labels to create! :no_entry:";
+            break;
+        case 0:
+            $message = "No labels to create or update! :no_entry:";
+            break;
+        default:
+            $message = "Creating " . $result["totalLabelsToCreate"] . " labels and updating " . $result["totalLabelsToUpdate"] . " labels! :label:";
+            break;
     }
 
-    $repositoryManager = new RepositoryManager();
-    $existingLabels = $repositoryManager->getLabels($metadata["token"], $metadata["repositoryOwner"], $metadata["repositoryName"]);
-
-    $labelsToUpdateObject = array();
-    $labelsToCreate = array_filter($labelsToCreate, function ($label) use ($existingLabels, &$labelsToUpdateObject, $style) {
-        $existingLabel = array_filter($existingLabels, function ($existingLabel) use ($label) {
-            return strtolower($existingLabel["name"]) === strtolower($label["text"]) ||
-                strtolower($existingLabel["name"]) === strtolower($label["textWithIcon"]);
-        });
-
-        $total = count($existingLabel);
-
-        if ($total > 0) {
-            $existingLabel = array_values($existingLabel);
-            $labelToUpdate = [];
-            $labelToUpdate["color"] = substr($label["color"], 1);
-            $labelToUpdate["description"] = $label["description"];
-            $labelToUpdate["new_name"] = $style === "icons" ? $label["textWithIcon"] : $label["text"];
-            $labelsToUpdateObject[$existingLabel[0]["name"]] = $labelToUpdate;
-        }
-
-        return $total === 0;
-    });
-
-    $labelsToCreateObject = array_map(function ($label) use ($style) {
-        $newLabel = [];
-        $newLabel["color"] = substr($label["color"], 1);
-        $newLabel["description"] = $label["description"];
-        $newLabel["name"] = $style === "icons" ? $label["textWithIcon"] : $label["text"];
-        return $newLabel;
-    }, $labelsToCreate);
-
-    $totalLabelsToCreate = count($labelsToCreateObject);
-    $totalLabelsToUpdate = count($labelsToUpdateObject);
-
-    echo "Creating labels {$totalLabelsToCreate} | Updating labels: {$totalLabelsToUpdate} | Style: {$style} | Categories: " . join(",", $categories) . "\n";
-    if ($totalLabelsToCreate === 0 && $totalLabelsToUpdate === 0) {
-        $body = array("body" => "No labels to create or update! :no_entry:");
-        doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
-        return;
-    }
-
-    $body = array("body" => "Creating {$totalLabelsToCreate} labels and updating {$totalLabelsToUpdate} labels! :label:");
+    $body = array("body" => $message);
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
-
-    $labelService->processLabels($labelsToCreateObject, $labelsToUpdateObject, $metadata["token"], $metadata["labelsUrl"]);
 }
 
 function execute_csharpier($config, $metadata, $comment): void
@@ -544,12 +646,39 @@ function execute_fixCsproj($config, $metadata, $comment): void
     callWorkflow($config, $metadata, $comment, "fix-csproj.yml");
 }
 
+function execute_npmCheckUpdates($config, $metadata, $comment): void
+{
+    preg_match(
+        "/@" . $config->botName . "\snpm\scheck\supdates\s((?:(?!\s+@" . $config->botName . ").)*)/",
+        $comment->CommentBody,
+        $matches
+    );
+    $parameters = array();
+
+    if (count($matches) == 2) {
+        $parameters["filter"] = $matches[1];
+    }
+
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
+    $body = "Running the command [npm-check-updates](https://github.com/raineorshine/npm-check-updates) to update dependencies via NPM! :building_construction:";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    callWorkflow($config, $metadata, $comment, "npm-check-updates.yml", $parameters);
+}
+
 function execute_npmDist($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
     $body = "Generating the `dist` files via NPM! :building_construction:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
     callWorkflow($config, $metadata, $comment, "npm-dist.yml");
+}
+
+function execute_npmLintFix($config, $metadata, $comment): void
+{
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
+    $body = "Fixing lint problems via `npm run lint -- --fix`! :building_construction:";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    callWorkflow($config, $metadata, $comment, "npm-lint-fix.yml");
 }
 
 function execute_prettier($config, $metadata, $comment): void
@@ -560,48 +689,33 @@ function execute_prettier($config, $metadata, $comment): void
     callWorkflow($config, $metadata, $comment, "prettier.yml");
 }
 
-function execute_rerunFailedChecks($config, $metadata, $comment): void
+/**
+ * Executes rerun checks based on the provided configuration, metadata, and comment.
+ *
+ * @param array $config Configuration settings for the rerun checks.
+ * @param array $metadata Metadata information related to the rerun checks.
+ * @param string $comment The comment triggering the rerun checks.
+ *
+ * @return void
+ */
+function execute_rerunWorkflows($config, $metadata, $comment): void
 {
-    $filter = function ($checkRun) {
-        return $checkRun->conclusion === "failure" && $checkRun->status === "completed" && $checkRun->app->slug !== "github-actions";
-    };
-    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
-    $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
-    $pullRequestUpdated = json_decode($pullRequestResponse->body);
-    $commitSha1 = $pullRequestUpdated->head->sha;
-    $checkRunsResponse = doRequestGitHub($metadata["token"], $metadata["repoPrefix"] . "/commits/" . $commitSha1 . "/check-runs?status=completed", null, "GET");
-    $checkRuns = json_decode($checkRunsResponse->body);
-    $failedCheckRuns = array_filter($checkRuns->check_runs, $filter);
-    $total = count($failedCheckRuns);
+    $commandHelper = new CommandHelper();
+    $type = $commandHelper->getConclusionFromComment("workflows", $config->botName, $metadata, $comment);
 
-    $body = "Rerunning " . $total . " failed check" . ($total === 1 ? "" : "s") . " on the commit `" . $commitSha1 . "`! :repeat:";
-    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-    if ($total === 0) {
+    if ($type === null) {
         return;
     }
 
-    $checksToRerun = "Rerunning the following checks: \n";
-    foreach ($failedCheckRuns as $failedCheckRun) {
-        $url = $metadata["repoPrefix"] . "/check-runs/" . $failedCheckRun->id . "/rerequest";
-        $response = doRequestGitHub($metadata["token"], $url, null, "POST");
-        $status = $response->statusCode === 201 ? "🔄" : "❌";
-        $checksToRerun .= "- [" . $failedCheckRun->name . "](" . $failedCheckRun->details_url . ") ([" . $failedCheckRun->app->name . " ](" . $failedCheckRun->app->html_url . " )) - " . $status . "\n";
-    }
-
-    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $checksToRerun), "POST");
-}
-
-function execute_rerunFailedWorkflows($config, $metadata, $comment): void
-{
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
-    $pullRequestUpdated = json_decode($pullRequestResponse->body);
+    $pullRequestUpdated = json_decode($pullRequestResponse->getBody());
     $commitSha1 = $pullRequestUpdated->head->sha;
-    $failedWorkflowRunsResponse = doRequestGitHub($metadata["token"], $metadata["repoPrefix"] . "/actions/runs?head_sha=" . $commitSha1 . "&status=failure", null, "GET");
-    $failedWorkflowRuns = json_decode($failedWorkflowRunsResponse->body);
+    $failedWorkflowRunsResponse = doRequestGitHub($metadata["token"], $metadata["repoPrefix"] . "/actions/runs?head_sha=" . $commitSha1 . "&status=" . $type, null, "GET");
+    $failedWorkflowRuns = json_decode($failedWorkflowRunsResponse->getBody());
     $total = $failedWorkflowRuns->total_count;
 
-    $body = "Rerunning " . $total . " failed workflow" . ($total === 1 ? "" : "s") . " on the commit `" . $commitSha1 . "`! :repeat:";
+    $body = "Rerunning " . $total . " " . $type . " workflow" . ($total === 1 ? "" : "s") . " on the commit `" . $commitSha1 . "`! :repeat:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
     if ($total === 0) {
         return;
@@ -611,11 +725,61 @@ function execute_rerunFailedWorkflows($config, $metadata, $comment): void
     foreach ($failedWorkflowRuns->workflow_runs as $failedWorkflowRun) {
         $url = $metadata["repoPrefix"] . "/actions/runs/" . $failedWorkflowRun->id . "/rerun-failed-jobs";
         $response = doRequestGitHub($metadata["token"], $url, null, "POST");
-        $status = $response->statusCode === 201 ? "🔄" : "❌";
+        $status = $response->getStatusCode() === 201 ? "🔄" : "❌";
         $actionsToRerun .= "- [" . $failedWorkflowRun->name . "](" . $failedWorkflowRun->html_url . ") - " . $status . "\n";
     }
 
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $actionsToRerun), "POST");
+}
+
+/**
+ * Handles a GitHub comment command to revert a specific commit using a GitHub Actions workflow.
+ *
+ * This function parses a comment for a command in the format `@botName revert commit <SHA1>`.
+ * If a valid commit SHA1 is found, it triggers a GitHub Actions workflow named `revert-commit.yml`
+ * with the SHA1 as a parameter. It also reacts to the comment and posts feedback messages.
+ *
+ * If no valid SHA1 is found, an error message is posted instead.
+ *
+ * @param object $config   Configuration object containing the bot name and other settings.
+ * @param array  $metadata Associative array with keys:
+ *                         - 'token' (string): GitHub API token.
+ *                         - 'commentUrl' (string): URL to post comments.
+ *                         - 'reactionUrl' (string): URL to post reactions.
+ * @param object $comment  Comment object with at least the property:
+ *                         - CommentBody (string): The text body of the GitHub comment.
+ *
+ * @return void
+ */
+function execute_revertCommit($config, $metadata, $comment): void
+{
+    preg_match(
+        "/@" . $config->botName . "\srevert\scommit\s([a-fA-F0-9]{7,40})/",
+        $comment->CommentBody,
+        $matches
+    );
+    $parameters = array();
+
+    if (count($matches) === 2) {
+        $parameters["sha1"] = $matches[1];
+        $commitUrl = $metadata["repoPrefix"] . "/commits/" . $matches[1];
+        $response = doRequestGitHub($metadata["token"], $commitUrl, null, "GET");
+        if ($response->getStatusCode() !== 200) {
+            doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "❌ Invalid commit SHA: Commit not found in repository"), "POST");
+            return;
+        }
+    } else {
+        $errorMessage = "❌ Could not extract a valid commit SHA1 from comment. Expected format: @{$config->botName} revert commit <sha1>";
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $errorMessage), "POST");
+        return;
+    }
+
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
+
+    $body = "Running the `git revert` operation for commit `{$matches[1]}`! :rewind:";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+
+    callWorkflow($config, $metadata, $comment, "revert-commit.yml", $parameters);
 }
 
 function execute_review($config, $metadata, $comment): void
@@ -623,10 +787,10 @@ function execute_review($config, $metadata, $comment): void
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"), "POST");
 
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
-    $pullRequestUpdated = json_decode($pullRequestResponse->body);
+    $pullRequestUpdated = json_decode($pullRequestResponse->getBody());
 
     $commitsResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"] . "/commits?per_page=100", null, "GET");
-    $commits = json_decode($commitsResponse->body);
+    $commits = json_decode($commitsResponse->getBody());
 
     $pullRequest = new \stdClass();
     $pullRequest->DeliveryId = $comment->DeliveryIdText;
@@ -661,10 +825,10 @@ function execute_review($config, $metadata, $comment): void
         $commit->HeadCommitAuthorName = $commitItem->commit->author->name;
         $commit->HeadCommitAuthorEmail = $commitItem->commit->author->email;
         $commit->HeadCommitCommitterName = $commitItem->commit->committer->name;
-        $commit->HeadCommitCommiterEmail = $commitItem->commit->committer->email;
+        $commit->HeadCommitCommitterEmail = $commitItem->commit->committer->email;
         $commit->InstallationId = $comment->InstallationId;
 
-        $commitsList .= "SHA: `{$commitItem->sha}`\n";
+        $commitsList .= "SHA: [{$commitItem->sha}](https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/pull/{$comment->PullRequestNumber}/commits/{$commitItem->sha})\n";
 
         upsertPush($commit);
     }
@@ -672,14 +836,6 @@ function execute_review($config, $metadata, $comment): void
     $body .= "Mergeable state: {$pullRequestUpdated->mergeable_state}\n\n";
     $body .= "Commits included:\n {$commitsList}";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-}
-
-function execute_track($config, $metadata, $comment): void
-{
-    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
-    $body = array("body" => "Tracking this pull request! :repeat:");
-    doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
-    callWorkflow($config, $metadata, $comment, "track.yml");
 }
 
 function execute_updateSnapshot($config, $metadata, $comment): void
@@ -691,11 +847,16 @@ function execute_updateSnapshot($config, $metadata, $comment): void
 
 function callWorkflow($config, $metadata, $comment, $workflow, $extendedParameters = null): void
 {
+    global $logger;
+
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
-    $pullRequest = json_decode($pullRequestResponse->body);
+    $pullRequest = json_decode($pullRequestResponse->getBody());
 
     $tokenBot = generateInstallationToken($config->botRepositoryInstallationId, $config->botRepository);
-    $url = "repos/" . $config->botRepository . "/actions/workflows/" . $workflow . "/dispatches";
+    $url = "repos/" . $config->botWorkflowsRepository . "/actions/workflows/" . $workflow . "/dispatches";
+
+    $checkRunId = setCheckRunQueued($metadata, $pullRequest->head->sha, $workflow);
+
     $data = array(
         "ref" => "main",
         "inputs" => array(
@@ -703,33 +864,40 @@ function callWorkflow($config, $metadata, $comment, $workflow, $extendedParamete
             "repository" => $comment->RepositoryName,
             "branch" => $pullRequest->head->ref,
             "pull_request" => $comment->PullRequestNumber,
-            "installationId" => $comment->InstallationId
+            "installationId" => $comment->InstallationId,
+            "checkRunId" => (string) $checkRunId
         )
     );
     if ($extendedParameters !== null) {
         $data["inputs"] = array_merge($data["inputs"], $extendedParameters);
     }
-    doRequestGitHub($tokenBot, $url, $data, "POST");
+
+    $response = doRequestGitHub($tokenBot, $url, $data, "POST");
+    if ($response->getStatusCode() !== 204) {
+        $body = "Workflow {$workflow} failed: :x:\r\n\r\n```\r\n" . $response->getBody() . "\r\n```\r\n";
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+        setCheckRunFailed($metadata, $checkRunId, $workflow, "Workflow failed to start: " . $response->getBody());
+    }
 }
 
 function checkIfPullRequestIsOpen(&$metadata): bool
 {
     $issueResponse = doRequestGitHub($metadata["token"], $metadata["issueUrl"], null, "GET");
-    if ($issueResponse->statusCode !== 200) {
+    if ($issueResponse->getStatusCode() !== 200) {
         return false;
     }
 
-    $issue = json_decode($issueResponse->body);
+    $issue = json_decode($issueResponse->getBody());
     if (isset($issue->pull_request) === false || isset($issue->state) === false || $issue->state === "closed") {
         return false;
     }
 
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
-    if ($pullRequestResponse->statusCode !== 200) {
+    if ($pullRequestResponse->getStatusCode() !== 200) {
         return false;
     }
 
-    $pullRequest = json_decode($pullRequestResponse->body);
+    $pullRequest = json_decode($pullRequestResponse->getBody());
 
     $metadata["headRef"] = $pullRequest->head->ref;
     $metadata["headSha"] = $pullRequest->head->sha;
@@ -763,8 +931,8 @@ function updateNextBuildNumber($metadata, $project, $nextBuildNumber): void
     $url = "projects/" . $project->accountName . "/" . $project->slug . "/settings/build-number";
     $updateResponse = requestAppVeyor($url, $data, true);
 
-    if ($updateResponse->statusCode !== 204) {
-        $commentBody = "AppVeyor update next build number failed: :x:\r\n\r\n```\r\n" . $updateResponse->body . "\r\n```\r\n";
+    if ($updateResponse->getStatusCode() !== 204) {
+        $commentBody = "AppVeyor update next build number failed: :x:\r\n\r\n```\r\n" . $updateResponse->getBody() . "\r\n```\r\n";
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
         return;
     }
@@ -773,29 +941,6 @@ function updateNextBuildNumber($metadata, $project, $nextBuildNumber): void
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
 }
 
-function main(): void
-{
-    $config = loadConfig();
-    ob_start();
-    $table = "github_comments";
-    global $logger;
-    $processor = new ProcessingManager($table, $logger);
-    $processor->process('handleItem');
-    $result = ob_get_clean();
-    if ($config->debug->all === true || $config->debug->comments === true) {
-        echo $result;
-    }
-}
-
 $healthCheck = new HealthChecks($healthChecksIoComments, GUIDv4::random());
-$healthCheck->setHeaders([constant("USER_AGENT"), "Content-Type: application/json; charset=utf-8"]);
-$healthCheck->start();
-$time = time();
-while (true) {
-    main();
-    $limit = ($time + 55);
-    if ($limit < time()) {
-        break;
-    }
-}
-$healthCheck->end();
+$processor = new ProcessingManager("comments", $healthCheck, $logger);
+$processor->initialize("handleItem", 55);

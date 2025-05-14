@@ -1,17 +1,5 @@
 [
     {
-        "command": "help",
-        "description": "Shows the help message with available commands."
-    },
-    {
-        "command": "hello",
-        "description": "Says hello to the invoker."
-    },
-    {
-        "command": "thank you",
-        "description": "Replies with you are welcome message to the invoker."
-    },
-    {
         "command": "add project",
         "description": "Adds a project to the solution file (only for **.NET** projects).",
         "parameters": [
@@ -41,7 +29,7 @@
         "parameters": [
             {
                 "parameter": "component",
-                "description": "The semver component to bump (major, minor or build).",
+                "description": "The semver component to bump (major, minor, or build).",
                 "required": true
             }
         ],
@@ -59,7 +47,7 @@
     },
     {
         "command": "bump version",
-        "description": "Bumps the [.NET version](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core) in .csproj files.",
+        "description": "Bumps the [.NET version](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core) in `.csproj` files.",
         "parameters": [
             {
                 "parameter": "version",
@@ -82,7 +70,7 @@
     },
     {
         "command": "change runner",
-        "description": "Changes the [GitHub action runner](https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources) in a workflow file (.yml).",
+        "description": "Changes the [GitHub action runner](https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners) in a workflow file (.yml).",
         "parameters": [
             {
                 "parameter": "runner",
@@ -114,19 +102,13 @@
         "requiresPullRequestOpen": true
     },
     {
-        "command": "copy labels",
-        "description": "Copy the labels from another repository.",
-        "parameters": [
-            {
-                "parameter": "repository",
-                "description": "The owner/repository to copy the labels from.",
-                "required": true
-            }
-        ]
+        "command": "codeclimate bypass",
+        "description": "Bypasses the [CodeClimate](https://codeclimate.com) analysis for the target commit and/or pull request.",
+        "requiresPullRequestOpen": true
     },
     {
         "command": "copy issue",
-        "description": "Copy an issue from one repository to another",
+        "description": "Copies an issue from one repository to another.",
         "parameters": [
             {
                 "parameter": "repository",
@@ -137,8 +119,19 @@
         "dev": true
     },
     {
+        "command": "copy labels",
+        "description": "Copies the labels from another repository.",
+        "parameters": [
+            {
+                "parameter": "repository",
+                "description": "The owner/repository to copy the labels from.",
+                "required": true
+            }
+        ]
+    },
+    {
         "command": "create labels",
-        "description": "Create the default labels in the repository.",
+        "description": "Creates the default labels in the repository.",
         "parameters": [
             {
                 "parameter": "style",
@@ -147,7 +140,7 @@
             },
             {
                 "parameter": "categories",
-                "description": "The labels categories (comma separated).",
+                "description": "The labels categories (comma-separated).",
                 "required": false
             }
         ]
@@ -164,8 +157,29 @@
         "requiresPullRequestOpen": true
     },
     {
+        "command": "help",
+        "description": "Shows the help message with available commands."
+    },
+    {
+        "command": "npm check updates",
+        "description": "Updates dependencies in `package.json` and `package-lock.json` using [npm-check-updates](https://github.com/raineorshine/npm-check-updates) (only for **NPM** projects).",
+        "parameters": [
+            {
+                "parameter": "filter",
+                "description": "The packages to filter.",
+                "required": false
+            }
+        ],
+        "requiresPullRequestOpen": true
+    },
+    {
         "command": "npm dist",
-        "description": "Generate or regenerate the `dist` files. It will run the following NPM command: `npm run package`.",
+        "description": "Generates or regenerates the `dist` files by running `npm run package` (only for **NPM** projects).",
+        "requiresPullRequestOpen": true
+    },
+    {
+        "command": "npm lint fix",
+        "description": "Fixes linting issues by running `npm run lint -- --fix` (only for **NPM** projects).",
         "requiresPullRequestOpen": true
     },
     {
@@ -174,29 +188,49 @@
         "requiresPullRequestOpen": true
     },
     {
-        "command": "rerun failed checks",
-        "description": "This option reruns the failed checks in the target pull request.",
-        "requiresPullRequestOpen": true
+        "command": "rerun checks",
+        "description": "Reruns the checks in the target pull request with a matching conclusion.",
+        "requiresPullRequestOpen": true,
+        "parameters": [
+            {
+                "parameter": "conclusion",
+                "description": "The conclusion of the checks to rerun (success, failure, neutral, cancelled, timed_out, or action_required).",
+                "required": false
+            }
+        ]
     },
     {
-        "command": "rerun failed workflows",
-        "description": "This option reruns the failed workflows (action) in the target pull request. It is only available for GitHub Actions!",
+        "command": "rerun workflows",
+        "description": "Reruns the workflows (actions) in the target pull request. Only applicable for GitHub Actions.",
+        "requiresPullRequestOpen": true,
+        "parameters": [
+            {
+                "parameter": "conclusion",
+                "description": "The conclusion of the checks to rerun (success, failure, neutral, cancelled, timed_out, or action_required).",
+                "required": false
+            }
+        ]
+    },
+    {
+        "command": "revert commit",
+        "description": "Reverts a commit using its SHA1 in the repository. The revert is committed directly into the PR branch.",
+        "parameters": [
+            {
+                "parameter": "sha1",
+                "description": "The SHA1 of the commit to revert.",
+                "required": true
+            }
+        ],
         "requiresPullRequestOpen": true
     },
     {
         "command": "review",
-        "description": "Enable review for the target pull request. This is useful when the PR submitter wasn't on the watch list, the webhook was not captured, or some failed scenario occurred.",
-        "requiresPullRequestOpen": true
-    },    
-    {
-        "command": "track",
-        "description": "Tracks the specified pull request. Queue a build, raise a **[dependabot](https://github.com/dependabot) recreate** comment to resolve conflicts, and synchronize merge branches.",
-        "dev": true,
+        "description": "Enables review for the target pull request. Useful when the PR submitter wasn't on the watch list or a webhook failed.",
         "requiresPullRequestOpen": true
     },
     {
         "command": "update snapshot",
-        "description": "Update test snapshots (`npm test -- -u`) (only for **Node.js** projects).",
+        "description": "Updates test snapshots by running `npm test -- -u` (only for **Node.js** projects).",
         "requiresPullRequestOpen": true
     }
 ]
