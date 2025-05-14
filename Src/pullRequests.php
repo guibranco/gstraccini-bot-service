@@ -7,6 +7,7 @@ use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\GStracciniBot\Library\PullRequestCodeScanner;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
+use GuiBranco\GStracciniBot\Library\DependencyAutoLabeler;
 
 define("ISSUES", "/issues/");
 define("PULLS", "/pulls/");
@@ -50,6 +51,7 @@ function handleItem($pullRequest, $isRetry = false)
     enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config);
     addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated);
     updateBranch($metadata, $pullRequestUpdated);
+    autoLabelDependency($metadata);
 
     $labelsToAdd = [];
     if (strtolower($pullRequestUpdated->user->type) === "bot") {
@@ -550,3 +552,16 @@ function updateBranch($metadata, $pullRequestUpdated)
 $healthCheck = new HealthChecks($healthChecksIoPullRequests, GUIDv4::random());
 $processor = new ProcessingManager("pull_requests", $healthCheck, $logger);
 $processor->initialize("handleItem", 55);
+
+/**
+ * Auto-labels pull requests based on dependency file changes
+ *
+ * @param array $metadata The metadata for the pull request
+ *
+ * @return void
+ */
+function autoLabelDependency($metadata)
+{
+    $autoLabeler = new DependencyAutoLabeler();
+    $autoLabeler->autoLabel($metadata);
+}
