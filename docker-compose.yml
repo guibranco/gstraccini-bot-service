@@ -54,7 +54,7 @@ services:
       retries: 5
       start_period: 10s
 
-  mailhog:
+  smtp:
     container_name: smtp
     image: mailhog/mailhog:latest
     ports:
