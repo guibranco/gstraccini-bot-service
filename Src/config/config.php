@@ -124,6 +124,5 @@ function loadConfig(): stdClass
 
 require_once "lib/database.php";
 require_once "lib/appveyor.php";
-require_once "lib/codacy.php";
 require_once "lib/github.php";
 require_once "lib/queue.php";
