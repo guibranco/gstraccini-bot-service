@@ -202,7 +202,7 @@ function checkPullRequestContent($metadata, $pullRequestUpdated)
 
 /**
  * Main function to handle breaking changes in pull requests
- * 
+ *
  * @param array $metadata The metadata containing repository information
  * @param object $pullRequestUpdated The updated pull request object
  */
@@ -212,19 +212,19 @@ function handleBreakingChanges($metadata, $pullRequestUpdated)
     if (!hasBreakingChangesCheckbox($pullRequestUpdated->body)) {
         return;
     }
-    
+
     // Add the breaking-changes label
     addBreakingChangesLabel($metadata);
-    
+
     $config = $metadata['config'];
-    
+
     // Handle CI system based on configuration
     handleCIForBreakingChanges($metadata, $config);
 }
 
 /**
  * Checks if the PR description has a selected breaking changes checkbox
- * 
+ *
  * @param string $prBody The pull request description
  * @return bool True if breaking changes checkbox is selected
  */
@@ -235,7 +235,7 @@ function hasBreakingChangesCheckbox($prBody)
 
 /**
  * Adds the breaking-changes label to the pull request
- * 
+ *
  * @param array $metadata The metadata containing repository information
  */
 function addBreakingChangesLabel($metadata)
@@ -246,7 +246,7 @@ function addBreakingChangesLabel($metadata)
 
 /**
  * Handles CI-specific actions for breaking changes
- * 
+ *
  * @param array $metadata The metadata containing repository information
  * @param object $config The repository configuration
  */
@@ -257,7 +257,7 @@ function handleCIForBreakingChanges($metadata, $config)
         handleAppVeyorBreakingChanges($metadata, $config);
         return;
     }
-    
+
     // Handle GitHub Actions with GitVersion
     if (isset($config->ci) && $config->ci === 'github-actions') {
         handleGitHubActionsBreakingChanges($metadata, $config);
@@ -266,7 +266,7 @@ function handleCIForBreakingChanges($metadata, $config)
 
 /**
  * Handles AppVeyor-specific actions for breaking changes
- * 
+ *
  * @param array $metadata The metadata containing repository information
  * @param object $config The repository configuration
  */
@@ -274,7 +274,7 @@ function handleAppVeyorBreakingChanges($metadata, $config)
 {
     $comment = array("body" => "This pull request introduces breaking changes. Do you want to bump the major version in `appveyor.yml` and reset the build number?");
     doRequestGitHub($metadata["token"], $metadata["commentsUrl"], $comment, "POST");
-    
+
     if (isset($config->appveyor_project_slug)) {
         resetAppVeyorBuildNumber($config->appveyor_project_slug);
     }
@@ -282,7 +282,7 @@ function handleAppVeyorBreakingChanges($metadata, $config)
 
 /**
  * Handles GitHub Actions with GitVersion for breaking changes
- * 
+ *
  * @param array $metadata The metadata containing repository information
  * @param object $config The repository configuration
  */
@@ -291,7 +291,7 @@ function handleGitHubActionsBreakingChanges($metadata, $config)
     if (!isset($config->gitversion) || $config->gitversion !== true) {
         return;
     }
-    
+
     if (!hasSemverMajorCommit($metadata)) {
         promptForMajorVersionBump($metadata);
     }
@@ -299,7 +299,7 @@ function handleGitHubActionsBreakingChanges($metadata, $config)
 
 /**
  * Checks if any commit in the PR has a semver major marker
- * 
+ *
  * @param array $metadata The metadata containing repository information
  * @return bool True if a commit with semver major marker is found
  */
@@ -307,20 +307,20 @@ function hasSemverMajorCommit($metadata)
 {
     $commitsResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"] . "/commits", null, "GET");
     $commits = json_decode($commitsResponse->getBody());
-    
+
     foreach ($commits as $commit) {
-        if (strpos($commit->commit->message, 'semver: major') !== false || 
+        if (strpos($commit->commit->message, 'semver: major') !== false ||
             strpos($commit->commit->message, 'semver: breaking') !== false) {
             return true;
         }
     }
-    
+
     return false;
 }
 
 /**
  * Adds a comment prompting for major version bump
- * 
+ *
  * @param array $metadata The metadata containing repository information
  */
 function promptForMajorVersionBump($metadata)
