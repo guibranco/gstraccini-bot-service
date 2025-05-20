@@ -112,7 +112,7 @@ function upsertPullRequestMergeable($prUpsert): void
     $mysqli = connectToDatabase();
     $sql = "UPDATE github_pull_requests SET Mergeable = ?, MergeableState = ?, Merged = ? WHERE Sequence = ?";
     $stmt = $mysqli->prepare($sql);
-    
+
     $mergeable = $prUpsert->Mergeable;
     $mergableState = $prUpsert->MergeableState;
     $merged = $prUpsert->Merged;
