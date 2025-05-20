@@ -120,7 +120,13 @@ function upsertPullRequestMergeable($prUpsert): void
     $stmt->bind_param("isii", $mergeable, $mergeableState, $merged, $sequence);
 
     if (!$stmt->execute()) {
-        die("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+        $errorMessage = sprintf(
+            'Database execute failed: (%d) %s',
+            $stmt->errno,
+            $stmt->error
+        );
+        error_log($errorMessage);
+        throw new \RuntimeException($errorMessage);
     }
 }
 
