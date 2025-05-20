@@ -114,7 +114,7 @@ function upsertPullRequestMergeable($prUpsert): void
     $stmt = $mysqli->prepare($sql);
 
     $mergeable = $prUpsert->Mergeable;
-    $mergableState = $prUpsert->MergeableState;
+    $mergeableState = $prUpsert->MergeableState;
     $merged = $prUpsert->Merged;
     $sequence = $prUpsert->Sequence;
     $stmt->bind_param("isii", $mergeable, $mergeableState, $merged, $sequence);
