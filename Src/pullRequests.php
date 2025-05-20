@@ -247,6 +247,17 @@ function checkForOtherPullRequests($metadata, $pullRequest)
     }
 }
 
+function updateMergeable($pullRequest, $pullRequestUpdated): void
+{
+    $prUpsert = new \stdClass();
+    $prUpsert->Id = $pullRequestPending->id;
+    $prUpsert->Mergeable = $pullRequestUpdated->mergeable;
+    $prUpsert->MergeableState = $pullRequestUpdated->mergeable_state;
+    $prUpsert->Merged = $pullRequestUpdated->merged;
+    echo "Updating mergeable data of #{$pullRequestPending->number} - Sender: " . $pullRequest->Sender . " 🔄\n";
+    upsertPulLRequestMergeable($prUpsert);
+}
+
 function triggerReview($pullRequest, $pullRequestPending)
 {
     $prUpsert = new \stdClass();
