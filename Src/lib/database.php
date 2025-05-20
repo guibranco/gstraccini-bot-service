@@ -115,7 +115,7 @@ function upsertPulLRequestMergeable($prUpsert): void
     $stmt->bind_param("isii", $mergeable, $mergeableState, $merged, $sequence);
     $mergeable = $prUpsert->Mergeable;
     $mergableState = $prUpsert->MergeableState;
-    $merged = $prUpsert->Merged
+    $merged = $prUpsert->Merged;
     $sequence = $prUpsert->Sequence;
 
     if (!$stmt->execute()) {
