@@ -257,7 +257,7 @@ function updateMergeable($pullRequest, $pullRequestUpdated): void
     $prUpsert->MergeableState = $pullRequestUpdated->mergeable_state;
     $prUpsert->Merged = $pullRequestUpdated->merged;
     echo "Updating mergeable data of #{$pullRequestUpdated->number} - Sender: " . $pullRequest->Sender . " 🔄\n";
-    upsertPulLRequestMergeable($prUpsert);
+    upsertPullRequestMergeable($prUpsert);
 }
 
 function triggerReview($pullRequest, $pullRequestPending)
