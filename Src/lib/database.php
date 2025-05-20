@@ -107,6 +107,22 @@ function updateStateToClosedInTable($table, $sequence): bool
     return $succeeded;
 }
 
+function upsertPulLRequestMergeable($prUpsert): void
+{
+    $mysqli = connectToDatabase();
+    $sql = "UPDATE github_pull_requests SET Mergeable = ?, MergeableState = ?, Merged = ? WHERE Sequence = ?";
+    $stmt = $mysqli->prepare($sql);
+    $stmt->bind_param("isii", $mergeable, $mergeableState, $merged, $sequence);
+    $mergeable = $prUpsert->Mergeable;
+    $mergableState = $prUpsert->MergeableState;
+    $merged = $prUpsert->Merged
+    $sequence = $prUpsert->Sequence;
+
+    if (!$stmt->execute()) {
+        die("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+    }
+}
+
 function upsertPullRequest($pullRequest)
 {
     $mysqli = connectToDatabase();
