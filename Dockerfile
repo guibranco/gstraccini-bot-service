@@ -30,6 +30,7 @@ RUN apt-get update \
     && curl -sSL "https://go.dev/dl/go1.20.5.linux-amd64.tar.gz" -o go.tar.gz \
     && curl -sSL "https://go.dev/dl/go1.20.5.linux-amd64.tar.gz.sha256" -o go.tar.gz.sha256 \
     && echo "$(cat go.tar.gz.sha256) go.tar.gz" | sha256sum -c - \
+
     && tar -C /usr/local -xzf go.tar.gz \
     && rm go.tar.gz \
     # Install mhsendmail (for email testing)
