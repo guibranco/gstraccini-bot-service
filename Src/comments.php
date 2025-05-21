@@ -9,6 +9,7 @@ use GuiBranco\GStracciniBot\Library\LabelService;
 use GuiBranco\GStracciniBot\Library\RepositoryManager;
 use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\Pancake\GUIDv4;
+use GuiBranco\Pancake\Request;
 use GuiBranco\Pancake\HealthChecks;
 
 /**
