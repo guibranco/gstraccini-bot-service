@@ -20,6 +20,9 @@ function handleItem($pullRequest, $isRetry = false)
     $config = loadConfig();
     $token = generateInstallationToken($pullRequest->InstallationId, $pullRequest->RepositoryName);
     $metadata = createMetadata($token, $pullRequest, $config);
+    // Pass config through metadata for later use
+    $metadata['config'] = $config;
+
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     $pullRequestResponse->ensureSuccessStatus();
     $pullRequestUpdated = json_decode($pullRequestResponse->getBody());
@@ -121,6 +124,10 @@ function handleItem($pullRequest, $isRetry = false)
 
     checkPullRequestDescription($metadata, $pullRequestUpdated);
     checkPullRequestContent($metadata, $pullRequestUpdated);
+
+    // New breaking changes handling
+    handleBreakingChanges($metadata, $pullRequestUpdated);
+
     setCheckRunSucceeded($metadata, $checkRunId, "pull request");
 }
 
@@ -149,7 +156,7 @@ function createMetadata($token, $pullRequest, $config)
         "issuesUrl" => $repoPrefix . "/issues",
         "labelsUrl" => $repoPrefix . ISSUES . $pullRequest->Number . "/labels",
         "compareUrl" => $repoPrefix . "/compare/",
-        "botNameMarkdown" => "[" . $config->botName . "\[bot\]](https://github.com/apps/" . $config->botName . ")",
+        "botNameMarkdown" => "[" . $config->botName . "[bot]](https://github.com/apps/" . $config->botName . ")",
         "dashboardUrl" => $config->dashboardUrl . $prQueryString
     );
 }
@@ -195,6 +202,144 @@ function checkPullRequestContent($metadata, $pullRequestUpdated)
     setCheckRunSucceeded($metadata, $checkRunId, $type, $report);
 }
 
+/**
+ * Main function to handle breaking changes in pull requests
+ *
+ * @param array $metadata The metadata containing repository information
+ * @param object $pullRequestUpdated The updated pull request object
+ */
+function handleBreakingChanges($metadata, $pullRequestUpdated)
+{
+    // Only proceed if breaking changes checkbox is selected
+    if (!hasBreakingChangesCheckbox($pullRequestUpdated->body)) {
+        return;
+    }
+
+    // Add the breaking-changes label
+    addBreakingChangesLabel($metadata);
+
+    $config = $metadata['config'];
+
+    // Handle CI system based on configuration
+    handleCIForBreakingChanges($metadata, $config);
+}
+
+/**
+ * Checks if the PR description has a selected breaking changes checkbox
+ *
+ * @param string $prBody The pull request description
+ * @return bool True if breaking changes checkbox is selected
+ */
+function hasBreakingChangesCheckbox($prBody)
+{
+    return preg_match('/- \[x\]\s*Yes\s*-\s*breaking changes/i', $prBody) === 1;
+}
+
+/**
+ * Adds the breaking-changes label to the pull request
+ *
+ * @param array $metadata The metadata containing repository information
+ */
+function addBreakingChangesLabel($metadata)
+{
+    $body = array("labels" => array("breaking-changes"));
+    doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $body, "POST");
+}
+
+/**
+ * Handles CI-specific actions for breaking changes
+ *
+ * @param array $metadata The metadata containing repository information
+ * @param object $config The repository configuration
+ */
+function handleCIForBreakingChanges($metadata, $config)
+{
+    // Handle AppVeyor CI
+    if (isset($config->ci) && $config->ci === 'appveyor') {
+        handleAppVeyorBreakingChanges($metadata, $config);
+        return;
+    }
+
+    // Handle GitHub Actions with GitVersion
+    if (isset($config->ci) && $config->ci === 'github-actions') {
+        handleGitHubActionsBreakingChanges($metadata, $config);
+    }
+}
+
+/**
+ * Handles AppVeyor-specific actions for breaking changes
+ *
+ * @param array $metadata The metadata containing repository information
+ * @param object $config The repository configuration
+ */
+function handleAppVeyorBreakingChanges($metadata, $config)
+{
+    $comment = array("body" => "This pull request introduces breaking changes. Do you want to bump the major version in `appveyor.yml` and reset the build number?");
+    doRequestGitHub($metadata["token"], $metadata["commentsUrl"], $comment, "POST");
+
+    if (isset($config->appveyor_project_slug)) {
+        resetAppVeyorBuildNumber($config->appveyor_project_slug);
+    }
+}
+
+/**
+ * Handles GitHub Actions with GitVersion for breaking changes
+ *
+ * @param array $metadata The metadata containing repository information
+ * @param object $config The repository configuration
+ */
+function handleGitHubActionsBreakingChanges($metadata, $config)
+{
+    if (!isset($config->gitversion) || $config->gitversion !== true) {
+        return;
+    }
+
+    if (!hasSemverMajorCommit($metadata)) {
+        promptForMajorVersionBump($metadata);
+    }
+}
+
+/**
+ * Checks if any commit in the PR has a semver major marker
+ *
+ * @param array $metadata The metadata containing repository information
+ * @return bool True if a commit with semver major marker is found
+ */
+function hasSemverMajorCommit($metadata)
+{
+    $commitsResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"] . "/commits", null, "GET");
+    $commits = json_decode($commitsResponse->getBody());
+
+    foreach ($commits as $commit) {
+        if (strpos($commit->commit->message, 'semver: major') !== false ||
+            strpos($commit->commit->message, 'semver: breaking') !== false) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Adds a comment prompting for major version bump
+ *
+ * @param array $metadata The metadata containing repository information
+ */
+function promptForMajorVersionBump($metadata)
+{
+    $comment = array("body" => "Breaking changes detected. Do you want to bump to the next major version? If yes, we will add a dummy commit with the appropriate GitVersion bump pattern.");
+    doRequestGitHub($metadata["token"], $metadata["commentsUrl"], $comment, "POST");
+}
+
+function resetAppVeyorBuildNumber($projectSlug)
+{
+    // Reset the AppVeyor build number by calling the AppVeyor API
+    $url = "https://ci.appveyor.com/api/projects/" . $projectSlug . "/build";
+    // Note: This is a simplified version. Authentication and error handling might be required.
+    // Here we assume that doRequestGitHub can be used for external API calls as well.
+    doRequestGitHub(null, $url, null, "POST");
+}
+
 function removeLabels($metadata, $pullRequestUpdated)
 {
     $labelsLookup = [
@@ -207,8 +352,8 @@ function removeLabels($metadata, $pullRequestUpdated)
     $intersect = array_intersect($labelsLookup, $labels);
 
     foreach ($intersect as $label) {
-        $label = str_replace(" ", "%20", $label);
-        $url = $metadata["pullRequestUrl"] . "/labels/{$label}";
+        $labelEnc = str_replace(" ", "%20", $label);
+        $url = $metadata["pullRequestUrl"] . "/labels/{$labelEnc}";
         doRequestGitHub($metadata["token"], $url, null, "DELETE");
     }
 }
@@ -286,7 +431,6 @@ function handleCommentToMerge($metadata, $pullRequest, $collaboratorsLogins)
     commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["mergeComment"], "depfu[bot]");
 }
 
-
 function commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $commentToLookup, $senderToLookup)
 {
     if ($pullRequest->Sender != $senderToLookup) {
@@ -353,17 +497,7 @@ function getReviewsLogins($metadata)
 function getReferencedIssue($metadata, $pullRequest)
 {
     $referencedIssueQuery = array(
-        "query" => "query {
-        repository(owner: \"" . $pullRequest->RepositoryOwner . "\", name: \"" . $pullRequest->RepositoryName . "\") {
-          pullRequest(number: " . $pullRequest->Number . ") {
-            closingIssuesReferences(first: 10) {
-              nodes {
-                  number
-              }
-            }
-          }
-        }
-      }"
+        "query" => "query {\n        repository(owner: \"" . $pullRequest->RepositoryOwner . "\", name: \"" . $pullRequest->RepositoryName . "\") {\n          pullRequest(number: " . $pullRequest->Number . ") {\n            closingIssuesReferences(first: 10) {\n              nodes {\n                  number\n              }\n            }\n          }\n        }\n      }"
     );
 
     $referencedIssueResponse = doRequestGitHub($metadata["token"], "graphql", $referencedIssueQuery, "POST");
@@ -425,11 +559,7 @@ function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
         $isSenderAutoMerge
     ) {
         $body = array(
-            "query" => "mutation MyMutation {
-            enablePullRequestAutoMerge(input: {pullRequestId: \"" . $pullRequest->NodeId . "\", mergeMethod: SQUASH}) {
-                clientMutationId
-                 }
-        }"
+            "query" => "mutation MyMutation {\n            enablePullRequestAutoMerge(input: {pullRequestId: \"" . $pullRequest->NodeId . "\", mergeMethod: SQUASH}) {\n                clientMutationId\n                 }\n        }"
         );
         doRequestGitHub($metadata["userToken"], "graphql", $body, "POST");
 
@@ -441,8 +571,8 @@ function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
         echo "State: " . $pullRequestUpdated->mergeable_state . " - Enable auto merge - Is mergeable - Sender auto merge: " . ($isSenderAutoMerge ? "✅" : "⛔") . " - Sender: " . $pullRequest->Sender . " ✅\n";
         $comment = array("body" => "<!-- gstraccini-bot:ready-merge -->\nThis pull request is ready ✅ for merge/squash.");
         doRequestGitHub($metadata["token"], $metadata["commentsUrl"], $comment, "POST");
-        //$body = array("merge_method" => "squash", "commit_title" => $pullRequest->Title);
-        //requestGitHub($metadata["token"], $metadata["pullRequestUrl"] . "/merge", $body);
+        // $body = array("merge_method" => "squash", "commit_title" => $pullRequest->Title);
+        // requestGitHub($metadata["token"], $metadata["pullRequestUrl"] . "/merge", $body);
     } else {
         echo "State: " . $pullRequestUpdated->mergeable_state . " - Enable auto merge - Is NOT mergeable - Sender auto merge: " . ($isSenderAutoMerge ? "✅" : "⛔") . " - Sender: " . $pullRequest->Sender . " ⛔\n";
     }
@@ -485,15 +615,10 @@ function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
  * contains the specified prefix in its body.
  *
  * @param array  $metadata            An associative array containing metadata about the pull request.
- *                                    Must include:
- *                                    - 'commentsUrl' (string): The GitHub API URL to fetch comments.
- *                                    - 'token' (string): The GitHub API token used for authentication.
- * @param bool   $pullRequestUpdated  A boolean indicating if the pull request was updated. *(Currently unused in logic.)*
+ * @param object $pullRequestUpdated  A pull request object.
  * @param string $prefix              The string prefix to search for within the comment bodies.
  *
  * @return bool  Returns `true` if a comment containing the prefix is found, `false` otherwise.
- *
- * @throws SomeException              If the `doRequestGitHub` function or response status fails (based on actual implementation).
  */
 function findCommentByContent($metadata, $pullRequestUpdated, $prefix): bool
 {
@@ -514,29 +639,8 @@ function findCommentByContent($metadata, $pullRequestUpdated, $prefix): bool
 /**
  * Updates a pull request branch if it is behind the base branch.
  *
- * This function compares the base and head references of a pull request to determine
- * how many commits the head is behind. If the branch is behind, it sends a request
- * to update the pull request branch using the GitHub API.
- *
- * Diagnostic output is printed to indicate whether an update was needed and performed,
- * including mergeable state, number of commits behind, and sender info.
- *
- * @param array $metadata An associative array containing metadata required to perform the update.
- *                        Must include:
- *                        - 'token' (string): The GitHub API token.
- *                        - 'compareUrl' (string): The API base URL for comparing refs.
- *                        - 'pullRequestUrl' (string): The API URL for the pull request being updated.
- * @param object $pullRequestUpdated An object representing the updated pull request data.
- *                                   Required properties:
- *                                   - base->ref (string): The base branch name.
- *                                   - head->ref (string): The head branch name.
- *                                   - head->sha (string): The SHA of the head commit.
- *                                   - mergeable_state (string): The pull request's mergeable state.
- *                                   - user->login (string): The GitHub username of the sender.
- *
- * @return void
- *
- * @throws SomeException If the `doRequestGitHub` function fails or returns an unexpected response.
+ * @param array $metadata
+ * @param object $pullRequestUpdated
  */
 function updateBranch($metadata, $pullRequestUpdated)
 {
