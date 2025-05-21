@@ -846,6 +846,29 @@ function execute_updateSnapshot($config, $metadata, $comment): void
     callWorkflow($config, $metadata, $comment, "update-test-snapshot.yml");
 }
 
+function execute_updateVariable($config, $metadata, $comment): void {
+    preg_match("/@" . $config->botName . "\\supdate\\svariable\\s(\\w+)\\s(.+)/", $comment->CommentBody, $matches);
+
+    if (count($matches) !== 3) {
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
+        $body = $metadata["errorMessages"]["invalidParameter"];
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+        return;
+    }
+
+    $name = $matches[1];
+    $value = $matches[2];
+
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
+    $body = "Updating repository variable `{$name}`! :gear:";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+
+    updateOrCreateRepoVariable($metadata["repositoryOwner"], $metadata["repositoryName"], $name, $value);
+
+    $body = "Repository variable `{$name}` has been updated successfully! :white_check_mark:";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+}
+
 function callWorkflow($config, $metadata, $comment, $workflow, $extendedParameters = null): void
 {
     global $logger;
