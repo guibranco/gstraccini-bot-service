@@ -67,7 +67,7 @@ function handleItem($comment): void
 
     $ignoredBots = ["github-actions[bot]", "AppVeyorBot", "gitauto-ai[bot]"];
     if (in_array($sender, $ignoredBots, true)) {
-        echo "Skipping this comment! 🚷\n";
+        echo "Skipping this comment! \ud83d\udeb7\n";
         reactToComment($comment, "-1");
         return;
     }
@@ -226,7 +226,7 @@ function buildMetadata($comment, $config): array
 function execute_help($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
-    $helpComment = "That's what I can do :neckbeard::\r\n";
+    $helpComment = "That's what I can do :neckbeard:\r\n";
     foreach ($config->commands as $command) {
         $parameters = "";
         $parametersHelp = "";
@@ -432,7 +432,7 @@ function execute_codacyBypass($config, $metadata, $comment): void
     $codacy = new Codacy($codacyApiToken, $logger);
     $response = $codacy->bypassPullRequestAnalysis($comment->RepositoryOwner, $comment->RepositoryName, $comment->PullRequestNumber);
     if ($response->isSuccessStatusCode() === false) {
-        $body = "Bypass the Codacy analysis for this [pull request]({$codacyUrl}) failed! ☠️\r\nDo you want to retry?\r\n- [ ] Yes, retry!";
+        $body = "Bypass the Codacy analysis for this [pull request]({$codacyUrl}) failed! \u2620\ufe0f\r\nDo you want to retry?\r\n- [ ] Yes, retry!";
         $commentResponse = doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
         // TODO: Store comment ID in the table of bot-interactions
     }
@@ -566,18 +566,13 @@ function execute_copyIssue($config, $metadata, $comment): void
     }
 
     $createdIssue = json_decode($createdIssueResponse->getBody());
-
     $number = $createdIssue->number;
-
     $target = "{$targetRepository}#{$number}";
     $targetUrl = $createdIssue->html_url;
-
     $source = "{$comment->RepositoryOwner}/{$comment->RepositoryName}#{$comment->PullRequestNumber}";
     $sourceUrl = "https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/issues/{$comment->PullRequestNumber}";
-
     $body = "Issue copied to [$target]({$targetUrl})";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-
     $body = "Issue copied from [$source]($sourceUrl)";
     doRequestGitHub($metadata["token"], "repos/{$targetRepository}/issues/{$number}/comments", array("body" => $body), "POST");
 }
@@ -591,7 +586,6 @@ function execute_copyIssue($config, $metadata, $comment): void
  *
  * @return void
  */
-
 function execute_createLabels($config, $metadata, $comment): void
 {
     preg_match(
@@ -726,7 +720,7 @@ function execute_rerunWorkflows($config, $metadata, $comment): void
     foreach ($failedWorkflowRuns->workflow_runs as $failedWorkflowRun) {
         $url = $metadata["repoPrefix"] . "/actions/runs/" . $failedWorkflowRun->id . "/rerun-failed-jobs";
         $response = doRequestGitHub($metadata["token"], $url, null, "POST");
-        $status = $response->getStatusCode() === 201 ? "🔄" : "❌";
+        $status = $response->getStatusCode() === 201 ? "\ud83d\udd04" : "\u274c";
         $actionsToRerun .= "- [" . $failedWorkflowRun->name . "](" . $failedWorkflowRun->html_url . ") - " . $status . "\n";
     }
 
@@ -766,11 +760,11 @@ function execute_revertCommit($config, $metadata, $comment): void
         $commitUrl = $metadata["repoPrefix"] . "/commits/" . $matches[1];
         $response = doRequestGitHub($metadata["token"], $commitUrl, null, "GET");
         if ($response->getStatusCode() !== 200) {
-            doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "❌ Invalid commit SHA: Commit not found in repository"), "POST");
+            doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "\u274c Invalid commit SHA: Commit not found in repository"), "POST");
             return;
         }
     } else {
-        $errorMessage = "❌ Could not extract a valid commit SHA1 from comment. Expected format: @{$config->botName} revert commit <sha1>";
+        $errorMessage = "\u274c Could not extract a valid commit SHA1 from comment. Expected format: @{$config->botName} revert commit <sha1>";
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $errorMessage), "POST");
         return;
     }
@@ -844,29 +838,6 @@ function execute_updateSnapshot($config, $metadata, $comment): void
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Updating test snapshots"), "POST");
     callWorkflow($config, $metadata, $comment, "update-test-snapshot.yml");
-}
-
-function execute_updateVariable($config, $metadata, $comment): void {
-    preg_match("/@" . $config->botName . "\\supdate\\svariable\\s(\\w+)\\s(.+)/", $comment->CommentBody, $matches);
-
-    if (count($matches) !== 3) {
-        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
-        $body = $metadata["errorMessages"]["invalidParameter"];
-        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-        return;
-    }
-
-    $name = $matches[1];
-    $value = $matches[2];
-
-    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
-    $body = "Updating repository variable `{$name}`! :gear:";
-    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-
-    updateOrCreateRepoVariable($metadata["repositoryOwner"], $metadata["repositoryName"], $name, $value);
-
-    $body = "Repository variable `{$name}` has been updated successfully! :white_check_mark:";
-    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
 }
 
 function callWorkflow($config, $metadata, $comment, $workflow, $extendedParameters = null): void
@@ -967,42 +938,6 @@ function updateNextBuildNumber($metadata, $project, $nextBuildNumber): void
 
 function handleUpdateRepoVariableCommand($comment, $config)
 {
-function execute_updateVariable($config, $metadata, $comment): void
-{
-    preg_match(
-        "/@" . $config->botName . "\\supdate\\svariable\\s([a-zA-Z0-9_-]+)\\s(.+)/",
-        $comment->CommentBody,
-        $matches
-    );
-
-    if (count($matches) !== 3) {
-        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
-        $body = $metadata["errorMessages"]["invalidParameter"];
-        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-        return;
-    }
-
-    $name = $matches[1];
-    $value = $matches[2];
-    $owner = $comment->RepositoryOwner;
-    $repo = $comment->RepositoryName;
-
-    try {
-        $response = updateOrCreateRepoVariable($owner, $repo, $name, $value);
-        $statusCode = $response->getStatusCode();
-
-        if ($statusCode === 201 || $statusCode === 204) {
-            doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
-            $body = "Variable '{$name}' has been " . ($statusCode === 201 ? "created" : "updated") . " successfully! :rocket:";
-            doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-        } else {
-            throw new Exception("Unexpected status code: " . $statusCode);
-        }
-    } catch (Exception $e) {
-        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
-        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Failed to update variable: " . $e->getMessage()), "POST");
-    }
-}
     $commandExpression = "@" . $config->botName . " update repo variable ";
     if (stripos($comment->CommentBody, $commandExpression) === false) {
         return null;
@@ -1024,11 +959,11 @@ function execute_updateVariable($config, $metadata, $comment): void
 function updateOrCreateRepoVariable($owner, $repo, $name, $value)
 {
     $request = new Request();
-    $url = "https://api.github.com/repos/{$owner}/{$repo}/actions/variables";
+    $baseUrl = "https://api.github.com/repos/{$owner}/{$repo}/actions/variables";
 
-    // Get existing variables
-    $response = $request->get($url);
-    $variables = json_decode($response->getBody(), true);
+    $response = $request->get($baseUrl);
+    $responseData = json_decode($response->getBody(), true);
+    $variables = $responseData['variables'] ?? [];
 
     $variableExists = false;
     foreach ($variables as $variable) {
@@ -1039,17 +974,11 @@ function updateOrCreateRepoVariable($owner, $repo, $name, $value)
     }
 
     if ($variableExists) {
-        $url .= "/{$name}";
-        $request->patch($url, ['value' => $value]);
-
-    } else {
-        $request->post($url, [
-            'name' => $name,
-            'value' => $value,
-            'visibility' => 'all'
-        ]);
+        return $request->patch($baseUrl . "/{$name}", ['value' => $value]);
     }
+    return $request->post($baseUrl, ['name' => $name, 'value' => $value, 'visibility' => 'all']);
 }
+
 function main(): void
 {
     $config = loadConfig();
