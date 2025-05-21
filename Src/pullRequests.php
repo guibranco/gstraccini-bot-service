@@ -252,7 +252,7 @@ function checkForOtherPullRequests($metadata, $pullRequest)
 function updateMergeable($pullRequest, $pullRequestUpdated): void
 {
     $prUpsert = new \stdClass();
-    $prUpsert->Sequence = $pullRequestUpdated->Sequence;
+    $prUpsert->Sequence = $pullRequest->Sequence;
     $prUpsert->Mergeable = $pullRequestUpdated->mergeable;
     $prUpsert->MergeableState = $pullRequestUpdated->mergeable_state;
     $prUpsert->Merged = $pullRequestUpdated->merged;
