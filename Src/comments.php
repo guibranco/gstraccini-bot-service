@@ -984,8 +984,11 @@ function updateOrCreateRepoVariable($owner, $repo, $name, $value)
         $request->patch($url, ['value' => $value]);
 
     } else {
-
-        // TODO add code to create variable
+        $request->post($url, [
+            'name' => $name,
+            'value' => $value,
+            'visibility' => 'all'
+        ]);
     }
 }
 function main(): void
