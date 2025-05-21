@@ -944,6 +944,42 @@ function updateNextBuildNumber($metadata, $project, $nextBuildNumber): void
 
 function handleUpdateRepoVariableCommand($comment, $config)
 {
+function execute_updateVariable($config, $metadata, $comment): void
+{
+    preg_match(
+        "/@" . $config->botName . "\\supdate\\svariable\\s([a-zA-Z0-9_-]+)\\s(.+)/",
+        $comment->CommentBody,
+        $matches
+    );
+
+    if (count($matches) !== 3) {
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
+        $body = $metadata["errorMessages"]["invalidParameter"];
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+        return;
+    }
+
+    $name = $matches[1];
+    $value = $matches[2];
+    $owner = $comment->RepositoryOwner;
+    $repo = $comment->RepositoryName;
+
+    try {
+        $response = updateOrCreateRepoVariable($owner, $repo, $name, $value);
+        $statusCode = $response->getStatusCode();
+
+        if ($statusCode === 201 || $statusCode === 204) {
+            doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
+            $body = "Variable '{$name}' has been " . ($statusCode === 201 ? "created" : "updated") . " successfully! :rocket:";
+            doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+        } else {
+            throw new Exception("Unexpected status code: " . $statusCode);
+        }
+    } catch (Exception $e) {
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "Failed to update variable: " . $e->getMessage()), "POST");
+    }
+}
     $commandExpression = "@" . $config->botName . " update repo variable ";
     if (stripos($comment->CommentBody, $commandExpression) === false) {
         return null;
