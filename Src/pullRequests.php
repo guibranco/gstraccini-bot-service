@@ -24,6 +24,8 @@ function handleItem($pullRequest, $isRetry = false)
     $pullRequestResponse->ensureSuccessStatus();
     $pullRequestUpdated = json_decode($pullRequestResponse->getBody());
 
+    updateMergeable($pullRequest, $pullRequestUpdated);
+
     if ($pullRequestUpdated->state === "closed") {
         removeIssueWipLabel($metadata, $pullRequest);
         removeLabels($metadata, $pullRequestUpdated);
@@ -245,6 +247,17 @@ function checkForOtherPullRequests($metadata, $pullRequest)
         triggerReview($pullRequest, $pullRequestPending);
         break;
     }
+}
+
+function updateMergeable($pullRequest, $pullRequestUpdated): void
+{
+    $prUpsert = new \stdClass();
+    $prUpsert->Sequence = $pullRequestUpdated->Sequence;
+    $prUpsert->Mergeable = $pullRequestUpdated->mergeable;
+    $prUpsert->MergeableState = $pullRequestUpdated->mergeable_state;
+    $prUpsert->Merged = $pullRequestUpdated->merged;
+    echo "Updating mergeable data of #{$pullRequestUpdated->number} - Sender: " . $pullRequest->Sender . " 🔄\n";
+    upsertPullRequestMergeable($prUpsert);
 }
 
 function triggerReview($pullRequest, $pullRequestPending)
