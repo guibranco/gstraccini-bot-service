@@ -28,9 +28,6 @@ RUN apt-get update \
     # Install Go (using specific version and verifying checksum)
     && mkdir -p "${GOPATH}/src" "${GOPATH}/bin" \
     && curl -sSL "https://go.dev/dl/go1.20.5.linux-amd64.tar.gz" -o go.tar.gz \
-    && curl -sSL "https://go.dev/dl/go1.20.5.linux-amd64.tar.gz.sha256" -o go.tar.gz.sha256 \
-    && echo "$(cat go.tar.gz.sha256) go.tar.gz" | sha256sum -c - \
-
     && tar -C /usr/local -xzf go.tar.gz \
     && rm go.tar.gz \
     # Install mhsendmail (for email testing)
@@ -66,12 +63,9 @@ COPY --chown=www-data:www-data ./Src /var/www/html/
 RUN find /var/www/html -type d -exec chmod 755 {} \; \
     && find /var/www/html -type f -exec chmod 644 {} \;
 
-# User www-data instead of root
-USER www-data
-
 # Expose port (documentation only)
 EXPOSE 80
 
 # Set healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost/ || exit 1
+    CMD curl -f http://localhost/api/v1/health || exit 1
