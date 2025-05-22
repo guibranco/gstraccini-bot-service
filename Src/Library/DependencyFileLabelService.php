@@ -20,81 +20,81 @@ class DependencyFileLabelService
     private $dependencyFileMap = [
         // C#
         '\.csproj$' => ['package_manager' => 'NuGet', 'label' => 'nuget'],
-        
+
         // C/C++
         'CMakeLists\.txt$' => ['package_manager' => 'CMake', 'label' => 'cmake'],
         'conanfile\.txt$' => ['package_manager' => 'Conan', 'label' => 'conan'],
-        
+
         // Crystal
         'shard\.yml$' => ['package_manager' => 'Shards', 'label' => 'shards'],
-        
+
         // Dart
         'pubspec\.yaml$' => ['package_manager' => 'Pub', 'label' => 'pub'],
-        
+
         // Elixir
         'mix\.exs$' => ['package_manager' => 'Mix', 'label' => 'mix'],
-        
+
         // Elm
         'elm\.json$' => ['package_manager' => 'Elm', 'label' => 'elm'],
-        
+
         // F#
         '\.fsproj$' => ['package_manager' => 'NuGet', 'label' => 'nuget'],
         'paket\.dependencies$' => ['package_manager' => 'Paket', 'label' => 'paket'],
-        
+
         // Go
         'go\.mod$' => ['package_manager' => 'Go modules', 'label' => 'go-mod'],
-        
+
         // Haskell
         'cabal\.config$' => ['package_manager' => 'Cabal', 'label' => 'cabal'],
         'package\.yaml$' => ['package_manager' => 'Stack', 'label' => 'stack'],
-        
+
         // Java
         'pom\.xml$' => ['package_manager' => 'Maven', 'label' => 'maven'],
         'build\.gradle$' => ['package_manager' => 'Gradle', 'label' => 'gradle'],
-        
+
         // JavaScript/TypeScript
         'package\.json$' => ['package_manager' => 'npm/Yarn', 'label' => 'npm'],
-        
+
         // Julia
         'Project\.toml$' => ['package_manager' => 'Pkg', 'label' => 'julia'],
         'Manifest\.toml$' => ['package_manager' => 'Pkg', 'label' => 'julia'],
-        
+
         // Kotlin
         'build\.gradle\.kts$' => ['package_manager' => 'Gradle', 'label' => 'gradle'],
-        
+
         // Lua
         '\.rockspec$' => ['package_manager' => 'LuaRocks', 'label' => 'luarocks'],
-        
+
         // Objective-C
         'Podfile$' => ['package_manager' => 'CocoaPods', 'label' => 'cocoapods'],
-        
+
         // Perl
         'Makefile\.PL$' => ['package_manager' => 'CPAN', 'label' => 'cpan'],
         'Build\.PL$' => ['package_manager' => 'CPAN', 'label' => 'cpan'],
-        
+
         // PHP
         'composer\.json$' => ['package_manager' => 'Composer', 'label' => 'composer'],
-        
+
         // Python
         'requirements\.txt$' => ['package_manager' => 'pip', 'label' => 'pip'],
         'pyproject\.toml$' => ['package_manager' => 'pip', 'label' => 'pip'],
         'Pipfile$' => ['package_manager' => 'pipenv', 'label' => 'pipenv'],
-        
+
         // R
         'DESCRIPTION$' => ['package_manager' => 'R', 'label' => 'r'],
-        
+
         // Ruby
         'Gemfile$' => ['package_manager' => 'Bundler', 'label' => 'bundler'],
-        
+
         // Rust
         'Cargo\.toml$' => ['package_manager' => 'Cargo', 'label' => 'cargo'],
-        
+
         // Scala
         'build\.sbt$' => ['package_manager' => 'sbt', 'label' => 'sbt'],
-        
+
         // Swift
         'Package\.swift$' => ['package_manager' => 'Swift Package Manager', 'label' => 'spm'],
-        
+
         // Vala
         'meson\.build$' => ['package_manager' => 'Meson', 'label' => 'meson']
     ];

@@ -208,25 +208,25 @@ function checkDependencyChanges($metadata, $pullRequestUpdated): void
 {
     $type = "dependency changes";
     $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, $type);
-    
+
     $diffResponse = getPullRequestDiff($metadata);
     $diff = $diffResponse->getBody();
-    
+
     $dependencyService = new DependencyFileLabelService();
     $detectedDependencies = $dependencyService->detectDependencyChanges($diff);
-    
+
     if (!empty($detectedDependencies)) {
         // Always add the general dependencies label
         $labelsToAdd = ["📦 dependencies"];
-        
+
         // Add specific package manager labels
         foreach ($detectedDependencies as $label => $packageManager) {
             $labelsToAdd[] = $label;
         }
-        
+
         $body = array("labels" => $labelsToAdd);
         doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $body, "POST");
-        
+
         $report = "Detected dependency changes for package managers: " . implode(", ", array_values($detectedDependencies));
         setCheckRunSucceeded($metadata, $checkRunId, $type, $report);
     } else {
