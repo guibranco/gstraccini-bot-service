@@ -151,7 +151,7 @@ function createMetadata($token, $pullRequest, $config)
         "issuesUrl" => $repoPrefix . "/issues",
         "labelsUrl" => $repoPrefix . ISSUES . $pullRequest->Number . "/labels",
         "compareUrl" => $repoPrefix . "/compare/",
-        "botNameMarkdown" => "[" . $config->botName . "[bot]](https://github.com/apps/" . $config->botName . ")",
+        "botNameMarkdown" => "[" . $config->botName . "\[bot\]](https://github.com/apps/" . $config->botName . ")",
         "dashboardUrl" => $config->dashboardUrl . $prQueryString
     );
 }
@@ -220,8 +220,9 @@ function checkDependencyChanges($metadata, $pullRequestUpdated): void
         $labelsToAdd = ["📦 dependencies"];
 
         // Add specific package manager labels
-        foreach ($detectedDependencies as $label => $packageManager) {
-            $labelsToAdd[] = $label;
+        foreach ($detectedDependencies as $_ => $packageManager) {
+            // Add both the label and package manager name to show in the UI
+            $labelsToAdd[] = "📦 " . $packageManager;
         }
 
         $body = array("labels" => $labelsToAdd);
@@ -229,10 +230,9 @@ function checkDependencyChanges($metadata, $pullRequestUpdated): void
 
         $report = "Detected dependency changes for package managers: " . implode(", ", array_values($detectedDependencies));
         setCheckRunSucceeded($metadata, $checkRunId, $type, $report);
-        return;
+    } else {
+        setCheckRunSucceeded($metadata, $checkRunId, $type, "No dependency file changes detected.");
     }
-
-    setCheckRunSucceeded($metadata, $checkRunId, $type, "No dependency file changes detected.");
 }
 
 function removeLabels($metadata, $pullRequestUpdated)
@@ -263,6 +263,7 @@ function checkForOtherPullRequests($metadata, $pullRequest)
         echo "No other pull requests to review ❌\n";
         return;
     }
+    return;
 
     foreach ($pullRequestsOpen as $pullRequestPending) {
         if ($pullRequest->Number === $pullRequestPending->number) {
@@ -351,7 +352,7 @@ function commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $commentT
         $comment = array("body" => $commentToLookup);
         doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
 
-        $label = array("labels" => array("✓️ auto-merge"));
+        $label = array("labels" => array("✅️ auto-merge"));
         doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $label, "POST");
     }
 }
@@ -472,7 +473,7 @@ function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
         );
         doRequestGitHub($metadata["userToken"], "graphql", $body, "POST");
 
-        $label = array("labels" => array("✓️ auto-merge"));
+        $label = array("labels" => array("✅️ auto-merge"));
         doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $label, "POST");
     }
 
