@@ -16,7 +16,7 @@ class LabelService
             echo "⚠️ File {$fileNameLabels} not found!\n";
         }
 
-        unset($labels["language"]);
+        // We now keep language labels as they're used for package managers
 
         $keys = array_keys($labels);
 
@@ -70,5 +70,25 @@ class LabelService
                 echo "⛔ Error updating label: {$oldName}\n";
             }
         }
+    }
+    
+    /**
+     * Gets a label by its text value
+     *
+     * @param string $text The text value of the label
+     * @return array|null The label if found, null otherwise
+     */
+    public function getLabelByText(string $text): ?array
+    {
+        $fileNameLabels = "config/labels.json";
+        if (!file_exists($fileNameLabels)) {
+            return null;
+        }
+        
+        $rawLabels = file_get_contents($fileNameLabels);
+        $labels = json_decode($rawLabels, true);
+        
+        // Flatten the labels array and search for the label by text
+        return $this->findLabelByText($labels, $text);
     }
 }
