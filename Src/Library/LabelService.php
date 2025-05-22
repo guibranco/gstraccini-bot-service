@@ -16,7 +16,7 @@ class LabelService
             echo "⚠️ File {$fileNameLabels} not found!\n";
         }
 
-        unset($labels["language"]);
+        unset($labels["language"], $labels["package_managers"]);
 
         $keys = array_keys($labels);
 
