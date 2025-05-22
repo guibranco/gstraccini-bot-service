@@ -151,7 +151,7 @@ function createMetadata($token, $pullRequest, $config)
         "issuesUrl" => $repoPrefix . "/issues",
         "labelsUrl" => $repoPrefix . ISSUES . $pullRequest->Number . "/labels",
         "compareUrl" => $repoPrefix . "/compare/",
-        "botNameMarkdown" => "[" . $config->botName . "\[bot\]](https://github.com/apps/" . $config->botName . ")",
+        "botNameMarkdown" => "[" . $config->botName . "[bot]](https://github.com/apps/" . $config->botName . ")",
         "dashboardUrl" => $config->dashboardUrl . $prQueryString
     );
 }
@@ -220,8 +220,8 @@ function checkDependencyChanges($metadata, $pullRequestUpdated): void
         $labelsToAdd = ["📦 dependencies"];
 
         // Add specific package manager labels
-        foreach ($detectedDependencies as $packageManager) {
-            // Add both the label and package manager name to show in the UI
+        foreach (array_values($detectedDependencies) as $packageManager) {
+            // Add the package manager label
             $labelsToAdd[] = "📦 " . $packageManager;
         }
 
