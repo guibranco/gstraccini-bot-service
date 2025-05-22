@@ -91,4 +91,25 @@ class LabelService
         // Flatten the labels array and search for the label by text
         return $this->findLabelByText($labels, $text);
     }
+    
+    /**
+     * Finds a label by its text value in a nested labels array
+     *
+     * @param array $labels The labels array
+     * @param string $text The text value to search for
+     * @return array|null The label if found, null otherwise
+     */
+    private function findLabelByText(array $labels, string $text): ?array
+    {
+        foreach ($labels as $category => $categoryLabels) {
+            if (is_array($categoryLabels)) {
+                foreach ($categoryLabels as $label) {
+                    if (isset($label['text']) && strtolower($label['text']) === strtolower($text)) {
+                        return $label;
+                    }
+                }
+            }
+        }
+        return null;
+    }
 }
