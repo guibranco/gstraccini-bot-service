@@ -288,6 +288,15 @@ function handleCommentToMerge($metadata, $pullRequest, $collaboratorsLogins)
     commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["mergeComment"], "depfu[bot]");
 }
 
+/**
+ * Checks for dependency file changes in a pull request and applies appropriate labels.
+ *
+ * @param array $metadata Metadata for the GitHub API request
+ * @param object $pullRequestUpdated The updated pull request data
+ * @return void
+ */
+function checkDependencyChanges($metadata, $pullRequestUpdated): void
+{
 
 function commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $commentToLookup, $senderToLookup)
 {
