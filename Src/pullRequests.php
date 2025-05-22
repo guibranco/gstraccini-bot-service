@@ -263,6 +263,7 @@ function checkForOtherPullRequests($metadata, $pullRequest)
         echo "No other pull requests to review ❌\n";
         return;
     }
+    return;
 
     foreach ($pullRequestsOpen as $pullRequestPending) {
         if ($pullRequest->Number === $pullRequestPending->number) {
