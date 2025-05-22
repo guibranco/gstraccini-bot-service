@@ -13,6 +13,16 @@ namespace GuiBranco\GStracciniBot\Library;
 class DependencyFileAnalyzer
 {
     /**
+     * @var LabelService
+     */
+    private $labelService;
+
+    public function __construct()
+    {
+        $this->labelService = new LabelService();
+    }
+
+    /**
      * Map of dependency files to their corresponding package manager labels
      *
      * @var array
@@ -128,7 +138,29 @@ class DependencyFileAnalyzer
      */
     private function getLabelsFromDetectedFiles(array $detectedFiles): array
     {
-        $labels = array_keys($detectedFiles);
-        return empty($labels) ? [] : array_merge(['dependencies'], $labels);
+        if (empty($detectedFiles)) {
+            return [];
+        }
+        
+        // Always include the general dependencies label
+        $labels = ['dependencies'];
+        
+        // Add package manager-specific labels
+        foreach (array_keys($detectedFiles) as $labelText) {
+            if ($labelText === 'dependencies') {
+                continue; // Skip the general dependencies label
+            }
+            
+            // Try to get the proper label format from the labels.json file
+            $label = $this->labelService->getLabelByText($labelText);
+            
+            if ($label !== null && isset($label['text'])) {
+                $labels[] = $label['text'];
+            } else {
+                $labels[] = $labelText; // Fallback to the raw label text
+            }
+        }
+        
+        return $labels;
     }
 }
