@@ -20,60 +20,60 @@ class DependencyFileAnalyzer
     private $dependencyFileMap = [
         // C#
         '.csproj' => 'nuget',
-        // C/C++
-        'CMakeLists.txt' => 'cmake',
-        'conanfile.txt' => 'conan',
-        // Crystal
-        'shard.yml' => 'shards',
-        // Dart
-        'pubspec.yaml' => 'pub',
-        // Elixir
-        'mix.exs' => 'mix',
-        // Elm
-        'elm.json' => 'elm',
+        // C/C++ - Using existing labels or fallback to dependencies
+        'CMakeLists.txt' => 'dependencies',
+        'conanfile.txt' => 'dependencies',
+        // Crystal - Using existing labels or fallback to dependencies
+        'shard.yml' => 'dependencies',
+        // Dart - Using existing labels or fallback to dependencies
+        'pubspec.yaml' => 'dependencies',
+        // Elixir - Using existing labels or fallback to dependencies
+        'mix.exs' => 'dependencies',
+        // Elm - Using existing labels or fallback to dependencies
+        'elm.json' => 'dependencies',
         // F#
-        '.fsproj' => 'nuget',
-        'paket.dependencies' => 'paket',
+        '.fsproj' => 'nuget', 
+        'paket.dependencies' => 'dependencies',
         // Go
-        'go.mod' => 'go-mod',
-        // Haskell
-        'cabal.config' => 'cabal',
-        'package.yaml' => 'stack',
+        'go.mod' => 'Go Modules',
+        // Haskell - Using existing labels or fallback to dependencies
+        'cabal.config' => 'dependencies',
+        'package.yaml' => 'dependencies',
         // Java
-        'pom.xml' => 'maven',
-        'build.gradle' => 'gradle',
+        'pom.xml' => 'Maven',
+        'build.gradle' => 'dependencies',
         // JavaScript/TypeScript
-        'package.json' => 'npm',
-        // Julia
-        'Project.toml' => 'julia',
-        'Manifest.toml' => 'julia',
+        'package.json' => 'NPM',
+        // Julia - Using existing labels or fallback to dependencies
+        'Project.toml' => 'dependencies',
+        'Manifest.toml' => 'dependencies',
         // Kotlin
-        'build.gradle.kts' => 'gradle',
-        // Lua
-        '.rockspec' => 'luarocks',
-        // Objective-C
-        'Podfile' => 'cocoapods',
-        // Perl
-        'Makefile.PL' => 'cpan',
-        'Build.PL' => 'cpan',
+        'build.gradle.kts' => 'dependencies',
+        // Lua - Using existing labels or fallback to dependencies
+        '.rockspec' => 'dependencies',
+        // Objective-C - Using existing labels or fallback to dependencies
+        'Podfile' => 'dependencies',
+        // Perl - Using existing labels or fallback to dependencies
+        'Makefile.PL' => 'dependencies',
+        'Build.PL' => 'dependencies',
         // PHP
-        'composer.json' => 'composer',
+        'composer.json' => 'packagist',
         // Python
         'requirements.txt' => 'pip',
         'pyproject.toml' => 'pip',
-        'Pipfile' => 'pipenv',
-        // R
-        'DESCRIPTION' => 'r',
+        'Pipfile' => 'dependencies',
+        // R - Using existing labels or fallback to dependencies
+        'DESCRIPTION' => 'dependencies',
         // Ruby
-        'Gemfile' => 'bundler',
+        'Gemfile' => 'RubyGems',
         // Rust
-        'Cargo.toml' => 'cargo',
-        // Scala
-        'build.sbt' => 'sbt',
-        // Swift
-        'Package.swift' => 'spm',
-        // Vala
-        'meson.build' => 'meson'
+        'Cargo.toml' => 'Cargo',
+        // Scala - Using existing labels or fallback to dependencies
+        'build.sbt' => 'dependencies',
+        // Swift - Using existing labels or fallback to dependencies
+        'Package.swift' => 'Swift Package Manager',
+        // Vala - Using existing labels or fallback to dependencies
+        'meson.build' => 'dependencies'
     ];
 
     /**
