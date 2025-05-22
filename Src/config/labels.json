@@ -1,4 +1,126 @@
 {
+  "package_managers": [
+    {
+      "color": "#777BB3",
+      "description": "NuGet package manager",
+      "text": "nuget",
+      "textWithIcon": "📦 nuget"
+    },
+    {
+      "color": "#777BB3",
+      "description": "CMake build system",
+      "text": "cmake",
+      "textWithIcon": "🔧 cmake"
+    },
+    {
+      "color": "#777BB3",
+      "description": "Conan C/C++ package manager",
+      "text": "conan",
+      "textWithIcon": "📦 conan"
+    },
+    {
+      "color": "#777BB3",
+      "description": "Crystal Shards package manager",
+      "text": "shards",
+      "textWithIcon": "💎 shards"
+    },
+    {
+      "color": "#777BB3",
+      "description": "Dart Pub package manager",
+      "text": "pub",
+      "textWithIcon": "📦 pub"
+    },
+    {
+      "color": "#777BB3",
+      "description": "Elixir Mix package manager",
+      "text": "mix",
+      "textWithIcon": "🧪 mix"
+    },
+    {
+      "color": "#777BB3",
+      "description": "Elm package manager",
+      "text": "elm",
+      "textWithIcon": "🌳 elm"
+    },
+    {
+      "color": "#777BB3",
+      "description": "F# Paket package manager",
+      "text": "paket",
+      "textWithIcon": "📦 paket"
+    },
+    {
+      "color": "#777BB3",
+      "description": "Go modules package manager",
+      "text": "go-mod",
+      "textWithIcon": "🐹 go-mod"
+    },
+    {
+      "color": "#777BB3",
+      "description": "Haskell Cabal package manager",
+      "text": "cabal",
+      "textWithIcon": "📦 cabal"
+    },
+    {
+      "color": "#777BB3",
+      "description": "Haskell Stack package manager",
+      "text": "stack",
+      "textWithIcon": "🏗️ stack"
+    },
+    {
+      "color": "#777BB3",
+      "description": "Julia package manager",
+      "text": "julia",
+      "textWithIcon": "🔢 julia"
+    },
+    {
+      "color": "#777BB3",
+      "description": "LuaRocks package manager",
+      "text": "luarocks",
+      "textWithIcon": "🌙 luarocks"
+    },
+    {
+      "color": "#777BB3",
+      "description": "CocoaPods package manager",
+      "text": "cocoapods",
+      "textWithIcon": "🍎 cocoapods"
+    },
+    {
+      "color": "#777BB3",
+      "description": "CPAN package manager",
+      "text": "cpan",
+      "textWithIcon": "🐪 cpan"
+    },
+    {
+      "color": "#777BB3",
+      "description": "Python pipenv package manager",
+      "text": "pipenv",
+      "textWithIcon": "🐍 pipenv"
+    },
+    {
+      "color": "#777BB3",
+      "description": "R package manager",
+      "text": "r",
+      "textWithIcon": "📊 r"
+    },
+    {
+      "color": "#777BB3",
+      "description": "Ruby Bundler package manager",
+      "text": "bundler",
+      "textWithIcon": "💎 bundler"
+    },
+    {
+      "color": "#777BB3",
+      "description": "Scala sbt package manager",
+      "text": "sbt",
+      "textWithIcon": "🎯 sbt"
+    },
+    {
+      "color": "#777BB3",
+      "description": "Swift Package Manager",
+      "text": "spm",
+      "textWithIcon": "🦅 spm"
+    }
+  ],
   "context": [
     {
       "color": "#000000",
