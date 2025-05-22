@@ -3,6 +3,7 @@
 require_once "config/config.php";
 
 use GuiBranco\GStracciniBot\Library\MarkdownGroupCheckboxValidator;
+use GuiBranco\GStracciniBot\Library\DependencyFileLabelService;
 use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\GStracciniBot\Library\PullRequestCodeScanner;
 use GuiBranco\Pancake\GUIDv4;
