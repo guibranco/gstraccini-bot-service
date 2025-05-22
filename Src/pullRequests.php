@@ -3,6 +3,7 @@
 require_once "config/config.php";
 
 use GuiBranco\GStracciniBot\Library\MarkdownGroupCheckboxValidator;
+use GuiBranco\GStracciniBot\Library\DependencyFileAnalyzer;
 use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\GStracciniBot\Library\PullRequestCodeScanner;
 use GuiBranco\Pancake\GUIDv4;
@@ -51,6 +52,7 @@ function handleItem($pullRequest, $isRetry = false)
     $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, "pull request");
     enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config);
     addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated);
+    addDependencyLabels($metadata, $pullRequestUpdated);
     updateBranch($metadata, $pullRequestUpdated);
 
     $labelsToAdd = [];
@@ -193,6 +195,31 @@ function checkPullRequestContent($metadata, $pullRequestUpdated)
     }
 
     setCheckRunSucceeded($metadata, $checkRunId, $type, $report);
+}
+
+/**
+ * Analyzes the pull request diff to detect changes in dependency files and applies appropriate labels
+ *
+ * @param array $metadata The metadata array containing GitHub API information
+ * @param object $pullRequestUpdated The updated pull request object
+ * @return void
+ */
+function addDependencyLabels(array $metadata, $pullRequestUpdated): void
+{
+    $diffResponse = getPullRequestDiff($metadata);
+    $diff = $diffResponse->getBody();
+    
+    $analyzer = new DependencyFileAnalyzer();
+    $labels = $analyzer->analyzeDiff($diff);
+    
+    if (empty($labels)) {
+        return;
+    }
+    
+    echo "Detected dependency changes. Adding labels: " . implode(", ", $labels) . "\n";
+    
+    $body = array("labels" => $labels);
+    doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $body, "POST");
 }
 
 function removeLabels($metadata, $pullRequestUpdated)
