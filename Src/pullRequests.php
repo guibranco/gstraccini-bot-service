@@ -122,6 +122,7 @@ function handleItem($pullRequest, $isRetry = false)
 
     checkPullRequestDescription($metadata, $pullRequestUpdated);
     checkPullRequestContent($metadata, $pullRequestUpdated);
+    checkDependencyChanges($metadata, $pullRequestUpdated);
     setCheckRunSucceeded($metadata, $checkRunId, "pull request");
 }
 
