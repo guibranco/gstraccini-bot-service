@@ -197,6 +197,43 @@ function checkPullRequestContent($metadata, $pullRequestUpdated)
     setCheckRunSucceeded($metadata, $checkRunId, $type, $report);
 }
 
+/**
+ * Checks for dependency file changes in a pull request and applies appropriate labels.
+ *
+ * @param array $metadata Metadata for the GitHub API request
+ * @param object $pullRequestUpdated The updated pull request data
+ * @return void
+ */
+function checkDependencyChanges($metadata, $pullRequestUpdated): void
+{
+    $type = "dependency changes";
+    $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, $type);
+    
+    $diffResponse = getPullRequestDiff($metadata);
+    $diff = $diffResponse->getBody();
+    
+    $dependencyService = new DependencyFileLabelService();
+    $detectedDependencies = $dependencyService->detectDependencyChanges($diff);
+    
+    if (!empty($detectedDependencies)) {
+        // Always add the general dependencies label
+        $labelsToAdd = ["📦 dependencies"];
+        
+        // Add specific package manager labels
+        foreach ($detectedDependencies as $label => $packageManager) {
+            $labelsToAdd[] = $label;
+        }
+        
+        $body = array("labels" => $labelsToAdd);
+        doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $body, "POST");
+        
+        $report = "Detected dependency changes for package managers: " . implode(", ", array_values($detectedDependencies));
+        setCheckRunSucceeded($metadata, $checkRunId, $type, $report);
+    } else {
+        setCheckRunSucceeded($metadata, $checkRunId, $type, "No dependency file changes detected.");
+    }
+}
+
 function removeLabels($metadata, $pullRequestUpdated)
 {
     $labelsLookup = [
@@ -287,16 +324,6 @@ function handleCommentToMerge($metadata, $pullRequest, $collaboratorsLogins)
     commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["squashAndMergeComment"], "dependabot[bot]");
     commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["mergeComment"], "depfu[bot]");
 }
-
-/**
- * Checks for dependency file changes in a pull request and applies appropriate labels.
- *
- * @param array $metadata Metadata for the GitHub API request
- * @param object $pullRequestUpdated The updated pull request data
- * @return void
- */
-function checkDependencyChanges($metadata, $pullRequestUpdated): void
-{
 
 function commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $commentToLookup, $senderToLookup)
 {
