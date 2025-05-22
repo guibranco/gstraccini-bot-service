@@ -220,7 +220,7 @@ function checkDependencyChanges($metadata, $pullRequestUpdated): void
         $labelsToAdd = ["📦 dependencies"];
 
         // Add specific package manager labels
-        foreach ($detectedDependencies as $dependencyKey => $packageManager) {
+        foreach ($detectedDependencies as $packageManager) {
             // Add both the label and package manager name to show in the UI
             $labelsToAdd[] = "📦 " . $packageManager;
         }
