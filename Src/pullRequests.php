@@ -219,7 +219,7 @@ function checkDependencyChanges($metadata, $pullRequestUpdated): void
         setCheckRunSucceeded($metadata, $checkRunId, $type, "No dependency file changes detected.");
         return;
     }
-    
+
     $labelsToAdd = ["📦 dependencies"];
 
     foreach (array_values($detectedDependencies) as $packageManager) {
