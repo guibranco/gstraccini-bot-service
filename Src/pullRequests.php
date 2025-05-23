@@ -151,7 +151,7 @@ function createMetadata($token, $pullRequest, $config)
         "issuesUrl" => $repoPrefix . "/issues",
         "labelsUrl" => $repoPrefix . ISSUES . $pullRequest->Number . "/labels",
         "compareUrl" => $repoPrefix . "/compare/",
-        "botNameMarkdown" => "[" . $config->botName . "[bot]](https://github.com/apps/" . $config->botName . ")",
+        "botNameMarkdown" => "[" . $config->botName . "\[bot\]](https://github.com/apps/" . $config->botName . ")",
         "dashboardUrl" => $config->dashboardUrl . $prQueryString
     );
 }
@@ -263,7 +263,6 @@ function checkForOtherPullRequests($metadata, $pullRequest)
         echo "No other pull requests to review ❌\n";
         return;
     }
-    return;
 
     foreach ($pullRequestsOpen as $pullRequestPending) {
         if ($pullRequest->Number === $pullRequestPending->number) {
@@ -352,7 +351,7 @@ function commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $commentT
         $comment = array("body" => $commentToLookup);
         doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
 
-        $label = array("labels" => array("✅️ auto-merge"));
+        $label = array("labels" => array("☑ auto-merge"));
         doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $label, "POST");
     }
 }
@@ -473,7 +472,7 @@ function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
         );
         doRequestGitHub($metadata["userToken"], "graphql", $body, "POST");
 
-        $label = array("labels" => array("✅️ auto-merge"));
+        $label = array("labels" => array("☑ auto-merge"));
         doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $label, "POST");
     }
 
