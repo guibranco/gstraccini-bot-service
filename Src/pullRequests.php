@@ -349,7 +349,7 @@ function commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $commentT
         $comment = array("body" => $commentToLookup);
         doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
 
-        $label = array("labels" => array("☑ auto-merge"));
+        $label = array("labels" => array("☑️ auto-merge"));
         doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $label, "POST");
     }
 }
@@ -470,7 +470,7 @@ function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
         );
         doRequestGitHub($metadata["userToken"], "graphql", $body, "POST");
 
-        $label = array("labels" => array("☑ auto-merge"));
+        $label = array("labels" => array("☑️ auto-merge"));
         doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $label, "POST");
     }
 
