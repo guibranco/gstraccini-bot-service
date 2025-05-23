@@ -215,21 +215,22 @@ function checkDependencyChanges($metadata, $pullRequestUpdated): void
     $dependencyService = new DependencyFileLabelService();
     $detectedDependencies = $dependencyService->detectDependencyChanges($diff);
 
-    if (!empty($detectedDependencies)) {
-        $labelsToAdd = ["📦 dependencies"];
-
-        foreach (array_values($detectedDependencies) as $packageManager) {
-            $labelsToAdd[] = $packageManager;
-        }
-
-        $body = array("labels" => $labelsToAdd);
-        doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $body, "POST");
-
-        $report = "Detected dependency changes for package managers: " . implode(", ", array_values($detectedDependencies));
-        setCheckRunSucceeded($metadata, $checkRunId, $type, $report);
-    } else {
+    if (empty($detectedDependencies)) {
         setCheckRunSucceeded($metadata, $checkRunId, $type, "No dependency file changes detected.");
+        return;
     }
+    
+    $labelsToAdd = ["📦 dependencies"];
+
+    foreach (array_values($detectedDependencies) as $packageManager) {
+        $labelsToAdd[] = $packageManager;
+    }
+
+    $body = array("labels" => $labelsToAdd);
+    doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $body, "POST");
+
+    $report = "Detected dependency changes for package managers: " . implode(", ", array_values($detectedDependencies));
+    setCheckRunSucceeded($metadata, $checkRunId, $type, $report);
 }
 
 function removeLabels($metadata, $pullRequestUpdated)
