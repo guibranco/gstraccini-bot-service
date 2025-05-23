@@ -183,6 +183,11 @@
         "requiresPullRequestOpen": true
     },
     {
+        "command": "nuget check updates",
+        "description": "Checks for NuGet package updates using [dotnet-outdated](https://github.com/dotnet-outdated/dotnet-outdated) (only for **.NET** projects).",
+        "requiresPullRequestOpen": true
+    },
+    {
         "command": "prettier",
         "description": "Formats the code using [Prettier](https://prettier.io).",
         "requiresPullRequestOpen": true
