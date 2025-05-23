@@ -216,13 +216,10 @@ function checkDependencyChanges($metadata, $pullRequestUpdated): void
     $detectedDependencies = $dependencyService->detectDependencyChanges($diff);
 
     if (!empty($detectedDependencies)) {
-        // Always add the general dependencies label
         $labelsToAdd = ["📦 dependencies"];
 
-        // Add specific package manager labels
         foreach (array_values($detectedDependencies) as $packageManager) {
-            // Add the package manager label
-            $labelsToAdd[] = "📦 " . $packageManager;
+            $labelsToAdd[] = $packageManager;
         }
 
         $body = array("labels" => $labelsToAdd);
