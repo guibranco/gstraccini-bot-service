@@ -9,6 +9,7 @@ use GuiBranco\GStracciniBot\Library\LabelService;
 use GuiBranco\GStracciniBot\Library\RepositoryManager;
 use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\Pancake\GUIDv4;
+use GuiBranco\Pancake\Request;
 use GuiBranco\Pancake\HealthChecks;
 
 /**
@@ -66,7 +67,7 @@ function handleItem($comment): void
 
     $ignoredBots = ["github-actions[bot]", "AppVeyorBot", "gitauto-ai[bot]"];
     if (in_array($sender, $ignoredBots, true)) {
-        echo "Skipping this comment! 🚷\n";
+        echo "Skipping this comment! \ud83d\udeb7\n";
         reactToComment($comment, "-1");
         return;
     }
@@ -225,7 +226,7 @@ function buildMetadata($comment, $config): array
 function execute_help($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
-    $helpComment = "That's what I can do :neckbeard::\r\n";
+    $helpComment = "That's what I can do :neckbeard:\r\n";
     foreach ($config->commands as $command) {
         $parameters = "";
         $parametersHelp = "";
@@ -431,7 +432,7 @@ function execute_codacyBypass($config, $metadata, $comment): void
     $codacy = new Codacy($codacyApiToken, $logger);
     $response = $codacy->bypassPullRequestAnalysis($comment->RepositoryOwner, $comment->RepositoryName, $comment->PullRequestNumber);
     if ($response->isSuccessStatusCode() === false) {
-        $body = "Bypass the Codacy analysis for this [pull request]({$codacyUrl}) failed! ☠️\r\nDo you want to retry?\r\n- [ ] Yes, retry!";
+        $body = "Bypass the Codacy analysis for this [pull request]({$codacyUrl}) failed! \u2620\ufe0f\r\nDo you want to retry?\r\n- [ ] Yes, retry!";
         $commentResponse = doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
         // TODO: Store comment ID in the table of bot-interactions
     }
@@ -565,18 +566,13 @@ function execute_copyIssue($config, $metadata, $comment): void
     }
 
     $createdIssue = json_decode($createdIssueResponse->getBody());
-
     $number = $createdIssue->number;
-
     $target = "{$targetRepository}#{$number}";
     $targetUrl = $createdIssue->html_url;
-
     $source = "{$comment->RepositoryOwner}/{$comment->RepositoryName}#{$comment->PullRequestNumber}";
     $sourceUrl = "https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/issues/{$comment->PullRequestNumber}";
-
     $body = "Issue copied to [$target]({$targetUrl})";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-
     $body = "Issue copied from [$source]($sourceUrl)";
     doRequestGitHub($metadata["token"], "repos/{$targetRepository}/issues/{$number}/comments", array("body" => $body), "POST");
 }
@@ -590,7 +586,6 @@ function execute_copyIssue($config, $metadata, $comment): void
  *
  * @return void
  */
-
 function execute_createLabels($config, $metadata, $comment): void
 {
     preg_match(
@@ -725,7 +720,7 @@ function execute_rerunWorkflows($config, $metadata, $comment): void
     foreach ($failedWorkflowRuns->workflow_runs as $failedWorkflowRun) {
         $url = $metadata["repoPrefix"] . "/actions/runs/" . $failedWorkflowRun->id . "/rerun-failed-jobs";
         $response = doRequestGitHub($metadata["token"], $url, null, "POST");
-        $status = $response->getStatusCode() === 201 ? "🔄" : "❌";
+        $status = $response->getStatusCode() === 201 ? "\ud83d\udd04" : "\u274c";
         $actionsToRerun .= "- [" . $failedWorkflowRun->name . "](" . $failedWorkflowRun->html_url . ") - " . $status . "\n";
     }
 
@@ -765,11 +760,11 @@ function execute_revertCommit($config, $metadata, $comment): void
         $commitUrl = $metadata["repoPrefix"] . "/commits/" . $matches[1];
         $response = doRequestGitHub($metadata["token"], $commitUrl, null, "GET");
         if ($response->getStatusCode() !== 200) {
-            doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "❌ Invalid commit SHA: Commit not found in repository"), "POST");
+            doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "\u274c Invalid commit SHA: Commit not found in repository"), "POST");
             return;
         }
     } else {
-        $errorMessage = "❌ Could not extract a valid commit SHA1 from comment. Expected format: @{$config->botName} revert commit <sha1>";
+        $errorMessage = "\u274c Could not extract a valid commit SHA1 from comment. Expected format: @{$config->botName} revert commit <sha1>";
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $errorMessage), "POST");
         return;
     }
@@ -939,6 +934,63 @@ function updateNextBuildNumber($metadata, $project, $nextBuildNumber): void
 
     $commentBody = "AppVeyor next build number updated to " . $nextBuildNumber . "! :rocket:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
+}
+
+function handleUpdateRepoVariableCommand($comment, $config)
+{
+    $commandExpression = "@" . $config->botName . " update repo variable ";
+    if (stripos($comment->CommentBody, $commandExpression) === false) {
+        return null;
+    }
+
+    $parts = explode(" ", str_ireplace($commandExpression, "", $comment->CommentBody));
+    if (count($parts) < 2) {
+        return "Error: Please provide both variable name and value.";
+    }
+
+    $name = $parts[0];
+    $value = $parts[1];
+    $owner = $comment->RepositoryOwner;
+    $repo = $comment->RepositoryName;
+    updateOrCreateRepoVariable($owner, $repo, $name, $value);
+    return "Variable '{$name}' has been updated/created successfully.";
+}
+
+function updateOrCreateRepoVariable($owner, $repo, $name, $value)
+{
+    $request = new Request();
+    $baseUrl = "https://api.github.com/repos/{$owner}/{$repo}/actions/variables";
+
+    $response = $request->get($baseUrl);
+    $responseData = json_decode($response->getBody(), true);
+    $variables = $responseData['variables'] ?? [];
+
+    $variableExists = false;
+    foreach ($variables as $variable) {
+        if ($variable['name'] === $name) {
+            $variableExists = true;
+            break;
+        }
+    }
+
+    if ($variableExists) {
+        return $request->patch($baseUrl . "/{$name}", ['value' => $value]);
+    }
+    return $request->post($baseUrl, ['name' => $name, 'value' => $value, 'visibility' => 'all']);
+}
+
+function main(): void
+{
+    $config = loadConfig();
+    ob_start();
+    $table = "github_comments";
+    global $logger;
+    $processor = new ProcessingManager($table, $logger);
+    $processor->process('handleItem');
+    $result = ob_get_clean();
+    if ($config->debug->all === true || $config->debug->comments === true) {
+        echo $result;
+    }
 }
 
 $healthCheck = new HealthChecks($healthChecksIoComments, GUIDv4::random());
