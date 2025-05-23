@@ -3,6 +3,7 @@
 require_once "config/config.php";
 
 use GuiBranco\GStracciniBot\Library\MarkdownGroupCheckboxValidator;
+use GuiBranco\GStracciniBot\Library\DependencyFileLabelService;
 use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\GStracciniBot\Library\PullRequestCodeScanner;
 use GuiBranco\Pancake\GUIDv4;
@@ -23,6 +24,8 @@ function handleItem($pullRequest, $isRetry = false)
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
     $pullRequestResponse->ensureSuccessStatus();
     $pullRequestUpdated = json_decode($pullRequestResponse->getBody());
+
+    updateMergeable($pullRequest, $pullRequestUpdated);
 
     if ($pullRequestUpdated->state === "closed") {
         removeIssueWipLabel($metadata, $pullRequest);
@@ -140,6 +143,7 @@ function handleItem($pullRequest, $isRetry = false)
 
     checkPullRequestDescription($metadata, $pullRequestUpdated);
     checkPullRequestContent($metadata, $pullRequestUpdated);
+    checkDependencyChanges($metadata, $pullRequestUpdated);
     setCheckRunSucceeded($metadata, $checkRunId, "pull request");
 }
 
@@ -214,6 +218,42 @@ function checkPullRequestContent($metadata, $pullRequestUpdated)
     setCheckRunSucceeded($metadata, $checkRunId, $type, $report);
 }
 
+/**
+ * Checks for dependency file changes in a pull request and applies appropriate labels.
+ *
+ * @param array $metadata Metadata for the GitHub API request
+ * @param object $pullRequestUpdated The updated pull request data
+ * @return void
+ */
+function checkDependencyChanges($metadata, $pullRequestUpdated): void
+{
+    $type = "dependency changes";
+    $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, $type);
+
+    $diffResponse = getPullRequestDiff($metadata);
+    $diff = $diffResponse->getBody();
+
+    $dependencyService = new DependencyFileLabelService();
+    $detectedDependencies = $dependencyService->detectDependencyChanges($diff);
+
+    if (empty($detectedDependencies)) {
+        setCheckRunSucceeded($metadata, $checkRunId, $type, "No dependency file changes detected.");
+        return;
+    }
+
+    $labelsToAdd = ["📦 dependencies"];
+
+    foreach (array_values($detectedDependencies) as $packageManager) {
+        $labelsToAdd[] = $packageManager;
+    }
+
+    $body = array("labels" => $labelsToAdd);
+    doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $body, "POST");
+
+    $report = "Detected dependency changes for package managers: " . implode(", ", array_values($detectedDependencies));
+    setCheckRunSucceeded($metadata, $checkRunId, $type, $report);
+}
+
 function removeLabels($metadata, $pullRequestUpdated)
 {
     $labelsLookup = [
@@ -268,6 +308,17 @@ function checkForOtherPullRequests($metadata, $pullRequest)
     }
 }
 
+function updateMergeable($pullRequest, $pullRequestUpdated): void
+{
+    $prUpsert = new \stdClass();
+    $prUpsert->Sequence = $pullRequest->Sequence;
+    $prUpsert->Mergeable = $pullRequestUpdated->mergeable;
+    $prUpsert->MergeableState = $pullRequestUpdated->mergeable_state;
+    $prUpsert->Merged = $pullRequestUpdated->merged;
+    echo "Updating mergeable data of #{$pullRequestUpdated->number} - Sender: " . $pullRequest->Sender . " 🔄\n";
+    upsertPullRequestMergeable($prUpsert);
+}
+
 function triggerReview($pullRequest, $pullRequestPending)
 {
     $prUpsert = new \stdClass();
@@ -293,7 +344,6 @@ function handleCommentToMerge($metadata, $pullRequest, $collaboratorsLogins)
     commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["squashAndMergeComment"], "dependabot[bot]");
     commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["mergeComment"], "depfu[bot]");
 }
-
 
 function commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $commentToLookup, $senderToLookup)
 {
