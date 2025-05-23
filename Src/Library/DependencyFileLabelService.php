@@ -112,12 +112,10 @@ class DependencyFileLabelService
         $currentFile = null;
 
         foreach ($lines as $line) {
-            // Skip binary files and extremely long lines
             if (strlen($line) > 1000 || preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', $line) === true) {
                 continue;
             }
 
-            // Detect file being modified
             if (preg_match('/^\+\+\+ b\/(.+)/', $line, $matches) === true) {
                 $currentFile = $matches[1];
                 $this->checkDependencyFile($currentFile, $detectedFiles);
