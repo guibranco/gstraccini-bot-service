@@ -681,6 +681,14 @@ function execute_npmLintFix($config, $metadata, $comment): void
     callWorkflow($config, $metadata, $comment, "npm-lint-fix.yml");
 }
 
+function execute_nugetCheckUpdates($config, $metadata, $comment): void
+{
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
+    $body = "Running [dotnet-outdated](https://github.com/dotnet-outdated/dotnet-outdated) to check for NuGet package updates! :package:";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    callWorkflow($config, $metadata, $comment, "nuget-check-updates.yml");
+}
+
 function execute_prettier($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
