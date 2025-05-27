@@ -38,30 +38,32 @@ GStraccini-bot can handle various tasks. Here’s a list of commands:
 
 ### Commands
 
+- `@gstraccini add project`: Adds a project to the solution file (only for **.NET** projects).
+- `@gstraccini appveyor build`: Runs the [AppVeyor](https://ci.appveyor.com) build for the target commit and/or pull request.
+- `@gstraccini appveyor bump version`: Bumps the CI version in [AppVeyor](https://ci.appveyor.com).
+- `@gstraccini appveyor register`: Registers the repository in [AppVeyor](https://ci.appveyor.com).
+- `@gstraccini appveyor reset`: Resets the [AppVeyor](https://ci.appveyor.com) build number for the target repository.
+- `@gstraccini bump version`: Bumps the [.NET version](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core) in `.csproj` files.
+- `@gstraccini cargo clippy`: Formats the Rust code using [Cargo Clippy](https://doc.rust-lang.org/clippy/usage.html) (only for **Rust** projects).
+- `@gstraccini change runner`: Changes the [GitHub action runner](https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners) in a workflow file (.yml).
+- `@gstraccini codacy bypass`: Bypasses the [Codacy](https://www.codacy.com) analysis for the target commit and/or pull request.
+- `@gstraccini codacy reanalyze commit`: Reanalyzes the [Codacy](https://www.codacy.com) last commit in a pull request.
+- `@gstraccini codeclimate bypass`: Bypasses the [CodeClimate](https://codeclimate.com) analysis for the target commit and/or pull request.
+- `@gstraccini copy issue`: Copies an issue from one repository to another.
+- `@gstraccini copy labels`: Copies the labels from another repository.
+- `@gstraccini create labels`: Creates the default labels in the repository.
+- `@gstraccini csharpier`: Formats the C# code using [CSharpier](https://csharpier.com) (only for **.NET** projects).
+- `@gstraccini fix csproj`: Updates the `.csproj` file with the `packages.config` version of [NuGet packages](https://nuget.org) (only for **.NET Framework** projects).
 - `@gstraccini help`: Shows the help message with available commands.
-- `@gstraccini add project <projectPath>`: Adds a project to the solution file (only for .NET projects).
-- `@gstraccini appveyor build <type>`: Runs the AppVeyor build for the target commit and/or pull request.
-- `@gstraccini appveyor bump version <component>`: Bumps the CI version in AppVeyor.
-- `@gstraccini appveyor register`: Registers the repository in AppVeyor.
-- `@gstraccini appveyor reset`: Resets the AppVeyor build number for the target repository.
-- `@gstraccini bump version <version> <project>`: Bumps the .NET version in .csproj files.
-- `@gstraccini cargo clippy`: Formats the Rust code using Cargo Clippy (only for Rust projects).
-- `@gstraccini change runner <runner> <workflow> <jobs>`: Changes the GitHub action runner in a workflow file (.yml).
-- `@gstraccini codacy bypass`: Bypasses the Codacy analysis for the target commit and/or pull request.
-- `@gstraccini codacy reanalyze commit`: Reanalyzes the Codacy last commit in a pull request.
-- `@gstraccini codeclimate bypass`: Bypasses the CodeClimate analysis for the target commit and/or pull request.
-- `@gstraccini copy labels <repository>`: Copies the labels from another repository.
-- `@gstraccini copy issue <repository>`: Copies an issue from one repository to another.
-- `@gstraccini create labels <style> <categories>`: Creates the default labels in the repository.
-- `@gstraccini csharpier`: Formats the C# code using CSharpier (only for .NET projects).
-- `@gstraccini fix csproj`: Updates the .csproj file with the packages.config version of NuGet packages (only for .NET Framework projects).
-- `@gstraccini npm check updates`: Updates dependencies in a package.json and package-lock.json.
-- `@gstraccini npm dist`: Generates or regenerates the dist files.
-- `@gstraccini prettier`: Formats the code using Prettier.
-- `@gstraccini rerun checks <conclusion>`: Reruns the checks in the target pull request.
-- `@gstraccini rerun workflows <conclusion>`: Reruns the workflows (actions) in the target pull request.
-- `@gstraccini review`: Enables review for the target pull request.
-- `@gstraccini update snapshot`: Updates test snapshots (npm test -- -u) (only for Node.js projects).
+- `@gstraccini npm check updates`: Updates dependencies in `package.json` and `package-lock.json` using [npm-check-updates](https://github.com/raineorshine/npm-check-updates) (only for **NPM** projects).
+- `@gstraccini npm dist`: Generates or regenerates the `dist` files by running `npm run package` (only for **NPM** projects).
+- `@gstraccini npm lint fix`: Fixes linting issues by running `npm run lint -- --fix` (only for **NPM** projects).
+- `@gstraccini prettier`: Formats the code using [Prettier](https://prettier.io).
+- `@gstraccini rerun checks`: Reruns the checks in the target pull request with a matching conclusion.
+- `@gstraccini rerun workflows`: Reruns the workflows (actions) in the target pull request. Only applicable for GitHub Actions.
+- `@gstraccini revert commit`: Reverts a commit using its SHA1 in the repository. The revert is committed directly into the PR branch.
+- `@gstraccini review`: Enables review for the target pull request. Useful when the PR submitter wasn't on the watch list or a webhook failed.
+- `@gstraccini update snapshot`: Updates test snapshots by running `npm test -- -u` (only for **Node.js** projects).
 
 > [!Note]
 > If you are not allowed to use the bot, a thumbs-down reaction will be added to your comment.
