@@ -18,7 +18,7 @@ function connectToDatabase($isRetry = false)
         $mysqli->set_charset("utf8mb4");
 
         return $mysqli;
-    } catch(Exception $e) {
+    } catch (Exception $e) {
         if ($isRetry) {
             throw $e;
         }
