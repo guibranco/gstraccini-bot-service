@@ -25,8 +25,6 @@ function handleItem($pullRequest, $isRetry = false)
     $pullRequestResponse->ensureSuccessStatus();
     $pullRequestUpdated = json_decode($pullRequestResponse->getBody());
 
-    updateMergeable($pullRequest, $pullRequestUpdated);
-
     if ($pullRequestUpdated->state === "closed") {
         removeIssueWipLabel($metadata, $pullRequest);
         removeLabels($metadata, $pullRequestUpdated);
