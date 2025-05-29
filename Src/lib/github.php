@@ -107,14 +107,40 @@ function handleResponse(Response $response, string $method, string $accept): Res
 
     $statusCode = $response->getStatusCode();
     $info = $response->toJson();
+    $body = $response->getBody();
+    $decoded = json_decode($body, true);
+
+    $errorMessage = "Invalid GitHub response. HTTP Status Code: {$statusCode}";
+
+    if (is_array($decoded)) {
+        if (!empty($decoded['message'])) {
+            $errorMessage .= " - {$decoded['message']}";
+        }
+
+        if (!empty($decoded['errors']) && is_array($decoded['errors'])) {
+            $errorMessage .= "\nErrors:";
+            foreach ($decoded['errors'] as $error) {
+                $resource = $error['resource'] ?? 'Unknown resource';
+                $field = $error['field'] ?? 'unknown field';
+                $code = $error['code'] ?? 'unknown code';
+                $errorMessage .= "\n- [{$resource}] {$field}: {$code}";
+            }
+        }
+
+        if (!empty($decoded['documentation_url'])) {
+            $errorMessage .= "\n📚 See: {$decoded['documentation_url']}";
+        }
+    }
+
     if ($statusCode <= 0 || ($statusCode >= 300 && $statusCode !== 404)) {
-        $logger->log("Invalid GitHub response. HTTP Status Code: {$statusCode}", $info);
-    } elseif (empty($response->getBody()) && $method !== "DELETE" && $statusCode !== 204 && $accept !== "application/vnd.github.v3.diff") {
+        $logger->log($errorMessage, $info);
+    } elseif (empty($body) && $method !== "DELETE" && $statusCode !== 204 && $accept !== "application/vnd.github.v3.diff") {
         $logger->log("Unexpected empty response", $info);
     }
 
     return $response;
 }
+
 
 /**
  * The function `generateAppToken` generates a token for a GitHub app using specified parameters and
