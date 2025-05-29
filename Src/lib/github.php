@@ -145,7 +145,6 @@ function handleResponse(Response $response, string $method, string $accept): Res
     return $response;
 }
 
-
 /**
  * The function `generateAppToken` generates a token for a GitHub app using specified parameters and
  * returns it as a string.
