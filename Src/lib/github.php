@@ -120,10 +120,14 @@ function handleResponse(Response $response, string $method, string $accept): Res
         if (!empty($decoded['errors']) && is_array($decoded['errors'])) {
             $errorMessage .= "\nErrors:";
             foreach ($decoded['errors'] as $error) {
-                $resource = $error['resource'] ?? 'Unknown resource';
-                $field = $error['field'] ?? 'unknown field';
-                $code = $error['code'] ?? 'unknown code';
-                $errorMessage .= "\n- [{$resource}] {$field}: {$code}";
+                if (is_array($error)) {
+                    $resource = $error['resource'] ?? 'Unknown resource';
+                    $field = $error['field'] ?? 'unknown field';
+                    $code = $error['code'] ?? 'unknown code';
+                    $errorMessage .= "\n- [{$resource}] {$field}: {$code}";
+                } else {
+                    $errorMessage .= "\n- " . (string)$error;
+                }
             }
         }
 
