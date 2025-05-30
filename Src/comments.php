@@ -639,15 +639,6 @@ function execute_csharpier($config, $metadata, $comment): void
 }
 
  */
-/**
- * Executes the dotnet slnx command to migrate .sln files to .slnx files.
- *
- * @param object $config   Configuration object containing bot settings.
- * @param array  $metadata Metadata array with token, URLs, and other request context.
- * @param object $comment  The comment object that triggered this command.
- *
- * @return void
- */
 function execute_DotnetSlnx($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
