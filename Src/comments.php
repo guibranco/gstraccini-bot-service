@@ -638,7 +638,6 @@ function execute_csharpier($config, $metadata, $comment): void
     callWorkflow($config, $metadata, $comment, "csharpier.yml");
 }
 
- */
 function execute_DotnetSlnx($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
