@@ -715,14 +715,6 @@ function execute_prettier($config, $metadata, $comment): void
  * @param string $comment The comment triggering the rerun checks.
  *
  * @return void
-/**
- * Executes the dotnet slnx command to migrate .sln files to .slnx files.
- *
- * @param object $config   Configuration object containing bot settings.
- * @param array  $metadata Metadata array with token, URLs, and other request context.
- * @param object $comment  The comment object that triggered this command.
- *
- * @return void
 function execute_rerunWorkflows($config, $metadata, $comment): void
 {
     $commandHelper = new CommandHelper();
