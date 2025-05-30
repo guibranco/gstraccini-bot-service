@@ -648,7 +648,7 @@ function execute_DotnetSlnx($config, $metadata, $comment): void
 }
 
 // Alias for backward compatibility with the toCamelCase() function
-function execute_dotnetSlnx($config, $metadata, $comment): void
+function execute_DotnetSlnx($config, $metadata, $comment): void
 {
     execute_DotnetSlnx($config, $metadata, $comment);
 }
