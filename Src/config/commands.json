@@ -238,3 +238,4 @@
         "description": "Updates test snapshots by running `npm test -- -u` (only for **Node.js** projects).",
         "requiresPullRequestOpen": true
     }
+]
