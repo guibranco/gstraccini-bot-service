@@ -720,7 +720,7 @@ function execute_rerunWorkflows($config, $metadata, $comment): void
     foreach ($failedWorkflowRuns->workflow_runs as $failedWorkflowRun) {
         $url = $metadata["repoPrefix"] . "/actions/runs/" . $failedWorkflowRun->id . "/rerun-failed-jobs";
         $response = doRequestGitHub($metadata["token"], $url, null, "POST");
-        $status = $response->getStatusCode() === 201 ? "\ud83d\udd04" : "\u274c";
+        $status = $response->getStatusCode() === 201 ? "🔄" : "❌";
         $actionsToRerun .= "- [" . $failedWorkflowRun->name . "](" . $failedWorkflowRun->html_url . ") - " . $status . "\n";
     }
 
@@ -760,11 +760,11 @@ function execute_revertCommit($config, $metadata, $comment): void
         $commitUrl = $metadata["repoPrefix"] . "/commits/" . $matches[1];
         $response = doRequestGitHub($metadata["token"], $commitUrl, null, "GET");
         if ($response->getStatusCode() !== 200) {
-            doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "\u274c Invalid commit SHA: Commit not found in repository"), "POST");
+            doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => "❌ Invalid commit SHA: Commit not found in repository"), "POST");
             return;
         }
     } else {
-        $errorMessage = "\u274c Could not extract a valid commit SHA1 from comment. Expected format: @{$config->botName} revert commit <sha1>";
+        $errorMessage = "❌ Could not extract a valid commit SHA1 from comment. Expected format: @{$config->botName} revert commit <sha1>";
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $errorMessage), "POST");
         return;
     }
