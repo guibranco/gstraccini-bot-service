@@ -67,7 +67,7 @@ function handleItem($comment): void
 
     $ignoredBots = ["github-actions[bot]", "AppVeyorBot", "gitauto-ai[bot]"];
     if (in_array($sender, $ignoredBots, true)) {
-        echo "Skipping this comment! \ud83d\udeb7\n";
+        echo "Skipping this comment! 🚷\n";
         reactToComment($comment, "-1");
         return;
     }
@@ -226,7 +226,7 @@ function buildMetadata($comment, $config): array
 function execute_help($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
-    $helpComment = "That's what I can do :neckbeard:\r\n";
+    $helpComment = "That's what I can do :neckbeard::\r\n";
     foreach ($config->commands as $command) {
         $parameters = "";
         $parametersHelp = "";
@@ -432,7 +432,7 @@ function execute_codacyBypass($config, $metadata, $comment): void
     $codacy = new Codacy($codacyApiToken, $logger);
     $response = $codacy->bypassPullRequestAnalysis($comment->RepositoryOwner, $comment->RepositoryName, $comment->PullRequestNumber);
     if ($response->isSuccessStatusCode() === false) {
-        $body = "Bypass the Codacy analysis for this [pull request]({$codacyUrl}) failed! \u2620\ufe0f\r\nDo you want to retry?\r\n- [ ] Yes, retry!";
+        $body = "Bypass the Codacy analysis for this [pull request]({$codacyUrl}) failed! ☠️\r\nDo you want to retry?\r\n- [ ] Yes, retry!";
         $commentResponse = doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
         // TODO: Store comment ID in the table of bot-interactions
     }
