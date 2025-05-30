@@ -716,6 +716,7 @@ function execute_prettier($config, $metadata, $comment): void
  * @param string $comment The comment triggering the rerun checks.
  *
  * @return void
+ */
 function execute_rerunWorkflows($config, $metadata, $comment): void
 {
     $commandHelper = new CommandHelper();
