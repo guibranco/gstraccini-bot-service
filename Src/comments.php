@@ -645,6 +645,7 @@ function execute_csharpier($config, $metadata, $comment): void
  * @param object $comment  The comment object that triggered this command.
  *
  * @return void
+ */
 function execute_DotnetSlnx($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
