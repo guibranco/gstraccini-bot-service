@@ -647,6 +647,13 @@ function execute_DotnetSlnx($config, $metadata, $comment): void
     callWorkflow($config, $metadata, $comment, "dotnet-migrate-slnx.yml");
 }
 
+// Alias for backward compatibility with the toCamelCase() function
+function execute_dotnetSlnx($config, $metadata, $comment): void
+{
+    execute_DotnetSlnx($config, $metadata, $comment);
+}
+
+
 function execute_fixCsproj($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
