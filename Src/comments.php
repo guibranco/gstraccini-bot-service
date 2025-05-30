@@ -722,7 +722,6 @@ function execute_prettier($config, $metadata, $comment): void
  * @param object $comment  The comment object that triggered this command.
  *
  * @return void
- */
 function execute_rerunWorkflows($config, $metadata, $comment): void
 {
     $commandHelper = new CommandHelper();
