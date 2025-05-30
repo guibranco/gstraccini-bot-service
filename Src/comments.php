@@ -589,6 +589,7 @@ function execute_copyIssue($config, $metadata, $comment): void
  * @param string $comment The comment from which labels will be created.
  *
  * @return void
+ */
 
 function execute_createLabels($config, $metadata, $comment): void
 {
