@@ -656,7 +656,7 @@ function execute_csharpier($config, $metadata, $comment): void
  *
  * @return void
  */
-function Execute_dotnetSlnx($config, $metadata, $comment): void
+function execute_DotnetSlnx($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
     $body = "Migrating `.sln` files to `.slnx` files using " .
