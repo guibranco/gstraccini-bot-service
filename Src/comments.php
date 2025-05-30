@@ -641,7 +641,8 @@ function execute_csharpier($config, $metadata, $comment): void
 function execute_dotnetSlnx($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
-    $body = "Migrating `.sln` files to `.slnx` files using `dotnet sln migrate`! :wrench:";
+    $body = "Migrating `.sln` files to `.slnx` files using " .
+        "`dotnet sln migrate`! :wrench:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
     callWorkflow($config, $metadata, $comment, "dotnet-migrate-slnx.yml");
 }
