@@ -222,6 +222,9 @@ function getPullRequestTemplate($metadata)
 function searchTemplateInRepository($metadata, $repoName, $paths)
 {
     foreach ($paths as $path) {
+ * @param array $metadata Metadata for the GitHub API request.
+ * @param string $content The pull request description content.
+ * @return void
         try {
             $url = "/repos/{$metadata['owner']}/{$repoName}/contents/{$path}";
             $response = doRequestGitHub($metadata["token"], $url, null, "GET");
