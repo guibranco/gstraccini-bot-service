@@ -250,7 +250,7 @@ function updatePullRequestDescription($metadata, $content)
  * Validates the presence of groups and checkboxes in the description.
  *
  * @param array $metadata Metadata for the GitHub API request
- * @param object $pullRequestUpdated The updated pull request data
+ * @param object  $pullRequestUpdated The updated pull request data
  */
 function checkPullRequestDescription($metadata, $pullRequestUpdated)
 {
