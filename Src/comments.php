@@ -638,6 +638,25 @@ function execute_csharpier($config, $metadata, $comment): void
     callWorkflow($config, $metadata, $comment, "csharpier.yml");
 }
 
+/**
+ * Executes the dotnet slnx command to migrate .sln files to .slnx files.
+ *
+ * @param object $config   Configuration object containing bot settings.
+ * @param array  $metadata Metadata array with token, URLs, and other context.
+ * @param object $comment  The comment object that triggered this command.
+ *
+ * @return void
+ */
+function execute_dotnetSlnx($config, $metadata, $comment): void
+{
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
+    $body = "Migrating `.sln` files to `.slnx` files using " .
+        "`dotnet sln migrate`! :wrench:";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    callWorkflow($config, $metadata, $comment, "dotnet-migrate-slnx.yml");
+}
+
+
 function execute_fixCsproj($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
