@@ -198,6 +198,13 @@ function getPullRequestTemplate($metadata)
         }
     }
 
+ *
+ * @param array $metadata Metadata for the GitHub API request containing owner and token
+ * @param string $repoName The name of the repository to search in
+ * @param array $paths List of possible template file paths to check
+ * @return string|null The template content if found, null otherwise
+ * @throws Exception When there is an error accessing the repository content
+ */
     $template = searchTemplateInRepository($metadata, $metadata['repo'], $allPaths);
     if ($template !== null) {
         return $template;
