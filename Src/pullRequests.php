@@ -158,7 +158,8 @@ function createMetadata($token, $pullRequest, $config)
 
 /**
  * Retrieves the pull request template content from the repository
- * Looks for PR template files in the current repository and .github community health repository
+ * Looks for PR template files in the current repository and the
+ * .github community health repository
  * Follows GitHub's template resolution rules with case-insensitive matching.
  *
  * @param array $metadata An associative array containing metadata about the pull request.
