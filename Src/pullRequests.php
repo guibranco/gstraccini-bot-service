@@ -178,7 +178,7 @@ function getPullRequestTemplate($metadata)
         '',                                   // Root level
         'docs/',                              // docs/ directory
         '.github/',                           // .github directory
-        '.github/PULL_REQUEST_TEMPLATE/'      // .github/PULL_REQUEST_TEMPLATE/ directory
+        '.github/PULL_REQUEST_TEMPLATE/'      // PR template directory
     ];
 
     $allPaths = [];
