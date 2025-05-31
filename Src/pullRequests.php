@@ -243,6 +243,7 @@ function updatePullRequestDescription($metadata, $content)
 
 /**
  * Checks the pull request description for compliance with the required standards.
+ * @return void
  * If the description is missing or too short, it applies a template or default message.
  * Validates the presence of groups and checkboxes in the description.
  *
