@@ -213,6 +213,11 @@ function getPullRequestTemplate($metadata)
 
 /**
  * Helper function to search for template in a specific repository
+ *
+ * @param array $metadata Metadata for the GitHub API request, containing 'owner', 'token', etc.
+ * @param string $repoName The name of the repository to search in
+ * @param array $paths List of file paths to check for template content
+ * @return string|null The decoded template content if found, null otherwise.
  */
 function searchTemplateInRepository($metadata, $repoName, $paths)
 {
