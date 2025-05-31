@@ -222,6 +222,9 @@ function searchTemplateInRepository($metadata, $repoName, $paths)
 /**
  * Updates the pull request description and optionally adds a comment
  * Handles both template application and default message scenarios
+ *
+ * @param array $metadata Metadata for the GitHub API request
+ * @param string $content The content to set as the pull request description
  */
 function updatePullRequestDescription($metadata, $content)
 {
