@@ -212,7 +212,7 @@ function searchTemplateInRepository($metadata, $repoName, $paths)
             $response = doRequestGitHub($metadata["token"], $url, null, "GET");
             if ($response !== false) {
                 $fileData = json_decode($response->getBody(), true);
-                if (isset($fileData['content']) && 
+                if (isset($fileData['content']) &&
                     $fileData['encoding'] === 'base64') {
                     return base64_decode($fileData['content']);
                 }
