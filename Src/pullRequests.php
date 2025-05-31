@@ -134,6 +134,15 @@ function createMetadata($token, $pullRequest, $config)
  *
  * @return array An associative array with API endpoints and tokens for further requests.
  */
+/**
+ * Creates metadata required for performing GitHub API requests.
+ *
+ * @param string $token The GitHub API token.
+ * @param object $pullRequest The pull request object containing details such as RepositoryOwner, RepositoryName, and Number.
+ * @param object $config The configuration object containing settings like botName and dashboardUrl.
+ *
+ * @return array An associative array with API endpoints and tokens for further requests.
+ */
 {
     global $gitHubUserToken;
 
