@@ -249,7 +249,12 @@ function searchTemplateInRepository($metadata, $repoName, $paths)
  */
 function updatePullRequestDescription($metadata, $content)
 {
-    doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], array("body" => $content), "PATCH");
+    doRequestGitHub(
+        $metadata["token"],
+        $metadata["pullRequestUrl"],
+        array("body" => $content),
+        "PATCH"
+    );
 
     if (strpos($content, 'Please provide a description') !== false) {
         $comment = array("body" => $content);
