@@ -108,7 +108,7 @@ function handleItem($pullRequest, $isRetry = false)
         }
     }
 
-    if (count($labelsToAdd) > 0) {
+    if (!empty($labelsToAdd)) {
         $body = array("labels" => $labelsToAdd);
         doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $body, "POST");
     }
@@ -150,10 +150,97 @@ function createMetadata($token, $pullRequest, $config)
         "labelsUrl" => $repoPrefix . ISSUES . $pullRequest->Number . "/labels",
         "compareUrl" => $repoPrefix . "/compare/",
         "botNameMarkdown" => "[" . $config->botName . "\[bot\]](https://github.com/apps/" . $config->botName . ")",
-        "dashboardUrl" => $config->dashboardUrl . $prQueryString
+        "dashboardUrl" => $config->dashboardUrl . $prQueryString,
+        "owner" => $pullRequest->RepositoryOwner,
+        "repo" => $pullRequest->RepositoryName,
     );
 }
 
+/**
+ * Retrieves the pull request template content from the repository
+ * Looks for PR template files in the current repository and .github community health repository
+ * Follows GitHub's template resolution rules with case-insensitive matching
+ */
+function getPullRequestTemplate($metadata)
+{
+    $fileNames = [
+        'pull_request_template.md',
+        'PULL_REQUEST_TEMPLATE.md',
+        'Pull_Request_Template.md'
+    ];
+
+    $directories = [
+        '',                                   // Root level
+        'docs/',                              // docs/ directory
+        '.github/',                           // .github directory
+        '.github/PULL_REQUEST_TEMPLATE/'      // .github/PULL_REQUEST_TEMPLATE/ directory
+    ];
+
+    $allPaths = [];
+    foreach ($directories as $dir) {
+        foreach ($fileNames as $fileName) {
+            $allPaths[] = $dir . $fileName;
+        }
+    }
+
+    $template = searchTemplateInRepository($metadata, $metadata['repo'], $allPaths);
+    if ($template !== null) {
+        return $template;
+    }
+
+    $template = searchTemplateInRepository($metadata, '.github', $allPaths);
+    if ($template !== null) {
+        return $template;
+    }
+
+    return null;
+}
+
+/**
+ * Helper function to search for template in a specific repository
+ */
+function searchTemplateInRepository($metadata, $repoName, $paths)
+{
+    foreach ($paths as $path) {
+        try {
+            $url = "/repos/{$metadata['owner']}/{$repoName}/contents/{$path}";
+            $response = doRequestGitHub($metadata["token"], $url, null, "GET");
+            if ($response !== false) {
+                $fileData = json_decode($response->getBody(), true);
+                if (isset($fileData['content']) && $fileData['encoding'] === 'base64') {
+                    return base64_decode($fileData['content']);
+                }
+            }
+        } catch (Exception $e) {
+            continue;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Updates the pull request description and optionally adds a comment
+ * Handles both template application and default message scenarios
+ */
+function updatePullRequestDescription($metadata, $content)
+{
+    doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], array("body" => $content), "PATCH");
+
+    if (strpos($content, 'Please provide a description') !== false) {
+        $comment = array("body" => $content);
+        doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
+    }
+}
+
+/**
+ * Checks the pull request description for compliance with the required standards.
+ * If the description is missing or too short, it applies a template or default message.
+ * Validates the presence of groups and checkboxes in the description.
+ *
+ * @param array $metadata Metadata for the GitHub API request
+ * @param object $pullRequestUpdated The updated pull request data
+ */
 function checkPullRequestDescription($metadata, $pullRequestUpdated)
 {
     $type = "pull request description";
@@ -163,13 +250,13 @@ function checkPullRequestDescription($metadata, $pullRequestUpdated)
         $templateContent = getPullRequestTemplate($metadata);
         if ($templateContent) {
             updatePullRequestDescription($metadata, $templateContent);
-            // The check should ask to review the PR description (if there are checkbox on it, set is as failed, otherwise, set it as succeeded).
             return;
         }
 
         $defaultMessage = "Please provide a description for this pull request.";
         updatePullRequestDescription($metadata, $defaultMessage);
-        // add a comment with the same content.
+        setCheckRunFailed($metadata, $checkRunId, $type, $defaultMessage);
+        return;
     }
 
     if ($bodyLength <= 250) {
