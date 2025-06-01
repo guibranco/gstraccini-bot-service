@@ -108,7 +108,7 @@ function handleItem($pullRequest, $isRetry = false)
         }
     }
 
-    if (count($labelsToAdd) > 0) {
+    if (!empty($labelsToAdd)) {
         $body = array("labels" => $labelsToAdd);
         doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $body, "POST");
     }
@@ -125,6 +125,15 @@ function handleItem($pullRequest, $isRetry = false)
 }
 
 function createMetadata($token, $pullRequest, $config)
+/**
+ * Creates metadata required for performing GitHub API requests.
+ *
+ * @param string $token The GitHub API token.
+ * @param object $pullRequest The pull request object containing details such as RepositoryOwner, RepositoryName, and Number.
+ * @param object $config The configuration object containing settings like botName and dashboardUrl.
+ *
+ * @return array An associative array with API endpoints and tokens for further requests.
+ */
 {
     global $gitHubUserToken;
 
@@ -150,15 +159,137 @@ function createMetadata($token, $pullRequest, $config)
         "labelsUrl" => $repoPrefix . ISSUES . $pullRequest->Number . "/labels",
         "compareUrl" => $repoPrefix . "/compare/",
         "botNameMarkdown" => "[" . $config->botName . "\[bot\]](https://github.com/apps/" . $config->botName . ")",
-        "dashboardUrl" => $config->dashboardUrl . $prQueryString
+        "dashboardUrl" => $config->dashboardUrl . $prQueryString,
+        "owner" => $pullRequest->RepositoryOwner,
+        "repo" => $pullRequest->RepositoryName,
     );
 }
 
+/**
+ * Retrieves the pull request template content from the repository
+ * Looks for PR template files in the current repository and the
+ * .github community health repository
+ * Follows GitHub's template resolution rules with case-insensitive matching.
+ *
+ * @param array $metadata An associative array containing metadata about the pull request.
+ *                       Must include 'owner', 'repo', and 'token' keys for API access.
+ *
+ * @return string|null The content of the pull request template if found, null otherwise.
+ */
+function getPullRequestTemplate($metadata)
+{
+    $fileNames = [
+        'pull_request_template.md',
+        'PULL_REQUEST_TEMPLATE.md',
+        'Pull_Request_Template.md'
+    ];
+
+    $directories = [
+        '',                                   // Root level
+        'docs/',                              // docs/ directory
+        '.github/',                           // .github directory
+        '.github/PULL_REQUEST_TEMPLATE/'      // PR template directory
+    ];
+
+    $allPaths = [];
+    foreach ($directories as $dir) {
+        foreach ($fileNames as $fileName) {
+            $allPaths[] = $dir . $fileName;
+        }
+    }
+
+    $template = searchTemplateInRepository($metadata, $metadata['repo'], $allPaths);
+    if ($template !== null) {
+        return $template;
+    }
+
+    $template = searchTemplateInRepository($metadata, '.github', $allPaths);
+    if ($template !== null) {
+        return $template;
+    }
+
+    return null;
+}
+
+/**
+ * Helper function to search for template in a specific repository
+ *
+ * @param array $metadata Metadata for the GitHub API request, containing 'owner', 'token', etc.
+ * @param string $repoName The name of the repository to search in
+ * @param array $paths List of possible template file paths to check in the repository. Each entry should be a relative path from the repository root.
+ * @return string|null The decoded template content if found, null otherwise.
+ */
+function searchTemplateInRepository($metadata, $repoName, $paths)
+{
+    foreach ($paths as $path) {
+        try {
+            $url = "/repos/{$metadata['owner']}/{$repoName}/contents/{$path}";
+            $response = doRequestGitHub($metadata["token"], $url, null, "GET");
+            if ($response !== false) {
+                $fileData = json_decode($response->getBody(), true);
+                if (isset($fileData['content']) &&
+                    $fileData['encoding'] === 'base64') {
+                    return base64_decode($fileData['content']);
+                }
+            }
+        } catch (Exception $e) {
+            continue;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Updates the pull request description and optionally adds a comment
+ * Handles both template application and default message scenarios
+ *
+ * @param array  $metadata Metadata for the GitHub API request
+ * @param string $content The content to set as the pull request description
+ */
+function updatePullRequestDescription($metadata, $content)
+{
+    doRequestGitHub(
+        $metadata["token"],
+        $metadata["pullRequestUrl"],
+        array("body" => $content),
+        "PATCH"
+    );
+
+    if (strpos($content, 'Please provide a description') !== false) {
+        $comment = array("body" => $content);
+        doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
+    }
+}
+
+/**
+ * Checks the pull request description for compliance with the required standards.
+ * @return void
+ * If the description is missing or too short, it applies
+ * a template or default message.
+ * Validates the presence of groups and checkboxes in the description.
+ *
+ * @param array $metadata Metadata for the GitHub API request
+ * @param object  $pullRequestUpdated The updated pull request data
+ */
 function checkPullRequestDescription($metadata, $pullRequestUpdated)
 {
     $type = "pull request description";
     $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, $type);
-    $bodyLength = empty($pullRequestUpdated->body) === false ? strlen($pullRequestUpdated->body) : 0;
+    $bodyLength = isset($pullRequestUpdated->body) ? strlen($pullRequestUpdated->body) : 0;
+    if ($bodyLength === 0) {
+        $templateContent = getPullRequestTemplate($metadata);
+        if ($templateContent) {
+            updatePullRequestDescription($metadata, $templateContent);
+            return;
+        }
+
+        $defaultMessage = "Please provide a description for this pull request.";
+        updatePullRequestDescription($metadata, $defaultMessage);
+        setCheckRunFailed($metadata, $checkRunId, $type, $defaultMessage);
+        return;
+    }
+
     if ($bodyLength <= 250) {
         setCheckRunFailed($metadata, $checkRunId, $type, "Pull request description too short: {$bodyLength} characters (at least 250 characters long required).");
         return;
