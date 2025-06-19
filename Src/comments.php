@@ -715,10 +715,10 @@ function execute_npmDist($config, $metadata, $comment): void
 function execute_nugetCheckUpdates($config, $metadata, $comment): void
 {
     preg_match(
-        "/@" . $config->botName . 
-        "\snuget\scheck\supdates\s" . 
+        "/@" . $config->botName .
+        "\snuget\scheck\supdates\s" .
         "((?:(?!\s+@" . $config->botName . ").)*)/",
-        $comment->CommentBody, 
+        $comment->CommentBody,
         $matches
     );
     $parameters = array();
