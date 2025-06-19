@@ -681,7 +681,8 @@ function execute_npmCheckUpdates($config, $metadata, $comment): void
     }
 
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
-    $body = "Running the command [npm-check-updates](https://github.com/raineorshine/npm-check-updates) to update dependencies via NPM! :building_construction:";
+    $body = "Running the command [npm-check-updates]" .
+        "(https://github.com/raineorshine/npm-check-updates) to update dependencies via NPM! :building_construction:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
     callWorkflow(
         $config,
