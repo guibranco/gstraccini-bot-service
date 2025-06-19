@@ -692,6 +692,21 @@ function execute_npmDist($config, $metadata, $comment): void
     callWorkflow($config, $metadata, $comment, "npm-dist.yml");
 }
 
+function execute_nugetCheckUpdates($config, $metadata, $comment): void
+{
+    preg_match(
+        "/@" . $config->botName . "\snuget\scheck\supdates\s((?:(?!\s+@" . $config->botName . ").)*)/",
+        $comment->CommentBody,
+        $matches
+    );
+    $parameters = array();
+
+    if (count($matches) == 2) {
+        $parameters["filter"] = $matches[1];
+    }
+
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
+
 function execute_npmLintFix($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
