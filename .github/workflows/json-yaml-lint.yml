@@ -1,4 +1,5 @@
 name: JSON/YAML validation
+
 on:
   push:
     branches:
