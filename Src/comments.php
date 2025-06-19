@@ -695,7 +695,7 @@ function execute_npmDist($config, $metadata, $comment): void
     callWorkflow($config, $metadata, $comment, "npm-dist.yml");
 }
 
-function execute_nugetCheckUpdates($config, $metadata, $comment): void
+function execute_NugetCheckUpdates($config, $metadata, $comment): void
 {
     preg_match(
         "/@" . $config->botName . "\snuget\scheck\supdates\s((?:(?!\s+@" . $config->botName . ").)*)/",
