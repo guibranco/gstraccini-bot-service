@@ -700,7 +700,19 @@ function execute_npmDist($config, $metadata, $comment): void
     callWorkflow($config, $metadata, $comment, "npm-dist.yml");
 }
 
-function execute_NugetCheckUpdates($config, $metadata, $comment): void
+/**
+ * Executes the NuGet check updates command using dotnet-outdated tool.
+ *
+ * @param object $config   Configuration object containing bot settings.
+ * @param array  $metadata Metadata array with token, URLs, and other context.
+ * @param object $comment  The comment object that triggered this command,
+ *                         containing properties like CommentBody for parsing
+ *                         optional filter parameters.
+ *
+ * @return void
+ */
+
+function execute_nugetCheckUpdates($config, $metadata, $comment): void
 {
     preg_match(
         "/@" . $config->botName . 
