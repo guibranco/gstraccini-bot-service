@@ -142,12 +142,12 @@ jobs:
           cd Src       
           echo ${{ env.fullSemVer }} > version.txt
 
-      - name: Create lock file
+      - name: 🔐 Create lock file
         run: |
           mkdir -p Lock
           date +"%Y-%m-%d %H:%M:%S" > Lock/updating.lock
 
-      - name: Upload updating.lock
+      - name: ⬆️ Upload updating.lock
         uses: sebastianpopp/ftp-action@releases/v2
         with:
           host: ${{ secrets.FTP_SERVER }}
@@ -165,12 +165,12 @@ jobs:
           localDir: "Src"
           remoteDir: "/"          
 
-      - name: Create release file
+      - name: 🚀 Create release file
         run: |
           rm -f Lock/updating.lock
           date +"%Y-%m-%d %H:%M:%S" > Lock/updating.release
 
-      - name: Upload updating.release
+      - name: ⬆️ Upload updating.release
         uses: sebastianpopp/ftp-action@releases/v2
         with:
           host: ${{ secrets.FTP_SERVER }}
@@ -180,7 +180,7 @@ jobs:
           remoteDir: "/"
 
   deploy-api:
-    name: Deploy API to FTP
+    name: 🚀 Deploy API to FTP
     runs-on: ubuntu-latest
 
     steps:
@@ -189,7 +189,7 @@ jobs:
         with:
           fetch-depth: 0 
 
-      - name: Copy commands.json to API
+      - name: 📋 Copy commands.json to API
         run: cp Src/config/commands.json Src/api/v1/
       
       - name: 📤 Upload Application via FTP
