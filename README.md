@@ -57,6 +57,9 @@ GStraccini-bot can handle various tasks. Here’s a list of commands:
 - `@gstraccini fix csproj`: Updates the `.csproj` file with the `packages.config` version of [NuGet packages](https://nuget.org) (only for **.NET Framework** projects).
 - `@gstraccini help`: Shows the help message with available commands.
 - `@gstraccini npm check updates`: Updates dependencies in `package.json` and `package-lock.json` using [npm-check-updates](https://github.com/raineorshine/npm-check-updates) (only for **NPM** projects).
+- `@gstraccini nuget check updates`: Checks for NuGet package updates using
+  [dotnet-outdated](https://github.com/dotnet-outdated/dotnet-outdated) (only for
+  **.NET** projects).
 - `@gstraccini npm dist`: Generates or regenerates the `dist` files by running `npm run package` (only for **NPM** projects).
 - `@gstraccini npm lint fix`: Fixes linting issues by running `npm run lint -- --fix` (only for **NPM** projects).
 - `@gstraccini prettier`: Formats the code using [Prettier](https://prettier.io).
