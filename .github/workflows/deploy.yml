@@ -1,41 +1,41 @@
-name: Deploy via ftp
+name: Deploy via FTP with Database Migrations
 
 on:
   push:
-    branches: main
+    branches: [main]
   workflow_dispatch:
 
 jobs:
   deploy-service:
-    name: Deploy service to FTP
+    name: 📦 Deploy service to FTP
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
-      semVer: ${{ steps.gitversion.outputs.semVer }}
-
+      fullSemVer: ${{ steps.gitversion.outputs.fullSemVer }}
     steps:
-      - name: Checkout repository
+      - name: 📥 Checkout Repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Install GitVersion
-        uses: gittools/actions/gitversion/setup@v3
+      - name: 🔧 Install GitVersion
+        uses: gittools/actions/gitversion/setup@v3.2.1
         with:
           versionSpec: "5.x"
 
-      - name: Determine Version
+      - name: 🏷️ Determine Version Number
         id: gitversion
-        uses: gittools/actions/gitversion/execute@v3
+        uses: gittools/actions/gitversion/execute@v3.2.1
         with:
           useConfigFile: true
 
-      - name: Cache Composer dependencies
+      - name: 💾 Cache Composer Dependencies
         uses: actions/cache@v4
         with:
           path: /tmp/composer-cache
           key: ${{ runner.os }}-${{ hashFiles('**/composer.lock') }}
 
-      - name: Install dependencies
+      - name: 📚 Install PHP Dependencies
         uses: "php-actions/composer@v6"
         with:
           php_extensions: sockets
@@ -43,14 +43,15 @@ jobs:
           progress: yes
           working_dir: "./Src/"
 
-      - name: Create .htaccess secrets file
+      - name: 🔒 Create .htaccess Security File
         run: |
           cd Src
           mkdir -p secrets
           cd secrets
           echo "Deny from all" >> .htaccess
+ 
       
-      - name: Generate AppVeyor secrets file
+      - name: 🔑 Generate AppVeyor Configuration
         run: |
           cd Src
           mkdir -p secrets
@@ -58,7 +59,7 @@ jobs:
           echo "<?php" >> appVeyor.secrets.php
           echo "\$appVeyorKey = \"${{ secrets.APPVEYOR_KEY }}\";" >> appVeyor.secrets.php
 
-      - name: Generate Codacy secrets file
+      - name: 🔑 Generate Codacy Configuration
         run: |
           cd Src
           mkdir -p secrets
@@ -66,7 +67,7 @@ jobs:
           echo "<?php" >> codacy.secrets.php
           echo "\$codacyApiToken = \"${{ secrets.CODACY_API_TOKEN }}\";" >> codacy.secrets.php
 
-      - name: Generate Codecov secrets file
+      - name: 🔑 Generate Codecov Configuration
         run: |
           cd Src
           mkdir -p secrets
@@ -74,7 +75,7 @@ jobs:
           echo "<?php" >> codecov.secrets.php
           echo "\$codecovApiToken = \"${{ secrets.CODECOV_API_TOKEN }}\";" >> codecov.secrets.php
 
-      - name: Generate GitHub App secrets file
+      - name: 🔑 Generate GitHub App Configuration
         run: |
           cd Src
           mkdir -p secrets
@@ -86,7 +87,7 @@ jobs:
           echo "\$gitHubWebhookEndpoint  = \"${{ secrets.WEBHOOK_ENDPOINT }}\";" >> gitHubApp.secrets.php
           echo "\$gitHubWebhookSignature = \"${{ secrets.WEBHOOK_SIGNATURE }}\";" >> gitHubApp.secrets.php
 
-      - name: Generate HealthChecksIo secrets file
+      - name: 🔑 Generate HealthChecksIo Configuration
         run: |
           cd Src
           mkdir -p secrets
@@ -101,7 +102,7 @@ jobs:
           echo "\$healthChecksIoRepositories  = \"${{ secrets.HEALTHCHECKSIO_REPOSITORIES }}\";" >> healthChecksIo.secrets.php
           echo "\$healthChecksIoSignature     = \"${{ secrets.HEALTHCHECKSIO_SIGNATURE }}\";" >> healthChecksIo.secrets.php
 
-      - name: Create Logger secrets file
+      - name: 🔑 Generate Logger Configuration
         run: |
           cd Src
           mkdir -p secrets
@@ -111,7 +112,7 @@ jobs:
           echo "\$loggerApiKey   = \"${{ secrets.LOGGER_APIKEY }}\";" >> logger.secrets.php
           echo "\$loggerApiToken = \"${{ secrets.LOGGER_APITOKEN }}\";" >> logger.secrets.php
       
-      - name: Create MySQL secrets file
+      - name: 🔑 Generate MySQL Configuration
         run: |
           cd Src
           mkdir -p secrets
@@ -122,7 +123,7 @@ jobs:
           echo "\$mySqlPassword = \"${{ secrets.MYSQL_PASSWORD }}\";" >> mySql.secrets.php
           echo "\$mySqlDatabase = \"${{ secrets.MYSQL_DATABASE }}\";" >> mySql.secrets.php
 
-      - name: Create RabbitMQ secrets file
+      - name: 🔑 Generate RabbitMQ Configuration
         run: |
           SECRETS_CONTEXT='${{ toJson(secrets) }}'
           cd Src
@@ -136,7 +137,7 @@ jobs:
               echo "\$rabbitMqConnectionStrings[] = \"$value_final\";" >> rabbitMq.secrets.php
           done
 
-      - name: Create version file for API
+      - name: 📝 Create Version File for API
         run: |
           cd Src       
           echo ${{ env.fullSemVer }} > version.txt
@@ -155,14 +156,14 @@ jobs:
           localDir: "Lock"
           remoteDir: "/"
 
-      - name: Upload service
+      - name: 📤 Upload service via FTP
         uses: sebastianpopp/ftp-action@releases/v2
         with:
           host: ${{ secrets.FTP_SERVER }}
           user: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           localDir: "Src"
-          remoteDir: "/"
+          remoteDir: "/"          
 
       - name: Create release file
         run: |
@@ -183,38 +184,41 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: 📥 Checkout Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0    
+          fetch-depth: 0 
 
       - name: Copy commands.json to API
         run: cp Src/config/commands.json Src/api/v1/
       
-      - name: Upload API
+      - name: 📤 Upload Application via FTP
         uses: sebastianpopp/ftp-action@releases/v2
         with:
           host: ${{ secrets.FTP_SERVER }}
-          user: ${{ secrets.FTP_USERNAME_API }}
-          password: ${{ secrets.FTP_PASSWORD_API }}
+          user: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
           localDir: "Src/api/"
           remoteDir: "/"
   
   create_release:
-    name: Create release
+    name: 📢 Create GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
     needs: [deploy-service, deploy-api]
     env:
-      SEMVER: ${{ needs.deploy-service.outputs.semVer }}
-    runs-on: ubuntu-latest
+      fullSemVer: ${{ needs.deploy-service.outputs.fullSemVer }}
     steps:
-      - name: Create Release
+      - name: 🏷️ Create and Publish Release
         uses: ncipollo/release-action@v1.16.0
         with:
-          allowUpdates: false
           skipIfReleaseExists: true
+          allowUpdates: false
           draft: false
           makeLatest: true
-          tag: v${{ env.SEMVER }}
-          name: Release v${{ env.SEMVER }}
+          tag: v${{ env.fullSemVer }}
+          name: Release v${{ env.fullSemVer }}
           generateReleaseNotes: true
-          body: Release ${{ env.SEMVER }} of ${{ github.event.repository.name }}
+          body: Release ${{ env.fullSemVer }} of ${{ github.repository }}
