@@ -258,7 +258,7 @@ function updatePullRequestDescription($metadata, $content)
 
     if (strpos($content, 'Please provide a description') !== false) {
         $comment = array("body" => $content);
-        doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
+        doRequestGitHub($metadata["token"], $metadata["commentsUrl"], $comment, "POST");
     }
 }
 
