@@ -12,7 +12,7 @@ use RuntimeException;
 
 /**
  * AppVeyor API Client
- * 
+ *
  * Provides methods to interact with the AppVeyor CI/CD API
  */
 class AppVeyorClient

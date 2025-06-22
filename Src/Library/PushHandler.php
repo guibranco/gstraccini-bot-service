@@ -1,4 +1,5 @@
-<?php 
+<?php
+
 
 use GuiBranco\Pancake\GUIDv4;
 
@@ -9,12 +10,12 @@ class PushHandler
 {
     private $dbHandler;
     private const TABLE_NAME = 'github_pushes';
-    
+
     public function __construct(DatabaseHandler $dbHandler)
     {
         $this->dbHandler = $dbHandler;
     }
-    
+
     /**
      * Get pending pushes for processing
      */
@@ -22,7 +23,7 @@ class PushHandler
     {
         return $this->dbHandler->readTable(self::TABLE_NAME, $where);
     }
-    
+
     /**
      * Update push processing state
      */
@@ -30,7 +31,7 @@ class PushHandler
     {
         return $this->dbHandler->updateProcessingState(self::TABLE_NAME, $sequence);
     }
-    
+
     /**
      * Finalize push processing
      */
@@ -38,24 +39,24 @@ class PushHandler
     {
         return $this->dbHandler->finalizeProcessing(self::TABLE_NAME, $sequence);
     }
-    
+
     /**
      * Insert or update push record
      */
     public function upsertPush($commit): bool
     {
         $mysqli = $this->dbHandler->connect();
-        
+
         // Check if push exists
         $existingSequence = $this->findExistingPush($mysqli, $commit->HeadCommitId);
-        
+
         if ($existingSequence) {
             return $this->updateExistingPush($mysqli, $existingSequence);
         } else {
             return $this->insertNewPush($mysqli, $commit);
         }
     }
-    
+
     /**
      * Find existing push by HeadCommitId
      */
@@ -64,15 +65,15 @@ class PushHandler
         $sql = "SELECT Sequence FROM " . self::TABLE_NAME . " WHERE HeadCommitId = ?";
         $stmt = $mysqli->prepare($sql);
         $stmt->bind_param("s", $headCommitId);
-        
+
         $stmt->execute();
         $result = $stmt->get_result();
         $row = $result->fetch_assoc();
         $stmt->close();
-        
+
         return $row ? (int)$row["Sequence"] : null;
     }
-    
+
     /**
      * Update existing push
      */
@@ -81,18 +82,18 @@ class PushHandler
         $sql = "UPDATE " . self::TABLE_NAME . " SET ProcessingState = 'RE_REQUESTED', ProcessingDate = NULL WHERE Sequence = ?";
         $stmt = $mysqli->prepare($sql);
         $stmt->bind_param("i", $sequence);
-        
+
         $success = $stmt->execute();
         if (!$success) {
             throw new Exception("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
         }
-        
+
         $stmt->close();
         $mysqli->close();
-        
+
         return $success;
     }
-    
+
     /**
      * Insert new push record
      */
@@ -101,13 +102,13 @@ class PushHandler
         $fields = [
             "DeliveryId", "HookId", "TargetId", "TargetType", "RepositoryOwner", "RepositoryName",
             "Ref", "HeadCommitId", "HeadCommitTreeId", "HeadCommitMessage", "HeadCommitTimestamp",
-            "HeadCommitAuthorName", "HeadCommitAuthorEmail", "HeadCommitCommitterName", 
+            "HeadCommitAuthorName", "HeadCommitAuthorEmail", "HeadCommitCommitterName",
             "HeadCommitCommitterEmail", "InstallationId"
         ];
-        
+
         $sql = "INSERT INTO " . self::TABLE_NAME . " (`" . implode("`,`", $fields) . "`) ";
         $sql .= "VALUES (unhex(replace(?, '-', '')), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        
+
         $stmt = $mysqli->prepare($sql);
         $stmt->bind_param(
             'siissssssssssssi',
@@ -128,15 +129,15 @@ class PushHandler
             $commit->HeadCommitCommitterEmail,
             $commit->InstallationId
         );
-        
+
         $success = $stmt->execute();
         if (!$success) {
             throw new Exception("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
         }
-        
+
         $stmt->close();
         $mysqli->close();
-        
+
         return $success;
     }
 }
