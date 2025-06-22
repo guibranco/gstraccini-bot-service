@@ -108,7 +108,10 @@ function handleResponse(Response $response, string $method, string $accept): Res
     $statusCode = $response->getStatusCode();
     $info = $response->toJson();
     $body = $response->getBody();
-    $decoded = json_decode($body, true);
+    $decoded = null;
+    if ($body !== null && empty($body) === false) {
+        $decoded = json_decode($body, true);
+    }
 
     $errorMessage = "Invalid GitHub response. HTTP Status Code: {$statusCode}";
 
