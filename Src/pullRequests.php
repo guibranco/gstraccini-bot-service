@@ -108,6 +108,8 @@ function handleItem($pullRequest, $isRetry = false)
         }
     }
 
+    removeAwaitingTriageIfReviewed($metadata, $pullRequestUpdated, $collaboratorsLogins, $reviewsLogins, $pullRequest->Sender);
+
     if (!empty($labelsToAdd)) {
         $body = array("labels" => $labelsToAdd);
         doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $body, "POST");
@@ -124,7 +126,119 @@ function handleItem($pullRequest, $isRetry = false)
     setCheckRunSucceeded($metadata, $checkRunId, "pull request");
 }
 
-function createMetadata($token, $pullRequest, $config)
+/**
+ * Removes the 'awaiting triage' label if the PR has been reviewed by all required reviewers
+ * and the last review occurred after the last commit.
+ *
+ * @param array $metadata Metadata for the GitHub API request
+ * @param object $pullRequestUpdated The updated pull request data
+ * @param array $collaboratorsLogins Array of collaborator login names
+ * @param array $reviewsLogins Array of reviewer login names who have reviewed
+ * @param string $sender The PR sender's login
+ * @return void
+ */
+function removeAwaitingTriageIfReviewed($metadata, $pullRequestUpdated, $collaboratorsLogins, $reviewsLogins, $sender)
+{
+    $currentLabels = array_column($pullRequestUpdated->labels, "name");
+    if (!in_array("🚦 awaiting triage", $currentLabels)) {
+        return;
+    }
+
+    if (in_array($sender, $collaboratorsLogins)) {
+        return;
+    }
+
+    $requiredReviewers = $collaboratorsLogins;
+    if (in_array($sender, $requiredReviewers)) {
+        $requiredReviewers = array_values(array_diff($requiredReviewers, array($sender)));
+    }
+
+    if (empty($requiredReviewers)) {
+        return;
+    }
+
+    $reviewedCollaborators = array_intersect($reviewsLogins, $collaboratorsLogins);
+    if (count($reviewedCollaborators) < count($requiredReviewers)) {
+        echo "Awaiting triage: Not all required reviewers have reviewed ({" . count($reviewedCollaborators) . "}/{" . count($requiredReviewers) . "}) ⏳\n";
+        return;
+    }
+
+    $lastReviewTimestamp = getLastReviewTimestamp($metadata);
+    if ($lastReviewTimestamp === null) {
+        return;
+    }
+
+    $lastCommitTimestamp = getLastCommitTimestamp($metadata, $pullRequestUpdated);
+    if ($lastCommitTimestamp === null) {
+        return;
+    }
+
+    if (strtotime($lastReviewTimestamp) <= strtotime($lastCommitTimestamp)) {
+        echo "Awaiting triage: Last review ({$lastReviewTimestamp}) is not after last commit ({$lastCommitTimestamp}) ⏰\n";
+        return;
+    }
+
+    $labelToRemove = str_replace(" ", "%20", "🚦 awaiting triage");
+    $url = $metadata["pullRequestUrl"] . "/labels/{$labelToRemove}";
+    $response = doRequestGitHub($metadata["token"], $url, null, "DELETE");
+    
+    if ($response->getStatusCode() < 300) {
+        echo "Awaiting triage: Label removed - All reviewers have reviewed and last review is recent ✅\n";
+    } else {
+        echo "Awaiting triage: Failed to remove label (HTTP {$response->getStatusCode()}) ❌\n";
+    }
+}
+
+/**
+ * Gets the timestamp of the last review for the pull request
+ *
+ * @param array $metadata Metadata for the GitHub API request
+ * @return string|null The timestamp of the last review, or null if no reviews found
+ */
+function getLastReviewTimestamp($metadata)
+{
+    $reviewsResponse = doRequestGitHub($metadata["token"], $metadata["reviewsUrl"], null, "GET");
+    if ($reviewsResponse->getStatusCode() >= 300) {
+        return null;
+    }
+
+    $reviews = json_decode($reviewsResponse->getBody());
+    if (empty($reviews)) {
+        return null;
+    }
+
+    usort($reviews, function($a, $b) {
+        return strtotime($b->submitted_at) - strtotime($a->submitted_at);
+    });
+
+    return $reviews[0]->submitted_at;
+}
+
+/**
+ * Gets the timestamp of the last commit in the pull request
+ *
+ * @param array $metadata Metadata for the GitHub API request
+ * @param object $pullRequestUpdated The updated pull request data
+ * @return string|null The timestamp of the last commit, or null if not found
+ */
+function getLastCommitTimestamp($metadata, $pullRequestUpdated)
+{
+    $commitsUrl = $metadata["pullRequestUrl"] . "/commits";
+    $commitsResponse = doRequestGitHub($metadata["token"], $commitsUrl, null, "GET");
+    
+    if ($commitsResponse->getStatusCode() >= 300) {
+        return isset($pullRequestUpdated->head->repo->pushed_at) ? $pullRequestUpdated->head->repo->pushed_at : null;
+    }
+
+    $commits = json_decode($commitsResponse->getBody());
+    if (empty($commits)) {
+        return null;
+    }
+
+    $lastCommit = end($commits);
+    return $lastCommit->commit->committer->date;
+}
+
 /**
  * Creates metadata required for performing GitHub API requests.
  *
@@ -134,6 +248,7 @@ function createMetadata($token, $pullRequest, $config)
  *
  * @return array An associative array with API endpoints and tokens for further requests.
  */
+function createMetadata($token, $pullRequest, $config)
 {
     global $gitHubUserToken;
 
