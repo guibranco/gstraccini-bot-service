@@ -181,7 +181,7 @@ function removeAwaitingTriageIfReviewed($metadata, $pullRequestUpdated, $collabo
     $labelToRemove = str_replace(" ", "%20", "🚦 awaiting triage");
     $url = $metadata["pullRequestUrl"] . "/labels/{$labelToRemove}";
     $response = doRequestGitHub($metadata["token"], $url, null, "DELETE");
-    
+
     if ($response->getStatusCode() < 300) {
         echo "Awaiting triage: Label removed - All reviewers have reviewed and last review is recent ✅\n";
     } else {
@@ -207,7 +207,7 @@ function getLastReviewTimestamp($metadata)
         return null;
     }
 
-    usort($reviews, function($a, $b) {
+    usort($reviews, function ($a, $b) {
         return strtotime($b->submitted_at) - strtotime($a->submitted_at);
     });
 
@@ -225,7 +225,7 @@ function getLastCommitTimestamp($metadata, $pullRequestUpdated)
 {
     $commitsUrl = $metadata["pullRequestUrl"] . "/commits";
     $commitsResponse = doRequestGitHub($metadata["token"], $commitsUrl, null, "GET");
-    
+
     if ($commitsResponse->getStatusCode() >= 300) {
         return isset($pullRequestUpdated->head->repo->pushed_at) ? $pullRequestUpdated->head->repo->pushed_at : null;
     }
