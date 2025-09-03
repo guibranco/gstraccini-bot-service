@@ -14,18 +14,18 @@ jobs:
       fullSemVer: ${{ steps.gitversion.outputs.fullSemVer }}
     steps:
       - name: 📥 Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: 🔧 Install GitVersion
-        uses: gittools/actions/gitversion/setup@v4.0.1
+        uses: gittools/actions/gitversion/setup@v4.1.0
         with:
           versionSpec: "6.x"
 
       - name: 🏷️ Determine Version Number
         id: gitversion
-        uses: gittools/actions/gitversion/execute@v4.0.1
+        uses: gittools/actions/gitversion/execute@v4.1.0
 
       - name: 💾 Cache Composer Dependencies
         uses: actions/cache@v4
@@ -183,7 +183,7 @@ jobs:
 
     steps:
       - name: 📥 Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0 
 
@@ -210,7 +210,7 @@ jobs:
       fullSemVer: ${{ needs.deploy-service.outputs.fullSemVer }}
     steps:
       - name: 🏷️ Create and Publish Release
-        uses: ncipollo/release-action@v1.18.0
+        uses: ncipollo/release-action@v1.19.1
         with:
           skipIfReleaseExists: true
           allowUpdates: false
