@@ -210,7 +210,7 @@ jobs:
       fullSemVer: ${{ needs.deploy-service.outputs.fullSemVer }}
     steps:
       - name: 🏷️ Create and Publish Release
-        uses: ncipollo/release-action@v1.19.1
+        uses: ncipollo/release-action@v1.20.0
         with:
           skipIfReleaseExists: true
           allowUpdates: false
