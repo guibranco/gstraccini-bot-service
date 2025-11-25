@@ -260,7 +260,6 @@ function createMetadata($token, $pullRequest, $config)
     return array(
         "token" => $token,
         "userToken" => $gitHubUserToken,
-        "squashAndMergeComment" => "@dependabot squash and merge",
         "mergeComment" => "@depfu merge",
         "commentsUrl" => $repoPrefix . ISSUES . $pullRequest->Number . "/comments",
         "pullRequestUrl" => $repoPrefix . PULLS . $pullRequest->Number,
@@ -552,8 +551,7 @@ function triggerReview($pullRequest, $pullRequestPending)
 }
 
 function handleCommentToMerge($metadata, $pullRequest, $collaboratorsLogins)
-{
-    commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["squashAndMergeComment"], "dependabot[bot]");
+{    
     commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["mergeComment"], "depfu[bot]");
 }
 
