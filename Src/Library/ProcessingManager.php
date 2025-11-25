@@ -101,7 +101,7 @@ class ProcessingManager
             if ($updateResult === true) {
                 $handler($item);
                 $finalizeResult = finalizeProcessing("github_{$this->entity}", $item->Sequence);
-                if($finalizeResult === true) {
+                if ($finalizeResult === true) {
                     echo "Item processed!\n";
                 } else {
                     echo "Item updated by another process!\n";
