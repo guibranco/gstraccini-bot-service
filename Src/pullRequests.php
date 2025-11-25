@@ -551,7 +551,7 @@ function triggerReview($pullRequest, $pullRequestPending)
 }
 
 function handleCommentToMerge($metadata, $pullRequest, $collaboratorsLogins)
-{    
+{
     commentToMerge($metadata, $pullRequest, $collaboratorsLogins, $metadata["mergeComment"], "depfu[bot]");
 }
 
