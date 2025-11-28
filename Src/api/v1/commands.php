@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Command Documentation Generator
  *
