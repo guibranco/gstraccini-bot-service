@@ -40,7 +40,7 @@ services:
 
   queue:
     container_name: queue
-    image: rabbitmq:3-management    
+    image: rabbitmq:management    
     ports:
       - 15672:15672
       - 5672:5672
