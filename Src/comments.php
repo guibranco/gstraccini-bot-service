@@ -533,6 +533,27 @@ function execute_copyLabels($config, $metadata, $comment): void
     $labelService->processLabels($labelsToCreateObject, $labelsToUpdateObject, $metadata["token"], $metadata["labelsUrl"]);
 }
 
+/**
+ * Executes the composer update lock command to regenerate the composer.lock file.
+ *
+ * Triggers the `update-composer-lock.yml` workflow, which runs
+ * `composer update --no-interaction` on the target branch and commits
+ * the updated `composer.lock` file back to the pull request (only for **PHP** projects).
+ *
+ * @param object $config   Configuration object containing bot settings.
+ * @param array  $metadata Metadata array with token, URLs, and other context.
+ * @param object $comment  The comment object that triggered this command.
+ *
+ * @return void
+ */
+function execute_composerUpdateLock($config, $metadata, $comment): void
+{
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
+    $body = "Updating `composer.lock` via `composer update --no-interaction`! :lock:";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    callWorkflow($config, $metadata, $comment, "update-composer-lock.yml");
+}
+
 function execute_copyIssue($config, $metadata, $comment): void
 {
     preg_match(
