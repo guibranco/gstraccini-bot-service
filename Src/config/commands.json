@@ -107,6 +107,11 @@
         "requiresPullRequestOpen": true
     },
     {
+        "command": "composer update lock",
+        "description": "Updates the `composer.lock` file by running `composer update --no-interaction` (only for **PHP** projects).",
+        "requiresPullRequestOpen": true
+    },
+    {
         "command": "copy issue",
         "description": "Copies an issue from one repository to another.",
         "parameters": [
