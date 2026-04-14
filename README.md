@@ -49,6 +49,7 @@ GStraccini-bot can handle various tasks. Here’s a list of commands:
 - `@gstraccini codacy bypass`: Bypasses the [Codacy](https://www.codacy.com) analysis for the target commit and/or pull request.
 - `@gstraccini codacy reanalyze commit`: Reanalyzes the [Codacy](https://www.codacy.com) last commit in a pull request.
 - `@gstraccini codeclimate bypass`: Bypasses the [CodeClimate](https://codeclimate.com) analysis for the target commit and/or pull request.
+- `@gstraccini composer update lock`: Updates the `composer.lock` file by running `composer update --no-interaction` (only for **PHP** projects).
 - `@gstraccini copy issue`: Copies an issue from one repository to another.
 - `@gstraccini copy labels`: Copies the labels from another repository.
 - `@gstraccini create labels`: Creates the default labels in the repository.
