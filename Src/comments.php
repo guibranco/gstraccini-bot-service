@@ -771,6 +771,25 @@ function execute_npmLintFix($config, $metadata, $comment): void
     callWorkflow($config, $metadata, $comment, "npm-lint-fix.yml");
 }
 
+function execute_phpcs($config, $metadata, $comment): void
+{
+    preg_match(
+        "/@" . $config->botName . "\sphpcs(?:\s(\w+))?/",
+        $comment->CommentBody,
+        $matches
+    );
+    $parameters = array();
+
+    if (count($matches) === 2) {
+        $parameters["standard"] = $matches[1];
+    }
+
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
+    $body = "Running [PHP_CodeSniffer](https://github.com/PHPCSStandards/PHP_CodeSniffer) on this branch! :wrench:";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    callWorkflow($config, $metadata, $comment, "phpcs-autofix.yml", $parameters);
+}
+
 function execute_prettier($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
