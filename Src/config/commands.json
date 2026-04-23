@@ -205,6 +205,18 @@
         "requiresPullRequestOpen": true
     },
     {
+        "command": "phpcs",
+        "description": "Runs the [PHP_CodeSniffer](https://github.com/PHPCSStandards/PHP_CodeSniffer) to detect violations of a defined coding standard (only for **PHP** projects).",
+        "parameters": [
+            {
+                "parameter": "standard",
+                "description": "The coding standard to use (e.g., PSR12, PSR2, WordPress). Ignored if a `phpcs.xml` config file exists in the repository. Defaults to `PSR12`.",
+                "required": false
+            }
+        ],
+        "requiresPullRequestOpen": true
+    },
+    {
         "command": "prettier",
         "description": "Formats the code using [Prettier](https://prettier.io).",
         "requiresPullRequestOpen": true
