@@ -420,6 +420,32 @@ function execute_cargoClippy($config, $metadata, $comment): void
     callWorkflow($config, $metadata, $comment, "cargo-clippy.yml");
 }
 
+function execute_changeRunner($config, $metadata, $comment): void
+{
+    preg_match(
+        "/@" . $config->botName . "\schange\srunner\s([^\s]+)(?:\s+((?:(?!\s+@" . $config->botName . ").)*))?/",
+        $comment->CommentBody,
+        $matches
+    );
+
+    if (count($matches) < 2) {
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $metadata["errorMessages"]["invalidParameter"]), "POST");
+        return;
+    }
+
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
+    $parameters = array("runner" => $matches[1]);
+    $jobs = isset($matches[2]) ? trim($matches[2]) : "";
+    if ($jobs !== "" && $jobs !== "all") {
+        $parameters["jobs"] = $jobs;
+    }
+
+    $body = "Changing the GitHub Actions runner to `{$matches[1]}`! :runner:";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    callWorkflow($config, $metadata, $comment, "change-runner.yml", $parameters);
+}
+
 function execute_codacyBypass($config, $metadata, $comment): void
 {
     global $codacyApiToken, $logger;
