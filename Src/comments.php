@@ -696,11 +696,22 @@ function execute_csharpier($config, $metadata, $comment): void
  */
 function execute_dotnetCentralisedPackageConverter($config, $metadata, $comment): void
 {
+    preg_match(
+        "/@" . $config->botName . "\sdotnet\scentralised\spackage\sconverter(?:\sautofix\s(true|false))?/i",
+        $comment->CommentBody,
+        $matches
+    );
+    $parameters = array();
+
+    if (count($matches) === 2) {
+        $parameters["autofix"] = $matches[1];
+    }
+
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
     $body = "Converting projects to use centralized package management using " .
         "[central-pkg-converter](https://github.com/Webreaper/CentralisedPackageConverter)! :wrench:";
     doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-    callWorkflow($config, $metadata, $comment, "dotnet-centralised-package-converter.yml");
+    callWorkflow($config, $metadata, $comment, "dotnet-centralised-package-converter.yml", $parameters);
 }
 
 
