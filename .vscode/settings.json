@@ -45,5 +45,6 @@
         "startswith",
         "VERIFYHOST",
         "VERIFYPEER"
-    ]
+    ],
+    "snyk.advanced.autoSelectOrganization": true
 }

@@ -686,6 +686,25 @@ function execute_csharpier($config, $metadata, $comment): void
 }
 
 /**
+ * Executes the dotnet centralised package converter command.
+ *
+ * @param object $config   Configuration object containing bot settings.
+ * @param array  $metadata Metadata array with token, URLs, and other context.
+ * @param object $comment  The comment object that triggered this command.
+ *
+ * @return void
+ */
+function execute_dotnetCentralisedPackageConverter($config, $metadata, $comment): void
+{
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
+    $body = "Converting projects to use centralized package management using " .
+        "[central-pkg-converter](https://github.com/Webreaper/CentralisedPackageConverter)! :wrench:";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    callWorkflow($config, $metadata, $comment, "dotnet-centralised-package-converter.yml");
+}
+
+
+/**
  * Executes the dotnet slnx command to migrate .sln files to .slnx files.
  *
  * @param object $config   Configuration object containing bot settings.
