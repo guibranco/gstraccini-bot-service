@@ -158,6 +158,13 @@
     {
         "command": "dotnet centralised package converter",
         "description": "Converts projects to use centralized package management using [central-pkg-converter](https://github.com/Webreaper/CentralisedPackageConverter) (only for **.NET** projects).",
+        "parameters": [
+            {
+                "parameter": "autofix",
+                "description": "Whether to automatically fix and apply the changes (`true` or `false`). Defaults to `false`.",
+                "required": false
+            }
+        ],
         "requiresPullRequestOpen": true
     },
     {
