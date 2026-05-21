@@ -53,6 +53,7 @@ GStraccini-bot can handle various tasks. Here’s a list of commands:
 - `@gstraccini copy issue`: Copies an issue from one repository to another.
 - `@gstraccini copy labels`: Copies the labels from another repository.
 - `@gstraccini create labels`: Creates the default labels in the repository.
+- `@gstraccini dotnet centralised package converter`: Converts projects to use centralised package management using [central-pkg-converter](https://github.com/Webreaper/CentralisedPackageConverter) (only for **.NET** projects).
 - `@gstraccini dotnet slnx`: Migrates `.sln` files to `.slnx` files using `dotnet sln migrate` (only for **.NET** projects).
 - `@gstraccini csharpier`: Formats the C# code using [CSharpier](https://csharpier.com) (only for **.NET** projects).
 - `@gstraccini fix csproj`: Updates the `.csproj` file with the `packages.config` version of [NuGet packages](https://nuget.org) (only for **.NET Framework** projects).
