@@ -61,6 +61,101 @@ class ProcessingManager
     }
 
     /**
+     * Run as a long-lived daemon process.
+     *
+     * Loops indefinitely, processing batches every 100 ms and pinging healthchecks.io
+     * every $healthCheckInterval seconds. Responds to SIGTERM / SIGINT for a graceful
+     * shutdown and pauses automatically while an updating.lock file is present.
+     *
+     * Requires the pcntl extension (available by default on CLI PHP on Linux).
+     *
+     * @param callable $handler           Item processing callback
+     * @param int      $healthCheckInterval Seconds between healthchecks.io pings (default 300)
+     */
+    public function run(callable $handler, int $healthCheckInterval = 300): void
+    {
+        if (!extension_loaded('pcntl')) {
+            throw new RuntimeException('pcntl extension is required for daemon mode');
+        }
+
+        $running = true;
+        pcntl_async_signals(true);
+        $shutdown = function () use (&$running) {
+            $ts = date('Y-m-d H:i:s');
+            echo "[{$ts}] Shutdown signal received for '{$this->entity}'. Finishing current batch...\n";
+            $running = false;
+        };
+        pcntl_signal(SIGTERM, $shutdown);
+        pcntl_signal(SIGINT, $shutdown);
+
+        echo "[" . date('Y-m-d H:i:s') . "] Daemon started for '{$this->entity}'.\n";
+        $this->healthChecks->start();
+        $lastPing = time();
+
+        while ($running) {
+            if ($this->isSystemUpdating()) {
+                echo "[" . date('Y-m-d H:i:s') . "] System updating — pausing '{$this->entity}'...\n";
+                sleep(5);
+                continue;
+            }
+
+            try {
+                $this->batch($handler);
+            } catch (\Throwable $e) {
+                $this->logger->log(
+                    "Daemon batch failed (Entity: {$this->entity}): {$e->getMessage()}",
+                    [
+                        'error' => [
+                            'message' => $e->getMessage(),
+                            'code' => $e->getCode(),
+                            'file' => $e->getFile(),
+                            'line' => $e->getLine()
+                        ]
+                    ]
+                );
+            }
+
+            $now = time();
+            if ($now - $lastPing >= $healthCheckInterval) {
+                $this->healthChecks->end();
+                $lastPing = $now;
+            }
+
+            usleep(100000);
+        }
+
+        echo "[" . date('Y-m-d H:i:s') . "] Daemon for '{$this->entity}' stopped gracefully.\n";
+    }
+
+    /**
+     * Returns true while an updating.lock file is present and not yet expired.
+     * Unlike checkSystemUpdating() in config.php this method never calls die().
+     */
+    private function isSystemUpdating(): bool
+    {
+        $lockFile    = 'updating.lock';
+        $releaseFile = 'updating.release';
+
+        if (!file_exists($lockFile)) {
+            return false;
+        }
+
+        if (file_exists($releaseFile)) {
+            @unlink($lockFile);
+            @unlink($releaseFile);
+            return false;
+        }
+
+        $fileTime = filemtime($lockFile);
+        if ($fileTime === false || $fileTime < strtotime('-15 minutes')) {
+            @unlink($lockFile);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * Process a batch of items.
      *
      * @param callable $handler Item processing callback
@@ -68,9 +163,12 @@ class ProcessingManager
     private function batch(callable $handler): void
     {
         ob_start();
-        $this->process($handler);
-        $result = ob_get_clean();
-        if ($result === false || empty($result)) {
+        try {
+            $this->process($handler);
+        } finally {
+            $result = ob_get_clean();
+        }
+        if (empty($result)) {
             return;
         }
         if ($this->config->debug->all === true || $this->config->debug->{$this->entity} === true) {

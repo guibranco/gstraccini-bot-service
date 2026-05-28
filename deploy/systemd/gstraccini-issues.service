@@ -1,0 +1,21 @@
+[Unit]
+Description=GStraccini Bot - Issues Worker
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/gstraccini-bot-service/Src
+ExecStart=/usr/bin/php /var/www/gstraccini-bot-service/Src/Workers/issues.php
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=gstraccini-issues
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
