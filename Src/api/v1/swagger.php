@@ -22,7 +22,7 @@ $pageTitle = 'gstraccini Bot API v' . htmlspecialchars($version) . ' - Swagger U
 <script>
   window.onload = function () {
     SwaggerUIBundle({
-      url: '/api/v1/openapi.yaml',
+      url: 'openapi.yaml',
       dom_id: '#swagger-ui',
       presets: [
         SwaggerUIBundle.presets.apis,

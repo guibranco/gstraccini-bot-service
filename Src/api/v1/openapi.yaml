@@ -10,7 +10,7 @@ info:
     name: MIT
     url: https://opensource.org/licenses/MIT
 servers:
-  - url: /api/v1
+  - url: https://api.bot.straccini.com/v1
     description: API v1
 tags:
   - name: Health

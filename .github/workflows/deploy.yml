@@ -121,14 +121,6 @@ jobs:
           echo "\$mySqlPassword = \"${{ secrets.MYSQL_PASSWORD }}\";" >> mySql.secrets.php
           echo "\$mySqlDatabase = \"${{ secrets.MYSQL_DATABASE }}\";" >> mySql.secrets.php
 
-      - name: 🔑 Generate API Key Configuration
-        run: |
-          cd Src
-          mkdir -p secrets
-          cd secrets
-          echo "<?php" >> api.secrets.php
-          echo "\$apiKey = \"${{ secrets.API_KEY }}\";" >> api.secrets.php
-
       - name: 🔑 Generate RabbitMQ Configuration
         run: |
           SECRETS_CONTEXT='${{ toJson(secrets) }}'
@@ -198,6 +190,17 @@ jobs:
 
       - name: 📝 Create Version File
         run: echo "${{ needs.deploy-service.outputs.fullSemVer }}" > Src/api/v1/version.txt
+
+      - name: 🔒 Create API secrets directory
+        run: |
+          mkdir -p Src/api/v1/secrets
+          echo "Deny from all" > Src/api/v1/secrets/.htaccess
+
+      - name: 🔑 Generate API Key Configuration
+        run: |
+          echo "<?php" > Src/api/v1/secrets/api.secrets.php
+          echo "\$apiKey = \"${{ secrets.API_KEY }}\";" >> Src/api/v1/secrets/api.secrets.php
+          echo "\$workerDir = \"${{ vars.BOT_WORKER_DIR }}\";" >> Src/api/v1/secrets/api.secrets.php
 
       - name: 📋 Copy commands.json to API
         run: cp Src/config/commands.json Src/api/v1/
