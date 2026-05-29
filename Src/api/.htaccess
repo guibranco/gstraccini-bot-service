@@ -2,9 +2,6 @@ Options -Indexes
 
 RewriteEngine On
 
-# Transparently proxy favicon.ico from guilhermebranco.com.br
-RewriteRule ^favicon\.ico$ https://guilhermebranco.com.br/favicon.ico [P,L]
-
 # Redirect root to v1/
 RewriteRule ^$ /v1/ [R=302,L]
 
