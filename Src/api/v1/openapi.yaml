@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
-  title: gstraccini Bot API
-  description: API for the gstraccini GitHub bot service
+  title: GStraccini Bot API
+  description: API for the GStraccini GitHub bot service
   version: __APP_VERSION__
   contact:
     name: Guilherme Branco Stracini
