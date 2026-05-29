@@ -2,12 +2,15 @@ Options -Indexes
 
 RewriteEngine On
 
+# Serve openapi.yaml through PHP for version injection (must precede !-f check)
 RewriteRule ^openapi\.yaml$ openapi.php [NC,L]
 
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteCond %{REQUEST_FILENAME} !-f
+# Redirect routes without trailing slash to canonical form
+RewriteRule ^(commands|health|swagger)$ /v1/$1/ [R=301,NC,L]
+RewriteRule ^jobs/([a-zA-Z]+)$ /v1/jobs/$1/ [R=301,NC,L]
 
-RewriteRule ^commands/?$ commands.php [NC,L]
-RewriteRule ^health/?$ health.php [NC,L]
-RewriteRule ^swagger/?$ swagger.php [NC,L]
-RewriteRule ^jobs/([a-zA-Z]+)/?$ jobs.php [NC,L]
+# Route trailing-slash requests to PHP handlers
+RewriteRule ^commands/$ commands.php [NC,L]
+RewriteRule ^health/$ health.php [NC,L]
+RewriteRule ^swagger/$ swagger.php [NC,L]
+RewriteRule ^jobs/([a-zA-Z]+)/$ jobs.php [NC,L]

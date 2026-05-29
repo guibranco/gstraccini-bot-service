@@ -20,7 +20,7 @@ tags:
   - name: Jobs
     description: Trigger background processing jobs
 paths:
-  /health:
+  /health/:
     get:
       summary: Health check
       description: Returns the health status of the service
@@ -35,7 +35,7 @@ paths:
               schema:
                 type: string
                 example: Healthy
-  /commands:
+  /commands/:
     get:
       summary: Get bot commands
       description: Returns the list of available bot commands in the specified format
@@ -75,7 +75,7 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Command'
-  /jobs/{job}:
+  /jobs/{job}/:
     post:
       summary: Trigger a background job
       description: Fires a background processing job and returns immediately. The job runs asynchronously.
