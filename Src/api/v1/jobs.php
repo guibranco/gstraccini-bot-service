@@ -2,7 +2,7 @@
 
 header('Content-Type: application/json');
 
-$apiSecretsFile = __DIR__ . '/../../secrets/api.secrets.php';
+$apiSecretsFile = __DIR__ . '/secrets/api.secrets.php';
 if (file_exists($apiSecretsFile)) {
     require_once $apiSecretsFile;
 }
@@ -32,14 +32,19 @@ if (!in_array($jobName, $validJobs, true)) {
     exit;
 }
 
-$srcDir = realpath(__DIR__ . '/../../');
-if ($srcDir === false || !file_exists($srcDir . '/' . $jobName . '.php')) {
+if (!isset($workerDir) || !is_dir($workerDir)) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Worker directory not configured']);
+    exit;
+}
+
+if (!file_exists($workerDir . '/' . $jobName . '.php')) {
     http_response_code(500);
     echo json_encode(['error' => 'Worker script not found']);
     exit;
 }
 
-exec('cd ' . escapeshellarg($srcDir) . ' && php ' . escapeshellarg($jobName . '.php') . ' > /dev/null 2>&1 &');
+exec('cd ' . escapeshellarg($workerDir) . ' && php ' . escapeshellarg($jobName . '.php') . ' > /dev/null 2>&1 &');
 
 http_response_code(202);
 echo json_encode(['status' => 'accepted', 'job' => $jobName]);
