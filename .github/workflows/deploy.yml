@@ -121,6 +121,14 @@ jobs:
           echo "\$mySqlPassword = \"${{ secrets.MYSQL_PASSWORD }}\";" >> mySql.secrets.php
           echo "\$mySqlDatabase = \"${{ secrets.MYSQL_DATABASE }}\";" >> mySql.secrets.php
 
+      - name: 🔑 Generate API Key Configuration
+        run: |
+          cd Src
+          mkdir -p secrets
+          cd secrets
+          echo "<?php" >> api.secrets.php
+          echo "\$apiKey = \"${{ secrets.API_KEY }}\";" >> api.secrets.php
+
       - name: 🔑 Generate RabbitMQ Configuration
         run: |
           SECRETS_CONTEXT='${{ toJson(secrets) }}'
