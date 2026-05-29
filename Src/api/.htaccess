@@ -1,0 +1,15 @@
+Options -Indexes
+
+RewriteEngine On
+
+# Transparently proxy favicon.ico from guilhermebranco.com.br
+RewriteRule ^favicon\.ico$ https://guilhermebranco.com.br/favicon.ico [P,L]
+
+# Redirect root to v1/
+RewriteRule ^$ /v1/ [R=302,L]
+
+# Redirect any non-existent, non-v1 path to v1/
+RewriteCond %{REQUEST_URI} !^/v1(/|$)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ /v1/ [R=302,L]
