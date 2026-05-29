@@ -17,6 +17,8 @@ tags:
     description: Service health endpoints
   - name: Commands
     description: Bot commands documentation
+  - name: Jobs
+    description: Trigger background processing jobs
 paths:
   /health:
     get:
@@ -73,7 +75,61 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Command'
+  /jobs/{job}:
+    post:
+      summary: Trigger a background job
+      description: Fires a background processing job and returns immediately. The job runs asynchronously.
+      operationId: triggerJob
+      tags:
+        - Jobs
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: job
+          in: path
+          required: true
+          description: Name of the job to trigger
+          schema:
+            type: string
+            enum:
+              - branches
+              - comments
+              - issues
+              - pullRequests
+              - pushes
+              - repositories
+              - signature
+      responses:
+        '202':
+          description: Job accepted and running in background
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobAccepted'
+        '401':
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '405':
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Api-Key
   schemas:
     Command:
       type: object
@@ -120,3 +176,18 @@ components:
           type: boolean
           description: Whether the parameter is required
           default: false
+    JobAccepted:
+      type: object
+      properties:
+        status:
+          type: string
+          example: accepted
+        job:
+          type: string
+          example: branches
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Unauthorized

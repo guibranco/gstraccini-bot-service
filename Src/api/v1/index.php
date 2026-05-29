@@ -1,4 +1,4 @@
 <?php
 
-header('Location: https://bot.straccini.com', true, 302);
+header('Location: https://api.bot.straccini.com/v1/swagger/', true, 302);
 exit;
