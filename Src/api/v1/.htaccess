@@ -7,7 +7,7 @@ RewriteRule ^openapi\.yaml$ openapi.php [NC,L]
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_FILENAME} !-f
 
-RewriteRule ^commands$ commands.php [NC,L]
-RewriteRule ^health$ health.php [NC,L]
-RewriteRule ^swagger$ swagger.php [NC,L]
-RewriteRule ^jobs/([a-zA-Z]+)$ jobs.php [NC,L]
+RewriteRule ^commands/?$ commands.php [NC,L]
+RewriteRule ^health/?$ health.php [NC,L]
+RewriteRule ^swagger/?$ swagger.php [NC,L]
+RewriteRule ^jobs/([a-zA-Z]+)/?$ jobs.php [NC,L]
