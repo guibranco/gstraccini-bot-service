@@ -1,0 +1,122 @@
+openapi: 3.0.3
+info:
+  title: gstraccini Bot API
+  description: API for the gstraccini GitHub bot service
+  version: __APP_VERSION__
+  contact:
+    name: Guilherme Branco Stracini
+    email: guilherme@guilhermebranco.com.br
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+servers:
+  - url: /api/v1
+    description: API v1
+tags:
+  - name: Health
+    description: Service health endpoints
+  - name: Commands
+    description: Bot commands documentation
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Returns the health status of the service
+      operationId: getHealth
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Healthy
+  /commands:
+    get:
+      summary: Get bot commands
+      description: Returns the list of available bot commands in the specified format
+      operationId: getCommands
+      tags:
+        - Commands
+      parameters:
+        - name: format
+          in: query
+          description: Output format for the commands documentation
+          required: false
+          schema:
+            type: string
+            enum:
+              - markdown
+              - simplemd
+              - html
+              - text
+              - json
+            default: markdown
+      responses:
+        '200':
+          description: Commands documentation in the requested format
+          content:
+            text/markdown:
+              schema:
+                type: string
+                example: "## Available Commands\n\n### help\n- **Description**: Shows help"
+            text/html:
+              schema:
+                type: string
+            text/plain:
+              schema:
+                type: string
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Command'
+components:
+  schemas:
+    Command:
+      type: object
+      required:
+        - command
+        - description
+      properties:
+        command:
+          type: string
+          description: The command name
+          example: help
+        description:
+          type: string
+          description: Description of what the command does
+          example: Shows help information
+        parameters:
+          type: array
+          description: List of parameters accepted by the command
+          items:
+            $ref: '#/components/schemas/CommandParameter'
+        requiresPullRequestOpen:
+          type: boolean
+          description: Whether the command requires an open pull request
+          default: false
+        dev:
+          type: boolean
+          description: Whether this is a developer-only command
+          default: false
+    CommandParameter:
+      type: object
+      required:
+        - parameter
+        - description
+      properties:
+        parameter:
+          type: string
+          description: The parameter name
+          example: repository
+        description:
+          type: string
+          description: Description of the parameter
+          example: The repository name
+        required:
+          type: boolean
+          description: Whether the parameter is required
+          default: false
