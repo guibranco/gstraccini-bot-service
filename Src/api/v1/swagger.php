@@ -4,7 +4,7 @@ header('Content-Type: text/html; charset=UTF-8');
 
 $versionFile = __DIR__ . '/version.txt';
 $version = file_exists($versionFile) ? trim(file_get_contents($versionFile)) : '1.0.0';
-$pageTitle = 'gstraccini Bot API v' . htmlspecialchars($version) . ' - Swagger UI';
+$pageTitle = 'GStraccini Bot API v' . htmlspecialchars($version) . ' - Swagger UI';
 
 ?>
 <!DOCTYPE html>
