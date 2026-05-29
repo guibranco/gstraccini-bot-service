@@ -1,0 +1,21 @@
+[Unit]
+Description=GStraccini Bot - Pull Requests Worker
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/gstraccini-bot-service/Src
+ExecStart=/usr/bin/php /var/www/gstraccini-bot-service/Src/Workers/pullRequests.php
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=gstraccini-pull-requests
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
