@@ -38,7 +38,7 @@ if (!isset($workerDir) || !is_dir($workerDir)) {
     exit;
 }
 
-$workerFile = $workerDir . '/' . $jobName . '.php';
+$workerFile = "$workerDir/$jobName.php";
 
 if (!file_exists($workerFile)) {
     http_response_code(500);
@@ -61,4 +61,5 @@ if (function_exists('fastcgi_finish_request')) {
 ignore_user_abort(true);
 set_time_limit(0);
 
+chdir($workerDir);
 require_once $workerFile;
