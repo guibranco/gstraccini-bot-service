@@ -32,9 +32,15 @@ if (!in_array($jobName, $validJobs, true)) {
     exit;
 }
 
-$workerFile = realpath(__DIR__ . '/../../Workers/' . $jobName . '.php');
+if (!isset($workerDir) || !is_dir($workerDir)) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Worker directory not configured']);
+    exit;
+}
 
-if ($workerFile === false || !file_exists($workerFile)) {
+$workerFile = $workerDir . '/' . $jobName . '.php';
+
+if (!file_exists($workerFile)) {
     http_response_code(500);
     echo json_encode(['error' => 'Worker script not found']);
     exit;
