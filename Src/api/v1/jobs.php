@@ -44,10 +44,24 @@ if (!file_exists($workerDir . '/' . $jobName . '.php')) {
     exit;
 }
 
-$cmd = 'cd ' . escapeshellarg($workerDir) . ' && php ' . escapeshellarg($jobName . '.php') . ' > /dev/null 2>&1 &';
+if (!function_exists('escapeshellarg') && !function_exists('proc_open') && !function_exists('shell_exec') && !function_exists('popen')) {
+    http_response_code(503);
+    echo json_encode(['error' => 'No subprocess function available; enable proc_open, shell_exec, or popen in php.ini']);
+    exit;
+}
+
+function shell_escape(string $arg): string
+{
+    if (function_exists('escapeshellarg')) {
+        return escapeshellarg($arg);
+    }
+    return "'" . str_replace("'", "'\\''", $arg) . "'";
+}
+
+$cmd = 'cd ' . shell_escape($workerDir) . ' && php ' . shell_escape($jobName . '.php') . ' > /dev/null 2>&1 &';
 
 if (function_exists('proc_open')) {
-    $process = proc_open('bash -c ' . escapeshellarg($cmd), [], $pipes);
+    $process = proc_open('bash -c ' . shell_escape($cmd), [], $pipes);
     if (is_resource($process)) {
         proc_close($process);
     }
