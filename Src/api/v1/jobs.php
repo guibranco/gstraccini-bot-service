@@ -32,51 +32,27 @@ if (!in_array($jobName, $validJobs, true)) {
     exit;
 }
 
-if (!isset($workerDir) || !is_dir($workerDir)) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Worker directory not configured']);
-    exit;
-}
+$workerFile = realpath(__DIR__ . '/../../Workers/' . $jobName . '.php');
 
-if (!file_exists($workerDir . '/' . $jobName . '.php')) {
+if ($workerFile === false || !file_exists($workerFile)) {
     http_response_code(500);
     echo json_encode(['error' => 'Worker script not found']);
     exit;
 }
 
-if (!function_exists('escapeshellarg') && !function_exists('proc_open') && !function_exists('shell_exec') && !function_exists('popen')) {
-    http_response_code(503);
-    echo json_encode(['error' => 'No subprocess function available; enable proc_open, shell_exec, or popen in php.ini']);
-    exit;
-}
-
-function shell_escape(string $arg): string
-{
-    if (function_exists('escapeshellarg')) {
-        return escapeshellarg($arg);
-    }
-    return "'" . str_replace("'", "'\\''", $arg) . "'";
-}
-
-$cmd = 'cd ' . shell_escape($workerDir) . ' && php ' . shell_escape($jobName . '.php') . ' > /dev/null 2>&1 &';
-
-if (function_exists('proc_open')) {
-    $process = proc_open('bash -c ' . shell_escape($cmd), [], $pipes);
-    if (is_resource($process)) {
-        proc_close($process);
-    }
-} elseif (function_exists('shell_exec')) {
-    shell_exec($cmd);
-} elseif (function_exists('popen')) {
-    $handle = popen($cmd, 'r');
-    if ($handle !== false) {
-        pclose($handle);
-    }
-} else {
-    http_response_code(503);
-    echo json_encode(['error' => 'No subprocess function available; enable proc_open, shell_exec, or popen in php.ini']);
-    exit;
-}
-
 http_response_code(202);
 echo json_encode(['status' => 'accepted', 'job' => $jobName]);
+
+if (function_exists('fastcgi_finish_request')) {
+    fastcgi_finish_request();
+} else {
+    while (ob_get_level() > 0) {
+        ob_end_flush();
+    }
+    flush();
+}
+
+ignore_user_abort(true);
+set_time_limit(0);
+
+require_once $workerFile;
