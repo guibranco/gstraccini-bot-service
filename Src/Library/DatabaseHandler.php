@@ -51,24 +51,52 @@ class DatabaseHandler
     public function readTable(string $tableName, ?string $where = null): ?array
     {
         $mysqli = $this->connect();
-        $defaultWhere = "ProcessingState IN ('NEW', 'RE_REQUESTED', 'UPDATED') ORDER BY Sequence ASC LIMIT 10";
 
-        $sql = "SELECT * FROM " . $tableName . " WHERE ";
-        $sql .= $where ?? $defaultWhere;
+        if ($where !== null) {
+            $result = $mysqli->query("SELECT * FROM $tableName WHERE $where");
+            $data = null;
+            if ($result) {
+                $data = [];
+                while ($obj = $result->fetch_object()) {
+                    $data[] = $obj;
+                }
+                $result->close();
+            }
+            $mysqli->close();
+            return $data;
+        }
 
-        $result = $mysqli->query($sql);
+        $defaultWhere = "ProcessingState IN ('NEW', 'RE_REQUESTED', 'UPDATED') ORDER BY UpdatedAt ASC LIMIT 10";
+
+        $mysqli->begin_transaction();
+
+        $result = $mysqli->query("SELECT * FROM $tableName WHERE $defaultWhere FOR UPDATE SKIP LOCKED");
 
         if (!$result) {
+            $mysqli->rollback();
             $mysqli->close();
             return null;
         }
 
         $data = [];
+        $sequences = [];
+
         while ($obj = $result->fetch_object()) {
             $data[] = $obj;
+            $sequences[] = (int) $obj->Sequence;
         }
 
         $result->close();
+
+        if (!empty($sequences)) {
+            $placeholders = implode(',', array_fill(0, count($sequences), '?'));
+            $stmt = $mysqli->prepare("UPDATE $tableName SET ProcessingState = 'PROCESSING', ProcessingDate = NOW() WHERE Sequence IN ($placeholders)");
+            $stmt->bind_param(str_repeat('i', count($sequences)), ...$sequences);
+            $stmt->execute();
+            $stmt->close();
+        }
+
+        $mysqli->commit();
         $mysqli->close();
 
         return $data;
