@@ -600,7 +600,8 @@ function removeIssueWipLabel($metadata, $pullRequest)
         $issueNumber = $node->number;
         $issueResponse = doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber, null, "GET");
 
-        $labels = array_column(json_decode($issueResponse->getBody())->labels, "name");
+        $issueData = json_decode($issueResponse->getBody());
+        $labels = array_column($issueData->labels ?? [], "name");
 
         if (in_array("🛠 WIP", $labels)) {
             $url = $metadata["issuesUrl"] . "/" . $issueNumber . "/labels/🛠%20WIP";
