@@ -8,10 +8,20 @@ use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\GStracciniBot\Library\RepositoryManager;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
+use GuiBranco\Pancake\LogStream;
 
 function handleItem($repository)
 {
+    global $logStream;
+
     echo "https://github.com/{$repository->FullName}:\n\n";
+
+    $logStream?->info(
+        "Processing repository event for {$repository->FullName}",
+        ['repo' => $repository->FullName, 'owner' => $repository->OwnerLogin],
+        "repositories",
+        $repository->DeliveryIdText
+    );
 
     global $gitHubUserToken;
     $config = loadConfig();
@@ -59,5 +69,5 @@ function createRepositoryLabels($metadata, $options)
 }
 
 $healthCheck = new HealthChecks($healthChecksIoRepositories, GUIDv4::random());
-$processor = new ProcessingManager("repositories", $healthCheck, $logger);
+$processor = new ProcessingManager("repositories", $healthCheck, $logger, $logStream);
 $processor->run("handleItem", 60);

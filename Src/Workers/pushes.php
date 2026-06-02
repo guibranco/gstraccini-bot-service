@@ -6,10 +6,20 @@ require_once "config/config.php";
 use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
+use GuiBranco\Pancake\LogStream;
 
 function handleItem($push)
 {
+    global $logStream;
+
     echo "https://github.com/{$push->RepositoryOwner}/{$push->RepositoryName}/commit/{$push->HeadCommitId}:\n\n";
+
+    $logStream?->info(
+        "Processing push event on {$push->Ref}",
+        ['repo' => "{$push->RepositoryOwner}/{$push->RepositoryName}", 'ref' => $push->Ref, 'commit' => $push->HeadCommitId],
+        "pushes",
+        $push->DeliveryIdText
+    );
 
     $config = loadConfig();
     $token = generateInstallationToken($push->InstallationId, $push->RepositoryName);
@@ -32,5 +42,5 @@ function handleItem($push)
 }
 
 $healthCheck = new HealthChecks($healthChecksIoPushes, GUIDv4::random());
-$processor = new ProcessingManager("pushes", $healthCheck, $logger);
+$processor = new ProcessingManager("pushes", $healthCheck, $logger, $logStream);
 $processor->run("handleItem", 60);

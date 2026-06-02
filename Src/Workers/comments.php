@@ -11,6 +11,7 @@ use GuiBranco\GStracciniBot\Library\RepositoryManager;
 use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
+use GuiBranco\Pancake\LogStream;
 
 function toCamelCase($inputString)
 {
@@ -31,12 +32,21 @@ function toCamelCase($inputString)
 
 function handleItem($comment): void
 {
+    global $logStream;
+
     $repoUrl = "https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/issues/{$comment->PullRequestNumber}/#issuecomment-{$comment->CommentId}";
     echo "{$repoUrl}:\n\n";
     echo "Comment: {$comment->CommentBody} | Sender: {$comment->CommentSender}\n";
 
     $config = loadConfig();
     $sender = $comment->CommentSender;
+
+    $logStream?->info(
+        "Processing comment from {$sender}",
+        ['repo' => "{$comment->RepositoryOwner}/{$comment->RepositoryName}", 'pr' => $comment->PullRequestNumber, 'comment_id' => $comment->CommentId],
+        "comments",
+        $comment->DeliveryIdText
+    );
 
     if ($sender === $config->botName . "[bot]") {
         return;
@@ -45,6 +55,12 @@ function handleItem($comment): void
     $ignoredBots = ["github-actions[bot]", "AppVeyorBot", "gitauto-ai[bot]"];
     if (in_array($sender, $ignoredBots, true)) {
         echo "Skipping this comment! 🚷\n";
+        $logStream?->info(
+            "Skipping comment from ignored bot: {$sender}",
+            ['repo' => "{$comment->RepositoryOwner}/{$comment->RepositoryName}"],
+            "comments",
+            $comment->DeliveryIdText
+        );
         reactToComment($comment, "-1");
         return;
     }
@@ -53,6 +69,12 @@ function handleItem($comment): void
 
     if (!isCollaborator($comment, $metadata)) {
         if ($sender !== "dependabot[bot]") {
+            $logStream?->warning(
+                "Comment sender {$sender} is not a collaborator",
+                ['repo' => "{$comment->RepositoryOwner}/{$comment->RepositoryName}"],
+                "comments",
+                $comment->DeliveryIdText
+            );
             reactToComment($comment, "-1");
             postComment($metadata, $metadata["errorMessages"]["notCollaborator"]);
         }
@@ -71,12 +93,24 @@ function handleItem($comment): void
         $executedAtLeastOne = true;
 
         if (!empty($command->requiresPullRequestOpen) && !$pullRequestIsOpen) {
+            $logStream?->warning(
+                "Command {$command->command} requires an open PR",
+                ['repo' => "{$comment->RepositoryOwner}/{$comment->RepositoryName}", 'pr' => $comment->PullRequestNumber],
+                "comments",
+                $comment->DeliveryIdText
+            );
             reactToComment($comment, "-1");
             postComment($metadata, $metadata["errorMessages"]["notOpen"]);
             continue;
         }
 
         $method = "execute_" . toCamelCase($command->command);
+        $logStream?->info(
+            "Executing command: {$command->command}",
+            ['repo' => "{$comment->RepositoryOwner}/{$comment->RepositoryName}", 'sender' => $sender, 'callable' => is_callable($method)],
+            "comments",
+            $comment->DeliveryIdText
+        );
         if (is_callable($method)) {
             $method($config, $metadata, $comment);
         } else {
@@ -93,6 +127,12 @@ function handleItem($comment): void
     }
 
     if (!$executedAtLeastOne) {
+        $logStream?->warning(
+            "No matching command found in comment",
+            ['repo' => "{$comment->RepositoryOwner}/{$comment->RepositoryName}", 'sender' => $sender],
+            "comments",
+            $comment->DeliveryIdText
+        );
         postComment($metadata, $metadata["errorMessages"]["commandNotFound"]);
         reactToComment($comment, "-1");
     }
@@ -952,5 +992,5 @@ function updateNextBuildNumber($metadata, $project, $nextBuildNumber): void
 }
 
 $healthCheck = new HealthChecks($healthChecksIoComments, GUIDv4::random());
-$processor = new ProcessingManager("comments", $healthCheck, $logger);
+$processor = new ProcessingManager("comments", $healthCheck, $logger, $logStream);
 $processor->run("handleItem", 60);

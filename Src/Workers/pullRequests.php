@@ -9,24 +9,50 @@ use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\GStracciniBot\Library\PullRequestCodeScanner;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
+use GuiBranco\Pancake\LogStream;
 
 define("ISSUES", "/issues/");
 define("PULLS", "/pulls/");
 
 function handleItem($pullRequest, $isRetry = false)
 {
+    global $logStream;
+
     if (!$isRetry) {
         echo "https://github.com/{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}/pull/{$pullRequest->Number}:\n\n";
+        $logStream?->info(
+            "Processing pull request #{$pullRequest->Number}",
+            ['repo' => "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}", 'sender' => $pullRequest->Sender],
+            "pull_requests",
+            $pullRequest->DeliveryIdText
+        );
     }
 
     $config = loadConfig();
     $token = generateInstallationToken($pullRequest->InstallationId, $pullRequest->RepositoryName);
     $metadata = createMetadata($token, $pullRequest, $config);
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
-    $pullRequestResponse->ensureSuccessStatus();
+    try {
+        $pullRequestResponse->ensureSuccessStatus();
+    } catch (\Exception $e) {
+        echo "Failed to fetch PR #{$pullRequest->Number}: {$e->getMessage()} ❌\n";
+        $logStream?->error(
+            "Failed to fetch pull request data: {$e->getMessage()}",
+            ['repo' => "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}", 'pr' => $pullRequest->Number],
+            "pull_requests",
+            $pullRequest->DeliveryIdText
+        );
+        return;
+    }
     $pullRequestUpdated = json_decode($pullRequestResponse->getBody());
 
     if ($pullRequestUpdated->state === "closed") {
+        $logStream?->info(
+            "PR #{$pullRequest->Number} is closed — cleaning up labels",
+            ['repo' => "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}"],
+            "pull_requests",
+            $pullRequest->DeliveryIdText
+        );
         removeIssueWipLabel($metadata, $pullRequest);
         removeLabels($metadata, $pullRequestUpdated);
         checkForOtherPullRequests($metadata, $pullRequest);
@@ -34,6 +60,12 @@ function handleItem($pullRequest, $isRetry = false)
 
     if ($pullRequestUpdated->state != "open") {
         echo "PR State: {$pullRequestUpdated->state} ⛔\n";
+        $logStream?->info(
+            "PR #{$pullRequest->Number} state is {$pullRequestUpdated->state} — skipping",
+            ['repo' => "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}", 'state' => $pullRequestUpdated->state],
+            "pull_requests",
+            $pullRequest->DeliveryIdText
+        );
         if ($pullRequest->State !== "CLOSED") {
             updateStateToClosedInTable("pull_requests", $pullRequest->Sequence);
         }
@@ -44,6 +76,12 @@ function handleItem($pullRequest, $isRetry = false)
     if ($isRetry === false && $pullRequestUpdated->mergeable_state === "unknown") {
         sleep(5);
         echo "State: {$pullRequestUpdated->mergeable_state} - Retrying #{$pullRequestUpdated->number} - Sender: " . $pullRequest->Sender . " 🔄\n";
+        $logStream?->warning(
+            "PR #{$pullRequest->Number} has unknown mergeable state — retrying",
+            ['repo' => "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}", 'sender' => $pullRequest->Sender],
+            "pull_requests",
+            $pullRequest->DeliveryIdText
+        );
         handleItem($pullRequest, true);
         return;
     }
@@ -612,6 +650,8 @@ function addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated)
 
 function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
 {
+    global $logStream;
+
     $isSenderAutoMerge = in_array($pullRequest->Sender, $config->pullRequests->autoMergeSubmitters);
     if (
         $pullRequestUpdated->auto_merge == null &&
@@ -632,18 +672,38 @@ function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
 
     if ($pullRequestUpdated->mergeable_state === "clean" && $pullRequestUpdated->mergeable) {
         echo "State: " . $pullRequestUpdated->mergeable_state . " - Enable auto merge - Is mergeable - Sender auto merge: " . ($isSenderAutoMerge ? "✅" : "⛔") . " - Sender: " . $pullRequest->Sender . " ✅\n";
+        $logStream?->info(
+            "PR #{$pullRequest->Number} is mergeable — posting ready-to-merge comment",
+            ['repo' => "{$metadata['owner']}/{$metadata['repo']}", 'mergeable_state' => $pullRequestUpdated->mergeable_state, 'auto_merge_submitter' => $isSenderAutoMerge],
+            "pull_requests",
+            $pullRequest->DeliveryIdText
+        );
         $comment = array("body" => "<!-- gstraccini-bot:ready-merge -->\nThis pull request is ready ✅ for merge/squash.");
         doRequestGitHub($metadata["token"], $metadata["commentsUrl"], $comment, "POST");
     } else {
         echo "State: " . $pullRequestUpdated->mergeable_state . " - Enable auto merge - Is NOT mergeable - Sender auto merge: " . ($isSenderAutoMerge ? "✅" : "⛔") . " - Sender: " . $pullRequest->Sender . " ⛔\n";
+        $logStream?->warning(
+            "PR #{$pullRequest->Number} is not mergeable",
+            ['repo' => "{$metadata['owner']}/{$metadata['repo']}", 'mergeable_state' => $pullRequestUpdated->mergeable_state, 'sender' => $pullRequest->Sender],
+            "pull_requests",
+            $pullRequest->DeliveryIdText
+        );
     }
 }
 
 function resolveConflicts($metadata, $pullRequest, $pullRequestUpdated)
 {
+    global $logStream;
+
     if ($pullRequestUpdated->mergeable_state !== "clean" && $pullRequestUpdated->mergeable === false) {
         if ($pullRequest->Sender !== "dependabot[bot]" && $pullRequest->Sender !== "depfu[bot]") {
             echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Conflicts - Sender: " . $pullRequest->Sender . " ⚠️\n";
+            $logStream?->warning(
+                "PR #{$pullRequest->Number} has conflicts",
+                ['repo' => "{$metadata['owner']}/{$metadata['repo']}", 'sender' => $pullRequest->Sender, 'mergeable_state' => $pullRequestUpdated->mergeable_state],
+                "pull_requests",
+                $pullRequest->DeliveryIdText
+            );
             return;
         }
         echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Recreate via bot - Sender: " . $pullRequest->Sender . " ☢️\n";
@@ -707,5 +767,5 @@ function updateBranch($metadata, $pullRequestUpdated)
 }
 
 $healthCheck = new HealthChecks($healthChecksIoPullRequests, GUIDv4::random());
-$processor = new ProcessingManager("pull_requests", $healthCheck, $logger);
+$processor = new ProcessingManager("pull_requests", $healthCheck, $logger, $logStream);
 $processor->run("handleItem", 60);

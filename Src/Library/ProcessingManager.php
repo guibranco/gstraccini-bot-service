@@ -4,6 +4,7 @@ namespace GuiBranco\GStracciniBot\Library;
 
 use GuiBranco\Pancake\HealthChecks;
 use GuiBranco\Pancake\Logger;
+use GuiBranco\Pancake\LogStream;
 use InvalidArgumentException;
 use RuntimeException;
 
@@ -13,15 +14,17 @@ class ProcessingManager
     private $entity;
     private $healthChecks;
     private $logger;
+    private ?LogStream $logStream;
 
     /**
     * @param string $entity Entity name for processing
     * @param HealthChecks $healthChecks Health monitoring instance
     * @param Logger $logger Logger instance
+    * @param LogStream|null $logStream Real-time log stream instance
     * @throws \InvalidArgumentException If entity name is invalid
     * @throws \RuntimeException If config loading fails
     */
-    public function __construct(string $entity, HealthChecks $healthChecks, Logger $logger)
+    public function __construct(string $entity, HealthChecks $healthChecks, Logger $logger, ?LogStream $logStream = null)
     {
         if (empty($entity)) {
             throw new InvalidArgumentException('Entity name cannot be empty');
@@ -36,6 +39,7 @@ class ProcessingManager
         $this->entity = $entity;
         $this->healthChecks = $healthChecks;
         $this->logger = $logger;
+        $this->logStream = $logStream;
 
         $this->healthChecks->setHeaders([constant("USER_AGENT"), "Content-Type: application/json; charset=utf-8"]);
     }
@@ -51,7 +55,26 @@ class ProcessingManager
         $this->healthChecks->start();
         $endTime = time() + $timeout;
         while (true) {
-            $this->batch($handler);
+            try {
+                $this->batch($handler);
+            } catch (\Throwable $e) {
+                $this->logger->log(
+                    "Batch failed (Entity: {$this->entity}): {$e->getMessage()}",
+                    [
+                        'error' => [
+                            'message' => $e->getMessage(),
+                            'code' => $e->getCode(),
+                            'file' => $e->getFile(),
+                            'line' => $e->getLine()
+                        ]
+                    ]
+                );
+                $this->logStream?->error(
+                    "Batch failed: {$e->getMessage()}",
+                    ['entity' => $this->entity, 'file' => $e->getFile(), 'line' => $e->getLine()],
+                    $this->entity
+                );
+            }
             if (time() >= $endTime) {
                 break;
             }
@@ -89,12 +112,14 @@ class ProcessingManager
         pcntl_signal(SIGINT, $shutdown);
 
         echo "[" . date('Y-m-d H:i:s') . "] Daemon started for '{$this->entity}'.\n";
+        $this->logStream?->info("Daemon started", ['entity' => $this->entity], $this->entity);
         $this->healthChecks->start();
         $lastPing = time();
 
         while ($running) {
             if ($this->isSystemUpdating()) {
                 echo "[" . date('Y-m-d H:i:s') . "] System updating — pausing '{$this->entity}'...\n";
+                $this->logStream?->warning("System updating — daemon paused", ['entity' => $this->entity], $this->entity);
                 sleep(5);
                 continue;
             }
@@ -113,6 +138,11 @@ class ProcessingManager
                         ]
                     ]
                 );
+                $this->logStream?->error(
+                    "Daemon batch failed: {$e->getMessage()}",
+                    ['entity' => $this->entity, 'file' => $e->getFile(), 'line' => $e->getLine()],
+                    $this->entity
+                );
             }
 
             $now = time();
@@ -124,6 +154,7 @@ class ProcessingManager
             usleep(100000);
         }
 
+        $this->logStream?->info("Daemon stopped gracefully", ['entity' => $this->entity], $this->entity);
         echo "[" . date('Y-m-d H:i:s') . "] Daemon for '{$this->entity}' stopped gracefully.\n";
     }
 
@@ -194,15 +225,35 @@ class ProcessingManager
             $details = json_last_error_msg();
         }
 
+        $traceId = $item->DeliveryIdText ?? null;
+
         try {
             $updateResult = updateTable("github_{$this->entity}", $item->Sequence);
             if ($updateResult === true) {
+                $this->logStream?->info(
+                    "Processing item",
+                    ['entity' => $this->entity, 'sequence' => $item->Sequence],
+                    $this->entity,
+                    $traceId
+                );
                 $handler($item);
                 $finalizeResult = finalizeProcessing("github_{$this->entity}", $item->Sequence);
                 if ($finalizeResult === true) {
                     echo "Item processed!\n";
+                    $this->logStream?->info(
+                        "Item processed",
+                        ['entity' => $this->entity, 'sequence' => $item->Sequence],
+                        $this->entity,
+                        $traceId
+                    );
                 } else {
                     echo "Item updated by another process!\n";
+                    $this->logStream?->warning(
+                        "Item finalized by another process",
+                        ['entity' => $this->entity, 'sequence' => $item->Sequence],
+                        $this->entity,
+                        $traceId
+                    );
                 }
                 return;
             }
@@ -210,6 +261,12 @@ class ProcessingManager
             $message = "Skipping item (Entity: {$this->entity}, Sequence: {$item->Sequence}) since it was already handled.";
             $this->logger->log($message, $item);
             echo $message . "\n";
+            $this->logStream?->warning(
+                "Item skipped — already handled",
+                ['entity' => $this->entity, 'sequence' => $item->Sequence],
+                $this->entity,
+                $traceId
+            );
         } catch (\Exception $e) {
             $this->logger->log(
                 "Failed to process item (Entity: {$this->entity}, Sequence: {$item->Sequence}): {$e->getMessage()}.",
@@ -222,6 +279,17 @@ class ProcessingManager
                     ],
                     'item' => json_decode($details, true)
                 ]
+            );
+            $this->logStream?->error(
+                "Failed to process item: {$e->getMessage()}",
+                [
+                    'entity' => $this->entity,
+                    'sequence' => $item->Sequence,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ],
+                $this->entity,
+                $traceId
             );
             throw $e;
         }
