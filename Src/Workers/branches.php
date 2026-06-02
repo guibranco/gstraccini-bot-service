@@ -6,10 +6,20 @@ require_once "config/config.php";
 use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
+use GuiBranco\Pancake\LogStream;
 
 function handleItem($branch)
 {
+    global $logStream;
+
     echo "https://github.com/{$branch->RepositoryOwner}/{$branch->RepositoryName}/tree/{$branch->Ref}:\n\n";
+
+    $logStream?->info(
+        "Processing branch event: {$branch->Event} on {$branch->Ref}",
+        ['repo' => "{$branch->RepositoryOwner}/{$branch->RepositoryName}", 'event' => $branch->Event, 'ref' => $branch->Ref, 'sender' => $branch->SenderLogin ?? null],
+        "branches",
+        $branch->DeliveryIdText
+    );
 
     $token = generateInstallationToken($branch->InstallationId, $branch->RepositoryName);
 
@@ -20,6 +30,12 @@ function handleItem($branch)
 
     $data = getReferencedIssueByBranch($metadata, $branch);
     if (!isset($data->data)) {
+        $logStream?->info(
+            "No linked issues found for branch {$branch->Ref}",
+            ['repo' => "{$branch->RepositoryOwner}/{$branch->RepositoryName}"],
+            "branches",
+            $branch->DeliveryIdText
+        );
         return;
     }
     $issues = $data->data->repository->issues->nodes;
@@ -149,5 +165,5 @@ function getReferencedIssueByBranch($metadata, $branch)
 }
 
 $healthCheck = new HealthChecks($healthChecksIoBranches, GUIDv4::random());
-$processor = new ProcessingManager("branches", $healthCheck, $logger);
+$processor = new ProcessingManager("branches", $healthCheck, $logger, $logStream);
 $processor->run("handleItem", 60);

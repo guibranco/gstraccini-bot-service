@@ -6,10 +6,20 @@ require_once "config/config.php";
 use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
+use GuiBranco\Pancake\LogStream;
 
 function handleItem($issue)
 {
+    global $logStream;
+
     echo "https://github.com/{$issue->RepositoryOwner}/{$issue->RepositoryName}/issues/{$issue->Number}:\n\n";
+
+    $logStream?->info(
+        "Processing issue #{$issue->Number}",
+        ['repo' => "{$issue->RepositoryOwner}/{$issue->RepositoryName}", 'sender' => $issue->Sender ?? null],
+        "issues",
+        $issue->DeliveryIdText
+    );
 
     $token = generateInstallationToken($issue->InstallationId, $issue->RepositoryName);
 
@@ -26,6 +36,12 @@ function handleItem($issue)
     $issueUpdated = json_decode($issueResponse->getBody());
 
     if ($issueUpdated->state === "closed") {
+        $logStream?->info(
+            "Issue #{$issue->Number} is closed — removing labels",
+            ['repo' => "{$issue->RepositoryOwner}/{$issue->RepositoryName}"],
+            "issues",
+            $issue->DeliveryIdText
+        );
         removeLabels($issueUpdated, $metadata, true);
         if ($issue->State === "OPEN") {
             updateStateToClosedInTable("issues", $issue->Sequence);
@@ -54,6 +70,12 @@ function handleItem($issue)
     }
 
     addLabels($issueUpdated, $collaboratorsLogins, $metadata);
+    $logStream?->info(
+        "Issue #{$issue->Number} processed",
+        ['repo' => "{$issue->RepositoryOwner}/{$issue->RepositoryName}", 'user' => $issueUpdated->user->login],
+        "issues",
+        $issue->DeliveryIdText
+    );
 }
 
 function addLabels($issueUpdated, $collaboratorsLogins, $metadata)
@@ -98,5 +120,5 @@ function removeLabels($issueUpdated, $metadata, $includeWip = false)
 }
 
 $healthCheck = new HealthChecks($healthChecksIoIssues, GUIDv4::random());
-$processor = new ProcessingManager("issues", $healthCheck, $logger);
+$processor = new ProcessingManager("issues", $healthCheck, $logger, $logStream);
 $processor->run("handleItem", 60);

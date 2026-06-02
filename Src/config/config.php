@@ -50,6 +50,7 @@ define("USER_AGENT", "User-Agent: " . USER_AGENT_VENDOR);
 require_once "vendor/autoload.php";
 
 use GuiBranco\Pancake\Logger;
+use GuiBranco\Pancake\LogStream;
 
 $appVeyorSecretsFile = "secrets/appVeyor.secrets.php";
 if (file_exists($appVeyorSecretsFile)) {
@@ -81,6 +82,22 @@ if (file_exists($loggerSecretsFile)) {
     require_once $loggerSecretsFile;
 }
 $logger = new Logger($loggerUrl, $loggerApiKey, $loggerApiToken, constant("USER_AGENT_VENDOR"));
+
+$logStreamSecretsFile = "secrets/logStream.secrets.php";
+if (file_exists($logStreamSecretsFile)) {
+    require_once $logStreamSecretsFile;
+}
+$logStream = null;
+if (!empty($logStreamServer) && !empty($logStreamToken)) {
+    $logStream = new LogStream(
+        baseUrl: $logStreamServer,
+        appKey: "gstraccini-bot",
+        appId: $logStreamAppId ?? "production",
+        authMode: LogStream::AUTH_API_KEY,
+        apiToken: $logStreamToken,
+        userAgent: constant("USER_AGENT_VENDOR")
+    );
+}
 
 $mySqlSecretsFile = "secrets/mySql.secrets.php";
 if (file_exists($mySqlSecretsFile)) {

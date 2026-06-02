@@ -109,6 +109,16 @@ jobs:
           echo "\$loggerUrl      = \"${{ secrets.LOGGER_URL }}\";" >> logger.secrets.php
           echo "\$loggerApiKey   = \"${{ secrets.LOGGER_APIKEY }}\";" >> logger.secrets.php
           echo "\$loggerApiToken = \"${{ secrets.LOGGER_APITOKEN }}\";" >> logger.secrets.php
+
+      - name: 🔑 Generate LogStream Configuration
+        run: |
+          cd Src
+          mkdir -p secrets
+          cd secrets
+          echo "<?php" >> logStream.secrets.php
+          echo "\$logStreamServer = \"${{ secrets.LOGSTREAM_SERVER }}\";" >> logStream.secrets.php
+          echo "\$logStreamToken  = \"${{ secrets.LOGSTREAM_TOKEN }}\";" >> logStream.secrets.php
+          echo "\$logStreamAppId  = \"${{ vars.LOGSTREAM_APP_ID }}\";" >> logStream.secrets.php
       
       - name: 🔑 Generate MySQL Configuration
         run: |

@@ -6,10 +6,18 @@ require_once "config/config.php";
 use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
+use GuiBranco\Pancake\LogStream;
 
 function handleItem($signature)
 {
-    global $gitHubUserToken, $gitHubWebhookEndpoint, $gitHubWebhookSignature;
+    global $gitHubUserToken, $gitHubWebhookEndpoint, $gitHubWebhookSignature, $logStream;
+
+    $logStream?->info(
+        "Processing webhook signature update",
+        ['repo' => "{$signature->RepositoryOwner}/{$signature->RepositoryName}", 'hook_id' => $signature->HookId, 'target_type' => $signature->TargetType],
+        "signature",
+        $signature->DeliveryIdText
+    );
 
     $request = array(
         "content_type" => "json",
@@ -32,5 +40,5 @@ function handleItem($signature)
 }
 
 $healthCheck = new HealthChecks($healthChecksIoSignature, GUIDv4::random());
-$processor = new ProcessingManager("signature", $healthCheck, $logger);
+$processor = new ProcessingManager("signature", $healthCheck, $logger, $logStream);
 $processor->run("handleItem");
