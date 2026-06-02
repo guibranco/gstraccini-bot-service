@@ -55,7 +55,26 @@ class ProcessingManager
         $this->healthChecks->start();
         $endTime = time() + $timeout;
         while (true) {
-            $this->batch($handler);
+            try {
+                $this->batch($handler);
+            } catch (\Throwable $e) {
+                $this->logger->log(
+                    "Batch failed (Entity: {$this->entity}): {$e->getMessage()}",
+                    [
+                        'error' => [
+                            'message' => $e->getMessage(),
+                            'code' => $e->getCode(),
+                            'file' => $e->getFile(),
+                            'line' => $e->getLine()
+                        ]
+                    ]
+                );
+                $this->logStream?->error(
+                    "Batch failed: {$e->getMessage()}",
+                    ['entity' => $this->entity, 'file' => $e->getFile(), 'line' => $e->getLine()],
+                    $this->entity
+                );
+            }
             if (time() >= $endTime) {
                 break;
             }

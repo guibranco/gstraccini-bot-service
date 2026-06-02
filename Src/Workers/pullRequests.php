@@ -32,7 +32,18 @@ function handleItem($pullRequest, $isRetry = false)
     $token = generateInstallationToken($pullRequest->InstallationId, $pullRequest->RepositoryName);
     $metadata = createMetadata($token, $pullRequest, $config);
     $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
-    $pullRequestResponse->ensureSuccessStatus();
+    try {
+        $pullRequestResponse->ensureSuccessStatus();
+    } catch (\Exception $e) {
+        echo "Failed to fetch PR #{$pullRequest->Number}: {$e->getMessage()} ❌\n";
+        $logStream?->error(
+            "Failed to fetch pull request data: {$e->getMessage()}",
+            ['repo' => "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}", 'pr' => $pullRequest->Number],
+            "pull_requests",
+            $pullRequest->DeliveryIdText
+        );
+        return;
+    }
     $pullRequestUpdated = json_decode($pullRequestResponse->getBody());
 
     if ($pullRequestUpdated->state === "closed") {
