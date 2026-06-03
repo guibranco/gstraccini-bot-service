@@ -5,11 +5,15 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   deploy-service:
     name: 📦 Deploy service to FTP
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     outputs:
       fullSemVer: ${{ steps.gitversion.outputs.fullSemVer }}
     steps:
@@ -156,6 +160,7 @@ jobs:
           date +"%Y-%m-%d %H:%M:%S" > Lock/updating.lock
 
       - name: ⬆️ Upload updating.lock
+        timeout-minutes: 10
         uses: sebastianpopp/ftp-action@releases/v2
         with:
           host: ${{ secrets.FTP_SERVER }}
@@ -165,13 +170,14 @@ jobs:
           remoteDir: "/"
 
       - name: 📤 Upload service via FTP
+        timeout-minutes: 10
         uses: sebastianpopp/ftp-action@releases/v2
         with:
           host: ${{ secrets.FTP_SERVER }}
           user: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           localDir: "Src"
-          remoteDir: "/"          
+          remoteDir: "/"
 
       - name: 🚀 Create release file
         run: |
@@ -179,6 +185,7 @@ jobs:
           date +"%Y-%m-%d %H:%M:%S" > Lock/updating.release
 
       - name: ⬆️ Upload updating.release
+        timeout-minutes: 10
         uses: sebastianpopp/ftp-action@releases/v2
         with:
           host: ${{ secrets.FTP_SERVER }}
@@ -216,6 +223,7 @@ jobs:
         run: cp Src/config/commands.json Src/api/v1/
       
       - name: 📤 Upload Application via FTP
+        timeout-minutes: 10
         uses: sebastianpopp/ftp-action@releases/v2
         with:
           host: ${{ secrets.FTP_SERVER }}
