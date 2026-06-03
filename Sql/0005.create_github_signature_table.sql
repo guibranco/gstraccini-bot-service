@@ -1,7 +1,7 @@
-DROP TABLE IF EXISTS `github_issues`;
+DROP TABLE IF EXISTS `github_signature`;
 
 CREATE TABLE
-    `github_issues` (
+    `github_signature` (
         `Sequence` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
         `Date` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         `DeliveryId` BINARY(16) NOT NULL,
@@ -13,13 +13,16 @@ CREATE TABLE
         `TargetType` VARCHAR(255) NOT NULL,        
         `RepositoryOwner` VARCHAR(250) NOT NULL,
         `RepositoryName` VARCHAR(250) NOT NULL,
-        `Id` BIGINT UNSIGNED NOT NULL,
-        `Number` BIGINT UNSIGNED NOT NULL,
-        `NodeId` VARCHAR(250) NOT NULL,
-        `Title` TEXT NOT NULL,
-        `Sender` VARCHAR(250) NOT NULL,
+        `Event` VARCHAR(250) NOT NULL,
+        `ExpectedHash` VARCHAR(250) NULL,
+        `ActualHash` VARCHAR(250) NULL,
         `InstallationId` BIGINT UNSIGNED NULL,
+        `Error` VARCHAR(250) NOT NULL,
+        `ResponseHeaders` TEXT NULL,
+        `ResponsePayload` TEXT NULL,
         `Processed` BOOLEAN NOT NULL DEFAULT FALSE,
         `ProcessedDate` TIMESTAMP NULL,
+        `CreatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `UpdatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (`Sequence`)
     ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_unicode_ci;

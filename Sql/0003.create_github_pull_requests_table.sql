@@ -1,7 +1,7 @@
-DROP TABLE IF EXISTS `github_comments`;
+DROP TABLE IF EXISTS `github_pull_requests`;
 
 CREATE TABLE
-    `github_comments` (
+    `github_pull_requests` (
         `Sequence` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
         `Date` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         `DeliveryId` BINARY(16) NOT NULL,
@@ -13,16 +13,16 @@ CREATE TABLE
         `TargetType` VARCHAR(255) NOT NULL,        
         `RepositoryOwner` VARCHAR(250) NOT NULL,
         `RepositoryName` VARCHAR(250) NOT NULL,
-        `PullRequestId` BIGINT UNSIGNED NOT NULL,
-        `PullRequestNumber` BIGINT UNSIGNED NOT NULL,
-        `PullRequestNodeId` VARCHAR(250) NOT NULL,
-        `PullRequestTitle` TEXT NOT NULL,
-        `PullRequestSender` VARCHAR(250) NOT NULL,
-        `CommentId` BIGINT UNSIGNED NOT NULL,
-        `CommentSender` VARCHAR(250) NOT NULL,
-        `CommentBody` TEXT NOT NULL,
+        `Id` BIGINT UNSIGNED NOT NULL,
+        `Number` BIGINT UNSIGNED NOT NULL,
+        `Sender` VARCHAR(250) NOT NULL,
+        `NodeId` VARCHAR(250) NOT NULL,
+        `Title` TEXT NOT NULL,
+        `Ref` VARCHAR(250) NOT NULL,
         `InstallationId` BIGINT UNSIGNED NULL,
         `Processed` BOOLEAN NOT NULL DEFAULT FALSE,
         `ProcessedDate` TIMESTAMP NULL,
+        `CreatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `UpdatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (`Sequence`)
     ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_unicode_ci;
