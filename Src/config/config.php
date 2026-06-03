@@ -93,8 +93,8 @@ if (!empty($logStreamServer) && !empty($logStreamToken)) {
         baseUrl: $logStreamServer,
         appKey: "gstraccini-bot",
         appId: $logStreamAppId ?? "production",
-        authMode: LogStream::AUTH_API_KEY,
-        apiToken: $logStreamToken,
+        authMode: LogStream::AUTH_BEARER,
+        apiSecret: $logStreamToken,
         userAgent: constant("USER_AGENT_VENDOR")
     );
 }
