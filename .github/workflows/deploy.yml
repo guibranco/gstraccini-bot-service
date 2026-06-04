@@ -51,8 +51,7 @@ jobs:
           mkdir -p secrets
           cd secrets
           echo "Deny from all" >> .htaccess
- 
-      
+
       - name: 🔑 Generate AppVeyor Configuration
         run: |
           cd Src
@@ -123,7 +122,7 @@ jobs:
           echo "\$logStreamServer = \"${{ secrets.LOGSTREAM_SERVER }}\";" >> logStream.secrets.php
           echo "\$logStreamToken  = \"${{ secrets.LOGSTREAM_TOKEN }}\";" >> logStream.secrets.php
           echo "\$logStreamAppId  = \"${{ vars.LOGSTREAM_APP_ID }}\";" >> logStream.secrets.php
-      
+
       - name: 🔑 Generate MySQL Configuration
         run: |
           cd Src
@@ -143,55 +142,28 @@ jobs:
           cd secrets
           echo "<?php" >> rabbitMq.secrets.php
           rabbitmq_values=$(echo "$SECRETS_CONTEXT" | jq -S '.' | jq -r 'to_entries | map(select(.key | startswith("RABBITMQ_"))) | .[].value')
-          
+
           for value in $rabbitmq_values; do
               value_final=$(echo $value | sed 's/\\n/ /g')
               echo "\$rabbitMqConnectionStrings[] = \"$value_final\";" >> rabbitMq.secrets.php
           done
 
-      - name: 📝 Create Version File for API
-        run: |
-          cd Src       
-          echo ${{ env.fullSemVer }} > version.txt
+      - name: 📝 Create Version File
+        run: echo "${{ steps.gitversion.outputs.fullSemVer }}" > Src/version.txt
 
-      - name: 🔐 Create lock file
+      - name: 📦 Create Service Package
         run: |
-          mkdir -p Lock
-          date +"%Y-%m-%d %H:%M:%S" > Lock/updating.lock
+          mkdir -p deploy-service
+          cd Src && zip -r ../deploy-service/service.zip . --exclude "api/*" --exclude "install.php"
 
-      - name: ⬆️ Upload updating.lock
+      - name: ⬆️ Upload Service Package via FTP
         timeout-minutes: 10
         uses: sebastianpopp/ftp-action@releases/v2
         with:
           host: ${{ secrets.FTP_SERVER }}
           user: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          localDir: "Lock"
-          remoteDir: "/"
-
-      - name: 📤 Upload service via FTP
-        timeout-minutes: 10
-        uses: sebastianpopp/ftp-action@releases/v2
-        with:
-          host: ${{ secrets.FTP_SERVER }}
-          user: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          localDir: "Src"
-          remoteDir: "/"
-
-      - name: 🚀 Create release file
-        run: |
-          rm -f Lock/updating.lock
-          date +"%Y-%m-%d %H:%M:%S" > Lock/updating.release
-
-      - name: ⬆️ Upload updating.release
-        timeout-minutes: 10
-        uses: sebastianpopp/ftp-action@releases/v2
-        with:
-          host: ${{ secrets.FTP_SERVER }}
-          user: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          localDir: "Lock"
+          localDir: "deploy-service"
           remoteDir: "/"
 
   deploy-api:
@@ -221,17 +193,44 @@ jobs:
 
       - name: 📋 Copy commands.json to API
         run: cp Src/config/commands.json Src/api/v1/
-      
-      - name: 📤 Upload Application via FTP
+
+      - name: 🔑 Generate Install Secrets
+        run: |
+          mkdir -p deploy-api/secrets
+          echo "Deny from all" > deploy-api/secrets/.htaccess
+          {
+            echo "<?php"
+            echo "\$installToken = \"${{ github.run_id }}-${{ github.sha }}\";"
+            echo "\$serviceDir   = \"${{ vars.BOT_WORKER_DIR }}\";"
+          } > deploy-api/secrets/install.secrets.php
+
+      - name: 📦 Create API Package
+        run: |
+          cd Src/api && zip -r ../../deploy-api/api.zip .
+          cp Src/install.php deploy-api/install.php
+
+      - name: 📤 Upload API Package via FTP
         timeout-minutes: 10
         uses: sebastianpopp/ftp-action@releases/v2
         with:
           host: ${{ secrets.FTP_SERVER }}
           user: ${{ secrets.FTP_USERNAME_API }}
           password: ${{ secrets.FTP_PASSWORD_API }}
-          localDir: "Src/api/"
+          localDir: "deploy-api"
           remoteDir: "/"
-  
+
+      - name: 🚀 Trigger Installation
+        run: |
+          INSTALL_TOKEN="${{ github.run_id }}-${{ github.sha }}"
+          RESPONSE=$(curl -sS --max-time 60 -w "\n%{http_code}" "${{ secrets.DEPLOY_URL }}?token=${INSTALL_TOKEN}")
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n-1)
+          echo "Response: $BODY"
+          if [ "$HTTP_CODE" -ne 200 ]; then
+            echo "Installation failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
+
   create_release:
     name: 📢 Create GitHub Release
     runs-on: ubuntu-latest
