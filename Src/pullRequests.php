@@ -659,7 +659,7 @@ function addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated)
         $issueResponse = doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber, null, "GET");
         $issue = json_decode($issueResponse->getBody());
 
-        $labelsIssue = array_column($issue->labels, "name");
+        $labelsIssue = array_column($issue->labels ?? [], "name");
         $position = array_search("🛠 WIP", $labelsIssue);
 
         if ($position !== false) {
