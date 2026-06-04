@@ -97,5 +97,5 @@ function removeLabels($issueUpdated, $metadata, $includeWip = false)
 }
 
 $healthCheck = new HealthChecks($healthChecksIoIssues, GUIDv4::random());
-$processor = new ProcessingManager("issues", $healthCheck, $logger);
+$processor = new ProcessingManager("issues", $healthCheck, $logger, $logStream);
 $processor->initialize("handleItem", 55);

@@ -830,5 +830,5 @@ function updateBranch($metadata, $pullRequestUpdated)
 }
 
 $healthCheck = new HealthChecks($healthChecksIoPullRequests, GUIDv4::random());
-$processor = new ProcessingManager("pull_requests", $healthCheck, $logger);
+$processor = new ProcessingManager("pull_requests", $healthCheck, $logger, $logStream);
 $processor->initialize("handleItem", 55);

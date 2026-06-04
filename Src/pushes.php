@@ -31,5 +31,5 @@ function handleItem($push)
 }
 
 $healthCheck = new HealthChecks($healthChecksIoPushes, GUIDv4::random());
-$processor = new ProcessingManager("pushes", $healthCheck, $logger);
+$processor = new ProcessingManager("pushes", $healthCheck, $logger, $logStream);
 $processor->initialize("handleItem", 55);

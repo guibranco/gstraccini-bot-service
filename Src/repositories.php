@@ -59,5 +59,5 @@ function createRepositoryLabels($metadata, $options)
 }
 
 $healthCheck = new HealthChecks($healthChecksIoRepositories, GUIDv4::random());
-$processor = new ProcessingManager("repositories", $healthCheck, $logger);
+$processor = new ProcessingManager("repositories", $healthCheck, $logger, $logStream);
 $processor->initialize("handleItem", 55);

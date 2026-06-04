@@ -1107,5 +1107,5 @@ function updateNextBuildNumber($metadata, $project, $nextBuildNumber): void
 }
 
 $healthCheck = new HealthChecks($healthChecksIoComments, GUIDv4::random());
-$processor = new ProcessingManager("comments", $healthCheck, $logger);
+$processor = new ProcessingManager("comments", $healthCheck, $logger, $logStream);
 $processor->initialize("handleItem", 55);

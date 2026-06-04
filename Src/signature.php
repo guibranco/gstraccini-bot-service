@@ -32,5 +32,5 @@ function handleItem($signature)
 
 
 $healthCheck = new HealthChecks($healthChecksIoSignature, GUIDv4::random());
-$processor = new ProcessingManager("signature", $healthCheck, $logger);
+$processor = new ProcessingManager("signature", $healthCheck, $logger, $logStream);
 $processor->initialize("handleItem", 55);
