@@ -1,6 +1,9 @@
 Options -Indexes
-
 RewriteEngine On
+
+# Redirect any domain other than the correct one to api.bot.straccini.com
+RewriteCond %{HTTP_HOST} !^api\.bot\.straccini\.com$ [NC]
+RewriteRule ^ https://api.bot.straccini.com%{REQUEST_URI} [R=301,L]
 
 # Redirect root to v1/
 RewriteRule ^$ /v1/ [R=302,L]

@@ -2,6 +2,10 @@ Options -Indexes
 
 RewriteEngine On
 
+# Redirect any domain other than the correct one to api.bot.straccini.com
+RewriteCond %{HTTP_HOST} !^api\.bot\.straccini\.com$ [NC]
+RewriteRule ^ https://api.bot.straccini.com%{REQUEST_URI} [R=301,L]
+
 # Serve openapi.yaml through PHP for version injection (must precede !-f check)
 RewriteRule ^openapi\.yaml$ openapi.php [NC,L]
 
