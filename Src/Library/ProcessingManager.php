@@ -226,36 +226,60 @@ class ProcessingManager
         }
 
         $traceId = $item->DeliveryIdText ?? null;
+        $table = "github_{$this->entity}";
+
+        $context = [
+            'entity' => $this->entity,
+            'table' => $table,
+            'sequence' => $item->Sequence,
+        ];
+        if (!empty($item->RepositoryOwner ?? null)) {
+            $context['owner'] = $item->RepositoryOwner;
+        }
+        if (!empty($item->RepositoryName ?? null)) {
+            $context['repo'] = $item->RepositoryName;
+        }
+        if (!empty($item->Title ?? null)) {
+            $context['title'] = $item->Title;
+        }
+
+        $itemDesc = "[{$table} #{$item->Sequence}]";
+        if (!empty($item->RepositoryOwner ?? null) && !empty($item->RepositoryName ?? null)) {
+            $itemDesc .= " {$item->RepositoryOwner}/{$item->RepositoryName}";
+        }
+        if (!empty($item->Title ?? null)) {
+            $itemDesc .= ": {$item->Title}";
+        }
 
         try {
             $this->logStream?->info(
-                "Processing item",
-                ['entity' => $this->entity, 'sequence' => $item->Sequence],
+                "Processing item {$itemDesc}",
+                $context,
                 $this->entity,
                 $traceId
             );
             $handler($item);
-            $finalizeResult = finalizeProcessing("github_{$this->entity}", $item->Sequence);
+            $finalizeResult = finalizeProcessing($table, $item->Sequence);
             if ($finalizeResult === true) {
                 echo "Item processed!\n";
                 $this->logStream?->info(
-                    "Item processed",
-                    ['entity' => $this->entity, 'sequence' => $item->Sequence],
+                    "Item processed {$itemDesc}",
+                    $context,
                     $this->entity,
                     $traceId
                 );
             } else {
                 echo "Item updated by another process!\n";
                 $this->logStream?->warning(
-                    "Item finalized by another process",
-                    ['entity' => $this->entity, 'sequence' => $item->Sequence],
+                    "Item finalized by another process {$itemDesc}",
+                    $context,
                     $this->entity,
                     $traceId
                 );
             }
         } catch (\Exception $e) {
             $this->logger->log(
-                "Failed to process item (Entity: {$this->entity}, Sequence: {$item->Sequence}): {$e->getMessage()}.",
+                "Failed to process item {$itemDesc}: {$e->getMessage()}.",
                 [
                     'error' => [
                         'message' => $e->getMessage(),
@@ -267,13 +291,8 @@ class ProcessingManager
                 ]
             );
             $this->logStream?->error(
-                "Failed to process item: {$e->getMessage()}",
-                [
-                    'entity' => $this->entity,
-                    'sequence' => $item->Sequence,
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine()
-                ],
+                "Failed to process item {$itemDesc}: {$e->getMessage()}",
+                [...$context, 'file' => $e->getFile(), 'line' => $e->getLine()],
                 $this->entity,
                 $traceId
             );
