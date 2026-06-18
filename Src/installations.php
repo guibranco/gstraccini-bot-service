@@ -12,5 +12,5 @@ use GuiBranco\Pancake\HealthChecks;
 function handleItem($user){ }
 
 $healthCheck = new HealthChecks($healthChecksIoInstallations, GUIDv4::random());
-$processor = new ProcessingManager("users", $healthCheck, $logger, $logStream);
+$processor = new ProcessingManager("installations", $healthCheck, $logger, $logStream);
 $processor->initialize("handleItem", 55);
