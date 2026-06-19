@@ -102,6 +102,7 @@ jobs:
           echo "\$healthChecksIoPullRequests  = \"${{ secrets.HEALTHCHECKSIO_PULL_REQUESTS }}\";" >> healthChecksIo.secrets.php
           echo "\$healthChecksIoRepositories  = \"${{ secrets.HEALTHCHECKSIO_REPOSITORIES }}\";" >> healthChecksIo.secrets.php
           echo "\$healthChecksIoSignature     = \"${{ secrets.HEALTHCHECKSIO_SIGNATURE }}\";" >> healthChecksIo.secrets.php
+          echo "\$healthChecksIoUsers         = \"${{ secrets.HEALTHCHECKSIO_USERS }}\";" >> healthChecksIo.secrets.php
 
       - name: 🔑 Generate Logger Configuration
         run: |
