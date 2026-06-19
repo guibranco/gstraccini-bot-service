@@ -8,6 +8,9 @@ RewriteRule ^ https://api.bot.straccini.com%{REQUEST_URI} [R=301,L]
 # Redirect root to v1/
 RewriteRule ^$ /v1/ [R=302,L]
 
+# Allow install.php to be accessed directly (deployment entry point)
+RewriteRule ^install\.php$ - [L]
+
 # Redirect any non-existent, non-v1 path to v1/
 RewriteCond %{REQUEST_URI} !^/v1(/|$)
 RewriteCond %{REQUEST_FILENAME} !-f

@@ -207,7 +207,7 @@ jobs:
 
       - name: 📦 Create API Package
         run: |
-          cd Src/api && zip -r ../../deploy-api/api.zip .
+          (cd Src/api && zip -r ../../deploy-api/api.zip .)
           cp Src/install.php deploy-api/install.php
 
       - name: 📤 Upload API Package via FTP
