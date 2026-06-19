@@ -92,7 +92,7 @@ if (!empty($logStreamServer) && !empty($logStreamToken)) {
     $logStream = new LogStream(
         baseUrl: $logStreamServer,
         appKey: "gstraccini-bot",
-        appId: $logStreamAppId ?? "production",
+        appId: $version,
         authMode: LogStream::AUTH_BEARER,
         apiSecret: $logStreamToken,
         userAgent: constant("USER_AGENT_VENDOR")
