@@ -31,9 +31,6 @@ class ProcessingManager
         }
 
         $config = loadConfig();
-        if ($config === false) {
-            throw new RuntimeException('Failed to load configuration');
-        }
 
         $this->config = $config;
         $this->entity = $entity;
@@ -97,6 +94,32 @@ class ProcessingManager
      */
     public function run(callable $handler, int $healthCheckInterval = 300): void
     {
+        if (php_sapi_name() !== 'cli') {
+            $this->healthChecks->start();
+            try {
+                $this->batch($handler);
+            } catch (\Throwable $e) {
+                $this->logger->log(
+                    "Batch failed (Entity: {$this->entity}): {$e->getMessage()}",
+                    [
+                        'error' => [
+                            'message' => $e->getMessage(),
+                            'code' => $e->getCode(),
+                            'file' => $e->getFile(),
+                            'line' => $e->getLine()
+                        ]
+                    ]
+                );
+                $this->logStream?->error(
+                    "Batch failed: {$e->getMessage()}",
+                    ['entity' => $this->entity, 'file' => $e->getFile(), 'line' => $e->getLine()],
+                    $this->entity
+                );
+            }
+            $this->healthChecks->end();
+            return;
+        }
+
         if (!extension_loaded('pcntl')) {
             throw new RuntimeException('pcntl extension is required for daemon mode');
         }
