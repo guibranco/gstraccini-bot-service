@@ -29,6 +29,8 @@ function connectToDatabase($isRetry = false)
 
 function readTable($tableName): ?array
 {
+    global $version;
+
     $mysqli = connectToDatabase();
 
     $defaultWhere = "(ProcessingState IN ('NEW', 'RE_REQUESTED', 'UPDATED') OR (ProcessingState = 'PROCESSING' AND ProcessingDate <= NOW() - INTERVAL 1 HOUR)) ORDER BY UpdatedAt ASC LIMIT 10";
@@ -55,8 +57,8 @@ function readTable($tableName): ?array
 
     if (!empty($sequences)) {
         $placeholders = implode(',', array_fill(0, count($sequences), '?'));
-        $stmt = $mysqli->prepare("UPDATE $tableName SET ProcessingState = 'PROCESSING', ProcessingDate = NOW() WHERE Sequence IN ($placeholders)");
-        $stmt->bind_param(str_repeat('i', count($sequences)), ...$sequences);
+        $stmt = $mysqli->prepare("UPDATE $tableName SET ProcessingState = 'PROCESSING', ProcessingDate = NOW(), GstracciniBotVersion = ? WHERE Sequence IN ($placeholders)");
+        $stmt->bind_param('s' . str_repeat('i', count($sequences)), $version, ...$sequences);
         $stmt->execute();
         $stmt->close();
     }
