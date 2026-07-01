@@ -64,6 +64,7 @@ GStraccini-bot can handle various tasks. Here’s a list of commands:
   **.NET** projects).
 - `@gstraccini npm dist`: Generates or regenerates the `dist` files by running `npm run package` (only for **NPM** projects).
 - `@gstraccini npm lint fix`: Fixes linting issues by running `npm run lint -- --fix` (only for **NPM** projects).
+- `@gstraccini pin action`: Pins GitHub Actions references to their commit SHA using [pin-github-action](https://www.npmjs.com/package/pin-github-action). Accepts an optional workflow path or glob pattern (defaults to `.github/workflows/*.yml`).
 - `@gstraccini prettier`: Formats the code using [Prettier](https://prettier.io).
 - `@gstraccini rerun checks`: Reruns the checks in the target pull request with a matching conclusion.
 - `@gstraccini rerun workflows`: Reruns the workflows (actions) in the target pull request. Only applicable for GitHub Actions.

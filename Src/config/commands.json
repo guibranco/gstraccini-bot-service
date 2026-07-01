@@ -229,6 +229,18 @@
         "requiresPullRequestOpen": true
     },
     {
+        "command": "pin action",
+        "description": "Pins GitHub Actions references to their commit SHA using [pin-github-action](https://www.npmjs.com/package/pin-github-action).",
+        "parameters": [
+            {
+                "parameter": "workflow",
+                "description": "The workflow file path or glob pattern to pin. Defaults to `.github/workflows/*.yml` when omitted.",
+                "required": false
+            }
+        ],
+        "requiresPullRequestOpen": true
+    },
+    {
         "command": "prettier",
         "description": "Formats the code using [Prettier](https://prettier.io).",
         "requiresPullRequestOpen": true
