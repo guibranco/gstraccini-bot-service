@@ -846,6 +846,26 @@ function execute_phpcs($config, $metadata, $comment): void
     callWorkflow($config, $metadata, $comment, "phpcs-autofix.yml", $parameters);
 }
 
+function execute_pinAction($config, $metadata, $comment): void
+{
+    preg_match(
+        "/@" . $config->botName . "\spin\saction(?:\s(\S+))?/",
+        $comment->CommentBody,
+        $matches
+    );
+    $parameters = array();
+
+    if (count($matches) === 2) {
+        $parameters["workflow"] = $matches[1];
+    }
+
+    doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
+    $body = "Pinning GitHub Actions to their commit SHA using [pin-github-action]" .
+        "(https://www.npmjs.com/package/pin-github-action)! :pushpin:";
+    doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    callWorkflow($config, $metadata, $comment, "pin-github-action.yml", $parameters);
+}
+
 function execute_prettier($config, $metadata, $comment): void
 {
     doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
