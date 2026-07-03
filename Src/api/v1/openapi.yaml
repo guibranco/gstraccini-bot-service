@@ -19,6 +19,8 @@ tags:
     description: Bot commands documentation
   - name: Jobs
     description: Trigger background processing jobs
+  - name: Stats
+    description: Aggregate usage statistics
 paths:
   /health/:
     get:
@@ -75,6 +77,38 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Command'
+  /stats/:
+    get:
+      summary: Get usage statistics
+      description: Returns aggregate usage statistics for the bot (pull requests, commits, issues, and active repositories)
+      operationId: getStats
+      tags:
+        - Stats
+      responses:
+        '200':
+          description: Usage statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stats'
+        '405':
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Database not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Database unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /jobs/{job}/:
     post:
       summary: Trigger a background job
@@ -191,3 +225,25 @@ components:
         error:
           type: string
           example: Unauthorized
+    Stats:
+      type: object
+      properties:
+        totalPullRequests:
+          type: integer
+          example: 31
+        pullRequestsMerged:
+          type: integer
+          example: 22
+        commitsAnalyzed:
+          type: integer
+          example: 81
+        issuesClosed:
+          type: integer
+          example: 11
+        averageTimeToMergeHours:
+          type: number
+          format: float
+          example: 3
+        activeRepositories:
+          type: integer
+          example: 6
