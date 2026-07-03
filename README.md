@@ -28,49 +28,13 @@ To install the bot:
 1. Visit the [GitHub Apps page](https://github.com/apps/gstraccini).
 2. Install it for your account, organization, or selected repositories.
 
-You can see an updated list of available commands by commenting `@gstraccini help` on a pull request or issue.
+You can see an updated list of available commands by commenting `@gstraccini help` on a pull request or issue, or by checking the [documentation website](https://docs.bot.straccini.com).
 
 ---
 
 ## Available Commands
 
-GStraccini-bot can handle various tasks. Here’s a list of commands:
-
-### Commands
-
-- `@gstraccini add project`: Adds a project to the solution file (only for **.NET** projects).
-- `@gstraccini appveyor build`: Runs the [AppVeyor](https://ci.appveyor.com) build for the target commit and/or pull request.
-- `@gstraccini appveyor bump version`: Bumps the CI version in [AppVeyor](https://ci.appveyor.com).
-- `@gstraccini appveyor register`: Registers the repository in [AppVeyor](https://ci.appveyor.com).
-- `@gstraccini appveyor reset`: Resets the [AppVeyor](https://ci.appveyor.com) build number for the target repository.
-- `@gstraccini bump version`: Bumps the [.NET version](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core) in `.csproj` files.
-- `@gstraccini cargo clippy`: Formats the Rust code using [Cargo Clippy](https://doc.rust-lang.org/clippy/usage.html) (only for **Rust** projects).
-- `@gstraccini change runner`: Changes the [GitHub action runner](https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners) in a workflow file (.yml).
-- `@gstraccini codacy bypass`: Bypasses the [Codacy](https://www.codacy.com) analysis for the target commit and/or pull request.
-- `@gstraccini codacy reanalyze commit`: Reanalyzes the [Codacy](https://www.codacy.com) last commit in a pull request.
-- `@gstraccini codeclimate bypass`: Bypasses the [CodeClimate](https://codeclimate.com) analysis for the target commit and/or pull request.
-- `@gstraccini composer update lock`: Updates the `composer.lock` file by running `composer update --no-interaction` (only for **PHP** projects).
-- `@gstraccini copy issue`: Copies an issue from one repository to another.
-- `@gstraccini copy labels`: Copies the labels from another repository.
-- `@gstraccini create labels`: Creates the default labels in the repository.
-- `@gstraccini dotnet centralised package converter`: Converts projects to use centralised package management using [central-pkg-converter](https://github.com/Webreaper/CentralisedPackageConverter) (only for **.NET** projects).
-- `@gstraccini dotnet slnx`: Migrates `.sln` files to `.slnx` files using `dotnet sln migrate` (only for **.NET** projects).
-- `@gstraccini csharpier`: Formats the C# code using [CSharpier](https://csharpier.com) (only for **.NET** projects).
-- `@gstraccini fix csproj`: Updates the `.csproj` file with the `packages.config` version of [NuGet packages](https://nuget.org) (only for **.NET Framework** projects).
-- `@gstraccini help`: Shows the help message with available commands.
-- `@gstraccini npm check updates`: Updates dependencies in `package.json` and `package-lock.json` using [npm-check-updates](https://github.com/raineorshine/npm-check-updates) (only for **NPM** projects).
-- `@gstraccini nuget check updates`: Checks for NuGet package updates using
-  [dotnet-outdated](https://github.com/dotnet-outdated/dotnet-outdated) (only for
-  **.NET** projects).
-- `@gstraccini npm dist`: Generates or regenerates the `dist` files by running `npm run package` (only for **NPM** projects).
-- `@gstraccini npm lint fix`: Fixes linting issues by running `npm run lint -- --fix` (only for **NPM** projects).
-- `@gstraccini pin action`: Pins GitHub Actions references to their commit SHA using [pin-github-action](https://www.npmjs.com/package/pin-github-action). Accepts an optional workflow path or glob pattern (defaults to `.github/workflows/*.yml`).
-- `@gstraccini prettier`: Formats the code using [Prettier](https://prettier.io).
-- `@gstraccini rerun checks`: Reruns the checks in the target pull request with a matching conclusion.
-- `@gstraccini rerun workflows`: Reruns the workflows (actions) in the target pull request. Only applicable for GitHub Actions.
-- `@gstraccini revert commit`: Reverts a commit using its SHA1 in the repository. The revert is committed directly into the PR branch.
-- `@gstraccini review`: Enables review for the target pull request. Useful when the PR submitter wasn't on the watch list or a webhook failed.
-- `@gstraccini update snapshot`: Updates test snapshots by running `npm test -- -u` (only for **Node.js** projects).
+GStraccini-bot can handle various tasks through chat commands. For the full, up-to-date list of commands and how to use them, see the [documentation website](https://docs.bot.straccini.com).
 
 > [!Note]
 > If you are not allowed to use the bot, a thumbs-down reaction will be added to your comment.
@@ -82,7 +46,7 @@ GStraccini-bot can handle various tasks. Here’s a list of commands:
 GStraccini-bot uses several components to manage repositories:
 
 - [API](https://github.com/guibranco/gstraccini-bot-api): The bot’s API project. Stats and configuration endpoints.
-- [Docs](https://github.com/guibranco/gstraccini-bot-docs): The bot's documentation.
+- [Docs](https://github.com/guibranco/gstraccini-bot-docs): The bot's documentation ([website](https://docs.bot.straccini.com)).
 - [Handler](https://github.com/guibranco/gstraccini-bot-handler): Handles incoming webhooks.
 - [Service](https://github.com/guibranco/gstraccini-bot-service): The bot's service project. The main worker who processes tasks
 - [Website](https://github.com/guibranco/gstraccini-bot-website): Provides the bot's landing page and dashboard.
