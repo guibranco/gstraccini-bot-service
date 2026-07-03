@@ -1,0 +1,4 @@
+ALTER TABLE `github_pull_requests`
+    ADD COLUMN `AutoMergeEnabled` BOOLEAN NOT NULL DEFAULT FALSE,
+    ADD COLUMN `AutoMergeEnabledAt` TIMESTAMP NULL,
+    ADD COLUMN `Merged` BOOLEAN NOT NULL DEFAULT FALSE;

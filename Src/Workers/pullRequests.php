@@ -67,7 +67,7 @@ function handleItem($pullRequest, $isRetry = false)
             $pullRequest->DeliveryIdText
         );
         if ($pullRequest->State !== "CLOSED") {
-            updateStateToClosedInTable("pull_requests", $pullRequest->Sequence);
+            updatePullRequestClosedState($pullRequest->Sequence, $pullRequestUpdated->merged ?? false);
         }
 
         return;
@@ -664,7 +664,10 @@ function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
                  }
         }"
         );
-        doRequestGitHub($metadata["userToken"], "graphql", $body, "POST");
+        $autoMergeResponse = doRequestGitHub($metadata["userToken"], "graphql", $body, "POST");
+        if ($autoMergeResponse->getStatusCode() < 300) {
+            markPullRequestAutoMergeEnabled($pullRequest->Sequence);
+        }
 
         $label = array("labels" => array("☑️ auto-merge"));
         doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $label, "POST");
