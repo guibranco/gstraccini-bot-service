@@ -104,6 +104,43 @@ function updateStateToClosedInTable($table, $sequence): bool
     return $succeeded;
 }
 
+function markPullRequestAutoMergeEnabled($sequence): bool
+{
+    $mysqli = connectToDatabase();
+
+    $sql = "UPDATE github_pull_requests SET AutoMergeEnabled = TRUE, AutoMergeEnabledAt = NOW() WHERE Sequence = ? AND AutoMergeEnabled = FALSE";
+    $stmt = $mysqli->prepare($sql);
+    $stmt->bind_param("i", $sequence);
+    $succeeded = false;
+
+    if ($stmt->execute()) {
+        $succeeded = $stmt->affected_rows === 1;
+    }
+
+    $stmt->close();
+    $mysqli->close();
+    return $succeeded;
+}
+
+function updatePullRequestClosedState($sequence, $merged): bool
+{
+    $mysqli = connectToDatabase();
+
+    $sql = "UPDATE github_pull_requests SET State = 'CLOSED', Merged = ? WHERE Sequence = ? AND State = 'OPEN'";
+    $stmt = $mysqli->prepare($sql);
+    $mergedInt = $merged ? 1 : 0;
+    $stmt->bind_param("ii", $mergedInt, $sequence);
+    $succeeded = false;
+
+    if ($stmt->execute()) {
+        $succeeded = $stmt->affected_rows === 1;
+    }
+
+    $stmt->close();
+    $mysqli->close();
+    return $succeeded;
+}
+
 function upsertPullRequest($pullRequest)
 {
     $mysqli = connectToDatabase();
