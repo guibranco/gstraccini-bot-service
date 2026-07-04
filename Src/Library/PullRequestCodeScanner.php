@@ -9,23 +9,24 @@ class PullRequestCodeScanner
 
     public function scanDiffForKeywords(string $diffContent): array
     {
-        $lines = explode(PHP_EOL, $diffContent);
+        $lines = explode("\n", str_replace("\r\n", "\n", $diffContent));
         $files = [];
         $currentFile = null;
         $currentLine = null;
 
         foreach ($lines as $line) {
+            $line = rtrim($line, "\r");
 
             // Skip binary files and extremely long lines
-            if (strlen($line) > 1000 || preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', $line) === true) {
+            if (strlen($line) > 1000 || preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', $line)) {
                 continue;
             }
 
-            if (preg_match('/^\+\+\+ b\/(.+)/', $line, $matches) === true) {
+            if (preg_match('/^\+\+\+ b\/(.+)/', $line, $matches)) {
                 $currentFile = $matches[1];
             }
 
-            if (preg_match('/^@@ -\d+,\d+ \+(\d+),\d+ @@/', $line, $matches) === true) {
+            if (preg_match('/^@@ -\d+,\d+ \+(\d+),\d+ @@/', $line, $matches)) {
                 $currentLine = $matches[1];
             }
 
@@ -36,7 +37,7 @@ class PullRequestCodeScanner
             if (
                 $currentFile !== null &&
                 $currentLine !== null &&
-                preg_match('/^\+(.*)/', $line, $matches) === true
+                preg_match('/^\+(.*)/', $line, $matches)
             ) {
                 $result = $this->parseCommentLine($matches[1]);
                 if ($result !== null) {
