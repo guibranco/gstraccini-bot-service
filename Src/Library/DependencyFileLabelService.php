@@ -107,16 +107,17 @@ class DependencyFileLabelService
      */
     public function detectDependencyChanges(string $diffContent): array
     {
-        $lines = explode(PHP_EOL, $diffContent);
+        $lines = explode("\n", str_replace("\r\n", "\n", $diffContent));
         $detectedFiles = [];
         $currentFile = null;
 
         foreach ($lines as $line) {
-            if (strlen($line) > 1000 || preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', $line) === true) {
+            $line = rtrim($line, "\r");
+            if (strlen($line) > 1000 || preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', $line)) {
                 continue;
             }
 
-            if (preg_match('/^\+\+\+ b\/(.+)/', $line, $matches) === true) {
+            if (preg_match('/^\+\+\+ b\/(.+)/', $line, $matches)) {
                 $currentFile = $matches[1];
                 $this->checkDependencyFile($currentFile, $detectedFiles);
             }

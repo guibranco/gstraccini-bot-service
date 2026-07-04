@@ -465,8 +465,8 @@ function checkDependencyChanges($metadata, $pullRequestUpdated): void
 
     $labelsToAdd = ["📦 dependencies"];
 
-    foreach (array_values($detectedDependencies) as $packageManager) {
-        $labelsToAdd[] = $packageManager;
+    foreach (array_keys($detectedDependencies) as $label) {
+        $labelsToAdd[] = $label;
     }
 
     $body = array("labels" => $labelsToAdd);
