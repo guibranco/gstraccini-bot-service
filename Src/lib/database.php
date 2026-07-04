@@ -126,10 +126,10 @@ function updatePullRequestClosedState($sequence, $merged): bool
 {
     $mysqli = connectToDatabase();
 
-    $sql = "UPDATE github_pull_requests SET State = 'CLOSED', Merged = ? WHERE Sequence = ? AND State = 'OPEN'";
+    $sql = "UPDATE github_pull_requests SET State = 'CLOSED', Merged = ? WHERE Sequence = ? AND (State != 'CLOSED' OR Merged != ?)";
     $stmt = $mysqli->prepare($sql);
     $mergedInt = $merged ? 1 : 0;
-    $stmt->bind_param("ii", $mergedInt, $sequence);
+    $stmt->bind_param("iii", $mergedInt, $sequence, $mergedInt);
     $succeeded = false;
 
     if ($stmt->execute()) {
