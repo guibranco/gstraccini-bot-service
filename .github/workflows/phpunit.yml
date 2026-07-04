@@ -1,0 +1,37 @@
+name: PHPUnit Tests
+
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+    workflow_dispatch:
+
+jobs:
+    phpunit:
+        runs-on: ubuntu-latest
+        name: 🧪 Unit Tests
+
+        steps:
+            - name: 📥 Checkout code
+              uses: actions/checkout@v7
+              with:
+                  fetch-depth: 0
+
+            - name: 💾 Cache Composer dependencies
+              uses: actions/cache@v6
+              with:
+                  path: /tmp/composer-cache
+                  key: ${{ runner.os }}-${{ hashFiles('**/composer.lock') }}
+
+            - name: 📦 Install PHP dependencies
+              uses: "php-actions/composer@v6"
+              with:
+                  php_extensions: sockets
+                  dev: yes
+                  progress: yes
+                  working_dir: "./Src/"
+
+            - name: 🧪 Run PHPUnit
+              working-directory: ./Src
+              run: vendor/bin/phpunit

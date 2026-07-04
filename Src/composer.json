@@ -8,6 +8,11 @@
             "GuiBranco\\GStracciniBot\\": "."
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "GuiBranco\\GStracciniBot\\Tests\\": "Tests/"
+        }
+    },
     "authors": [
         {
             "name": "Guilherme Branco Stracini",
@@ -27,5 +32,8 @@
     },
     "require-dev": {
         "phpunit/phpunit": "^11"
+    },
+    "scripts": {
+        "test": "phpunit"
     }
 }

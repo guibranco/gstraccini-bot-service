@@ -1,2 +1,3 @@
 ﻿Src/secrets/**.php
 **/vendor/**
+**/.phpunit.cache/**
