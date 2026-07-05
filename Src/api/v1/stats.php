@@ -11,9 +11,20 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     exit;
 }
 
-require_once __DIR__ . '/../../Library/DatabaseHandler.php';
+$apiSecretsFile = __DIR__ . '/secrets/api.secrets.php';
+if (file_exists($apiSecretsFile)) {
+    require_once $apiSecretsFile;
+}
 
-$mySqlSecretsFile = __DIR__ . '/../../secrets/mySql.secrets.php';
+if (!isset($workerDir) || !is_dir($workerDir)) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Worker directory not configured']);
+    exit;
+}
+
+require_once $workerDir . '/Library/DatabaseHandler.php';
+
+$mySqlSecretsFile = $workerDir . '/secrets/mySql.secrets.php';
 if (file_exists($mySqlSecretsFile)) {
     require_once $mySqlSecretsFile;
 }
