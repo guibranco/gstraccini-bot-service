@@ -15,7 +15,6 @@
   <a href="https://github.com/guibranco/gstraccini-bot-service/actions/workflows/json-yaml-lint.yml"><img src="https://github.com/guibranco/gstraccini-bot-service/actions/workflows/json-yaml-lint.yml/badge.svg" alt="JSON/YAML validation"></a>
   <a href="https://github.com/guibranco/gstraccini-bot-service/actions/workflows/phpmd.yml"><img src="https://github.com/guibranco/gstraccini-bot-service/actions/workflows/phpmd.yml/badge.svg" alt="PHPMD"></a>
   <a href="https://github.com/guibranco/gstraccini-bot-service/actions/workflows/codacy.yml"><img src="https://github.com/guibranco/gstraccini-bot-service/actions/workflows/codacy.yml/badge.svg" alt="Codacy Security Scan"></a>
-  <a href="https://github.com/guibranco/gstraccini-bot-service/actions/workflows/snyk.yml"><img src="https://github.com/guibranco/gstraccini-bot-service/actions/workflows/snyk.yml/badge.svg" alt="Snyk Security"></a>
 </p>
 
 <p align="center">
