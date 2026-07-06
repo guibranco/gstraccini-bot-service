@@ -83,7 +83,7 @@ class DependencyFileLabelServiceTest extends TestCase
         $this->assertSame([], $result);
     }
 
-    private function buildWorkflowDiff(string $filePath, array $removedLines, array $addedLines): string
+    private function buildContentDiff(string $filePath, array $removedLines, array $addedLines): string
     {
         $lines = [
             "diff --git a/{$filePath} b/{$filePath}",
@@ -106,7 +106,7 @@ class DependencyFileLabelServiceTest extends TestCase
 
     public function testDetectsGitHubActionsVersionBumpInWorkflow(): void
     {
-        $diff = $this->buildWorkflowDiff(
+        $diff = $this->buildContentDiff(
             ".github/workflows/ci.yml",
             ["      - uses: actions/checkout@v3"],
             ["      - uses: actions/checkout@v4"]
@@ -119,7 +119,7 @@ class DependencyFileLabelServiceTest extends TestCase
 
     public function testDetectsGitHubActionsVersionBumpInCompositeAction(): void
     {
-        $diff = $this->buildWorkflowDiff(
+        $diff = $this->buildContentDiff(
             ".github/actions/setup/action.yml",
             ["  - uses: actions/setup-node@v3.8.0"],
             ["  - uses: actions/setup-node@v4.0.0"]
@@ -132,7 +132,7 @@ class DependencyFileLabelServiceTest extends TestCase
 
     public function testIgnoresWorkflowChangesThatAreNotVersionBumps(): void
     {
-        $diff = $this->buildWorkflowDiff(
+        $diff = $this->buildContentDiff(
             ".github/workflows/ci.yml",
             ["      run: echo old"],
             ["      run: echo new"]
@@ -145,10 +145,75 @@ class DependencyFileLabelServiceTest extends TestCase
 
     public function testIgnoresUnchangedActionReferences(): void
     {
-        $diff = $this->buildWorkflowDiff(
+        $diff = $this->buildContentDiff(
             ".github/workflows/ci.yml",
             ["      - uses: actions/checkout@v4", "      run: echo old"],
             ["      - uses: actions/checkout@v4", "      run: echo new"]
+        );
+
+        $result = $this->service->detectDependencyChanges($diff);
+
+        $this->assertSame([], $result);
+    }
+
+    public function testDetectsDockerfileBaseImageVersionBump(): void
+    {
+        $diff = $this->buildContentDiff(
+            "Dockerfile",
+            ["FROM php:8.5-rc-apache"],
+            ["FROM php:8.6-rc-apache"]
+        );
+
+        $result = $this->service->detectDependencyChanges($diff);
+
+        $this->assertSame(["docker" => "Docker"], $result);
+    }
+
+    public function testDetectsSuffixedDockerfileVersionBump(): void
+    {
+        $diff = $this->buildContentDiff(
+            "docker/api.Dockerfile",
+            ["FROM node:18-alpine AS builder"],
+            ["FROM node:20-alpine AS builder"]
+        );
+
+        $result = $this->service->detectDependencyChanges($diff);
+
+        $this->assertSame(["docker" => "Docker"], $result);
+    }
+
+    public function testDetectsDockerComposeImageVersionBump(): void
+    {
+        $diff = $this->buildContentDiff(
+            "docker-compose.yml",
+            ["    image: mysql:8.0"],
+            ["    image: mysql:8.4"]
+        );
+
+        $result = $this->service->detectDependencyChanges($diff);
+
+        $this->assertSame(["docker" => "Docker"], $result);
+    }
+
+    public function testIgnoresDockerfileChangesThatAreNotVersionBumps(): void
+    {
+        $diff = $this->buildContentDiff(
+            "Dockerfile",
+            ["RUN a2enmod rewrite \\"],
+            ["RUN a2enmod rewrite headers \\"]
+        );
+
+        $result = $this->service->detectDependencyChanges($diff);
+
+        $this->assertSame([], $result);
+    }
+
+    public function testIgnoresDockerfileMultiStageReferencesWithoutTags(): void
+    {
+        $diff = $this->buildContentDiff(
+            "Dockerfile",
+            ["FROM builder AS final"],
+            ["FROM builder AS release"]
         );
 
         $result = $this->service->detectDependencyChanges($diff);

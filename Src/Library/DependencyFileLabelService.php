@@ -100,18 +100,28 @@ class DependencyFileLabelService
     ];
 
     /**
-     * Pattern matching GitHub Actions workflow and composite action files
+     * Detectors that flag a dependency bump based on diff *content* rather than just the
+     * file path. Each entry matches a file, extracts a "name => version" reference from
+     * both removed and added lines, and flags a bump when the same name's version changed.
      *
-     * @var string
+     * @var array
      */
-    private $gitHubActionsFilePattern = '/^(\.github\/(workflows|actions)\/.+\.ya?ml|action\.ya?ml)$/i';
-
-    /**
-     * Pattern matching a `uses: owner/repo[/path]@ref` line within a workflow diff
-     *
-     * @var string
-     */
-    private $actionUsesPattern = '/uses:\s*[\'"]?([\w.\-]+(?:\/[\w.\-]+)+)@([\w.\-]+)/';
+    private $contentBasedDetectors = [
+        'github-actions' => [
+            'package_manager' => 'GitHub Actions',
+            // .github/workflows/*.yml|yaml, .github/actions/**/*.yml|yaml, or a root action.yml|yaml
+            'filePattern' => '/^(\.github\/(workflows|actions)\/.+\.ya?ml|action\.ya?ml)$/i',
+            // uses: owner/repo[/path]@ref
+            'linePattern' => '/uses:\s*[\'"]?([\w.\-]+(?:\/[\w.\-]+)+)@([\w.\-]+)/',
+        ],
+        'docker' => [
+            'package_manager' => 'Docker',
+            // Dockerfile, Dockerfile.<suffix>, <prefix>.dockerfile, docker-compose*.yml|yaml, compose*.yml|yaml
+            'filePattern' => '/(^|\/)(Dockerfile(\..+)?|[\w.\-]+\.dockerfile|(docker-)?compose(\..+)?\.ya?ml)$/i',
+            // FROM image:tag  or  image: image:tag
+            'linePattern' => '/(?:FROM\s+|image:\s*)[\'"]?([\w.\-]+(?:\/[\w.\-]+)*):([\w.\-]+)/i',
+        ],
+    ];
 
     /**
      * Analyzes a pull request diff to detect dependency file changes
@@ -124,8 +134,8 @@ class DependencyFileLabelService
         $lines = explode("\n", str_replace("\r\n", "\n", $diffContent));
         $detectedFiles = [];
         $currentFile = null;
-        $removedActionUses = [];
-        $addedActionUses = [];
+        $removedByDetector = [];
+        $addedByDetector = [];
 
         foreach ($lines as $line) {
             $line = rtrim($line, "\r");
@@ -134,20 +144,20 @@ class DependencyFileLabelService
             }
 
             if (preg_match('/^\+\+\+ b\/(.+)/', $line, $matches)) {
-                $this->checkActionVersionBump($currentFile, $removedActionUses, $addedActionUses, $detectedFiles);
+                $this->checkContentVersionBumps($removedByDetector, $addedByDetector, $detectedFiles);
                 $currentFile = $matches[1];
-                $removedActionUses = [];
-                $addedActionUses = [];
+                $removedByDetector = [];
+                $addedByDetector = [];
                 $this->checkDependencyFile($currentFile, $detectedFiles);
                 continue;
             }
 
-            if ($currentFile !== null && preg_match($this->gitHubActionsFilePattern, $currentFile)) {
-                $this->collectActionUse($line, $removedActionUses, $addedActionUses);
+            if ($currentFile !== null) {
+                $this->collectContentReference($currentFile, $line, $removedByDetector, $addedByDetector);
             }
         }
 
-        $this->checkActionVersionBump($currentFile, $removedActionUses, $addedActionUses, $detectedFiles);
+        $this->checkContentVersionBumps($removedByDetector, $addedByDetector, $detectedFiles);
 
         return $detectedFiles;
     }
@@ -170,49 +180,61 @@ class DependencyFileLabelService
     }
 
     /**
-     * Collects `uses: owner/repo@ref` references from a removed or added diff line
+     * Runs each content-based detector's line pattern against a removed or added diff line
+     * belonging to a matching file, recording the extracted name => version reference
      *
+     * @param string $filePath The file the line belongs to
      * @param string $line The raw diff line, including its leading +/- marker
-     * @param array &$removedActionUses Map of action name => ref found on removed lines
-     * @param array &$addedActionUses Map of action name => ref found on added lines
+     * @param array &$removedByDetector Map of detector key => (name => ref) found on removed lines
+     * @param array &$addedByDetector Map of detector key => (name => ref) found on added lines
      * @return void
      */
-    private function collectActionUse(string $line, array &$removedActionUses, array &$addedActionUses): void
-    {
-        if (preg_match('/^-(?!--)/', $line) && preg_match($this->actionUsesPattern, $line, $matches)) {
-            $removedActionUses[$matches[1]] = $matches[2];
+    private function collectContentReference(
+        string $filePath,
+        string $line,
+        array &$removedByDetector,
+        array &$addedByDetector
+    ): void {
+        $isRemoved = (bool) preg_match('/^-(?!--)/', $line);
+        $isAdded = !$isRemoved && preg_match('/^\+(?!\+\+)/', $line);
+
+        if (!$isRemoved && !$isAdded) {
             return;
         }
 
-        if (preg_match('/^\+(?!\+\+)/', $line) && preg_match($this->actionUsesPattern, $line, $matches)) {
-            $addedActionUses[$matches[1]] = $matches[2];
+        foreach ($this->contentBasedDetectors as $key => $detector) {
+            if (!preg_match($detector['filePattern'], $filePath) || !preg_match($detector['linePattern'], $line, $matches)) {
+                continue;
+            }
+
+            if ($isRemoved) {
+                $removedByDetector[$key][$matches[1]] = $matches[2];
+            } else {
+                $addedByDetector[$key][$matches[1]] = $matches[2];
+            }
         }
     }
 
     /**
-     * Determines whether a workflow file's diff contains a GitHub Actions version bump
-     * (i.e. the same action reference with a different version) and, if so, labels it
+     * Compares each content-based detector's removed vs. added references for the file just
+     * finished and, if the same name's version changed, labels the corresponding package manager
      *
-     * @param string|null $filePath The file being analyzed
-     * @param array $removedActionUses Map of action name => ref found on removed lines
-     * @param array $addedActionUses Map of action name => ref found on added lines
+     * @param array $removedByDetector Map of detector key => (name => ref) found on removed lines
+     * @param array $addedByDetector Map of detector key => (name => ref) found on added lines
      * @param array &$detectedFiles Reference to the array of detected files
      * @return void
      */
-    private function checkActionVersionBump(
-        ?string $filePath,
-        array $removedActionUses,
-        array $addedActionUses,
-        array &$detectedFiles
-    ): void {
-        if ($filePath === null) {
-            return;
-        }
+    private function checkContentVersionBumps(array $removedByDetector, array $addedByDetector, array &$detectedFiles): void
+    {
+        foreach ($this->contentBasedDetectors as $key => $detector) {
+            $removed = $removedByDetector[$key] ?? [];
+            $added = $addedByDetector[$key] ?? [];
 
-        foreach ($addedActionUses as $action => $newVersion) {
-            if (isset($removedActionUses[$action]) && $removedActionUses[$action] !== $newVersion) {
-                $detectedFiles['github-actions'] = 'GitHub Actions';
-                return;
+            foreach ($added as $name => $newVersion) {
+                if (isset($removed[$name]) && $removed[$name] !== $newVersion) {
+                    $detectedFiles[$key] = $detector['package_manager'];
+                    break;
+                }
             }
         }
     }
