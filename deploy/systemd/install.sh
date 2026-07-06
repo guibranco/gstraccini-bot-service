@@ -18,7 +18,6 @@ SERVICES=(
     gstraccini-pull-requests
     gstraccini-pushes
     gstraccini-repositories
-    gstraccini-signature
 )
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

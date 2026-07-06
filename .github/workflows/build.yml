@@ -112,6 +112,3 @@ jobs:
 
       - name: 🧪 Test Repositories handler
         run: curl --location http://localhost:8007/repositories.php
-
-      - name: 🧪 Test Signature handler
-        run: curl --location http://localhost:8007/signature.php
