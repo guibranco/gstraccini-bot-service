@@ -100,6 +100,20 @@ class DependencyFileLabelService
     ];
 
     /**
+     * Pattern matching GitHub Actions workflow and composite action files
+     *
+     * @var string
+     */
+    private $gitHubActionsFilePattern = '/^(\.github\/(workflows|actions)\/.+\.ya?ml|action\.ya?ml)$/i';
+
+    /**
+     * Pattern matching a `uses: owner/repo[/path]@ref` line within a workflow diff
+     *
+     * @var string
+     */
+    private $actionUsesPattern = '/uses:\s*[\'"]?([\w.\-]+(?:\/[\w.\-]+)+)@([\w.\-]+)/';
+
+    /**
      * Analyzes a pull request diff to detect dependency file changes
      *
      * @param string $diffContent The pull request diff content
@@ -110,6 +124,8 @@ class DependencyFileLabelService
         $lines = explode("\n", str_replace("\r\n", "\n", $diffContent));
         $detectedFiles = [];
         $currentFile = null;
+        $removedActionUses = [];
+        $addedActionUses = [];
 
         foreach ($lines as $line) {
             $line = rtrim($line, "\r");
@@ -118,10 +134,20 @@ class DependencyFileLabelService
             }
 
             if (preg_match('/^\+\+\+ b\/(.+)/', $line, $matches)) {
+                $this->checkActionVersionBump($currentFile, $removedActionUses, $addedActionUses, $detectedFiles);
                 $currentFile = $matches[1];
+                $removedActionUses = [];
+                $addedActionUses = [];
                 $this->checkDependencyFile($currentFile, $detectedFiles);
+                continue;
+            }
+
+            if ($currentFile !== null && preg_match($this->gitHubActionsFilePattern, $currentFile)) {
+                $this->collectActionUse($line, $removedActionUses, $addedActionUses);
             }
         }
+
+        $this->checkActionVersionBump($currentFile, $removedActionUses, $addedActionUses, $detectedFiles);
 
         return $detectedFiles;
     }
@@ -139,6 +165,54 @@ class DependencyFileLabelService
             if (preg_match('/' . $pattern . '/i', $filePath)) {
                 $detectedFiles[$info['label']] = $info['package_manager'];
                 break;
+            }
+        }
+    }
+
+    /**
+     * Collects `uses: owner/repo@ref` references from a removed or added diff line
+     *
+     * @param string $line The raw diff line, including its leading +/- marker
+     * @param array &$removedActionUses Map of action name => ref found on removed lines
+     * @param array &$addedActionUses Map of action name => ref found on added lines
+     * @return void
+     */
+    private function collectActionUse(string $line, array &$removedActionUses, array &$addedActionUses): void
+    {
+        if (preg_match('/^-(?!--)/', $line) && preg_match($this->actionUsesPattern, $line, $matches)) {
+            $removedActionUses[$matches[1]] = $matches[2];
+            return;
+        }
+
+        if (preg_match('/^\+(?!\+\+)/', $line) && preg_match($this->actionUsesPattern, $line, $matches)) {
+            $addedActionUses[$matches[1]] = $matches[2];
+        }
+    }
+
+    /**
+     * Determines whether a workflow file's diff contains a GitHub Actions version bump
+     * (i.e. the same action reference with a different version) and, if so, labels it
+     *
+     * @param string|null $filePath The file being analyzed
+     * @param array $removedActionUses Map of action name => ref found on removed lines
+     * @param array $addedActionUses Map of action name => ref found on added lines
+     * @param array &$detectedFiles Reference to the array of detected files
+     * @return void
+     */
+    private function checkActionVersionBump(
+        ?string $filePath,
+        array $removedActionUses,
+        array $addedActionUses,
+        array &$detectedFiles
+    ): void {
+        if ($filePath === null) {
+            return;
+        }
+
+        foreach ($addedActionUses as $action => $newVersion) {
+            if (isset($removedActionUses[$action]) && $removedActionUses[$action] !== $newVersion) {
+                $detectedFiles['github-actions'] = 'GitHub Actions';
+                return;
             }
         }
     }
