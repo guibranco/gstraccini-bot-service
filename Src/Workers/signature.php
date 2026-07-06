@@ -3,42 +3,12 @@
 chdir(__DIR__ . '/../');
 require_once "config/config.php";
 
+use GuiBranco\GStracciniBot\Handlers\SignatureHandler;
 use GuiBranco\GStracciniBot\Library\ProcessingManager;
 use GuiBranco\Pancake\GUIDv4;
 use GuiBranco\Pancake\HealthChecks;
-use GuiBranco\Pancake\LogStream;
 
-function handleItem($signature)
-{
-    global $gitHubUserToken, $gitHubWebhookEndpoint, $gitHubWebhookSignature, $logStream;
-
-    $logStream?->info(
-        "Processing webhook signature update",
-        ['repo' => "{$signature->RepositoryOwner}/{$signature->RepositoryName}", 'hook_id' => $signature->HookId, 'target_type' => $signature->TargetType],
-        "signature",
-        $signature->DeliveryIdText
-    );
-
-    $request = array(
-        "content_type" => "json",
-        "insecure_ssl" => "0",
-        "url" => $gitHubWebhookEndpoint,
-        "secret" => $gitHubWebhookSignature
-    );
-
-    $repoPrefix = "repos/" . $signature->RepositoryOwner . "/" . $signature->RepositoryName;
-    $url = "";
-    if ($signature->TargetType == "repository") {
-        $url = $repoPrefix . "/hooks/" . $signature->HookId . "/config";
-    } elseif ($signature->TargetType == "organization") {
-        $url = "repos/" . $signature->RepositoryOwner . "/hooks/" . $signature->HookId . "/config";
-    }
-
-    if (!empty($url)) {
-        doRequestGitHub($gitHubUserToken, $url, $request, "POST");
-    }
-}
-
+$handler = new SignatureHandler();
 $healthCheck = new HealthChecks($healthChecksIoSignature, GUIDv4::random());
 $processor = new ProcessingManager("signature", $healthCheck, $logger, $logStream);
-$processor->run("handleItem");
+$processor->run([$handler, "handleItem"]);
