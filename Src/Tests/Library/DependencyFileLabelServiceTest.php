@@ -82,4 +82,77 @@ class DependencyFileLabelServiceTest extends TestCase
 
         $this->assertSame([], $result);
     }
+
+    private function buildWorkflowDiff(string $filePath, array $removedLines, array $addedLines): string
+    {
+        $lines = [
+            "diff --git a/{$filePath} b/{$filePath}",
+            "index 111..222 100644",
+            "--- a/{$filePath}",
+            "+++ b/{$filePath}",
+            "@@ -1," . count($removedLines) . " +1," . count($addedLines) . " @@",
+        ];
+
+        foreach ($removedLines as $removedLine) {
+            $lines[] = "-{$removedLine}";
+        }
+
+        foreach ($addedLines as $addedLine) {
+            $lines[] = "+{$addedLine}";
+        }
+
+        return implode("\n", $lines) . "\n";
+    }
+
+    public function testDetectsGitHubActionsVersionBumpInWorkflow(): void
+    {
+        $diff = $this->buildWorkflowDiff(
+            ".github/workflows/ci.yml",
+            ["      - uses: actions/checkout@v3"],
+            ["      - uses: actions/checkout@v4"]
+        );
+
+        $result = $this->service->detectDependencyChanges($diff);
+
+        $this->assertSame(["github-actions" => "GitHub Actions"], $result);
+    }
+
+    public function testDetectsGitHubActionsVersionBumpInCompositeAction(): void
+    {
+        $diff = $this->buildWorkflowDiff(
+            ".github/actions/setup/action.yml",
+            ["  - uses: actions/setup-node@v3.8.0"],
+            ["  - uses: actions/setup-node@v4.0.0"]
+        );
+
+        $result = $this->service->detectDependencyChanges($diff);
+
+        $this->assertSame(["github-actions" => "GitHub Actions"], $result);
+    }
+
+    public function testIgnoresWorkflowChangesThatAreNotVersionBumps(): void
+    {
+        $diff = $this->buildWorkflowDiff(
+            ".github/workflows/ci.yml",
+            ["      run: echo old"],
+            ["      run: echo new"]
+        );
+
+        $result = $this->service->detectDependencyChanges($diff);
+
+        $this->assertSame([], $result);
+    }
+
+    public function testIgnoresUnchangedActionReferences(): void
+    {
+        $diff = $this->buildWorkflowDiff(
+            ".github/workflows/ci.yml",
+            ["      - uses: actions/checkout@v4", "      run: echo old"],
+            ["      - uses: actions/checkout@v4", "      run: echo new"]
+        );
+
+        $result = $this->service->detectDependencyChanges($diff);
+
+        $this->assertSame([], $result);
+    }
 }
