@@ -132,7 +132,6 @@ paths:
               - pullRequests
               - pushes
               - repositories
-              - signature
       responses:
         '202':
           description: Job accepted and running in background
