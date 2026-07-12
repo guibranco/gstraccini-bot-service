@@ -4,9 +4,13 @@ namespace GuiBranco\GStracciniBot\Handlers;
 
 use GuiBranco\GStracciniBot\Library\Codacy;
 use GuiBranco\GStracciniBot\Library\CommandHelper;
+use GuiBranco\GStracciniBot\Library\InfisicalIgnoreApprovalCommentBuilder;
+use GuiBranco\GStracciniBot\Library\InfisicalIgnoreCommitService;
+use GuiBranco\GStracciniBot\Library\InfisicalIgnoreSuggestionParser;
 use GuiBranco\GStracciniBot\Library\LabelHelper;
 use GuiBranco\GStracciniBot\Library\LabelService;
 use GuiBranco\GStracciniBot\Library\RepositoryManager;
+use RuntimeException;
 
 /**
  * Handles issue-comment events shared by the HTTP webhook entry point
@@ -72,12 +76,25 @@ class CommentsHandler implements IHandler
             $comment->DeliveryIdText
         );
     
+        $action = $comment->Action ?? "created";
+        if ($action === "edited" && $sender === $config->botName . "[bot]") {
+            $metadata = $this->buildMetadata($comment, $config);
+            $this->execute_applyInfisicalIgnoreSuggestion($config, $metadata, $comment);
+            return;
+        }
+
         if ($sender === $config->botName . "[bot]") {
             return;
         }
-    
+
         $ignoredBots = ["github-actions[bot]", "AppVeyorBot", "gitauto-ai[bot]"];
         if (in_array($sender, $ignoredBots, true)) {
+            if ($sender === "github-actions[bot]") {
+                $metadata = $this->buildMetadata($comment, $config);
+                if ($this->execute_detectInfisicalIgnoreSuggestion($config, $metadata, $comment)) {
+                    return;
+                }
+            }
             echo "Skipping this comment! 🚷\n";
             $logStream?->info(
                 "Skipping comment from ignored bot: {$sender}",
@@ -88,7 +105,7 @@ class CommentsHandler implements IHandler
             $this->reactToComment($comment, "-1");
             return;
         }
-    
+
         $metadata = $this->buildMetadata($comment, $config);
     
         if (!$this->isCollaborator($comment, $metadata)) {
@@ -1072,6 +1089,125 @@ class CommentsHandler implements IHandler
         $this->callWorkflow($config, $metadata, $comment, "update-test-snapshot.yml");
     }
     
+    /**
+     * Detects a `.infisicalignore` suggestion posted by github-actions[bot] and, if found,
+     * posts a checkbox approval comment for a maintainer to opt in to applying it.
+     *
+     * @return bool True if this comment was an infisicalignore suggestion (handled), false otherwise.
+     */
+    private function execute_detectInfisicalIgnoreSuggestion($config, $metadata, $comment): bool
+    {
+        $parser = new InfisicalIgnoreSuggestionParser();
+        $entries = $parser->parse($comment->CommentBody);
+        if ($entries === null) {
+            return false;
+        }
+
+        $builder = new InfisicalIgnoreApprovalCommentBuilder();
+        $marker = $builder->marker((int) $comment->CommentId);
+
+        if ($this->findCommentByMarker($metadata, $marker) !== null) {
+            return true;
+        }
+
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
+        $body = $builder->build(
+            $comment->RepositoryOwner,
+            $comment->RepositoryName,
+            (int) $comment->PullRequestNumber,
+            (int) $comment->CommentId
+        );
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+
+        return true;
+    }
+
+    /**
+     * Handles an edit to the bot's own approval comment: applies the referenced
+     * `.infisicalignore` suggestion once the approval checkbox has been checked.
+     */
+    private function execute_applyInfisicalIgnoreSuggestion($config, $metadata, $comment): void
+    {
+        $approvalCommentUrl = "{$metadata['repoPrefix']}/issues/comments/{$comment->CommentId}";
+        $approvalResponse = doRequestGitHub($metadata["token"], $approvalCommentUrl, null, "GET");
+        if ($approvalResponse->getStatusCode() !== 200) {
+            return;
+        }
+        $approvalComment = json_decode($approvalResponse->getBody());
+        $body = $approvalComment->body;
+
+        if (stripos($body, InfisicalIgnoreApprovalCommentBuilder::COMPLETION_MARKER) !== false) {
+            return;
+        }
+
+        $checkboxLabel = preg_quote(InfisicalIgnoreApprovalCommentBuilder::CHECKBOX_LABEL, "/");
+        if (!preg_match("/-\s\[(x|X)\]\s{$checkboxLabel}/", $body)) {
+            return;
+        }
+
+        $markerPrefix = preg_quote(InfisicalIgnoreApprovalCommentBuilder::MARKER_PREFIX, "/");
+        if (!preg_match("/{$markerPrefix}(\d+)/", $body, $matches)) {
+            return;
+        }
+        $originalCommentId = (int) $matches[1];
+
+        $originalCommentUrl = "{$metadata['repoPrefix']}/issues/comments/{$originalCommentId}";
+        $originalResponse = doRequestGitHub($metadata["token"], $originalCommentUrl, null, "GET");
+        if ($originalResponse->getStatusCode() !== 200) {
+            return;
+        }
+        $originalComment = json_decode($originalResponse->getBody());
+
+        $parser = new InfisicalIgnoreSuggestionParser();
+        $entries = $parser->parse($originalComment->body);
+        if ($entries === null) {
+            return;
+        }
+
+        $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
+        if ($pullRequestResponse->getStatusCode() !== 200) {
+            return;
+        }
+        $pullRequest = json_decode($pullRequestResponse->getBody());
+        $branch = $pullRequest->head->ref;
+
+        $builder = new InfisicalIgnoreApprovalCommentBuilder();
+        $commitService = new InfisicalIgnoreCommitService();
+
+        try {
+            $result = $commitService->applyToPullRequest($metadata, $branch, $entries);
+        } catch (RuntimeException $e) {
+            $failureBody = $body . "\n\n❌ Failed to apply suggestion: " . $e->getMessage() . "\n";
+            doRequestGitHub($metadata["token"], $approvalCommentUrl, array("body" => $failureBody), "PATCH");
+            return;
+        }
+
+        $completion = $builder->buildCompletion($result["sha"] ?? "n/a", $result["message"]);
+        doRequestGitHub($metadata["token"], $approvalCommentUrl, array("body" => $body . $completion), "PATCH");
+    }
+
+    /**
+     * Fetches up to 100 comments on the pull request and returns the first one whose
+     * body contains the given marker, or null if none match.
+     */
+    private function findCommentByMarker(array $metadata, string $marker): ?object
+    {
+        $url = "{$metadata['commentUrl']}?per_page=100&page=1";
+        $response = doRequestGitHub($metadata["token"], $url, null, "GET");
+        if ($response->getStatusCode() !== 200) {
+            return null;
+        }
+
+        $comments = json_decode($response->getBody());
+        foreach ($comments as $existingComment) {
+            if (strpos($existingComment->body, $marker) !== false) {
+                return $existingComment;
+            }
+        }
+
+        return null;
+    }
+
     private function callWorkflow($config, $metadata, $comment, $workflow, $extendedParameters = null): void
     {
         global $logger;
