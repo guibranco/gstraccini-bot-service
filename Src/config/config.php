@@ -88,7 +88,9 @@ if (file_exists($logStreamSecretsFile)) {
     require_once $logStreamSecretsFile;
 }
 $logStream = null;
-if (!empty($logStreamServer) && !empty($logStreamToken)) {
+$logStreamConfig = loadConfig();
+$logStreamEnabled = !isset($logStreamConfig->logStream->enabled) || $logStreamConfig->logStream->enabled === true;
+if ($logStreamEnabled && !empty($logStreamServer) && !empty($logStreamToken)) {
     $logStream = new LogStream(
         baseUrl: $logStreamServer,
         appKey: "gstraccini-bot",
