@@ -11,4 +11,4 @@ use GuiBranco\Pancake\HealthChecks;
 $handler = new PullRequestsHandler();
 $healthCheck = new HealthChecks($healthChecksIoPullRequests, GUIDv4::random());
 $processor = new ProcessingManager("pull_requests", $healthCheck, $logger, $logStream);
-$processor->run([$handler, "handleItem"], 60);
+$processor->run([$handler, "handleItem"], const PROCESSING_INTERVAL = 60;);
