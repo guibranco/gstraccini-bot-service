@@ -10,7 +10,7 @@ class RepositoryManager
         $fileContentResponse = null;
         foreach ($paths as $path) {
             $fileContentResponse = doRequestGitHub($token, "repos/{$repositoryOwner}/{$repositoryName}/contents" . $path . ".gstraccini.toml", null, "GET");
-            if ($fileContentResponse->getStatusCode() === 200) {
+            if (200 === $fileContentResponse->getStatusCode()) {
                 break;
             }
         }
