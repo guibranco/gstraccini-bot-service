@@ -7,7 +7,7 @@ if (file_exists($apiSecretsFile)) {
     require_once $apiSecretsFile;
 }
 
-$validJobs = ['branches', 'comments', 'installations', 'issues', 'pullRequests', 'pushes', 'repositories', 'users'];
+$validJobs = ['branches', 'checkup', 'comments', 'installations', 'issues', 'pullRequests', 'pushes', 'repositories', 'users'];
 
 $providedKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
 if (empty($providedKey) || !isset($apiKey) || !hash_equals($apiKey, $providedKey)) {

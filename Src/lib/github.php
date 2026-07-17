@@ -208,6 +208,35 @@ function generateInstallationToken(string $installationId, string $repositoryNam
 }
 
 /**
+ * Generates an installation access token scoped to every repository the
+ * installation can access (no `repository`/`repositories` restriction),
+ * unlike `generateInstallationToken()` which scopes the token to a single
+ * repository. Used when an operation needs to walk all repositories of an
+ * installation (e.g. `GET /installation/repositories`) without minting a
+ * new token per repository.
+ *
+ * @param string $installationId The GitHub App installation ID.
+ * @param array|null $permissions Optional permissions to request for the token.
+ *
+ * @return string The generated installation access token.
+ */
+function generateInstallationAccessToken(string $installationId, array $permissions = null): string
+{
+    $gitHubAppToken = generateAppToken();
+
+    $data = null;
+    if (!is_null($permissions) && !empty($permissions)) {
+        $data = new \stdClass();
+        $data->permissions = $permissions;
+    }
+
+    $url = "app/installations/" . $installationId . "/access_tokens";
+    $response = doRequestGitHub($gitHubAppToken, $url, $data, "POST");
+    $json = json_decode($response->getBody());
+    return $json->token;
+}
+
+/**
  * The function `getPullRequestDiff` retrieves the diff of a pull request from the GitHub API using
  * the provided metadata.
  *
