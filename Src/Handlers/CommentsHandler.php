@@ -10,6 +10,8 @@ use GuiBranco\GStracciniBot\Library\InfisicalIgnoreSuggestionParser;
 use GuiBranco\GStracciniBot\Library\LabelHelper;
 use GuiBranco\GStracciniBot\Library\LabelService;
 use GuiBranco\GStracciniBot\Library\RepositoryManager;
+use GuiBranco\GStracciniBot\Library\VersionBumpCommentBuilder;
+use GuiBranco\GStracciniBot\Library\VersionBumpCommitService;
 use RuntimeException;
 
 /**
@@ -80,6 +82,7 @@ class CommentsHandler implements IHandler
         if ($action === "edited" && $sender === $config->botName . "[bot]") {
             $metadata = $this->buildMetadata($comment, $config);
             $this->execute_applyInfisicalIgnoreSuggestion($config, $metadata, $comment);
+            $this->execute_applyVersionBumpDecision($config, $metadata, $comment);
             return;
         }
 
@@ -1184,6 +1187,112 @@ class CommentsHandler implements IHandler
 
         $completion = $builder->buildCompletion($result["sha"] ?? "n/a", $result["message"]);
         doRequestGitHub($metadata["token"], $approvalCommentUrl, array("body" => $body . $completion), "PATCH");
+    }
+
+    /**
+     * Handles an edit to the bot's own version-bump decision comment: once the user
+     * checks one of the three options, either resolves the pending "GStraccini Checks:
+     * Pull Request" check run directly (no version bump), or pushes a dummy commit
+     * carrying the matching `+semver` directive (minor/major), letting the next
+     * pull_request synchronize event resolve the check run naturally.
+     */
+    private function execute_applyVersionBumpDecision($config, $metadata, $comment): void
+    {
+        $commentUrl = "{$metadata['repoPrefix']}/issues/comments/{$comment->CommentId}";
+        $response = doRequestGitHub($metadata["token"], $commentUrl, null, "GET");
+        if ($response->getStatusCode() !== 200) {
+            return;
+        }
+
+        $existingComment = json_decode($response->getBody());
+        $body = $existingComment->body;
+
+        if (stripos($body, VersionBumpCommentBuilder::MARKER) === false) {
+            return;
+        }
+
+        if (stripos($body, VersionBumpCommentBuilder::COMPLETION_MARKER) !== false) {
+            return;
+        }
+
+        $choice = $this->extractVersionBumpChoice($body);
+        if ($choice === null) {
+            return;
+        }
+
+        $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
+        if ($pullRequestResponse->getStatusCode() !== 200) {
+            return;
+        }
+        $pullRequest = json_decode($pullRequestResponse->getBody());
+
+        $builder = new VersionBumpCommentBuilder();
+
+        if ($choice === "none") {
+            $this->resolveVersionBumpCheckRun($metadata, $pullRequest->head->sha, "No version bump requested by the user.");
+            $completion = $builder->buildCompletion("No version bump");
+            doRequestGitHub($metadata["token"], $commentUrl, array("body" => $body . $completion), "PATCH");
+            return;
+        }
+
+        $message = "Apply requested {$choice} version bump\n\n+semver: {$choice}";
+
+        $commitService = new VersionBumpCommitService();
+        try {
+            $result = $commitService->createDummyCommit($metadata, $pullRequest->head->ref, $pullRequest->head->sha, $message);
+        } catch (RuntimeException $e) {
+            $failureBody = $body . "\n\n❌ Failed to apply version bump: " . $e->getMessage() . "\n";
+            doRequestGitHub($metadata["token"], $commentUrl, array("body" => $failureBody), "PATCH");
+            return;
+        }
+
+        $completion = $builder->buildCompletion(ucfirst($choice) . " version bump", $result["sha"]);
+        doRequestGitHub($metadata["token"], $commentUrl, array("body" => $body . $completion), "PATCH");
+    }
+
+    /**
+     * Determines which version-bump checkbox, if any, is checked in the given comment body.
+     *
+     * @return string|null "major", "minor", "none", or null if none is checked.
+     */
+    private function extractVersionBumpChoice(string $body): ?string
+    {
+        $options = [
+            "major" => VersionBumpCommentBuilder::CHECKBOX_MAJOR,
+            "minor" => VersionBumpCommentBuilder::CHECKBOX_MINOR,
+            "none" => VersionBumpCommentBuilder::CHECKBOX_NONE,
+        ];
+
+        foreach ($options as $choice => $label) {
+            $quotedLabel = preg_quote($label, "/");
+            if (preg_match("/-\s\[(x|X)\]\s{$quotedLabel}/", $body)) {
+                return $choice;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Resolves the still-pending "GStraccini Checks: Pull Request" check run for the
+     * given commit sha, marking it succeeded.
+     */
+    private function resolveVersionBumpCheckRun($metadata, string $sha, string $details): void
+    {
+        $url = "{$metadata['repoPrefix']}/commits/{$sha}/check-runs";
+        $response = doRequestGitHub($metadata["token"], $url, null, "GET");
+        if ($response->getStatusCode() !== 200) {
+            return;
+        }
+
+        $result = json_decode($response->getBody());
+        $checkRunName = constant("BOT_CHECK_MESSAGE_PREFIX") . "Pull Request";
+
+        foreach ($result->check_runs as $checkRun) {
+            if ($checkRun->name === $checkRunName && $checkRun->status !== "completed") {
+                setCheckRunSucceeded($metadata, $checkRun->id, "pull request", $details);
+            }
+        }
     }
 
     /**

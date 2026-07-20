@@ -5,6 +5,8 @@ namespace GuiBranco\GStracciniBot\Handlers;
 use GuiBranco\GStracciniBot\Library\DependencyFileLabelService;
 use GuiBranco\GStracciniBot\Library\MarkdownGroupCheckboxValidator;
 use GuiBranco\GStracciniBot\Library\PullRequestCodeScanner;
+use GuiBranco\GStracciniBot\Library\VersionBumpAnalyzer;
+use GuiBranco\GStracciniBot\Library\VersionBumpCommentBuilder;
 
 define("ISSUES", "/issues/");
 define("PULLS", "/pulls/");
@@ -159,10 +161,58 @@ class PullRequestsHandler implements IHandler
             $this->handleCommentToMerge($metadata, $pullRequest, $collaboratorsLogins);
         }
 
+        $versionBumpResolved = $this->checkVersionBump($metadata, $pullRequestUpdated);
+
         $this->checkPullRequestDescription($metadata, $pullRequestUpdated);
         $this->checkPullRequestContent($metadata, $pullRequestUpdated);
         $this->checkDependencyChanges($metadata, $pullRequestUpdated);
-        setCheckRunSucceeded($metadata, $checkRunId, "pull request");
+
+        if ($versionBumpResolved) {
+            setCheckRunSucceeded($metadata, $checkRunId, "pull request");
+        } else {
+            echo "State: Version bump decision pending - leaving 'pull request' check run in progress ⏳\n";
+        }
+    }
+
+    /**
+     * Analyzes a pull request for a version bump decision: if it looks like a feature
+     * (via title, branch name, or labels) and no GitVersion `+semver` directive is
+     * already present in its title or commits, an actionable comment is posted asking
+     * the user to choose a minor bump, a major bump, or no bump at all.
+     *
+     * @param array $metadata Metadata for the GitHub API request
+     * @param object $pullRequestUpdated The updated pull request data
+     * @return bool True if the decision is resolved (no action needed, or already handled),
+     *              false if it's still pending user input.
+     */
+    private function checkVersionBump(array $metadata, object $pullRequestUpdated): bool
+    {
+        $analyzer = new VersionBumpAnalyzer();
+
+        $messages = [$pullRequestUpdated->title];
+        $commitsResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"] . "/commits", null, "GET");
+        if ($commitsResponse->getStatusCode() < 300) {
+            foreach (json_decode($commitsResponse->getBody()) as $commit) {
+                $messages[] = $commit->commit->message;
+            }
+        }
+
+        if ($analyzer->hasSemverDirective($messages)) {
+            return true;
+        }
+
+        $labels = array_column($pullRequestUpdated->labels ?? [], "name");
+        if (!$analyzer->looksLikeFeature($pullRequestUpdated->title, $pullRequestUpdated->head->ref, $labels)) {
+            return true;
+        }
+
+        if (!$this->findCommentByContent($metadata, $pullRequestUpdated, VersionBumpCommentBuilder::MARKER)) {
+            $builder = new VersionBumpCommentBuilder();
+            $body = $builder->build($pullRequestUpdated->title);
+            doRequestGitHub($metadata["token"], $metadata["commentsUrl"], array("body" => $body), "POST");
+        }
+
+        return false;
     }
 
     /**
