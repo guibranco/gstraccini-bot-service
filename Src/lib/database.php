@@ -225,6 +225,109 @@ function upsertPullRequest($pullRequest)
     $mysqli->close();
 }
 
+const ACTION_TYPE_PULL_REQUEST_READY_TO_MERGE = "pull_request_ready_to_merge";
+
+/**
+ * Creates a "ready to merge" notification and pending action for a pull request,
+ * unless an unread one already exists for the same pull request.
+ *
+ * @param object $pullRequest The queued pull request event (RepositoryOwner, RepositoryName).
+ * @param object $pullRequestUpdated The freshly fetched pull request data from the GitHub API.
+ * @return void
+ */
+function createReadyToMergeAction($pullRequest, $pullRequestUpdated): void
+{
+    $mysqli = connectToDatabase();
+
+    $sql = "SELECT Sequence FROM notifications WHERE PullRequestNodeId = ? AND Type = ? AND IsRead = FALSE";
+    $stmt = $mysqli->prepare($sql);
+    $nodeId = $pullRequestUpdated->node_id;
+    $type = ACTION_TYPE_PULL_REQUEST_READY_TO_MERGE;
+    $stmt->bind_param("ss", $nodeId, $type);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $exists = $result->fetch_assoc() !== null;
+    $stmt->close();
+
+    if ($exists) {
+        $mysqli->close();
+        return;
+    }
+
+    $title = "Pull request ready for merge/squash";
+    $message = "\"{$pullRequestUpdated->title}\" (#{$pullRequestUpdated->number}) is ready ✅ for merge/squash.";
+
+    $sql = "INSERT INTO notifications
+        (`RepositoryOwner`, `RepositoryName`, `Type`, `Title`, `Message`, `Url`, `PullRequestId`, `PullRequestNumber`, `PullRequestNodeId`)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    $stmt = $mysqli->prepare($sql);
+    $stmt->bind_param(
+        "ssssssiis",
+        $pullRequest->RepositoryOwner,
+        $pullRequest->RepositoryName,
+        $type,
+        $title,
+        $message,
+        $pullRequestUpdated->html_url,
+        $pullRequestUpdated->id,
+        $pullRequestUpdated->number,
+        $nodeId
+    );
+
+    if (!$stmt->execute()) {
+        die("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+    }
+
+    $notificationSequence = $stmt->insert_id;
+    $stmt->close();
+
+    $sql = "INSERT INTO pending_actions
+        (`NotificationSequence`, `RepositoryOwner`, `RepositoryName`, `ActionType`, `Title`, `Description`, `Url`, `PullRequestId`, `PullRequestNumber`, `PullRequestNodeId`)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    $stmt = $mysqli->prepare($sql);
+    $stmt->bind_param(
+        "issssssiis",
+        $notificationSequence,
+        $pullRequest->RepositoryOwner,
+        $pullRequest->RepositoryName,
+        $type,
+        $title,
+        $message,
+        $pullRequestUpdated->html_url,
+        $pullRequestUpdated->id,
+        $pullRequestUpdated->number,
+        $nodeId
+    );
+
+    if (!$stmt->execute()) {
+        die("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+    }
+
+    $stmt->close();
+    $mysqli->close();
+}
+
+/**
+ * Removes unread notifications (and their cascaded pending actions) for a pull request.
+ * Called when a pull request is closed or merged, so stale actions don't linger
+ * once they are no longer actionable. Read items are left untouched as history.
+ *
+ * @param string $pullRequestNodeId The GraphQL node ID of the pull request.
+ * @return void
+ */
+function removeUnreadActionsForPullRequest($pullRequestNodeId): void
+{
+    $mysqli = connectToDatabase();
+
+    $sql = "DELETE FROM notifications WHERE PullRequestNodeId = ? AND IsRead = FALSE";
+    $stmt = $mysqli->prepare($sql);
+    $stmt->bind_param("s", $pullRequestNodeId);
+    $stmt->execute();
+
+    $stmt->close();
+    $mysqli->close();
+}
+
 function upsertPush($commit)
 {
     $mysqli = connectToDatabase();

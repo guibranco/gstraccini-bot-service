@@ -57,6 +57,7 @@ class PullRequestsHandler implements IHandler
             $this->removeIssueWipLabel($metadata, $pullRequest);
             $this->removeLabels($metadata, $pullRequestUpdated);
             $this->checkForOtherPullRequests($metadata, $pullRequest);
+            removeUnreadActionsForPullRequest($pullRequestUpdated->node_id);
         }
 
         if ($pullRequestUpdated->state != "open") {
@@ -752,13 +753,12 @@ class PullRequestsHandler implements IHandler
         if ($pullRequestUpdated->mergeable_state === "clean" && $pullRequestUpdated->mergeable) {
             echo "State: " . $pullRequestUpdated->mergeable_state . " - Enable auto merge - Is mergeable - Sender auto merge: " . ($isSenderAutoMerge ? "✅" : "⛔") . " - Sender: " . $pullRequest->Sender . " ✅\n";
             $logStream?->info(
-                "PR #{$pullRequest->Number} is mergeable — posting ready-to-merge comment",
+                "PR #{$pullRequest->Number} is mergeable — recording ready-to-merge action",
                 ['repo' => "{$metadata['owner']}/{$metadata['repo']}", 'mergeable_state' => $pullRequestUpdated->mergeable_state, 'auto_merge_submitter' => $isSenderAutoMerge],
                 "pull_requests",
                 $pullRequest->DeliveryIdText
             );
-            $comment = array("body" => "<!-- gstraccini-bot:ready-merge -->\nThis pull request is ready ✅ for merge/squash.");
-            doRequestGitHub($metadata["token"], $metadata["commentsUrl"], $comment, "POST");
+            createReadyToMergeAction($pullRequest, $pullRequestUpdated);
         } else {
             echo "State: " . $pullRequestUpdated->mergeable_state . " - Enable auto merge - Is NOT mergeable - Sender auto merge: " . ($isSenderAutoMerge ? "✅" : "⛔") . " - Sender: " . $pullRequest->Sender . " ⛔\n";
             $logStream?->warning(
