@@ -21,6 +21,10 @@ tags:
     description: Trigger background processing jobs
   - name: Stats
     description: Aggregate usage statistics
+  - name: Pending Actions
+    description: Actions awaiting attention in the UI (e.g. pull requests ready to merge)
+  - name: Notifications
+    description: Notifications surfaced to the UI
 paths:
   /health/:
     get:
@@ -157,6 +161,184 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /pending-actions/:
+    get:
+      summary: List unread pending actions
+      description: Returns pending actions (e.g. pull requests ready to merge) that have not yet been read
+      operationId: getPendingActions
+      tags:
+        - Pending Actions
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: List of unread pending actions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PendingAction'
+        '401':
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '405':
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Database not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Database unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /pending-actions/{sequence}/read/:
+    post:
+      summary: Mark a pending action as read
+      description: Flags a pending action as read so it stops showing up in the unread list
+      operationId: markPendingActionRead
+      tags:
+        - Pending Actions
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: sequence
+          in: path
+          required: true
+          description: Sequence identifier of the pending action
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Pending action marked as read
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadAck'
+        '400':
+          description: Invalid sequence
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Pending action not found or already read
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '405':
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /notifications/:
+    get:
+      summary: List unread notifications
+      description: Returns notifications that have not yet been read
+      operationId: getNotifications
+      tags:
+        - Notifications
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: List of unread notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Notification'
+        '401':
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '405':
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Database not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Database unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /notifications/{sequence}/read/:
+    post:
+      summary: Mark a notification as read
+      description: Flags a notification as read so it stops showing up in the unread list
+      operationId: markNotificationRead
+      tags:
+        - Notifications
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: sequence
+          in: path
+          required: true
+          description: Sequence identifier of the notification
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Notification marked as read
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadAck'
+        '400':
+          description: Invalid sequence
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Notification not found or already read
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '405':
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -246,3 +428,95 @@ components:
         activeRepositories:
           type: integer
           example: 6
+    PendingAction:
+      type: object
+      properties:
+        sequence:
+          type: integer
+          example: 42
+        repositoryOwner:
+          type: string
+          example: guibranco
+        repositoryName:
+          type: string
+          example: gstraccini-bot-service
+        actionType:
+          type: string
+          example: pull_request_ready_to_merge
+        title:
+          type: string
+          example: Pull request ready for merge/squash
+        description:
+          type: string
+          nullable: true
+          example: "\"Add check-up job\" (#1120) is ready ✅ for merge/squash."
+        url:
+          type: string
+          nullable: true
+          example: https://github.com/guibranco/gstraccini-bot-service/pull/1120
+        pullRequestId:
+          type: integer
+          nullable: true
+        pullRequestNumber:
+          type: integer
+          nullable: true
+          example: 1120
+        pullRequestNodeId:
+          type: string
+          nullable: true
+        isRead:
+          type: boolean
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+    Notification:
+      type: object
+      properties:
+        sequence:
+          type: integer
+          example: 42
+        repositoryOwner:
+          type: string
+          example: guibranco
+        repositoryName:
+          type: string
+          example: gstraccini-bot-service
+        type:
+          type: string
+          example: pull_request_ready_to_merge
+        title:
+          type: string
+          example: Pull request ready for merge/squash
+        message:
+          type: string
+          example: "\"Add check-up job\" (#1120) is ready ✅ for merge/squash."
+        url:
+          type: string
+          nullable: true
+          example: https://github.com/guibranco/gstraccini-bot-service/pull/1120
+        pullRequestId:
+          type: integer
+          nullable: true
+        pullRequestNumber:
+          type: integer
+          nullable: true
+          example: 1120
+        pullRequestNodeId:
+          type: string
+          nullable: true
+        isRead:
+          type: boolean
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+    ReadAck:
+      type: object
+      properties:
+        status:
+          type: string
+          example: read
+        sequence:
+          type: integer
+          example: 42

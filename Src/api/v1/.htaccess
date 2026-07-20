@@ -10,8 +10,10 @@ RewriteRule ^ https://api.bot.straccini.com%{REQUEST_URI} [R=301,L]
 RewriteRule ^openapi\.yaml$ openapi.php [NC,L]
 
 # Redirect routes without trailing slash to canonical form
-RewriteRule ^(commands|health|swagger|stats)$ /v1/$1/ [R=301,NC,L]
+RewriteRule ^(commands|health|swagger|stats|pending-actions|notifications)$ /v1/$1/ [R=301,NC,L]
 RewriteRule ^jobs/([a-zA-Z]+)$ /v1/jobs/$1/ [R=301,NC,L]
+RewriteRule ^pending-actions/([0-9]+)/read$ /v1/pending-actions/$1/read/ [R=301,NC,L]
+RewriteRule ^notifications/([0-9]+)/read$ /v1/notifications/$1/read/ [R=301,NC,L]
 
 # Route trailing-slash requests to PHP handlers
 RewriteRule ^commands/$ commands.php [NC,L]
@@ -19,3 +21,7 @@ RewriteRule ^health/$ health.php [NC,L]
 RewriteRule ^swagger/$ swagger.php [NC,L]
 RewriteRule ^stats/$ stats.php [NC,L]
 RewriteRule ^jobs/([a-zA-Z]+)/$ jobs.php [NC,L]
+RewriteRule ^pending-actions/$ pendingActions.php [NC,L]
+RewriteRule ^pending-actions/([0-9]+)/read/$ pendingActions.php [NC,L]
+RewriteRule ^notifications/$ notifications.php [NC,L]
+RewriteRule ^notifications/([0-9]+)/read/$ notifications.php [NC,L]
