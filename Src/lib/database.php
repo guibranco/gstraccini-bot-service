@@ -225,6 +225,62 @@ function upsertPullRequest($pullRequest)
     $mysqli->close();
 }
 
+/**
+ * Maps a user to an installation they have access to. If the pair already
+ * exists (e.g. it was previously soft-removed), clears RemovedAt so it
+ * counts as active again.
+ *
+ * @param int $userId The GitHub user ID.
+ * @param int $installationId The GitHub installation ID.
+ * @return void
+ */
+function upsertUserInstallation(int $userId, int $installationId): void
+{
+    $mysqli = connectToDatabase();
+
+    $sql = "INSERT INTO user_installations (UserId, InstallationId) VALUES (?, ?)
+            ON DUPLICATE KEY UPDATE RemovedAt = NULL";
+    $stmt = $mysqli->prepare($sql);
+    $stmt->bind_param("ii", $userId, $installationId);
+    $stmt->execute();
+
+    $stmt->close();
+    $mysqli->close();
+}
+
+/**
+ * Soft-removes (sets RemovedAt) every active user_installations row for the
+ * given user whose InstallationId is not in the current, GitHub-reported
+ * set of installations. Rows are never deleted, so history is preserved.
+ *
+ * @param int $userId The GitHub user ID.
+ * @param array<int> $activeInstallationIds Installation IDs currently reported by GitHub for this user.
+ * @return int Number of rows soft-removed.
+ */
+function removeStaleUserInstallations(int $userId, array $activeInstallationIds): int
+{
+    $mysqli = connectToDatabase();
+
+    if (empty($activeInstallationIds)) {
+        $sql = "UPDATE user_installations SET RemovedAt = NOW() WHERE UserId = ? AND RemovedAt IS NULL";
+        $stmt = $mysqli->prepare($sql);
+        $stmt->bind_param("i", $userId);
+    } else {
+        $placeholders = implode(',', array_fill(0, count($activeInstallationIds), '?'));
+        $sql = "UPDATE user_installations SET RemovedAt = NOW()
+                WHERE UserId = ? AND RemovedAt IS NULL AND InstallationId NOT IN ($placeholders)";
+        $stmt = $mysqli->prepare($sql);
+        $stmt->bind_param("i" . str_repeat("i", count($activeInstallationIds)), $userId, ...$activeInstallationIds);
+    }
+
+    $stmt->execute();
+    $affected = $stmt->affected_rows;
+    $stmt->close();
+    $mysqli->close();
+
+    return $affected;
+}
+
 const ACTION_TYPE_PULL_REQUEST_READY_TO_MERGE = "pull_request_ready_to_merge";
 
 /**

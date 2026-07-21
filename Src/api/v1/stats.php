@@ -86,7 +86,7 @@ try {
     exit;
 }
 
-$installationFilter = "InstallationId IN (SELECT InstallationId FROM user_installations WHERE UserId = ?)";
+$installationFilter = "InstallationId IN (SELECT InstallationId FROM user_installations WHERE UserId = ? AND RemovedAt IS NULL)";
 
 $pullRequests = fetchRowForUser(
     $mysqli,

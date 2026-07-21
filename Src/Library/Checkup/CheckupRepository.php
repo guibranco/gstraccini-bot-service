@@ -154,6 +154,116 @@ class CheckupRepository
         $mysqli->close();
     }
 
+    /**
+     * Returns the Id of every repository currently considered active
+     * (latest row's LastAction != 'deleted') for the given installation.
+     *
+     * @return array<int>
+     */
+    public function getActiveRepositoryIdsForInstallation(int $installationId): array
+    {
+        $mysqli = connectToDatabase();
+        $sql = "SELECT r.Id FROM github_repositories r
+                INNER JOIN (
+                    SELECT Id, MAX(Sequence) AS MaxSequence
+                    FROM github_repositories
+                    WHERE InstallationId = ?
+                    GROUP BY Id
+                ) latest ON r.Id = latest.Id AND r.Sequence = latest.MaxSequence
+                WHERE r.LastAction != 'deleted'";
+        $stmt = $mysqli->prepare($sql);
+        $stmt->bind_param("i", $installationId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $ids = [];
+        while ($row = $result->fetch_assoc()) {
+            $ids[] = (int) $row['Id'];
+        }
+
+        $stmt->close();
+        $mysqli->close();
+        return $ids;
+    }
+
+    /**
+     * Records that a repository is no longer accessible to an installation
+     * by inserting a new `github_repositories` row (LastAction = 'deleted',
+     * InstallationAction = 'removed'), copying the descriptive fields from
+     * the repository's most recent row. This is an append, never a DELETE,
+     * consistent with the rest of this event-log table.
+     */
+    public function markRepositoryRemoved(int $repositoryId, int $installationId, string $webhooksHandlerVersion): void
+    {
+        $mysqli = connectToDatabase();
+
+        $stmt = $mysqli->prepare(
+            "SELECT NodeId, Name, FullName, Private, OwnerLogin, OwnerId, OwnerNodeId
+             FROM github_repositories WHERE Id = ? ORDER BY Sequence DESC LIMIT 1"
+        );
+        $stmt->bind_param("i", $repositoryId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $stmt->close();
+
+        if ($row === null) {
+            $mysqli->close();
+            return;
+        }
+
+        $fields = [
+            "DeliveryId", "HookId", "TargetId", "TargetType",
+            "Id", "NodeId", "Name", "FullName", "Private",
+            "OwnerLogin", "OwnerId", "OwnerNodeId",
+            "SenderLogin", "SenderId", "SenderNodeId",
+            "InstallationId", "WebhooksHandlerVersion"
+        ];
+
+        $sql = "INSERT INTO github_repositories (`" . implode("`,`", $fields) . "`) ";
+        $sql .= "VALUES (unhex(replace(?, '-', '')), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'deleted', NOW(), 'removed', NOW())";
+        $stmt = $mysqli->prepare($sql);
+
+        $deliveryId = GUIDv4::random();
+        $hookId = 0;
+        $targetId = $installationId;
+        $targetType = self::TARGET_TYPE;
+        $nodeId = $row['NodeId'];
+        $name = $row['Name'];
+        $fullName = $row['FullName'];
+        $private = (int) $row['Private'];
+        $ownerLogin = $row['OwnerLogin'];
+        $ownerId = (int) $row['OwnerId'];
+        $ownerNodeId = $row['OwnerNodeId'];
+        $senderLogin = $ownerLogin;
+        $senderId = $ownerId;
+        $senderNodeId = $ownerNodeId;
+
+        $stmt->bind_param(
+            'siisisssisissisis',
+            $deliveryId,
+            $hookId,
+            $targetId,
+            $targetType,
+            $repositoryId,
+            $nodeId,
+            $name,
+            $fullName,
+            $private,
+            $ownerLogin,
+            $ownerId,
+            $ownerNodeId,
+            $senderLogin,
+            $senderId,
+            $senderNodeId,
+            $installationId,
+            $webhooksHandlerVersion
+        );
+        $stmt->execute();
+        $stmt->close();
+        $mysqli->close();
+    }
+
     public function existsBranch(string $owner, string $repo, string $ref): bool
     {
         $mysqli = connectToDatabase();

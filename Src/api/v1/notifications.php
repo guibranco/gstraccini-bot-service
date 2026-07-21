@@ -108,7 +108,7 @@ $stmt = $mysqli->prepare(
         PullRequestId, PullRequestNumber, PullRequestNodeId, IsRead, CreatedAt
      FROM notifications
      WHERE IsRead = FALSE
-        AND InstallationId IN (SELECT InstallationId FROM user_installations WHERE UserId = ?)
+        AND InstallationId IN (SELECT InstallationId FROM user_installations WHERE UserId = ? AND RemovedAt IS NULL)
      ORDER BY CreatedAt DESC"
 );
 $stmt->bind_param("i", $userIdInt);
