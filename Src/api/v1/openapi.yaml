@@ -152,11 +152,14 @@ paths:
             type: string
             enum:
               - branches
+              - checkup
               - comments
+              - installations
               - issues
               - pullRequests
               - pushes
               - repositories
+              - users
       responses:
         '202':
           description: Job accepted and running in background
