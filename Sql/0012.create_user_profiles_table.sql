@@ -1,0 +1,10 @@
+CREATE TABLE
+    `user_profiles` (
+        `UserId` BIGINT UNSIGNED NOT NULL,
+        `FirstName` VARCHAR(255) NULL,
+        `LastName` VARCHAR(255) NULL,
+        `Email` VARCHAR(255) NULL,
+        `CreatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `UpdatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (`UserId`)
+    ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_unicode_ci;

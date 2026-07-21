@@ -109,8 +109,22 @@ class CommentsHandler implements IHandler
             return;
         }
 
+        if ($action === "created") {
+            recordRecentActivity(
+                $comment->RepositoryOwner,
+                $comment->RepositoryName,
+                $comment->InstallationId,
+                "commented",
+                $comment->PullRequestTitle,
+                $repoUrl,
+                $comment->PullRequestId,
+                $comment->PullRequestNumber,
+                $comment->PullRequestNodeId
+            );
+        }
+
         $metadata = $this->buildMetadata($comment, $config);
-    
+
         if (!$this->isCollaborator($comment, $metadata)) {
             if ($sender !== "dependabot[bot]") {
                 $logStream?->warning(

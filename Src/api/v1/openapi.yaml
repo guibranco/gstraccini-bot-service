@@ -25,6 +25,14 @@ tags:
     description: Actions awaiting attention in the UI (e.g. pull requests ready to merge)
   - name: Notifications
     description: Notifications surfaced to the UI
+  - name: Recent Activities
+    description: Recent bot activity surfaced to the dashboard
+  - name: Account
+    description: User profile, preferences, and bot behavior settings
+  - name: Integrations
+    description: Third-party provider API keys configured by the user
+  - name: Auth
+    description: Password login, TOTP two-factor authentication, recovery codes, and password reset
 paths:
   /health/:
     get:
@@ -389,6 +397,673 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /recent-activities/:
+    get:
+      summary: List recent activities
+      description: Returns the most recent bot activity (merged PRs, closed issues, comments, pushes), scoped to the installations the given user has access to
+      operationId: getRecentActivities
+      tags:
+        - Recent Activities
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          description: GitHub user ID to scope activities to (via the user's assigned installations)
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of activities to return (1-100)
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of recent activities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RecentActivity'
+        '400':
+          description: Missing or invalid userId
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /profile/:
+    get:
+      summary: Get profile
+      description: Returns the signed-in user's editable profile fields
+      operationId: getProfile
+      tags:
+        - Account
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Profile fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '400':
+          description: Missing or invalid userId
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      summary: Update profile
+      description: Updates the signed-in user's editable profile fields
+      operationId: updateProfile
+      tags:
+        - Account
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Profile'
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '400':
+          description: Missing/invalid userId or email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /preferences/:
+    get:
+      summary: Get preferences
+      description: Returns the signed-in user's UI preferences (theme, grouping)
+      operationId: getPreferences
+      tags:
+        - Account
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Preferences
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Preferences'
+    put:
+      summary: Update preferences
+      operationId: updatePreferences
+      tags:
+        - Account
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Preferences'
+      responses:
+        '200':
+          description: Preferences updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+  /user-settings/:
+    get:
+      summary: Get bot behavior settings
+      description: Returns the signed-in user's bot behavior toggles, applied across all of that user's installations
+      operationId: getUserSettings
+      tags:
+        - Account
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Bot behavior settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSettings'
+    put:
+      summary: Update bot behavior settings
+      operationId: updateUserSettings
+      tags:
+        - Account
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSettings'
+      responses:
+        '200':
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+  /integrations/:
+    get:
+      summary: List integrations
+      description: Returns the signed-in user's configured third-party integrations, with API keys masked
+      operationId: getIntegrations
+      tags:
+        - Integrations
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of integrations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Integration'
+    post:
+      summary: Add or update an integration
+      description: Encrypts and stores the API key for a provider
+      operationId: saveIntegration
+      tags:
+        - Integrations
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - provider
+                - apiKey
+              properties:
+                provider:
+                  type: string
+                apiKey:
+                  type: string
+      responses:
+        '200':
+          description: Integration saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '400':
+          description: Missing/invalid provider or API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /integrations/{provider}/:
+    delete:
+      summary: Remove an integration
+      operationId: deleteIntegration
+      tags:
+        - Integrations
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Integration removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '404':
+          description: Integration not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/login/:
+    post:
+      summary: Log in with email and password
+      description: Returns `totp_required` if the account has 2FA enabled; the client must then call /auth/login/verify-totp/
+      operationId: authLogin
+      tags:
+        - Auth
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok, totp_required]
+                  userId:
+                    type: integer
+        '401':
+          description: Invalid email or password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/login/verify-totp/:
+    post:
+      summary: Verify a TOTP code to complete login
+      operationId: authVerifyTotp
+      tags:
+        - Auth
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, code]
+              properties:
+                userId:
+                  type: integer
+                code:
+                  type: string
+      responses:
+        '200':
+          description: Code accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '401':
+          description: Invalid code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/login/verify-recovery/:
+    post:
+      summary: Verify a recovery code to complete login (2FA fallback)
+      operationId: authVerifyRecovery
+      tags:
+        - Auth
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, code]
+              properties:
+                userId:
+                  type: integer
+                code:
+                  type: string
+      responses:
+        '200':
+          description: Code accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '401':
+          description: Invalid or already-used recovery code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/password/:
+    put:
+      summary: Set or change the account password
+      description: currentPassword is required only if a password is already set
+      operationId: authSetPassword
+      tags:
+        - Auth
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [newPassword]
+              properties:
+                currentPassword:
+                  type: string
+                newPassword:
+                  type: string
+      responses:
+        '200':
+          description: Password updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '403':
+          description: Current password is incorrect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/totp/setup/:
+    post:
+      summary: Begin TOTP 2FA setup
+      description: Generates a new secret (not yet enabled) and returns it plus an otpauth:// URI for QR code display
+      operationId: authTotpSetup
+      tags:
+        - Auth
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Secret generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secret:
+                    type: string
+                  otpauthUri:
+                    type: string
+  /auth/totp/enable/:
+    post:
+      summary: Confirm and enable TOTP 2FA
+      operationId: authTotpEnable
+      tags:
+        - Auth
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+      responses:
+        '200':
+          description: 2FA enabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '400':
+          description: Invalid code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/totp/disable/:
+    post:
+      summary: Disable TOTP 2FA
+      description: Accepts either a valid TOTP code or an unused recovery code
+      operationId: authTotpDisable
+      tags:
+        - Auth
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+      responses:
+        '200':
+          description: 2FA disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '400':
+          description: Invalid code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/totp/status/:
+    get:
+      summary: Get TOTP 2FA status
+      operationId: authTotpStatus
+      tags:
+        - Auth
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 2FA status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enabled:
+                    type: boolean
+  /auth/recovery-codes/generate/:
+    post:
+      summary: Generate new recovery codes
+      description: Invalidates any existing codes. The plaintext codes are returned once and never stored or shown again.
+      operationId: authGenerateRecoveryCodes
+      tags:
+        - Auth
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: New recovery codes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  codes:
+                    type: array
+                    items:
+                      type: string
+  /auth/password-reset/request/:
+    post:
+      summary: Request a password reset
+      description: |
+        Generates and stores a real, time-limited reset token. Always returns
+        `status: ok` regardless of whether the email matches an account, to
+        avoid leaking account existence. Email delivery is not yet
+        implemented — `devResetToken` is a temporary field exposing the
+        token directly and must be removed once a mail provider is wired up.
+      operationId: authRequestPasswordReset
+      tags:
+        - Auth
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+      responses:
+        '200':
+          description: Request accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  devResetToken:
+                    type: string
+                    description: Temporary - present only until real email delivery is implemented
+  /auth/password-reset/verify/:
+    post:
+      summary: Complete a password reset
+      operationId: authVerifyPasswordReset
+      tags:
+        - Auth
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, newPassword]
+              properties:
+                token:
+                  type: string
+                newPassword:
+                  type: string
+      responses:
+        '200':
+          description: Password reset
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '400':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -578,3 +1253,108 @@ components:
         sequence:
           type: integer
           example: 42
+    StatusResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: updated
+    RecentActivity:
+      type: object
+      properties:
+        sequence:
+          type: integer
+        repositoryOwner:
+          type: string
+        repositoryName:
+          type: string
+        installationId:
+          type: integer
+          nullable: true
+        actionType:
+          type: string
+          enum: [opened_pr, merged_pr, closed_issue, commented, pushed_commits]
+        title:
+          type: string
+        url:
+          type: string
+          nullable: true
+        pullRequestId:
+          type: integer
+          nullable: true
+        pullRequestNumber:
+          type: integer
+          nullable: true
+        pullRequestNodeId:
+          type: string
+          nullable: true
+        issueId:
+          type: integer
+          nullable: true
+        issueNumber:
+          type: integer
+          nullable: true
+        issueNodeId:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    Profile:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+    Preferences:
+      type: object
+      properties:
+        theme:
+          type: string
+          enum: [light, dark, system]
+        groupByOrganization:
+          type: boolean
+    UserSettings:
+      type: object
+      properties:
+        createLabels:
+          type: boolean
+        notifyIssues:
+          type: boolean
+        requireAcceptanceCriteriaChecklist:
+          type: boolean
+        reminderIssues:
+          type: boolean
+        reminderIssuesDays:
+          type: integer
+          nullable: true
+        prTemplateDescription:
+          type: boolean
+        autoReviewPr:
+          type: boolean
+        autoMergePr:
+          type: boolean
+        createIssue:
+          type: boolean
+        notifyPullRequests:
+          type: boolean
+    Integration:
+      type: object
+      properties:
+        provider:
+          type: string
+        maskedApiKey:
+          type: string
+          nullable: true
+        status:
+          type: string
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastError:
+          type: string
+          nullable: true

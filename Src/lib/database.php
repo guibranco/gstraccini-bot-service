@@ -281,6 +281,68 @@ function removeStaleUserInstallations(int $userId, array $activeInstallationIds)
     return $affected;
 }
 
+/**
+ * Records a row in `recent_activities`, feeding the dashboard's Recent
+ * Activities box. Scoped by InstallationId the same way notifications and
+ * pending actions are, so the API can filter it to a given user via
+ * user_installations.
+ *
+ * @param string $repositoryOwner
+ * @param string $repositoryName
+ * @param int|null $installationId
+ * @param string $actionType One of: opened_pr, merged_pr, closed_issue, commented, pushed_commits.
+ * @param string $title Human-readable summary shown in the activity list.
+ * @param string|null $url Link to the GitHub resource.
+ * @param int|null $pullRequestId
+ * @param int|null $pullRequestNumber
+ * @param string|null $pullRequestNodeId
+ * @param int|null $issueId
+ * @param int|null $issueNumber
+ * @param string|null $issueNodeId
+ * @return void
+ */
+function recordRecentActivity(
+    string $repositoryOwner,
+    string $repositoryName,
+    ?int $installationId,
+    string $actionType,
+    string $title,
+    ?string $url = null,
+    ?int $pullRequestId = null,
+    ?int $pullRequestNumber = null,
+    ?string $pullRequestNodeId = null,
+    ?int $issueId = null,
+    ?int $issueNumber = null,
+    ?string $issueNodeId = null
+): void {
+    $mysqli = connectToDatabase();
+
+    $sql = "INSERT INTO recent_activities
+        (`RepositoryOwner`, `RepositoryName`, `InstallationId`, `ActionType`, `Title`, `Url`,
+         `PullRequestId`, `PullRequestNumber`, `PullRequestNodeId`, `IssueId`, `IssueNumber`, `IssueNodeId`)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    $stmt = $mysqli->prepare($sql);
+    $stmt->bind_param(
+        "ssisssiisiis",
+        $repositoryOwner,
+        $repositoryName,
+        $installationId,
+        $actionType,
+        $title,
+        $url,
+        $pullRequestId,
+        $pullRequestNumber,
+        $pullRequestNodeId,
+        $issueId,
+        $issueNumber,
+        $issueNodeId
+    );
+    $stmt->execute();
+
+    $stmt->close();
+    $mysqli->close();
+}
+
 const ACTION_TYPE_PULL_REQUEST_READY_TO_MERGE = "pull_request_ready_to_merge";
 
 /**

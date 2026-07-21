@@ -60,6 +60,20 @@ class PullRequestsHandler implements IHandler
             $this->removeLabels($metadata, $pullRequestUpdated);
             $this->checkForOtherPullRequests($metadata, $pullRequest);
             removeUnreadActionsForPullRequest($pullRequestUpdated->node_id);
+
+            if ($pullRequestUpdated->merged) {
+                recordRecentActivity(
+                    $pullRequest->RepositoryOwner,
+                    $pullRequest->RepositoryName,
+                    $pullRequest->InstallationId,
+                    "merged_pr",
+                    $pullRequestUpdated->title,
+                    $pullRequestUpdated->html_url,
+                    $pullRequestUpdated->id,
+                    $pullRequestUpdated->number,
+                    $pullRequestUpdated->node_id
+                );
+            }
         }
 
         if ($pullRequestUpdated->state != "open") {

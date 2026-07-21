@@ -111,6 +111,11 @@ if (file_exists($rabbitMqSecretsFile)) {
     require_once $rabbitMqSecretsFile;
 }
 
+$encryptionSecretsFile = "secrets/encryption.secrets.php";
+if (file_exists($encryptionSecretsFile)) {
+    require_once $encryptionSecretsFile;
+}
+
 /**
  * Loads the configuration settings.
  *

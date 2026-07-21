@@ -39,5 +39,14 @@ class PushesHandler implements IHandler
 
         $checkRunId = setCheckRunInProgress($metadata, $push->HeadCommitId, "commit");
         setCheckRunSucceeded($metadata, $checkRunId, "commit");
+
+        recordRecentActivity(
+            $push->RepositoryOwner,
+            $push->RepositoryName,
+            $push->InstallationId,
+            "pushed_commits",
+            $push->HeadCommitMessage,
+            "https://github.com/{$push->RepositoryOwner}/{$push->RepositoryName}/commit/{$push->HeadCommitId}"
+        );
     }
 }

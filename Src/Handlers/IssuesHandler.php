@@ -45,6 +45,20 @@ class IssuesHandler implements IHandler
             $this->removeLabels($issueUpdated, $metadata, true);
             if ($issue->State === "OPEN") {
                 updateStateToClosedInTable("issues", $issue->Sequence);
+                recordRecentActivity(
+                    $issue->RepositoryOwner,
+                    $issue->RepositoryName,
+                    $issue->InstallationId,
+                    "closed_issue",
+                    $issueUpdated->title,
+                    $issueUpdated->html_url,
+                    null,
+                    null,
+                    null,
+                    $issueUpdated->id,
+                    $issueUpdated->number,
+                    $issueUpdated->node_id
+                );
             }
 
             return;
