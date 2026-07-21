@@ -257,14 +257,17 @@ function createReadyToMergeAction($pullRequest, $pullRequestUpdated): void
     $title = "Pull request ready for merge/squash";
     $message = "\"{$pullRequestUpdated->title}\" (#{$pullRequestUpdated->number}) is ready ✅ for merge/squash.";
 
+    $installationId = $pullRequest->InstallationId;
+
     $sql = "INSERT INTO notifications
-        (`RepositoryOwner`, `RepositoryName`, `Type`, `Title`, `Message`, `Url`, `PullRequestId`, `PullRequestNumber`, `PullRequestNodeId`)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        (`RepositoryOwner`, `RepositoryName`, `InstallationId`, `Type`, `Title`, `Message`, `Url`, `PullRequestId`, `PullRequestNumber`, `PullRequestNodeId`)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param(
-        "ssssssiis",
+        "ssissssiis",
         $pullRequest->RepositoryOwner,
         $pullRequest->RepositoryName,
+        $installationId,
         $type,
         $title,
         $message,
@@ -282,14 +285,15 @@ function createReadyToMergeAction($pullRequest, $pullRequestUpdated): void
     $stmt->close();
 
     $sql = "INSERT INTO pending_actions
-        (`NotificationSequence`, `RepositoryOwner`, `RepositoryName`, `ActionType`, `Title`, `Description`, `Url`, `PullRequestId`, `PullRequestNumber`, `PullRequestNodeId`)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        (`NotificationSequence`, `RepositoryOwner`, `RepositoryName`, `InstallationId`, `ActionType`, `Title`, `Description`, `Url`, `PullRequestId`, `PullRequestNumber`, `PullRequestNodeId`)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param(
-        "issssssiis",
+        "ississssiis",
         $notificationSequence,
         $pullRequest->RepositoryOwner,
         $pullRequest->RepositoryName,
+        $installationId,
         $type,
         $title,
         $message,
