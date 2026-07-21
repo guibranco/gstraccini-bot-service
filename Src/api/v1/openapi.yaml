@@ -84,10 +84,19 @@ paths:
   /stats/:
     get:
       summary: Get usage statistics
-      description: Returns aggregate usage statistics for the bot (pull requests, commits, issues, and active repositories)
+      description: Returns aggregate usage statistics (pull requests, commits, issues, and active repositories) for the installations the given user has access to
       operationId: getStats
       tags:
         - Stats
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          description: GitHub user ID to scope statistics to (via the user's assigned installations)
+          schema:
+            type: integer
       responses:
         '200':
           description: Usage statistics
@@ -95,6 +104,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Stats'
+        '400':
+          description: Missing or invalid userId
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '405':
           description: Method not allowed
           content:
@@ -164,12 +185,19 @@ paths:
   /pending-actions/:
     get:
       summary: List unread pending actions
-      description: Returns pending actions (e.g. pull requests ready to merge) that have not yet been read
+      description: Returns pending actions (e.g. pull requests ready to merge) that have not yet been read, scoped to the installations the given user has access to
       operationId: getPendingActions
       tags:
         - Pending Actions
       security:
         - ApiKeyAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          description: GitHub user ID to scope pending actions to (via the user's assigned installations)
+          schema:
+            type: integer
       responses:
         '200':
           description: List of unread pending actions
@@ -179,6 +207,12 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/PendingAction'
+        '400':
+          description: Missing or invalid userId
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '401':
           description: Missing or invalid API key
           content:
@@ -253,12 +287,19 @@ paths:
   /notifications/:
     get:
       summary: List unread notifications
-      description: Returns notifications that have not yet been read
+      description: Returns notifications that have not yet been read, scoped to the installations the given user has access to
       operationId: getNotifications
       tags:
         - Notifications
       security:
         - ApiKeyAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          description: GitHub user ID to scope notifications to (via the user's assigned installations)
+          schema:
+            type: integer
       responses:
         '200':
           description: List of unread notifications
@@ -268,6 +309,12 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Notification'
+        '400':
+          description: Missing or invalid userId
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '401':
           description: Missing or invalid API key
           content:
@@ -440,6 +487,10 @@ components:
         repositoryName:
           type: string
           example: gstraccini-bot-service
+        installationId:
+          type: integer
+          nullable: true
+          example: 12345678
         actionType:
           type: string
           example: pull_request_ready_to_merge
@@ -482,6 +533,10 @@ components:
         repositoryName:
           type: string
           example: gstraccini-bot-service
+        installationId:
+          type: integer
+          nullable: true
+          example: 12345678
         type:
           type: string
           example: pull_request_ready_to_merge

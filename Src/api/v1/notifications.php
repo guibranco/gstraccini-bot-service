@@ -94,13 +94,26 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     exit;
 }
 
-$result = $mysqli->query(
-    "SELECT Sequence, RepositoryOwner, RepositoryName, Type, Title, Message, Url,
+$userId = $_GET['userId'] ?? null;
+if ($userId === null || !ctype_digit((string) $userId)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Missing or invalid userId']);
+    $mysqli->close();
+    exit;
+}
+$userIdInt = (int) $userId;
+
+$stmt = $mysqli->prepare(
+    "SELECT Sequence, RepositoryOwner, RepositoryName, InstallationId, Type, Title, Message, Url,
         PullRequestId, PullRequestNumber, PullRequestNodeId, IsRead, CreatedAt
      FROM notifications
      WHERE IsRead = FALSE
+        AND InstallationId IN (SELECT InstallationId FROM user_installations WHERE UserId = ?)
      ORDER BY CreatedAt DESC"
 );
+$stmt->bind_param("i", $userIdInt);
+$stmt->execute();
+$result = $stmt->get_result();
 
 $notifications = [];
 if ($result) {
@@ -109,6 +122,7 @@ if ($result) {
             'sequence' => (int) $row['Sequence'],
             'repositoryOwner' => $row['RepositoryOwner'],
             'repositoryName' => $row['RepositoryName'],
+            'installationId' => $row['InstallationId'] !== null ? (int) $row['InstallationId'] : null,
             'type' => $row['Type'],
             'title' => $row['Title'],
             'message' => $row['Message'],
@@ -123,6 +137,7 @@ if ($result) {
     $result->close();
 }
 
+$stmt->close();
 $mysqli->close();
 
 http_response_code(200);
