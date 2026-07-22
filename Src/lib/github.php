@@ -409,8 +409,8 @@ function setCheckRunSucceeded(array $metadata, int $checkRunId, string $type, st
  * conclusion, signaling that the check is blocked on a decision from the user
  * rather than still being computed.
  *
- * @param array $metadata Metadata for the GitHub API request. Must include `checkRunUrl`
- * and `dashboardUrl`.
+ * @param array $metadata Metadata for the GitHub API request. Must include `checkRunUrl`,
+ * `dashboardUrl`, and `token`.
  * @param int $checkRunId The ID of the check run to update.
  * @param string $type The check type, used to build the check run name and summary.
  * @param string $details Explanation of what the user needs to do, shown in the check output.
