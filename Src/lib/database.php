@@ -317,6 +317,8 @@ function recordRecentActivity(
 ): void {
     $mysqli = connectToDatabase();
 
+    $title = mb_substr($title, 0, 255);
+
     $sql = "INSERT INTO recent_activities
         (`RepositoryOwner`, `RepositoryName`, `InstallationId`, `ActionType`, `Title`, `Url`,
          `PullRequestId`, `PullRequestNumber`, `PullRequestNodeId`, `IssueId`, `IssueNumber`, `IssueNodeId`)
