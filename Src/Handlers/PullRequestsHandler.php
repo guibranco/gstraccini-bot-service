@@ -102,7 +102,13 @@ class PullRequestsHandler implements IHandler
             return;
         }
 
-        $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, "pull request");
+        $existingCheckRun = $this->findExistingCheckRun($metadata, $pullRequestUpdated->head->sha, "pull request");
+        $alreadyActionRequired = $existingCheckRun !== null && $existingCheckRun->conclusion === "action_required";
+
+        if (!$alreadyActionRequired) {
+            $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, "pull request");
+        }
+
         $this->enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config);
         $this->addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated);
         $this->updateBranch($metadata, $pullRequestUpdated);
@@ -182,7 +188,9 @@ class PullRequestsHandler implements IHandler
         $this->checkDependencyChanges($metadata, $pullRequestUpdated);
 
         if ($versionBumpResolved) {
-            setCheckRunSucceeded($metadata, $checkRunId, "pull request");
+            setCheckRunSucceeded($metadata, $checkRunId ?? $existingCheckRun->id, "pull request");
+        } elseif ($alreadyActionRequired) {
+            echo "State: Version bump decision pending - check run already action_required, skipping redundant update ⚠️\n";
         } else {
             setCheckRunActionRequired(
                 $metadata,
@@ -192,6 +200,34 @@ class PullRequestsHandler implements IHandler
             );
             echo "State: Version bump decision pending - marking 'pull request' check run as action_required ⚠️\n";
         }
+    }
+
+    /**
+     * Finds the bot's existing check run of the given type for a commit sha, if any.
+     * Used to avoid re-creating and re-completing a check run on every PR event while
+     * it's already sitting in a terminal state (e.g. `action_required`) with nothing changed.
+     *
+     * @param array $metadata Metadata for the GitHub API request
+     * @param string $sha The commit sha to look up check runs for
+     * @param string $type The check type (e.g. "pull request"), used to match the check run name
+     * @return object|null The matching check run, or null if none exists yet
+     */
+    private function findExistingCheckRun(array $metadata, string $sha, string $type): ?object
+    {
+        $url = "repos/{$metadata['owner']}/{$metadata['repo']}/commits/{$sha}/check-runs";
+        $response = doRequestGitHub($metadata["token"], $url, null, "GET");
+        if ($response->getStatusCode() !== 200) {
+            return null;
+        }
+
+        $checkRunName = constant("BOT_CHECK_MESSAGE_PREFIX") . ucwords($type);
+        foreach (json_decode($response->getBody())->check_runs as $checkRun) {
+            if ($checkRun->name === $checkRunName) {
+                return $checkRun;
+            }
+        }
+
+        return null;
     }
 
     /**
