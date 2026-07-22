@@ -14,7 +14,7 @@ define("BOT_CHECK_MESSAGE_PREFIX", "GStraccini Checks: ");
  * Decodes a GitHub API JSON response body and returns the requested property.
  *
  * @param Response $response The response returned by `doRequestGitHub`.
- * @param string $property The property to read from the decoded response body.
+ * @param string   $property The property to read from the decoded response body.
  *
  * @return mixed The value of the requested property.
  *
