@@ -79,7 +79,7 @@ class CommentsHandler implements IHandler
         );
     
         $action = $comment->Action ?? "created";
-        if ($action === "edited" && $sender === $config->botName . "[bot]") {
+        if ($action === "edited" && $sender !== $config->botName . "[bot]") {
             $metadata = $this->buildMetadata($comment, $config);
             $this->execute_applyInfisicalIgnoreSuggestion($config, $metadata, $comment);
             $this->execute_applyVersionBumpDecision($config, $metadata, $comment);
