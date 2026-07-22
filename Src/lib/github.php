@@ -9,6 +9,33 @@ use Lcobucci\JWT\Signer\Rsa\Sha256;
 use Lcobucci\JWT\Token\Builder;
 
 define("BOT_CHECK_MESSAGE_PREFIX", "GStraccini Checks: ");
+
+
+/**
+ * Decodes a GitHub API JSON response body and returns the requested property.
+ *
+ * @param Response $response The response returned by `doRequestGitHub`.
+ * @param string   $property The property to read from the decoded response body.
+ *
+ * @return mixed The value of the requested property.
+ *
+ * @throws RuntimeException When the response body is not a JSON object or does not contain the
+ * requested property (e.g. GitHub returned an error payload instead of the expected resource).
+ */
+function decodeGitHubResponse(Response $response, string $property): mixed
+{
+    $decoded = json_decode($response->getBody());
+
+    if (!is_object($decoded) || !property_exists($decoded, $property)) {
+        throw new RuntimeException(
+            "Unexpected GitHub API response: missing '{$property}' property. " .
+            "HTTP status: {$response->getStatusCode()}. Body: {$response->getBody()}"
+        );
+    }
+
+    return $decoded->$property;
+}
+
 /**
  * The function `doRequestGitHub` sends HTTP requests to the GitHub API with specified parameters and
  * handles different HTTP methods.
@@ -203,8 +230,7 @@ function generateInstallationToken(string $installationId, string $repositoryNam
 
     $url = "app/installations/" . $installationId . "/access_tokens";
     $response = doRequestGitHub($gitHubAppToken, $url, $data, "POST");
-    $json = json_decode($response->getBody());
-    return $json->token;
+    return decodeGitHubResponse($response, "token");
 }
 
 /**
@@ -232,8 +258,7 @@ function generateInstallationAccessToken(string $installationId, array $permissi
 
     $url = "app/installations/" . $installationId . "/access_tokens";
     $response = doRequestGitHub($gitHubAppToken, $url, $data, "POST");
-    $json = json_decode($response->getBody());
-    return $json->token;
+    return decodeGitHubResponse($response, "token");
 }
 
 /**
@@ -287,8 +312,7 @@ function setCheckRunInProgress(array $metadata, string $commitId, string $type):
     );
 
     $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"], $checkRunBody, "POST");
-    $result = json_decode($response->getBody());
-    return $result->id;
+    return decodeGitHubResponse($response, "id");
 }
 
 /**
@@ -346,8 +370,7 @@ function setCheckRunQueued(array $metadata, string $commitId, string $type): int
     );
 
     $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"], $checkRunBody, "POST");
-    $result = json_decode($response->getBody());
-    return $result->id;
+    return decodeGitHubResponse($response, "id");
 }
 
 /**
