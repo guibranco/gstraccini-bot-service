@@ -10,6 +10,7 @@ use Lcobucci\JWT\Token\Builder;
 
 define("BOT_CHECK_MESSAGE_PREFIX", "GStraccini Checks: ");
 
+
 /**
  * Decodes a GitHub API JSON response body and returns the requested property.
  *
