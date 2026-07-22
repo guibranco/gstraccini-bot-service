@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS `recent_activities`;
+
 CREATE TABLE
     `recent_activities` (
         `Sequence` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
