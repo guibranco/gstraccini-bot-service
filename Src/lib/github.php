@@ -403,3 +403,31 @@ function setCheckRunSucceeded(array $metadata, int $checkRunId, string $type, st
 
     doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
 }
+
+/**
+ * Updates a GitHub check run to mark it as completed with an `action_required`
+ * conclusion, signaling that the check is blocked on a decision from the user
+ * rather than still being computed.
+ *
+ * @param array $metadata Metadata for the GitHub API request. Must include `checkRunUrl`
+ * and `dashboardUrl`.
+ * @param int $checkRunId The ID of the check run to update.
+ * @param string $type The check type, used to build the check run name and summary.
+ * @param string $details Explanation of what the user needs to do, shown in the check output.
+ */
+function setCheckRunActionRequired(array $metadata, int $checkRunId, string $type, string $details): void
+{
+    $checkRunBody = array(
+        "name" => constant("BOT_CHECK_MESSAGE_PREFIX") . ucwords($type),
+        "details_url" => $metadata["dashboardUrl"],
+        "status" => "completed",
+        "conclusion" => "action_required",
+        "output" => array(
+            "title" => "Action required ⚠️",
+            "summary" => "GStraccini needs a decision from you on this " . strtolower($type) . ".",
+            "text" => $details
+        )
+    );
+
+    doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
+}

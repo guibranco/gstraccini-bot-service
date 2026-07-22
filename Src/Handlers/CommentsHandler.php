@@ -1303,7 +1303,8 @@ class CommentsHandler implements IHandler
         $checkRunName = constant("BOT_CHECK_MESSAGE_PREFIX") . "Pull Request";
 
         foreach ($result->check_runs as $checkRun) {
-            if ($checkRun->name === $checkRunName && $checkRun->status !== "completed") {
+            $isPending = $checkRun->status !== "completed" || $checkRun->conclusion === "action_required";
+            if ($checkRun->name === $checkRunName && $isPending) {
                 setCheckRunSucceeded($metadata, $checkRun->id, "pull request", $details);
             }
         }

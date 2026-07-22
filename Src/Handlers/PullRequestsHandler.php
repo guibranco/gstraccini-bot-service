@@ -184,7 +184,13 @@ class PullRequestsHandler implements IHandler
         if ($versionBumpResolved) {
             setCheckRunSucceeded($metadata, $checkRunId, "pull request");
         } else {
-            echo "State: Version bump decision pending - leaving 'pull request' check run in progress ⏳\n";
+            setCheckRunActionRequired(
+                $metadata,
+                $checkRunId,
+                "pull request",
+                "Waiting on a version bump decision. Check one of the boxes on the bot's comment to continue."
+            );
+            echo "State: Version bump decision pending - marking 'pull request' check run as action_required ⚠️\n";
         }
     }
 
