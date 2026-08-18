@@ -262,6 +262,14 @@ class PullRequestsHandler implements IHandler
             return true;
         }
 
+        // A "no version bump" decision never adds a +semver directive, so it wouldn't
+        // otherwise be recognized as resolved on later events (e.g. the check run
+        // getting flipped back to action_required). The completion marker is the
+        // durable signal that the decision was already made.
+        if ($this->findCommentByContent($metadata, $pullRequestUpdated, VersionBumpCommentBuilder::COMPLETION_MARKER)) {
+            return true;
+        }
+
         if (!$this->findCommentByContent($metadata, $pullRequestUpdated, VersionBumpCommentBuilder::MARKER)) {
             $builder = new VersionBumpCommentBuilder();
             $body = $builder->build($pullRequestUpdated->title);
