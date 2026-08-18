@@ -88,4 +88,100 @@ class PullRequestCodeScannerTest extends TestCase
         $this->assertStringContainsString("src/example.php", $report);
         $this->assertStringContainsString("line: 2 - todo: refactor this method", $report);
     }
+
+    public function testIgnoresPortugueseTodoInMarkdownFile(): void
+    {
+        $diff = <<<DIFF
+        diff --git a/docs/README.md b/docs/README.md
+        --- a/docs/README.md
+        +++ b/docs/README.md
+        @@ -1,1 +1,2 @@
+         # Documentation
+        +Este comportamento deve funcionar para todo o sistema.
+
+        DIFF;
+
+        $files = $this->scanner->scanDiffForKeywords($diff);
+
+        $this->assertSame([], $files);
+    }
+
+    public function testIgnoresMarkdownBulletListStartingWithKeyword(): void
+    {
+        $diff = <<<DIFF
+        diff --git a/docs/CHANGELOG.md b/docs/CHANGELOG.md
+        --- a/docs/CHANGELOG.md
+        +++ b/docs/CHANGELOG.md
+        @@ -1,1 +1,2 @@
+         # Changelog
+        +* todo o processo foi validado
+
+        DIFF;
+
+        $files = $this->scanner->scanDiffForKeywords($diff);
+
+        $this->assertSame([], $files);
+    }
+
+    public function testIgnoresTextFile(): void
+    {
+        $diff = <<<DIFF
+        diff --git a/notes.txt b/notes.txt
+        --- a/notes.txt
+        +++ b/notes.txt
+        @@ -1,1 +1,2 @@
+         Notes
+        +// TODO: this should not be flagged in a text file
+
+        DIFF;
+
+        $files = $this->scanner->scanDiffForKeywords($diff);
+
+        $this->assertSame([], $files);
+    }
+
+    public function testDetectsKeywordsAcrossMultipleSupportedCodeFormats(): void
+    {
+        $diff = <<<DIFF
+        diff --git a/src/example.cs b/src/example.cs
+        --- a/src/example.cs
+        +++ b/src/example.cs
+        @@ -1,1 +1,2 @@
+         class Example {}
+        +// TODO: refactor this method
+
+        DIFF;
+
+        $files = $this->scanner->scanDiffForKeywords($diff);
+
+        $this->assertArrayHasKey("src/example.cs", $files);
+
+        $diff = <<<DIFF
+        diff --git a/src/example.py b/src/example.py
+        --- a/src/example.py
+        +++ b/src/example.py
+        @@ -1,1 +1,2 @@
+         def example(): pass
+        +# FIXME: handle this edge case
+
+        DIFF;
+
+        $files = $this->scanner->scanDiffForKeywords($diff);
+
+        $this->assertArrayHasKey("src/example.py", $files);
+
+        $diff = <<<DIFF
+        diff --git a/src/example.go b/src/example.go
+        --- a/src/example.go
+        +++ b/src/example.go
+        @@ -1,1 +1,2 @@
+         package main
+        +// BUG: this calculation is incorrect
+
+        DIFF;
+
+        $files = $this->scanner->scanDiffForKeywords($diff);
+
+        $this->assertArrayHasKey("src/example.go", $files);
+    }
 }
