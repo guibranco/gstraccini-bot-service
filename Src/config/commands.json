@@ -112,6 +112,33 @@
         "requiresPullRequestOpen": true
     },
     {
+        "command": "batch copy workflow",
+        "description": "Batch copies a workflow file from .github/workflows to multiple repositories with optional filtering rules.",
+        "parameters": [
+            {
+                "parameter": "workflow",
+                "description": "The workflow file name (e.g., ci.yml) to copy from the source repository.",
+                "required": true
+            },
+            {
+                "parameter": "language",
+                "description": "Filter target repositories by programming language (e.g., javascript, python).",
+                "required": false
+            },
+            {
+                "parameter": "file",
+                "description": "Filter target repositories by containing a specific file path.",
+                "required": false
+            },
+            {
+                "parameter": "account",
+                "description": "Filter target repositories by account/owner.",
+                "required": false
+            }
+        ],
+        "dev": true
+    },
+    {
         "command": "copy issue",
         "description": "Copies an issue from one repository to another.",
         "parameters": [
