@@ -17,6 +17,13 @@ define("PULLS", "/pulls/");
  */
 class PullRequestsHandler implements IHandler
 {
+    private const DEPENDENCY_BOTS = [
+        "dependabot[bot]",
+        "depfu[bot]",
+        "codefactor-io[bot]",
+        "deepsource-autofix[bot]",
+        "net-framework-updater[bot]"
+    ];
     public function handleItem($pullRequest, $isRetry = false)
     {
         global $logStream;
@@ -546,9 +553,7 @@ class PullRequestsHandler implements IHandler
         $type = "pull request description";
         $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, $type);
 
-        // Skip description check for dependency bots
-        $dependencyBots = ["dependabot[bot]", "depfu[bot]", "codefactor-io[bot]", "deepsource-autofix[bot]", "net-framework-updater[bot]"];
-        if (in_array($sender, $dependencyBots)) {
+        if (in_array($sender, self::DEPENDENCY_BOTS)) {
             setCheckRunSucceeded($metadata, $checkRunId, $type, "Skipped for dependency bot PR");
             return;
         }
