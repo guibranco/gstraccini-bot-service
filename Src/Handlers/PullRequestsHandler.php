@@ -183,7 +183,7 @@ class PullRequestsHandler implements IHandler
 
         $versionBumpResolved = $this->checkVersionBump($metadata, $pullRequestUpdated);
 
-        $this->checkPullRequestDescription($metadata, $pullRequestUpdated);
+        $this->checkPullRequestDescription($metadata, $pullRequestUpdated, $pullRequest->Sender);
         $this->checkPullRequestContent($metadata, $pullRequestUpdated);
         $this->checkDependencyChanges($metadata, $pullRequestUpdated);
 
@@ -539,10 +539,17 @@ class PullRequestsHandler implements IHandler
      * @param array $metadata Metadata for the GitHub API request
      * @param object  $pullRequestUpdated The updated pull request data
      */
-    private function checkPullRequestDescription($metadata, $pullRequestUpdated)
+    private function checkPullRequestDescription($metadata, $pullRequestUpdated, $sender)
     {
         $type = "pull request description";
         $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, $type);
+
+        $dependencyBots = ["dependabot[bot]", "depfu[bot]", "codefactor-io[bot]", "deepsource-autofix[bot]", "net-framework-updater[bot]"];
+        if (in_array($sender, $dependencyBots)) {
+            setCheckRunSucceeded($metadata, $checkRunId, $type, "Skipped for dependency bot PR");
+            return;
+        }
+
         $bodyLength = isset($pullRequestUpdated->body) ? strlen($pullRequestUpdated->body) : 0;
         if ($bodyLength === 0) {
             $templateContent = $this->getPullRequestTemplate($metadata);
