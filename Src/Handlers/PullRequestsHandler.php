@@ -183,7 +183,7 @@ class PullRequestsHandler implements IHandler
 
         $versionBumpResolved = $this->checkVersionBump($metadata, $pullRequestUpdated);
 
-        $this->checkPullRequestDescription($metadata, $pullRequestUpdated);
+        $this->checkPullRequestDescription($metadata, $pullRequestUpdated, $pullRequest->Sender);
         $this->checkPullRequestContent($metadata, $pullRequestUpdated);
         $this->checkDependencyChanges($metadata, $pullRequestUpdated);
 
@@ -535,14 +535,24 @@ class PullRequestsHandler implements IHandler
      * If the description is missing or too short, it applies
      * a template or default message.
      * Validates the presence of groups and checkboxes in the description.
+     * Skips validation for dependency bots.
      *
      * @param array $metadata Metadata for the GitHub API request
      * @param object  $pullRequestUpdated The updated pull request data
+     * @param string $sender The sender of the pull request
      */
-    private function checkPullRequestDescription($metadata, $pullRequestUpdated)
+    private function checkPullRequestDescription($metadata, $pullRequestUpdated, $sender)
     {
         $type = "pull request description";
         $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, $type);
+
+        // Skip description check for dependency bots
+        $dependencyBots = ["dependabot[bot]", "depfu[bot]", "codefactor-io[bot]", "deepsource-autofix[bot]", "net-framework-updater[bot]"];
+        if (in_array($sender, $dependencyBots)) {
+            setCheckRunSucceeded($metadata, $checkRunId, $type, "Skipped for dependency bot PR");
+            return;
+        }
+
         $bodyLength = isset($pullRequestUpdated->body) ? strlen($pullRequestUpdated->body) : 0;
         if ($bodyLength === 0) {
             $templateContent = $this->getPullRequestTemplate($metadata);
