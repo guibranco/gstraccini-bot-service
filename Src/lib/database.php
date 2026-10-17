@@ -33,7 +33,7 @@ function readTable($tableName): ?array
 
     $mysqli = connectToDatabase();
 
-    $defaultWhere = "(ProcessingState IN ('NEW', 'RE_REQUESTED', 'UPDATED') OR (ProcessingState = 'PROCESSING' AND ProcessingDate <= NOW() - INTERVAL 1 HOUR)) ORDER BY UpdatedAt ASC LIMIT 10";
+    $defaultWhere = "(ProcessingState IN ('NEW', 'RE_REQUESTED', 'UPDATED', 'IDLE') OR (ProcessingState = 'PROCESSING' AND ProcessingDate <= NOW() - INTERVAL 1 HOUR)) ORDER BY UpdatedAt ASC LIMIT 10";
 
     $mysqli->begin_transaction();
 
@@ -157,7 +157,7 @@ function upsertPullRequest($pullRequest)
     $stmt->close();
 
     if ($row) {
-        $sql = "UPDATE github_pull_requests SET ProcessingState = 'RE_REQUESTED', ProcessingDate = NULL WHERE Sequence = ?";
+        $sql = "UPDATE github_pull_requests SET ProcessingState = 'RE_REQUESTED', ProcessingDate = NULL, IdleRetryCount = 0 WHERE Sequence = ?";
         $stmt = $mysqli->prepare($sql);
         $stmt->bind_param("i", $sequence);
         $sequence = $row["Sequence"];
