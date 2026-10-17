@@ -66,7 +66,7 @@ class DatabaseHandler
             return $data;
         }
 
-        $defaultWhere = "ProcessingState IN ('NEW', 'RE_REQUESTED', 'UPDATED') ORDER BY UpdatedAt ASC LIMIT 10";
+        $defaultWhere = "ProcessingState IN ('NEW', 'RE_REQUESTED', 'UPDATED', 'IDLE') ORDER BY UpdatedAt ASC LIMIT 10";
 
         $mysqli->begin_transaction();
 

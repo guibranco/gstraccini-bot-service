@@ -85,7 +85,7 @@ class PullRequestHandler
      */
     private function updateExistingPullRequest(mysqli $mysqli, int $sequence): bool
     {
-        $sql = "UPDATE " . self::TABLE_NAME . " SET ProcessingState = 'RE_REQUESTED', ProcessingDate = NULL WHERE Sequence = ?";
+        $sql = "UPDATE " . self::TABLE_NAME . " SET ProcessingState = 'RE_REQUESTED', ProcessingDate = NULL, IdleRetryCount = 0 WHERE Sequence = ?";
         $stmt = $mysqli->prepare($sql);
         $stmt->bind_param("i", $sequence);
 
