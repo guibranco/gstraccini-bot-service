@@ -1427,4 +1427,284 @@ class CommentsHandler implements IHandler
         $commentBody = "AppVeyor next build number updated to " . $nextBuildNumber . "! :rocket:";
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
     }
+
+    private function execute_batchCopyWorkflow($config, $metadata, $comment): void
+    {
+        preg_match(
+            "/@" . $config->botName . "\sbatch\scopy\sworkflow\s([a-zA-Z0-9_.-]+)(?:\s+language:([a-zA-Z0-9_.-]+))?(?:\s+file:([a-zA-Z0-9_\/.-]+))?(?:\s+account:([a-zA-Z0-9_.-]+))?/",
+            $comment->CommentBody,
+            $matches
+        );
+
+        if (count($matches) < 2) {
+            doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
+            $body = $metadata["errorMessages"]["invalidParameter"];
+            doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+            return;
+        }
+
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
+
+        $workflowFileName = $matches[1];
+        $languageFilter = $matches[2] ?? null;
+        $fileFilter = $matches[3] ?? null;
+        $accountFilter = $matches[4] ?? null;
+
+        // Validate workflow file exists in source repository
+        $sourceWorkflowUrl = "repos/{$comment->RepositoryOwner}/{$comment->RepositoryName}/contents/.github/workflows/{$workflowFileName}";
+        $sourceWorkflowResponse = doRequestGitHub($metadata["token"], $sourceWorkflowUrl, null, "GET");
+
+        if ($sourceWorkflowResponse->getStatusCode() !== 200) {
+            $body = "Error: Workflow file `{$workflowFileName}` not found in source repository `.github/workflows/`. :x:";
+            doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+            return;
+        }
+
+        $sourceWorkflowContent = json_decode($sourceWorkflowResponse->getBody());
+        if (empty($sourceWorkflowContent->content)) {
+            $body = "Error: Could not read workflow file content. :x:";
+            doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+            return;
+        }
+
+        // Decode the base64 content
+        $workflowContent = base64_decode($sourceWorkflowContent->content);
+        if ($workflowContent === false) {
+            $body = "Error: Could not decode workflow file content. :x:";
+            doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+            return;
+        }
+
+        // Get repositories to process
+        $repositories = $this->getTargetRepositories($metadata, $accountFilter);
+        if (empty($repositories)) {
+            $body = "No target repositories found matching the criteria. :x:";
+            doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+            return;
+        }
+
+        $processedCount = 0;
+        $successCount = 0;
+        $results = array();
+
+        foreach ($repositories as $repo) {
+            $repoOwner = $repo->owner->login;
+            $repoName = $repo->name;
+            $targetRepo = "{$repoOwner}/{$repoName}";
+
+            // Apply filters
+            if (!$this->matchesFilters($metadata, $repoOwner, $repoName, $languageFilter, $fileFilter)) {
+                continue;
+            }
+
+            $processedCount++;
+
+            // Check if workflow already exists
+            $targetWorkflowUrl = "repos/{$repoOwner}/{$repoName}/contents/.github/workflows/{$workflowFileName}";
+            $targetWorkflowResponse = doRequestGitHub($metadata["token"], $targetWorkflowUrl, null, "GET");
+
+            // Check branch protection
+            $hasBranchProtection = $this->hasBranchProtection($metadata, $repoOwner, $repoName);
+
+            if ($hasBranchProtection) {
+                // Create a pull request
+                $result = $this->createWorkflowPullRequest($metadata, $repoOwner, $repoName, $workflowFileName, $workflowContent);
+            } else {
+                // Commit directly to default branch
+                $result = $this->commitWorkflowDirectly($metadata, $repoOwner, $repoName, $workflowFileName, $workflowContent, $targetWorkflowResponse);
+            }
+
+            if ($result['success']) {
+                $successCount++;
+                $results[] = "✅ {$targetRepo}: {$result['message']}";
+            } else {
+                $results[] = "❌ {$targetRepo}: {$result['message']}";
+            }
+        }
+
+        // Report results
+        $body = "Batch workflow copy completed! :robot:\n\n";
+        $body .= "**Workflow:** `{$workflowFileName}`\n";
+        $body .= "**Processed:** {$processedCount} repositories\n";
+        $body .= "**Successful:** {$successCount} repositories\n\n";
+
+        if (!empty($languageFilter)) {
+            $body .= "**Language filter:** `{$languageFilter}`\n";
+        }
+        if (!empty($fileFilter)) {
+            $body .= "**File filter:** `{$fileFilter}`\n";
+        }
+        if (!empty($accountFilter)) {
+            $body .= "**Account filter:** `{$accountFilter}`\n";
+        }
+
+        $body .= "\n**Results:**\n";
+        foreach ($results as $result) {
+            $body .= "- {$result}\n";
+        }
+
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    }
+
+    private function getTargetRepositories($metadata, $accountFilter): array
+    {
+        if (!empty($accountFilter)) {
+            // Get repositories for specific account
+            $url = "users/{$accountFilter}/repos";
+        } else {
+            // Get repositories for the authenticated user
+            $url = "user/repos";
+        }
+
+        $response = doRequestGitHub($metadata["token"], $url, null, "GET");
+        if ($response->getStatusCode() !== 200) {
+            return array();
+        }
+
+        return json_decode($response->getBody());
+    }
+
+    private function matchesFilters($metadata, $repoOwner, $repoName, $languageFilter, $fileFilter): bool
+    {
+        // Check language filter
+        if (!empty($languageFilter)) {
+            $repositoryManager = new RepositoryManager();
+            $languages = $repositoryManager->getLanguages($metadata["token"], $repoOwner, $repoName);
+            $languageMatches = false;
+            foreach ($languages as $lang => $bytes) {
+                if (stripos($lang, $languageFilter) !== false) {
+                    $languageMatches = true;
+                    break;
+                }
+            }
+            if (!$languageMatches) {
+                return false;
+            }
+        }
+
+        // Check file filter
+        if (!empty($fileFilter)) {
+            $fileUrl = "repos/{$repoOwner}/{$repoName}/contents/{$fileFilter}";
+            $fileResponse = doRequestGitHub($metadata["token"], $fileUrl, null, "GET");
+            if ($fileResponse->getStatusCode() !== 200) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function hasBranchProtection($metadata, $repoOwner, $repoName): bool
+    {
+        $branchProtectionUrl = "repos/{$repoOwner}/{$repoName}/branches/main/protection";
+        $response = doRequestGitHub($metadata["token"], $branchProtectionUrl, null, "GET");
+
+        if ($response->getStatusCode() === 200) {
+            return true;
+        }
+
+        // Try master as fallback
+        $branchProtectionUrl = "repos/{$repoOwner}/{$repoName}/branches/master/protection";
+        $response = doRequestGitHub($metadata["token"], $branchProtectionUrl, null, "GET");
+
+        return $response->getStatusCode() === 200;
+    }
+
+    private function createWorkflowPullRequest($metadata, $repoOwner, $repoName, $workflowFileName, $workflowContent): array
+    {
+        // Get default branch
+        $repoUrl = "repos/{$repoOwner}/{$repoName}";
+        $repoResponse = doRequestGitHub($metadata["token"], $repoUrl, null, "GET");
+        if ($repoResponse->getStatusCode() !== 200) {
+            return array('success' => false, 'message' => 'Failed to get repository info');
+        }
+
+        $repoInfo = json_decode($repoResponse->getBody());
+        $defaultBranch = $repoInfo->default_branch;
+
+        // Create a new branch
+        $branchName = "gstraccini-add-{$workflowFileName}";
+        $refUrl = "repos/{$repoOwner}/{$repoName}/git/refs/heads/{$defaultBranch}";
+        $refResponse = doRequestGitHub($metadata["token"], $refUrl, null, "GET");
+        if ($refResponse->getStatusCode() !== 200) {
+            return array('success' => false, 'message' => 'Failed to get default branch reference');
+        }
+
+        $refInfo = json_decode($refResponse->getBody());
+        $sha = $refInfo->object->sha;
+
+        $createBranchUrl = "repos/{$repoOwner}/{$repoName}/git/refs";
+        $branchData = array(
+            "ref" => "refs/heads/{$branchName}",
+            "sha" => $sha
+        );
+
+        $createBranchResponse = doRequestGitHub($metadata["token"], $createBranchUrl, $branchData, "POST");
+        if ($createBranchResponse->getStatusCode() !== 201) {
+            return array('success' => false, 'message' => 'Failed to create branch');
+        }
+
+        // Create/update workflow file
+        $workflowUrl = "repos/{$repoOwner}/{$repoName}/contents/.github/workflows/{$workflowFileName}";
+        $workflowData = array(
+            "message" => "Add {$workflowFileName} workflow",
+            "content" => base64_encode($workflowContent),
+            "branch" => $branchName
+        );
+
+        $workflowResponse = doRequestGitHub($metadata["token"], $workflowUrl, $workflowData, "PUT");
+        if ($workflowResponse->getStatusCode() !== 200 && $workflowResponse->getStatusCode() !== 201) {
+            return array('success' => false, 'message' => 'Failed to create workflow file');
+        }
+
+        // Create pull request
+        $prUrl = "repos/{$repoOwner}/{$repoName}/pulls";
+        $prData = array(
+            "title" => "Add {$workflowFileName} workflow",
+            "head" => $branchName,
+            "base" => $defaultBranch,
+            "body" => "This PR adds the `{$workflowFileName}` workflow file to `.github/workflows/`."
+        );
+
+        $prResponse = doRequestGitHub($metadata["token"], $prUrl, $prData, "POST");
+        if ($prResponse->getStatusCode() !== 201) {
+            return array('success' => false, 'message' => 'Failed to create pull request');
+        }
+
+        $prInfo = json_decode($prResponse->getBody());
+        return array('success' => true, 'message' => "PR created #{$prInfo->number}");
+    }
+
+    private function commitWorkflowDirectly($metadata, $repoOwner, $repoName, $workflowFileName, $workflowContent, $existingFileResponse): array
+    {
+        // Get default branch
+        $repoUrl = "repos/{$repoOwner}/{$repoName}";
+        $repoResponse = doRequestGitHub($metadata["token"], $repoUrl, null, "GET");
+        if ($repoResponse->getStatusCode() !== 200) {
+            return array('success' => false, 'message' => 'Failed to get repository info');
+        }
+
+        $repoInfo = json_decode($repoResponse->getBody());
+        $defaultBranch = $repoInfo->default_branch;
+
+        $workflowUrl = "repos/{$repoOwner}/{$repoName}/contents/.github/workflows/{$workflowFileName}";
+        $workflowData = array(
+            "message" => "Add {$workflowFileName} workflow",
+            "content" => base64_encode($workflowContent),
+            "branch" => $defaultBranch
+        );
+
+        // If file exists, we need to include SHA
+        if ($existingFileResponse->getStatusCode() === 200) {
+            $existingFile = json_decode($existingFileResponse->getBody());
+            $workflowData["sha"] = $existingFile->sha;
+        }
+
+        $workflowResponse = doRequestGitHub($metadata["token"], $workflowUrl, $workflowData, "PUT");
+        if ($workflowResponse->getStatusCode() !== 200 && $workflowResponse->getStatusCode() !== 201) {
+            return array('success' => false, 'message' => 'Failed to commit workflow file');
+        }
+
+        return array('success' => true, 'message' => 'Committed directly to default branch');
+    }
 }
