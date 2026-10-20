@@ -262,6 +262,42 @@ function generateInstallationAccessToken(string $installationId, array $permissi
 }
 
 /**
+ * Requests an installation access token and returns the raw GitHub response
+ * instead of the token, so the caller can act on the status code: GitHub
+ * answers 404 when the installation no longer exists (the app was
+ * uninstalled) and 422 when one of `$repositoryIds` isn't accessible to the
+ * installation any more (the repository was removed from it or deleted).
+ * The sync workers turn both into "this is gone" instead of an error.
+ *
+ * Scoping by repository id (not name, as `generateInstallationToken()` does)
+ * keeps the request valid after the repository was renamed or transferred.
+ *
+ * @param string $installationId The GitHub App installation ID.
+ * @param array<int>|null $repositoryIds Repository ids to scope the token to; null for every repository of the installation.
+ * @param array|null $permissions Optional permissions to request for the token.
+ *
+ * @return Response The GitHub response; on success its JSON body carries the `token` property.
+ */
+function requestInstallationAccessToken(string $installationId, ?array $repositoryIds = null, ?array $permissions = null): Response
+{
+    $gitHubAppToken = generateAppToken();
+
+    $data = null;
+    if (!empty($repositoryIds) || !empty($permissions)) {
+        $data = new \stdClass();
+        if (!empty($repositoryIds)) {
+            $data->repository_ids = array_values(array_map('intval', $repositoryIds));
+        }
+        if (!empty($permissions)) {
+            $data->permissions = $permissions;
+        }
+    }
+
+    $url = "app/installations/" . $installationId . "/access_tokens";
+    return doRequestGitHub($gitHubAppToken, $url, $data, "POST");
+}
+
+/**
  * The function `getPullRequestDiff` retrieves the diff of a pull request from the GitHub API using
  * the provided metadata.
  *

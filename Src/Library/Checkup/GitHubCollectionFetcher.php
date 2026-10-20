@@ -3,12 +3,19 @@
 namespace GuiBranco\GStracciniBot\Library\Checkup;
 
 use GuiBranco\Pancake\Response;
+use RuntimeException;
 
 /**
  * Pages through a GitHub REST list endpoint, pacing requests so the
  * checkup job doesn't burn through the installation's rate-limit budget.
  * Sleeps `throttleSeconds` between every request, and additionally backs
  * off until the rate-limit reset time if the remaining quota gets low.
+ *
+ * By default a page that fails (any non-2xx status) ends the listing and
+ * whatever was collected so far is returned — fine for the checkup, which
+ * only ever inserts missing rows. A fetcher built with `failOnError` throws
+ * instead, so callers that *remove* or *close* things based on what GitHub
+ * didn't list (the sync workers) never mistake a partial list for the truth.
  */
 class GitHubCollectionFetcher
 {
@@ -16,10 +23,16 @@ class GitHubCollectionFetcher
     private const RATE_LIMIT_SAFETY_THRESHOLD = 50;
 
     private int $throttleSeconds;
+    private bool $failOnError;
 
-    public function __construct(int $throttleSeconds)
+    /**
+     * @param int  $throttleSeconds Seconds to sleep between consecutive requests.
+     * @param bool $failOnError     When true, a failed page throws instead of ending the listing early.
+     */
+    public function __construct(int $throttleSeconds, bool $failOnError = false)
     {
         $this->throttleSeconds = max(0, $throttleSeconds);
+        $this->failOnError = $failOnError;
     }
 
     /**
@@ -33,6 +46,8 @@ class GitHubCollectionFetcher
      *                                that return a bare array.
      *
      * @return array<int, object> All items across every page.
+     *
+     * @throws RuntimeException When built with `failOnError` and a page comes back with a non-2xx status.
      */
     public function fetchAllPages(string $token, string $url, ?string $wrapperKey = null): array
     {
@@ -44,7 +59,13 @@ class GitHubCollectionFetcher
             $pagedUrl = $url . $separator . "per_page=" . self::PER_PAGE . "&page=" . $page;
             $response = doRequestGitHub($token, $pagedUrl, null, "GET");
 
-            if ($response->getStatusCode() >= 300) {
+            if ($response->getStatusCode() >= 300 || $response->getStatusCode() <= 0) {
+                if ($this->failOnError) {
+                    throw new RuntimeException(
+                        "GitHub listing failed for '{$pagedUrl}': HTTP status {$response->getStatusCode()}. " .
+                        "Body: " . ($response->getBody() ?? $response->getMessage())
+                    );
+                }
                 break;
             }
 

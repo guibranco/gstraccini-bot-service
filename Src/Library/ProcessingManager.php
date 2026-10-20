@@ -2,6 +2,8 @@
 
 namespace GuiBranco\GStracciniBot\Library;
 
+use DateTimeImmutable;
+use GuiBranco\GStracciniBot\Library\Sync\ScheduledJob;
 use GuiBranco\Pancake\HealthChecks;
 use GuiBranco\Pancake\Logger;
 use GuiBranco\Pancake\LogStream;
@@ -15,6 +17,9 @@ class ProcessingManager
     private $healthChecks;
     private $logger;
     private ?LogStream $logStream;
+
+    /** @var array<int, ScheduledJob> */
+    private array $scheduledJobs = [];
 
     /**
     * @param string $entity Entity name for processing
@@ -39,6 +44,18 @@ class ProcessingManager
         $this->logStream = $logStream;
 
         $this->healthChecks->setHeaders([constant("USER_AGENT"), "Content-Type: application/json; charset=utf-8"]);
+    }
+
+    /**
+     * Registers a job that runs on its own schedule from this worker's loop
+     * (e.g. the installations worker's monthly sync, the repositories
+     * worker's hourly sync). It is checked after every batch, in every run
+     * mode — the 55-second cron/HTTP loop, the single HTTP batch and the
+     * daemon — and a failure is logged without stopping the worker.
+     */
+    public function addScheduledJob(ScheduledJob $job): void
+    {
+        $this->scheduledJobs[] = $job;
     }
 
     /**
@@ -135,6 +152,9 @@ class ProcessingManager
         pcntl_signal(SIGINT, $shutdown);
 
         echo "[" . date('Y-m-d H:i:s') . "] Daemon started for '{$this->entity}'.\n";
+        foreach ($this->scheduledJobs as $job) {
+            echo "[" . date('Y-m-d H:i:s') . "] Scheduled job registered: {$job->describe()}.\n";
+        }
         $this->logStream?->info("Daemon started", ['entity' => $this->entity], $this->entity);
         $this->healthChecks->start();
         $lastPing = time();
@@ -222,11 +242,42 @@ class ProcessingManager
         } finally {
             $result = ob_get_clean();
         }
-        if (empty($result)) {
-            return;
-        }
-        if ($this->config->debug->all === true || $this->config->debug->{$this->entity} === true) {
+        if (!empty($result) && ($this->config->debug->all === true || ($this->config->debug->{$this->entity} ?? false) === true)) {
             echo $result;
+        }
+
+        $this->runScheduledJobs();
+    }
+
+    /**
+     * Gives every registered scheduled job the chance to run. Their output
+     * isn't buffered like the batch's: a scheduled run is rare (hourly,
+     * monthly) and its report is worth having in the worker's log
+     * regardless of the entity's debug flag.
+     */
+    private function runScheduledJobs(): void
+    {
+        foreach ($this->scheduledJobs as $job) {
+            try {
+                $job->runIfDue(new DateTimeImmutable());
+            } catch (\Throwable $e) {
+                $this->logger->log(
+                    "Scheduled job '{$job->getName()}' failed (Entity: {$this->entity}): {$e->getMessage()}",
+                    [
+                        'error' => [
+                            'message' => $e->getMessage(),
+                            'code' => $e->getCode(),
+                            'file' => $e->getFile(),
+                            'line' => $e->getLine()
+                        ]
+                    ]
+                );
+                $this->logStream?->error(
+                    "Scheduled job '{$job->getName()}' failed: {$e->getMessage()}",
+                    ['entity' => $this->entity, 'job' => $job->getName(), 'file' => $e->getFile(), 'line' => $e->getLine()],
+                    $this->entity
+                );
+            }
         }
     }
 
