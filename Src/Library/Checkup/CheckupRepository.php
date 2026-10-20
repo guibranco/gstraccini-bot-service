@@ -82,19 +82,27 @@ class CheckupRepository
         $mysqli->close();
     }
 
+    /**
+     * Whether the repository is currently registered as active: its most
+     * recent `github_repositories` row (highest Sequence) is not a `deleted`
+     * one. The table holds one row per event that announced the repository
+     * (and `markRepositoryRemoved()` appends a `deleted` row), so only the
+     * latest row says what the repository's current state is — an older,
+     * still-`created` row must not count once a later row marked it removed.
+     */
     public function existsRepository(int $repositoryId): bool
     {
         $mysqli = connectToDatabase();
         $stmt = $mysqli->prepare(
-            "SELECT 1 FROM github_repositories WHERE Id = ? AND LastAction != 'deleted' ORDER BY Sequence DESC LIMIT 1"
+            "SELECT LastAction FROM github_repositories WHERE Id = ? ORDER BY Sequence DESC LIMIT 1"
         );
         $stmt->bind_param("i", $repositoryId);
         $stmt->execute();
-        $stmt->store_result();
-        $exists = $stmt->num_rows > 0;
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
         $stmt->close();
         $mysqli->close();
-        return $exists;
+        return $row !== null && $row['LastAction'] !== 'deleted';
     }
 
     public function insertRepository(object $repository, int $installationId, string $webhooksHandlerVersion): void
@@ -217,7 +225,8 @@ class CheckupRepository
             "Id", "NodeId", "Name", "FullName", "Private",
             "OwnerLogin", "OwnerId", "OwnerNodeId",
             "SenderLogin", "SenderId", "SenderNodeId",
-            "InstallationId", "WebhooksHandlerVersion"
+            "InstallationId", "WebhooksHandlerVersion",
+            "LastAction", "LastActionDate", "InstallationAction", "InstallationActionDate"
         ];
 
         $sql = "INSERT INTO github_repositories (`" . implode("`,`", $fields) . "`) ";

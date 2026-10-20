@@ -228,8 +228,7 @@ function generateInstallationToken(string $installationId, string $repositoryNam
         $data->permissions = $permissions;
     }
 
-    $url = "app/installations/" . $installationId . "/access_tokens";
-    $response = doRequestGitHub($gitHubAppToken, $url, $data, "POST");
+    $response = doRequestGitHub($gitHubAppToken, installationAccessTokensUrl($installationId), $data, "POST");
     return decodeGitHubResponse($response, "token");
 }
 
@@ -256,9 +255,56 @@ function generateInstallationAccessToken(string $installationId, array $permissi
         $data->permissions = $permissions;
     }
 
-    $url = "app/installations/" . $installationId . "/access_tokens";
-    $response = doRequestGitHub($gitHubAppToken, $url, $data, "POST");
+    $response = doRequestGitHub($gitHubAppToken, installationAccessTokensUrl($installationId), $data, "POST");
     return decodeGitHubResponse($response, "token");
+}
+
+/**
+ * Requests an installation access token and returns the raw GitHub response
+ * instead of the token, so the caller can act on the status code: GitHub
+ * answers 404 when the installation no longer exists (the app was
+ * uninstalled) and 422 when one of `$repositoryIds` isn't accessible to the
+ * installation any more (the repository was removed from it or deleted).
+ * The sync workers turn both into "this is gone" instead of an error.
+ *
+ * Scoping by repository id (not name, as `generateInstallationToken()` does)
+ * keeps the request valid after the repository was renamed or transferred.
+ *
+ * @param string $installationId The GitHub App installation ID.
+ * @param array<int>|null $repositoryIds Repository ids to scope the token to; null for every repository of the installation.
+ * @param array|null $permissions Optional permissions to request for the token.
+ *
+ * @return Response The GitHub response; on success its JSON body carries the `token` property.
+ */
+function requestInstallationAccessToken(string $installationId, ?array $repositoryIds = null, ?array $permissions = null): Response
+{
+    $gitHubAppToken = generateAppToken();
+
+    $data = null;
+    if (!empty($repositoryIds) || !empty($permissions)) {
+        $data = new \stdClass();
+        if (!empty($repositoryIds)) {
+            $data->repository_ids = array_values(array_map('intval', $repositoryIds));
+        }
+        if (!empty($permissions)) {
+            $data->permissions = $permissions;
+        }
+    }
+
+    return doRequestGitHub($gitHubAppToken, installationAccessTokensUrl($installationId), $data, "POST");
+}
+
+/**
+ * The GitHub API endpoint that mints access tokens for an installation
+ * (`POST /app/installations/{installation_id}/access_tokens`).
+ *
+ * @param string $installationId The GitHub App installation ID.
+ *
+ * @return string The endpoint, relative to the GitHub API root.
+ */
+function installationAccessTokensUrl(string $installationId): string
+{
+    return "app/installations/" . $installationId . "/access_tokens";
 }
 
 /**
