@@ -18,6 +18,11 @@ use InvalidArgumentException;
  * The in-process last run is tracked as well: when a run leaves no trace
  * (nothing to sync), the provider still reports the older trace and the
  * job would otherwise be due again on the very next check.
+ *
+ * The claim here is in-process only: the job's own work is what leaves
+ * the trace (the repositories sync claims its repository row with a
+ * conditional update), so two workers taking the same tick at most each
+ * sync a different repository in that hour.
  */
 class IntervalSchedule implements ScheduleInterface
 {
@@ -53,9 +58,15 @@ class IntervalSchedule implements ScheduleInterface
         return $secondsSinceLastRun === null || $secondsSinceLastRun >= $this->intervalSeconds;
     }
 
-    public function markRun(DateTimeImmutable $now): void
+    public function claim(DateTimeImmutable $now): bool
     {
+        if (!$this->isDue($now)) {
+            return false;
+        }
+
         $this->lastRunInProcess = $now;
+
+        return true;
     }
 
     public function describe(): string

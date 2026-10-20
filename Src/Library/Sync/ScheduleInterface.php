@@ -13,15 +13,17 @@ use DateTimeImmutable;
 interface ScheduleInterface
 {
     /**
-     * Whether the job should run now.
+     * Whether the job should run now. A look only: nothing is recorded.
      */
     public function isDue(DateTimeImmutable $now): bool;
 
     /**
-     * Records that the job ran (or was started) at $now, so `isDue()` moves
-     * on to the next occurrence.
+     * Takes the run that is due at $now, recording it so that no other
+     * check — in this process or another one running the same worker —
+     * takes the same run. Returns false when nothing is due or another
+     * check took it first; the job runs only on true.
      */
-    public function markRun(DateTimeImmutable $now): void;
+    public function claim(DateTimeImmutable $now): bool;
 
     /**
      * Human-readable description of the cadence, for logs.

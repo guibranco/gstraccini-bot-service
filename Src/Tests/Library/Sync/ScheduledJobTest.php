@@ -17,7 +17,8 @@ class ScheduledJobTest extends TestCase
     }
 
     /**
-     * A schedule that is due whenever told so, and records its markRun() calls.
+     * A schedule that hands out the run whenever told it's due, and records
+     * the claims it granted.
      */
     private function schedule(bool &$due, array &$markedRuns): ScheduleInterface
     {
@@ -36,9 +37,15 @@ class ScheduledJobTest extends TestCase
                 return $this->due;
             }
 
-            public function markRun(DateTimeImmutable $now): void
+            public function claim(DateTimeImmutable $now): bool
             {
+                if (!$this->due) {
+                    return false;
+                }
+
                 $this->markedRuns[] = $now->format("H:i:s");
+
+                return true;
             }
 
             public function describe(): string
@@ -48,7 +55,7 @@ class ScheduledJobTest extends TestCase
         };
     }
 
-    public function testRunsTheJobWhenDueAndMarksTheScheduleFirst(): void
+    public function testRunsTheJobWhenDueAndClaimsTheRunFirst(): void
     {
         $due = true;
         $marked = [];
@@ -91,7 +98,7 @@ class ScheduledJobTest extends TestCase
         $this->assertTrue($job->runIfDue($this->at("2026-10-20 10:01:00")));
     }
 
-    public function testAFailingJobLeavesTheScheduleMarked(): void
+    public function testAFailingJobLeavesTheRunClaimed(): void
     {
         $due = true;
         $marked = [];

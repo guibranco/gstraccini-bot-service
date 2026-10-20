@@ -28,4 +28,15 @@ class ArraySyncStateStore implements SyncStateStoreInterface
     {
         $this->values[$key] = $value;
     }
+
+    public function compareAndSet(string $key, ?string $expected, string $value): bool
+    {
+        if (($this->values[$key] ?? null) !== $expected) {
+            return false;
+        }
+
+        $this->values[$key] = $value;
+
+        return true;
+    }
 }

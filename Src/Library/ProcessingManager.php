@@ -21,6 +21,9 @@ class ProcessingManager
     /** @var array<int, ScheduledJob> */
     private array $scheduledJobs = [];
 
+    /** Whether the last batch ran a scheduled job (so the daemon pings HealthChecks right after it). */
+    private bool $scheduledJobRanInLastBatch = false;
+
     /**
     * @param string $entity Entity name for processing
     * @param HealthChecks $healthChecks Health monitoring instance
@@ -188,8 +191,10 @@ class ProcessingManager
                 );
             }
 
+            // A scheduled sync can take a while (GitHub calls, throttled); ping right after one
+            // so the gap it opened in the regular cadence doesn't read as a dead worker.
             $now = time();
-            if ($now - $lastPing >= $healthCheckInterval) {
+            if ($this->scheduledJobRanInLastBatch || $now - $lastPing >= $healthCheckInterval) {
                 $this->healthChecks->end();
                 $lastPing = $now;
             }
@@ -241,12 +246,13 @@ class ProcessingManager
             $this->process($handler);
         } finally {
             $result = ob_get_clean();
-        }
-        if (!empty($result) && ($this->config->debug->all === true || ($this->config->debug->{$this->entity} ?? false) === true)) {
-            echo $result;
-        }
+            if (!empty($result) && ($this->config->debug->all === true || ($this->config->debug->{$this->entity} ?? false) === true)) {
+                echo $result;
+            }
 
-        $this->runScheduledJobs();
+            // In the finally so a failing item (processItem() rethrows) can't keep the syncs from running.
+            $this->runScheduledJobs();
+        }
     }
 
     /**
@@ -257,10 +263,15 @@ class ProcessingManager
      */
     private function runScheduledJobs(): void
     {
+        $this->scheduledJobRanInLastBatch = false;
+
         foreach ($this->scheduledJobs as $job) {
             try {
-                $job->runIfDue(new DateTimeImmutable());
+                if ($job->runIfDue(new DateTimeImmutable())) {
+                    $this->scheduledJobRanInLastBatch = true;
+                }
             } catch (\Throwable $e) {
+                $this->scheduledJobRanInLastBatch = true;
                 $this->logger->log(
                     "Scheduled job '{$job->getName()}' failed (Entity: {$this->entity}): {$e->getMessage()}",
                     [

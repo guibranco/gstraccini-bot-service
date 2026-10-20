@@ -44,13 +44,22 @@ class IntervalScheduleTest extends TestCase
     {
         // The trace never moves (nothing to sync), but the job just ran in this process.
         $schedule = new IntervalSchedule(3600, static fn(): ?int => null);
-        $schedule->markRun($this->at("2026-10-20 10:00:00"));
+        $this->assertTrue($schedule->claim($this->at("2026-10-20 10:00:00")));
 
         $this->assertFalse($schedule->isDue($this->at("2026-10-20 10:30:00")));
+        $this->assertFalse($schedule->claim($this->at("2026-10-20 10:30:00")));
         $this->assertTrue($schedule->isDue($this->at("2026-10-20 11:00:00")));
+        $this->assertTrue($schedule->claim($this->at("2026-10-20 11:00:00")));
     }
 
-    public function testTheTraceIsConsultedOnlyOncePerCheckAndNotWhileTheProcessHoldsTheInterval(): void
+    public function testClaimIsRefusedWhileTheTraceIsRecent(): void
+    {
+        $schedule = new IntervalSchedule(3600, static fn(): ?int => 120);
+
+        $this->assertFalse($schedule->claim($this->at("2026-10-20 10:00:00")));
+    }
+
+    public function testTheTraceIsNotConsultedWhileTheProcessHoldsTheInterval(): void
     {
         $trace = new \stdClass();
         $trace->calls = 0;
@@ -62,9 +71,11 @@ class IntervalScheduleTest extends TestCase
         $schedule->isDue($this->at("2026-10-20 10:00:00"));
         $this->assertSame(1, $trace->calls);
 
-        $schedule->markRun($this->at("2026-10-20 10:00:00"));
+        $schedule->claim($this->at("2026-10-20 10:00:00"));
+        $this->assertSame(2, $trace->calls);
+
         $schedule->isDue($this->at("2026-10-20 10:30:00"));
-        $this->assertSame(1, $trace->calls);
+        $this->assertSame(2, $trace->calls);
     }
 
     public function testRejectsANonPositiveInterval(): void

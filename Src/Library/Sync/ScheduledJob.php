@@ -14,8 +14,9 @@ use InvalidArgumentException;
  * query the database for the schedule on every pass, while a cron/HTTP
  * invocation (one process a minute) checks right away on its first batch.
  *
- * The schedule is marked as run *before* the job runs, so a job that keeps
- * failing is retried at its own cadence, not on every check.
+ * The run is claimed on the schedule *before* the job runs: a job that
+ * keeps failing is retried at its own cadence, not on every check, and
+ * two workers checking at the same moment can't both run it.
  */
 final class ScheduledJob
 {
@@ -57,10 +58,11 @@ final class ScheduledJob
     }
 
     /**
-     * Runs the job when it is due. Exceptions from the job propagate to the
-     * caller (the worker logs them); the schedule has already been marked.
+     * Runs the job when its schedule hands this check the run. Exceptions
+     * from the job propagate to the caller (the worker logs them); the run
+     * has already been claimed by then.
      *
-     * @return bool True when the job ran.
+     * @return bool True when the job ran (or threw).
      */
     public function runIfDue(DateTimeImmutable $now): bool
     {
@@ -70,12 +72,19 @@ final class ScheduledJob
 
         $this->nextCheckAt = $now->getTimestamp() + $this->checkIntervalSeconds;
 
-        if (!$this->schedule->isDue($now)) {
+        if (!$this->schedule->claim($now)) {
             return false;
         }
 
-        $this->schedule->markRun($now);
-        ($this->job)();
+        echo "[" . $now->format("Y-m-d H:i:s") . "] Scheduled job '{$this->name}' starting.\n";
+        $startedAt = microtime(true);
+
+        try {
+            ($this->job)();
+        } finally {
+            $elapsed = round(microtime(true) - $startedAt, 1);
+            echo "[" . date("Y-m-d H:i:s") . "] Scheduled job '{$this->name}' finished in {$elapsed}s.\n";
+        }
 
         return true;
     }

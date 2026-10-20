@@ -19,7 +19,9 @@ use InvalidArgumentException;
  * fresh process every minute in cron/HTTP mode and restart on every deploy
  * in daemon mode; kept in memory, the job would run on every one of those
  * starts. The stored value is the run's date and time (ISO 8601, with its
- * offset); only its calendar month matters here.
+ * offset); only its calendar month matters here. A run is taken with the
+ * store's compare-and-set, so two workers checking at the same moment
+ * can't both take it.
  */
 class MonthlySchedule implements ScheduleInterface
 {
@@ -45,21 +47,22 @@ class MonthlySchedule implements ScheduleInterface
 
     public function isDue(DateTimeImmutable $now): bool
     {
-        $daysInMonth = (int) $now->format("t");
-        $runDay = min($this->dayOfMonth, $daysInMonth);
+        return $this->isDayReached($now) && $this->isDueGivenStoredRun($this->store->get($this->stateKey), $now);
+    }
 
-        if ((int) $now->format("j") < $runDay) {
+    public function claim(DateTimeImmutable $now): bool
+    {
+        if (!$this->isDayReached($now)) {
             return false;
         }
 
-        $lastRun = $this->lastRun($now);
+        $stored = $this->store->get($this->stateKey);
+        if (!$this->isDueGivenStoredRun($stored, $now)) {
+            return false;
+        }
 
-        return $lastRun === null || $lastRun->format("Y-m") !== $now->format("Y-m");
-    }
-
-    public function markRun(DateTimeImmutable $now): void
-    {
-        $this->store->set($this->stateKey, $now->format(DATE_ATOM));
+        // Only one of the workers that read the same stored value gets to replace it.
+        return $this->store->compareAndSet($this->stateKey, $stored, $now->format(DATE_ATOM));
     }
 
     public function describe(): string
@@ -67,20 +70,30 @@ class MonthlySchedule implements ScheduleInterface
         return "monthly, from day {$this->dayOfMonth}";
     }
 
-    /**
-     * The last run, in $now's time zone, or null when the job never ran or
-     * the stored value isn't the ISO 8601 date markRun() writes (treated as
-     * never: one extra run beats never running again).
-     */
-    private function lastRun(DateTimeImmutable $now): ?DateTimeImmutable
+    private function isDayReached(DateTimeImmutable $now): bool
     {
-        $stored = $this->store->get($this->stateKey);
+        $daysInMonth = (int) $now->format("t");
+        $runDay = min($this->dayOfMonth, $daysInMonth);
+
+        return (int) $now->format("j") >= $runDay;
+    }
+
+    /**
+     * Due unless the stored run falls in $now's calendar month. A stored
+     * value that isn't the ISO 8601 date claim() writes counts as never run
+     * (one extra run beats never running again).
+     */
+    private function isDueGivenStoredRun(?string $stored, DateTimeImmutable $now): bool
+    {
         if ($stored === null || trim($stored) === "") {
-            return null;
+            return true;
         }
 
         $lastRun = DateTimeImmutable::createFromFormat(DATE_ATOM, trim($stored));
+        if ($lastRun === false) {
+            return true;
+        }
 
-        return $lastRun === false ? null : $lastRun->setTimezone($now->getTimezone());
+        return $lastRun->setTimezone($now->getTimezone())->format("Y-m") !== $now->format("Y-m");
     }
 }

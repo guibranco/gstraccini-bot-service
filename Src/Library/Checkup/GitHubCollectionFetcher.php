@@ -15,7 +15,11 @@ use RuntimeException;
  * whatever was collected so far is returned — fine for the checkup, which
  * only ever inserts missing rows. A fetcher built with `failOnError` throws
  * instead, so callers that *remove* or *close* things based on what GitHub
- * didn't list (the sync workers) never mistake a partial list for the truth.
+ * didn't list (the scheduled syncs) never mistake a partial list for the
+ * truth. Such a fetcher also refuses to wait out a low rate limit: the
+ * syncs run inside a worker's loop, which must not sleep for up to an
+ * hour, so the pass is abandoned (and retried at the job's own cadence)
+ * instead.
  */
 class GitHubCollectionFetcher
 {
@@ -105,7 +109,10 @@ class GitHubCollectionFetcher
 
     /**
      * Sleeps the configured throttle between calls, and additionally waits
-     * out the rate-limit window if the remaining quota is running low.
+     * out the rate-limit window if the remaining quota is running low — or,
+     * when built with `failOnError`, throws instead of waiting.
+     *
+     * @throws RuntimeException When built with `failOnError` and the rate limit is running low.
      */
     public function pace(Response $response): void
     {
@@ -115,6 +122,13 @@ class GitHubCollectionFetcher
 
         if ($remaining !== null && $remaining < self::RATE_LIMIT_SAFETY_THRESHOLD && $reset !== null) {
             $waitSeconds = max(0, $reset - time()) + 1;
+
+            if ($this->failOnError) {
+                throw new RuntimeException(
+                    "GitHub rate limit low ({$remaining} remaining, resets in {$waitSeconds}s) — not waiting it out inside the worker"
+                );
+            }
+
             echo "Rate limit low ({$remaining} remaining) — sleeping {$waitSeconds}s until reset\n";
             sleep($waitSeconds);
             return;

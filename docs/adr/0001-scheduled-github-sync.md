@@ -29,11 +29,11 @@ schedule:
 
 Both syncs are registered as `ScheduledJob`s on the existing workers (`ProcessingManager::addScheduledJob()`
 in `Src/installations.php`, `Src/Workers/installations.php`, `Src/repositories.php` and
-`Src/Workers/repositories.php`). After each batch of queued items the worker asks every registered job to
-run if its schedule says so, in all three run modes — the 55-second cron/HTTP loop, the single HTTP batch
-behind `POST /v1/jobs/{worker}/`, and the daemon. The schedule is consulted at most once a minute, so the
-daemon's 100 ms loop doesn't hit the database for it. A failing sync is logged like a failing batch and
-never stops the worker. No new systemd units, cron entries or HealthChecks.io checks are needed; the
+`Src/Workers/repositories.php`). After each batch of queued items — including a batch whose item failed —
+the worker asks every registered job to run if its schedule says so, in all three run modes — the
+55-second cron/HTTP loop, the single HTTP batch behind `POST /v1/jobs/{worker}/`, and the daemon. The
+schedule is consulted at most once a minute, so the daemon's 100 ms loop doesn't hit the database for it.
+A failing sync is logged like a failing batch and never stops the worker. No new systemd units, cron entries or HealthChecks.io checks are needed; the
 manual entry points (`Src/Workers/syncInstallations.php`, `Src/Workers/syncRepositories.php`, also behind
 the jobs API) exist for one-off, targeted or dry runs, like `checkup.php`.
 
@@ -50,8 +50,13 @@ from the database:
   `gstraccini-bot.sync-installations.last-run`, ISO 8601), and is due once per calendar month from the 1st
   on — "from", so a worker that wasn't running on the day catches up as soon as it is back.
 
-A schedule is marked as run *before* the job runs: a job that keeps failing is retried at its own cadence,
-not on every check.
+A schedule hands out a run with a **claim** taken *before* the job runs: a job that keeps failing is
+retried at its own cadence, not on every check, and two workers checking at the same moment (the
+cron-style script next to the daemon, a jobs-API run) can't both take it — the monthly claim is a
+compare-and-set on the `settings` row (`INSERT IGNORE` for a first run, a conditional `UPDATE` after),
+the hourly one is the repository row's own conditional `UPDATE`. A scheduled run blocks its worker's
+loop while it runs, so the daemon pings HealthChecks.io right after one, and the strict fetcher the
+syncs use aborts the pass instead of sleeping out a low GitHub rate limit inside the worker.
 
 ### `LastSyncDate` is claimed before the sync, and the most recent row per id is "the" row
 
