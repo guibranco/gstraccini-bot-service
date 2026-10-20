@@ -80,8 +80,7 @@ class ScheduledJobTest extends TestCase
     {
         $due = false;
         $marked = [];
-        $job = new ScheduledJob("test", $this->schedule($due, $marked), static function (): void {
-        }, 60);
+        $job = new ScheduledJob("test", $this->schedule($due, $marked), static fn(): mixed => null, 60);
 
         $this->assertFalse($job->runIfDue($this->at("2026-10-20 10:00:00")));
 
@@ -114,8 +113,7 @@ class ScheduledJobTest extends TestCase
     {
         $due = false;
         $marked = [];
-        $job = new ScheduledJob("sync_repositories", $this->schedule($due, $marked), static function (): void {
-        });
+        $job = new ScheduledJob("sync_repositories", $this->schedule($due, $marked), static fn(): mixed => null);
 
         $this->assertSame("sync_repositories", $job->getName());
         $this->assertSame("sync_repositories (test schedule)", $job->describe());
@@ -127,8 +125,8 @@ class ScheduledJobTest extends TestCase
         $marked = [];
 
         $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("name cannot be empty");
 
-        new ScheduledJob(" ", $this->schedule($due, $marked), static function (): void {
-        });
+        $this->assertInstanceOf(ScheduledJob::class, new ScheduledJob(" ", $this->schedule($due, $marked), static fn(): mixed => null));
     }
 }

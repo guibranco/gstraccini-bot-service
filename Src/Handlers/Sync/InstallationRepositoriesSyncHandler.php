@@ -3,8 +3,8 @@
 namespace GuiBranco\GStracciniBot\Handlers\Sync;
 
 use GuiBranco\GStracciniBot\Library\Checkup\GitHubCollectionFetcher;
+use GuiBranco\GStracciniBot\Library\Sync\RepositoriesSyncRepository;
 use GuiBranco\GStracciniBot\Library\Sync\RepositoryMetadata;
-use GuiBranco\GStracciniBot\Library\Sync\SyncRepository;
 use RuntimeException;
 
 /**
@@ -25,13 +25,16 @@ use RuntimeException;
  */
 class InstallationRepositoriesSyncHandler
 {
-    private SyncRepository $repository;
+    private RepositoriesSyncRepository $repository;
     private GitHubCollectionFetcher $fetcher;
     private bool $dryRun;
     private string $webhooksHandlerVersion;
 
+    /** @var array<string, int> */
+    private array $report = [];
+
     public function __construct(
-        SyncRepository $repository,
+        RepositoriesSyncRepository $repository,
         GitHubCollectionFetcher $fetcher,
         bool $dryRun,
         string $webhooksHandlerVersion
@@ -61,68 +64,80 @@ class InstallationRepositoriesSyncHandler
         $token = decodeGitHubResponse($tokenResponse, "token");
         $repositories = $this->fetcher->fetchAllPages($token, "installation/repositories", "repositories");
 
-        $report = ["checked" => 0, "added" => 0, "updated" => 0, "renamed" => 0, "removed" => 0];
+        $this->report = ["checked" => 0, "added" => 0, "updated" => 0, "renamed" => 0, "removed" => 0];
         $listedIds = [];
 
         foreach ($repositories as $repository) {
-            $report["checked"]++;
-            $repositoryId = (int) $repository->id;
-            $listedIds[] = $repositoryId;
-
-            $latest = $this->repository->getLatestRepositoryById($repositoryId);
-
-            if ($latest === null || $latest->LastAction === "deleted") {
-                $reason = $latest === null ? "not registered" : "registered as deleted/removed";
-                echo "  Repository: {$repository->full_name} — {$reason}, adding ✅\n";
-                if (!$this->dryRun) {
-                    $this->repository->insertRepository($repository, $installationId, $this->webhooksHandlerVersion);
-                }
-                $report["added"]++;
-                continue;
-            }
-
-            $metadata = RepositoryMetadata::fromGitHub($repository);
-            $changes = RepositoryMetadata::changes($latest, $metadata);
-            $installationChanged = (int) $latest->InstallationId !== $installationId;
-
-            if (empty($changes) && !$installationChanged) {
-                echo "  Repository: {$repository->full_name} — up to date\n";
-                continue;
-            }
-
-            if (RepositoryMetadata::isRenamed($changes)) {
-                echo "  Repository: {$latest->FullName} → {$repository->full_name} — renamed/transferred, updating references 🔁\n";
-                if (!$this->dryRun) {
-                    $this->repository->renameRepositoryReferences(
-                        (string) $latest->OwnerLogin,
-                        (string) $latest->Name,
-                        $metadata["OwnerLogin"],
-                        $metadata["Name"]
-                    );
-                }
-                $report["renamed"]++;
-            }
-
-            $changedColumns = array_keys($changes);
-            if ($installationChanged) {
-                $changedColumns[] = "InstallationId";
-            }
-            echo "  Repository: {$repository->full_name} — updating " . implode(", ", $changedColumns) . " 📝\n";
-            if (!$this->dryRun) {
-                $this->repository->updateRepositoryMetadata((int) $latest->Sequence, $metadata, $installationId);
-            }
-            $report["updated"]++;
+            $this->report["checked"]++;
+            $listedIds[] = (int) $repository->id;
+            $this->reconcileListedRepository($repository, $installationId);
         }
 
+        $this->removeUnlistedRepositories($installationId, $listedIds);
+
+        return $this->report;
+    }
+
+    private function reconcileListedRepository(object $repository, int $installationId): void
+    {
+        $latest = $this->repository->getLatestRepositoryById((int) $repository->id);
+
+        if ($latest === null || $latest->LastAction === "deleted") {
+            $reason = $latest === null ? "not registered" : "registered as deleted/removed";
+            echo "  Repository: {$repository->full_name} — {$reason}, adding ✅\n";
+            if (!$this->dryRun) {
+                $this->repository->insertRepository($repository, $installationId, $this->webhooksHandlerVersion);
+            }
+            $this->report["added"]++;
+            return;
+        }
+
+        $metadata = RepositoryMetadata::fromGitHub($repository);
+        $changes = RepositoryMetadata::changes($latest, $metadata);
+        $installationChanged = (int) $latest->InstallationId !== $installationId;
+
+        if (empty($changes) && !$installationChanged) {
+            echo "  Repository: {$repository->full_name} — up to date\n";
+            return;
+        }
+
+        if (RepositoryMetadata::isRenamed($changes)) {
+            echo "  Repository: {$latest->FullName} → {$repository->full_name} — renamed/transferred, updating references 🔁\n";
+            if (!$this->dryRun) {
+                $this->repository->renameRepositoryReferences(
+                    (string) $latest->OwnerLogin,
+                    (string) $latest->Name,
+                    $metadata["OwnerLogin"],
+                    $metadata["Name"]
+                );
+            }
+            $this->report["renamed"]++;
+        }
+
+        $changedColumns = array_keys($changes);
+        if ($installationChanged) {
+            $changedColumns[] = "InstallationId";
+        }
+        echo "  Repository: {$repository->full_name} — updating " . implode(", ", $changedColumns) . " 📝\n";
+        if (!$this->dryRun) {
+            $this->repository->updateRepositoryMetadata((int) $latest->Sequence, $metadata, $installationId);
+        }
+        $this->report["updated"]++;
+    }
+
+    /**
+     * @param array<int> $listedIds Ids of every repository GitHub listed for the installation.
+     */
+    private function removeUnlistedRepositories(int $installationId, array $listedIds): void
+    {
         $staleIds = array_diff($this->repository->getActiveRepositoryIdsForInstallation($installationId), $listedIds);
+
         foreach ($staleIds as $staleId) {
             echo "  Repository #{$staleId} — no longer accessible to the installation, marking removed ⚠️\n";
             if (!$this->dryRun) {
                 $this->repository->markRepositoryRemoved($staleId, $installationId, $this->webhooksHandlerVersion);
             }
-            $report["removed"]++;
+            $this->report["removed"]++;
         }
-
-        return $report;
     }
 }

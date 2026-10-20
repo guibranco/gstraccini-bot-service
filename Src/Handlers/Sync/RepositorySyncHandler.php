@@ -8,9 +8,9 @@ use GuiBranco\GStracciniBot\Handlers\Checkup\PullRequestsCheckupHandler;
 use GuiBranco\GStracciniBot\Library\Checkup\CheckupRepository;
 use GuiBranco\GStracciniBot\Library\Checkup\GitHubCollectionFetcher;
 use GuiBranco\GStracciniBot\Library\Sync\IntervalSchedule;
+use GuiBranco\GStracciniBot\Library\Sync\RepositoriesSyncRepository;
 use GuiBranco\GStracciniBot\Library\Sync\RepositoryMetadata;
 use GuiBranco\GStracciniBot\Library\Sync\ScheduledJob;
-use GuiBranco\GStracciniBot\Library\Sync\SyncRepository;
 use RuntimeException;
 use Throwable;
 
@@ -63,7 +63,7 @@ class RepositorySyncHandler
 
     private const LOG_CHANNEL = "sync_repositories";
 
-    private SyncRepository $repository;
+    private RepositoriesSyncRepository $repository;
     private GitHubCollectionFetcher $fetcher;
     private PullRequestsCheckupHandler $pullRequestsHandler;
     private IssuesCheckupHandler $issuesHandler;
@@ -78,13 +78,13 @@ class RepositorySyncHandler
         int $throttleSeconds,
         bool $dryRun,
         string $version,
-        ?SyncRepository $repository = null,
+        ?RepositoriesSyncRepository $repository = null,
         ?CheckupRepository $checkupRepository = null,
         ?GitHubCollectionFetcher $fetcher = null
     ) {
         $checkupRepository = $checkupRepository ?? new CheckupRepository();
 
-        $this->repository = $repository ?? new SyncRepository($checkupRepository);
+        $this->repository = $repository ?? new RepositoriesSyncRepository($checkupRepository);
         $this->fetcher = $fetcher ?? new GitHubCollectionFetcher($throttleSeconds, true);
         $this->dryRun = $dryRun;
         $this->webhooksHandlerVersion = self::LOG_CHANNEL . ":" . $version;
@@ -102,11 +102,11 @@ class RepositorySyncHandler
      * run so nothing is carried over between repositories.
      *
      * @param string              $version    The bot version, stamped on the rows the sync writes.
-     * @param SyncRepository|null $repository Database access (shared with the run for the pacing query).
+     * @param RepositoriesSyncRepository|null $repository Database access (shared with the run for the pacing query).
      */
-    public static function scheduledJob(string $version, ?SyncRepository $repository = null): ScheduledJob
+    public static function scheduledJob(string $version, ?RepositoriesSyncRepository $repository = null): ScheduledJob
     {
-        $repository = $repository ?? new SyncRepository();
+        $repository = $repository ?? new RepositoriesSyncRepository();
         $schedule = new IntervalSchedule(
             self::SCHEDULE_INTERVAL_SECONDS,
             static fn(): ?int => $repository->getSecondsSinceLastRepositoryClaim()

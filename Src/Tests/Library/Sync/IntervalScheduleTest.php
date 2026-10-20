@@ -23,21 +23,20 @@ class IntervalScheduleTest extends TestCase
 
     public function testFollowsThePersistedTrace(): void
     {
-        $secondsSinceLastRun = 0;
-        $schedule = new IntervalSchedule(3600, static function () use (&$secondsSinceLastRun): ?int {
-            return $secondsSinceLastRun;
-        });
+        $trace = new \stdClass();
+        $trace->secondsSinceLastRun = 0;
+        $schedule = new IntervalSchedule(3600, static fn(): ?int => $trace->secondsSinceLastRun);
 
-        $secondsSinceLastRun = 10;
+        $trace->secondsSinceLastRun = 10;
         $this->assertFalse($schedule->isDue($this->at("2026-10-20 10:00:10")));
 
-        $secondsSinceLastRun = 3599;
+        $trace->secondsSinceLastRun = 3599;
         $this->assertFalse($schedule->isDue($this->at("2026-10-20 10:59:59")));
 
-        $secondsSinceLastRun = 3600;
+        $trace->secondsSinceLastRun = 3600;
         $this->assertTrue($schedule->isDue($this->at("2026-10-20 11:00:00")));
 
-        $secondsSinceLastRun = 7200;
+        $trace->secondsSinceLastRun = 7200;
         $this->assertTrue($schedule->isDue($this->at("2026-10-20 12:00:00")));
     }
 
@@ -53,25 +52,27 @@ class IntervalScheduleTest extends TestCase
 
     public function testTheTraceIsConsultedOnlyOncePerCheckAndNotWhileTheProcessHoldsTheInterval(): void
     {
-        $calls = 0;
-        $schedule = new IntervalSchedule(3600, static function () use (&$calls): ?int {
-            $calls++;
+        $trace = new \stdClass();
+        $trace->calls = 0;
+        $schedule = new IntervalSchedule(3600, static function () use ($trace): ?int {
+            $trace->calls++;
             return null;
         });
 
         $schedule->isDue($this->at("2026-10-20 10:00:00"));
-        $this->assertSame(1, $calls);
+        $this->assertSame(1, $trace->calls);
 
         $schedule->markRun($this->at("2026-10-20 10:00:00"));
         $schedule->isDue($this->at("2026-10-20 10:30:00"));
-        $this->assertSame(1, $calls);
+        $this->assertSame(1, $trace->calls);
     }
 
     public function testRejectsANonPositiveInterval(): void
     {
         $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("at least 1 second");
 
-        new IntervalSchedule(0, static fn(): ?int => null);
+        $this->assertInstanceOf(IntervalSchedule::class, new IntervalSchedule(0, static fn(): ?int => null));
     }
 
     public function testDescribesItself(): void

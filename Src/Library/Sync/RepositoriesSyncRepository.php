@@ -3,27 +3,24 @@
 namespace GuiBranco\GStracciniBot\Library\Sync;
 
 use GuiBranco\GStracciniBot\Library\Checkup\CheckupRepository;
-use mysqli;
 use RuntimeException;
 
 /**
- * Database access for the scheduled sync workers (sync-installations,
- * sync-repositories), against the shared tables owned by the `webhooks`
- * project.
+ * `github_repositories` access for both syncs, plus the pull request,
+ * issue and branch reconciliation writes of the hourly repositories sync,
+ * against the shared tables owned by the `webhooks` project.
  *
- * `github_installations` and `github_repositories` hold one row per event
- * that announced the entity (and `markRepositoryRemoved()` appends one
- * more), so neither has a unique key on its GitHub id. Every read here
- * therefore works on the **most recent row per InstallationId / per Id**
+ * `github_repositories` holds one row per event that announced the
+ * repository (and `markRepositoryRemoved()` appends one more), so it has no
+ * unique key on Id. Every read here works on the **most recent row per Id**
  * (highest Sequence) and every write targets that row by Sequence. Inserts
- * and the "removed" append are delegated to CheckupRepository so the sync
- * workers write exactly the rows the checkup job and the installations
- * handler do.
+ * and the "removed" append are delegated to CheckupRepository so the syncs
+ * write exactly the rows the checkup job and the installations handler do.
  *
- * The LastSyncDate columns were added by webhooks migration Sql/0041; see
- * its ADR-0011 for what the dates mean.
+ * LastSyncDate was added by webhooks migration Sql/0041; see its ADR-0011
+ * for what the date means.
  */
-class SyncRepository
+class RepositoriesSyncRepository extends SyncRepositoryBase
 {
     /**
      * Tables (and their owner/name columns) that reference a repository by
@@ -46,6 +43,8 @@ class SyncRepository
 
     private const REPOSITORY_COLUMNS = "Sequence, Id, NodeId, Name, FullName, Private, OwnerLogin, OwnerId, OwnerNodeId, InstallationId, LastAction, InstallationAction, LastSyncDate";
 
+    private const LATEST_REPOSITORY_COLUMNS = "r.Sequence, r.Id, r.NodeId, r.Name, r.FullName, r.Private, r.OwnerLogin, r.OwnerId, r.OwnerNodeId, r.InstallationId, r.LastAction, r.InstallationAction, r.LastSyncDate";
+
     private const LATEST_REPOSITORY_JOIN = "INNER JOIN (SELECT Id, MAX(Sequence) AS MaxSequence FROM github_repositories GROUP BY Id) latest ON latest.Id = r.Id AND latest.MaxSequence = r.Sequence";
 
     private CheckupRepository $checkupRepository;
@@ -53,153 +52,6 @@ class SyncRepository
     public function __construct(?CheckupRepository $checkupRepository = null)
     {
         $this->checkupRepository = $checkupRepository ?? new CheckupRepository();
-    }
-
-    // ---------------------------------------------------------------- installations
-
-    /**
-     * The most recent `github_installations` row of every installation ever
-     * registered, keyed by InstallationId.
-     *
-     * @return array<int, object>
-     */
-    public function getLatestInstallations(): array
-    {
-        $mysqli = connectToDatabase();
-        $sql = "SELECT i.Sequence, i.InstallationId, i.AccountId, i.AccountLogin, i.AccountType, i.AccountNodeId,
-                       i.RepositorySelection, i.Status, i.LastSyncDate
-                FROM github_installations i
-                INNER JOIN (
-                    SELECT InstallationId, MAX(Sequence) AS MaxSequence
-                    FROM github_installations
-                    GROUP BY InstallationId
-                ) latest ON latest.InstallationId = i.InstallationId AND latest.MaxSequence = i.Sequence
-                ORDER BY i.InstallationId ASC";
-
-        $result = $mysqli->query($sql);
-        if ($result === false) {
-            $error = $mysqli->error;
-            $mysqli->close();
-            throw new RuntimeException("Query failed: {$error}");
-        }
-
-        $installations = [];
-        while ($row = $result->fetch_object()) {
-            $installations[(int) $row->InstallationId] = $row;
-        }
-
-        $result->close();
-        $mysqli->close();
-        return $installations;
-    }
-
-    /**
-     * Registers an installation listed by GitHub that has no row yet, the
-     * same way the checkup job backfills one (ProcessingState NEW, so the
-     * installations handler maps it like a delivered event), and returns
-     * the new row's Sequence.
-     */
-    public function insertInstallation(object $installation, string $webhooksHandlerVersion): int
-    {
-        $this->checkupRepository->insertInstallation($installation, $webhooksHandlerVersion);
-
-        $sequence = $this->getLatestInstallationSequence((int) $installation->id);
-        if ($sequence === null) {
-            throw new RuntimeException("Installation #{$installation->id} was not found right after inserting it");
-        }
-
-        return $sequence;
-    }
-
-    public function getLatestInstallationSequence(int $installationId): ?int
-    {
-        $mysqli = connectToDatabase();
-        $stmt = $mysqli->prepare("SELECT Sequence FROM github_installations WHERE InstallationId = ? ORDER BY Sequence DESC LIMIT 1");
-        $stmt->bind_param("i", $installationId);
-        $stmt->execute();
-        $row = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
-        $mysqli->close();
-
-        return $row === null ? null : (int) $row["Sequence"];
-    }
-
-    /**
-     * Brings the account columns of an installation row in line with what
-     * GitHub reports (the account may have been renamed, or switched between
-     * "all" and "selected" repositories). Only writes when something differs.
-     *
-     * @return bool True when the row was changed.
-     */
-    public function updateInstallationMetadata(int $sequence, object $installation): bool
-    {
-        $accountLogin = (string) $installation->account->login;
-        $accountType = (string) $installation->account->type;
-        $accountNodeId = (string) $installation->account->node_id;
-        $repositorySelection = (string) $installation->repository_selection;
-
-        $mysqli = connectToDatabase();
-        $sql = "UPDATE github_installations
-                SET AccountLogin = ?, AccountType = ?, AccountNodeId = ?, RepositorySelection = ?
-                WHERE Sequence = ?
-                  AND (AccountLogin != ? OR AccountType != ? OR AccountNodeId != ? OR RepositorySelection != ?)";
-        $stmt = $mysqli->prepare($sql);
-        $stmt->bind_param(
-            "ssssissss",
-            $accountLogin,
-            $accountType,
-            $accountNodeId,
-            $repositorySelection,
-            $sequence,
-            $accountLogin,
-            $accountType,
-            $accountNodeId,
-            $repositorySelection
-        );
-
-        return $this->executeAndClose($stmt, $mysqli) > 0;
-    }
-
-    /**
-     * Records that the installation's repositories were just listed and
-     * reconciled. Leaves UpdatedAt alone: that column tracks event-driven
-     * changes to the row, and a sync pass isn't one.
-     */
-    public function markInstallationSynced(int $sequence): void
-    {
-        $mysqli = connectToDatabase();
-        $stmt = $mysqli->prepare("UPDATE github_installations SET LastSyncDate = NOW(), UpdatedAt = UpdatedAt WHERE Sequence = ?");
-        $stmt->bind_param("i", $sequence);
-        $this->executeAndClose($stmt, $mysqli);
-    }
-
-    /**
-     * Marks an installation GitHub no longer lists as uninstalled — the same
-     * write the webhooks receiver does for an `installation` `deleted` event.
-     *
-     * @return bool True when the row was changed (it wasn't already '0').
-     */
-    public function markInstallationRemoved(int $sequence): bool
-    {
-        $mysqli = connectToDatabase();
-        $stmt = $mysqli->prepare("UPDATE github_installations SET Status = '0' WHERE Sequence = ? AND Status != '0'");
-        $stmt->bind_param("i", $sequence);
-
-        return $this->executeAndClose($stmt, $mysqli) > 0;
-    }
-
-    /**
-     * Reverts a `deleted` mark on an installation GitHub still lists.
-     *
-     * @return bool True when the row was changed (it was '0').
-     */
-    public function markInstallationActive(int $sequence): bool
-    {
-        $mysqli = connectToDatabase();
-        $stmt = $mysqli->prepare("UPDATE github_installations SET Status = '1' WHERE Sequence = ? AND Status = '0'");
-        $stmt->bind_param("i", $sequence);
-
-        return $this->executeAndClose($stmt, $mysqli) > 0;
     }
 
     // ---------------------------------------------------------------- repositories
@@ -347,6 +199,8 @@ class SyncRepository
         return $changed;
     }
 
+    // ---------------------------------------------------------------- hourly queue
+
     /**
      * Picks the active repository that has gone longest without a sync
      * (LastSyncDate NULL first, then oldest) and claims it by stamping
@@ -407,12 +261,7 @@ class SyncRepository
     public function getSecondsSinceLastRepositoryClaim(): ?int
     {
         $mysqli = connectToDatabase();
-        $result = $mysqli->query("SELECT TIMESTAMPDIFF(SECOND, MAX(LastSyncDate), NOW()) AS Seconds FROM github_repositories");
-        if ($result === false) {
-            $error = $mysqli->error;
-            $mysqli->close();
-            throw new RuntimeException("Query failed: {$error}");
-        }
+        $result = $this->queryOrFail($mysqli, "SELECT TIMESTAMPDIFF(SECOND, MAX(LastSyncDate), NOW()) AS Seconds FROM github_repositories");
 
         $row = $result->fetch_assoc();
         $result->close();
@@ -424,19 +273,13 @@ class SyncRepository
     private function pickNextRepositoryToSync(): ?object
     {
         $mysqli = connectToDatabase();
-        $sql = "SELECT " . self::prefixColumns("r", self::REPOSITORY_COLUMNS) . "
+        $sql = "SELECT " . self::LATEST_REPOSITORY_COLUMNS . "
                 FROM github_repositories r " . self::LATEST_REPOSITORY_JOIN . "
                 WHERE r.LastAction != 'deleted'
                 ORDER BY (r.LastSyncDate IS NULL) DESC, r.LastSyncDate ASC, r.Sequence ASC
                 LIMIT 1";
 
-        $result = $mysqli->query($sql);
-        if ($result === false) {
-            $error = $mysqli->error;
-            $mysqli->close();
-            throw new RuntimeException("Query failed: {$error}");
-        }
-
+        $result = $this->queryOrFail($mysqli, $sql);
         $repository = $result->fetch_object();
         $result->close();
         $mysqli->close();
@@ -584,31 +427,5 @@ class SyncRepository
         $stmt->close();
         $mysqli->close();
         return $items;
-    }
-
-    /**
-     * Executes a prepared write, closes the statement and the connection,
-     * and returns the number of rows changed.
-     */
-    private function executeAndClose(\mysqli_stmt $stmt, mysqli $mysqli): int
-    {
-        try {
-            if (!$stmt->execute()) {
-                throw new RuntimeException("Execute failed: [" . $stmt->errno . "] " . $stmt->error);
-            }
-
-            return $stmt->affected_rows;
-        } finally {
-            $stmt->close();
-            $mysqli->close();
-        }
-    }
-
-    private static function prefixColumns(string $alias, string $columns): string
-    {
-        return implode(", ", array_map(
-            static fn(string $column): string => "{$alias}." . trim($column),
-            explode(",", $columns)
-        ));
     }
 }

@@ -100,8 +100,9 @@ class MonthlyScheduleTest extends TestCase
     public function testRejectsAnInvalidDayOfMonth(): void
     {
         $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("between 1 and 31");
 
-        new MonthlySchedule(new ArraySyncStateStore(), self::KEY, 0);
+        $this->assertInstanceOf(MonthlySchedule::class, new MonthlySchedule(new ArraySyncStateStore(), self::KEY, 0));
     }
 
     public function testDescribesItself(): void

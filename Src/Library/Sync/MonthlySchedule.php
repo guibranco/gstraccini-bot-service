@@ -3,7 +3,6 @@
 namespace GuiBranco\GStracciniBot\Library\Sync;
 
 use DateTimeImmutable;
-use Exception;
 use InvalidArgumentException;
 
 /**
@@ -70,8 +69,8 @@ class MonthlySchedule implements ScheduleInterface
 
     /**
      * The last run, in $now's time zone, or null when the job never ran or
-     * the stored value can't be read (treated as never: one extra run beats
-     * never running again).
+     * the stored value isn't the ISO 8601 date markRun() writes (treated as
+     * never: one extra run beats never running again).
      */
     private function lastRun(DateTimeImmutable $now): ?DateTimeImmutable
     {
@@ -80,10 +79,8 @@ class MonthlySchedule implements ScheduleInterface
             return null;
         }
 
-        try {
-            return (new DateTimeImmutable($stored))->setTimezone($now->getTimezone());
-        } catch (Exception) {
-            return null;
-        }
+        $lastRun = DateTimeImmutable::createFromFormat(DATE_ATOM, trim($stored));
+
+        return $lastRun === false ? null : $lastRun->setTimezone($now->getTimezone());
     }
 }

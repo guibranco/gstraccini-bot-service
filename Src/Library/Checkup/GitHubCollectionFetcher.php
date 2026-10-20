@@ -59,19 +59,7 @@ class GitHubCollectionFetcher
             $pagedUrl = $url . $separator . "per_page=" . self::PER_PAGE . "&page=" . $page;
             $response = doRequestGitHub($token, $pagedUrl, null, "GET");
 
-            if ($response->getStatusCode() >= 300 || $response->getStatusCode() <= 0) {
-                if ($this->failOnError) {
-                    throw new RuntimeException(
-                        "GitHub listing failed for '{$pagedUrl}': HTTP status {$response->getStatusCode()}. " .
-                        "Body: " . ($response->getBody() ?? $response->getMessage())
-                    );
-                }
-                break;
-            }
-
-            $decoded = json_decode($response->getBody());
-            $pageItems = $wrapperKey !== null ? ($decoded->$wrapperKey ?? []) : (is_array($decoded) ? $decoded : []);
-
+            $pageItems = $this->readPage($response, $pagedUrl, $wrapperKey);
             if (empty($pageItems)) {
                 break;
             }
@@ -87,6 +75,32 @@ class GitHubCollectionFetcher
         }
 
         return $items;
+    }
+
+    /**
+     * The items of one page, or an empty array when the page failed (and
+     * the fetcher is lenient) or is empty.
+     *
+     * @return array<int, object>
+     */
+    private function readPage(Response $response, string $pagedUrl, ?string $wrapperKey): array
+    {
+        if ($response->getStatusCode() >= 300 || $response->getStatusCode() <= 0) {
+            if ($this->failOnError) {
+                throw new RuntimeException(
+                    "GitHub listing failed for '{$pagedUrl}': HTTP status {$response->getStatusCode()}. " .
+                    "Body: " . ($response->getBody() ?? $response->getMessage())
+                );
+            }
+            return [];
+        }
+
+        $decoded = json_decode($response->getBody());
+        if ($wrapperKey !== null) {
+            return is_object($decoded) && is_array($decoded->$wrapperKey ?? null) ? $decoded->$wrapperKey : [];
+        }
+
+        return is_array($decoded) ? $decoded : [];
     }
 
     /**

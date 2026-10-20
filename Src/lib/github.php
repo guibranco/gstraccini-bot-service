@@ -228,8 +228,7 @@ function generateInstallationToken(string $installationId, string $repositoryNam
         $data->permissions = $permissions;
     }
 
-    $url = "app/installations/" . $installationId . "/access_tokens";
-    $response = doRequestGitHub($gitHubAppToken, $url, $data, "POST");
+    $response = doRequestGitHub($gitHubAppToken, installationAccessTokensUrl($installationId), $data, "POST");
     return decodeGitHubResponse($response, "token");
 }
 
@@ -256,8 +255,7 @@ function generateInstallationAccessToken(string $installationId, array $permissi
         $data->permissions = $permissions;
     }
 
-    $url = "app/installations/" . $installationId . "/access_tokens";
-    $response = doRequestGitHub($gitHubAppToken, $url, $data, "POST");
+    $response = doRequestGitHub($gitHubAppToken, installationAccessTokensUrl($installationId), $data, "POST");
     return decodeGitHubResponse($response, "token");
 }
 
@@ -293,8 +291,20 @@ function requestInstallationAccessToken(string $installationId, ?array $reposito
         }
     }
 
-    $url = "app/installations/" . $installationId . "/access_tokens";
-    return doRequestGitHub($gitHubAppToken, $url, $data, "POST");
+    return doRequestGitHub($gitHubAppToken, installationAccessTokensUrl($installationId), $data, "POST");
+}
+
+/**
+ * The GitHub API endpoint that mints access tokens for an installation
+ * (`POST /app/installations/{installation_id}/access_tokens`).
+ *
+ * @param string $installationId The GitHub App installation ID.
+ *
+ * @return string The endpoint, relative to the GitHub API root.
+ */
+function installationAccessTokensUrl(string $installationId): string
+{
+    return "app/installations/" . $installationId . "/access_tokens";
 }
 
 /**

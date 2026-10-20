@@ -6,8 +6,9 @@ use DateTimeImmutable;
 use GuiBranco\GStracciniBot\Library\Checkup\GitHubCollectionFetcher;
 use GuiBranco\GStracciniBot\Library\Sync\MonthlySchedule;
 use GuiBranco\GStracciniBot\Library\Sync\ScheduledJob;
+use GuiBranco\GStracciniBot\Library\Sync\InstallationsSyncRepository;
+use GuiBranco\GStracciniBot\Library\Sync\RepositoriesSyncRepository;
 use GuiBranco\GStracciniBot\Library\Sync\SettingsSyncStateStore;
-use GuiBranco\GStracciniBot\Library\Sync\SyncRepository;
 use GuiBranco\GStracciniBot\Library\Sync\SyncStateStoreInterface;
 use Throwable;
 
@@ -59,7 +60,7 @@ class InstallationsSyncHandler
 
     private const LOG_CHANNEL = "sync_installations";
 
-    private SyncRepository $repository;
+    private InstallationsSyncRepository $repository;
     private GitHubCollectionFetcher $fetcher;
     private InstallationRepositoriesSyncHandler $repositoriesHandler;
     private bool $dryRun;
@@ -72,15 +73,16 @@ class InstallationsSyncHandler
         int $throttleSeconds,
         bool $dryRun,
         string $version,
-        ?SyncRepository $repository = null,
+        ?InstallationsSyncRepository $repository = null,
+        ?RepositoriesSyncRepository $repositoriesRepository = null,
         ?GitHubCollectionFetcher $fetcher = null
     ) {
-        $this->repository = $repository ?? new SyncRepository();
+        $this->repository = $repository ?? new InstallationsSyncRepository();
         $this->fetcher = $fetcher ?? new GitHubCollectionFetcher($throttleSeconds, true);
         $this->dryRun = $dryRun;
         $this->webhooksHandlerVersion = self::LOG_CHANNEL . ":" . $version;
         $this->repositoriesHandler = new InstallationRepositoriesSyncHandler(
-            $this->repository,
+            $repositoriesRepository ?? new RepositoriesSyncRepository(),
             $this->fetcher,
             $dryRun,
             $this->webhooksHandlerVersion
@@ -149,33 +151,11 @@ class InstallationsSyncHandler
             }
 
             $listedIds[] = $installationId;
-            $this->report["installations"]["checked"]++;
-
-            $login = (string) $installation->account->login;
-            $suspended = isset($installation->suspended_at) && $installation->suspended_at !== null;
-            echo "Installation: {$login} (#{$installationId})" . ($suspended ? " — suspended ⏸️" : "") . "\n";
-
-            $existing = $known[$installationId] ?? null;
-            if ($existing === null) {
-                $this->registerInstallation($installation, $suspended);
-                continue;
-            }
-
-            $this->refreshInstallation($existing, $installation, $suspended, $now, $force);
+            $this->syncListedInstallation($installation, $known[$installationId] ?? null, $now, $force);
         }
 
         if ($onlyInstallationId === null) {
-            foreach ($known as $installationId => $row) {
-                if (in_array($installationId, $listedIds, true) || $row->Status === "0") {
-                    continue;
-                }
-
-                echo "Installation: {$row->AccountLogin} (#{$installationId}) — not listed by GitHub any more, marking uninstalled ⚠️\n";
-                if (!$this->dryRun) {
-                    $this->repository->markInstallationRemoved((int) $row->Sequence);
-                }
-                $this->report["installations"]["removed"]++;
-            }
+            $this->markUnlistedInstallations($known, $listedIds);
         }
 
         echo "==> Installations sync finished\n";
@@ -227,6 +207,41 @@ class InstallationsSyncHandler
         ];
 
         return array_keys(array_diff_assoc($target, $current));
+    }
+
+    private function syncListedInstallation(object $installation, ?object $existing, DateTimeImmutable $now, bool $force): void
+    {
+        $this->report["installations"]["checked"]++;
+
+        $login = (string) $installation->account->login;
+        $suspended = isset($installation->suspended_at) && $installation->suspended_at !== null;
+        echo "Installation: {$login} (#{$installation->id})" . ($suspended ? " — suspended ⏸️" : "") . "\n";
+
+        if ($existing === null) {
+            $this->registerInstallation($installation, $suspended);
+            return;
+        }
+
+        $this->refreshInstallation($existing, $installation, $suspended, $now, $force);
+    }
+
+    /**
+     * @param array<int, object> $known     Every registered installation, keyed by InstallationId.
+     * @param array<int>         $listedIds Ids of every installation GitHub listed.
+     */
+    private function markUnlistedInstallations(array $known, array $listedIds): void
+    {
+        foreach ($known as $installationId => $row) {
+            if (in_array($installationId, $listedIds, true) || $row->Status === "0") {
+                continue;
+            }
+
+            echo "Installation: {$row->AccountLogin} (#{$installationId}) — not listed by GitHub any more, marking uninstalled ⚠️\n";
+            if (!$this->dryRun) {
+                $this->repository->markInstallationRemoved((int) $row->Sequence);
+            }
+            $this->report["installations"]["removed"]++;
+        }
     }
 
     private function registerInstallation(object $installation, bool $suspended): void
