@@ -1,5 +1,5 @@
 # Base image
-FROM php:8.6-rc-apache
+FROM php:8.6.0RC4-apache
 
 # Set environment variables
 ENV GOPATH=/usr/local/go-packages \
