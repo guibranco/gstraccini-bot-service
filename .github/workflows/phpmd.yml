@@ -47,7 +47,18 @@ jobs:
           tools: phpmd
 
       - name: Run PHPMD
-        run: phpmd . sarif cleancode,codesize,controversial,design,naming,unusedcode --reportfile phpmd-results.sarif
+        # PHPMD 3 syntax: `phpmd analyze [options] [--] [<paths>...]` — format and
+        # rulesets are options, `--reportfile` became `--reportfile-<format>`.
+        run: |
+          phpmd analyze . \
+            --no-progress \
+            --ruleset cleancode \
+            --ruleset codesize \
+            --ruleset controversial \
+            --ruleset design \
+            --ruleset naming \
+            --ruleset unusedcode \
+            --reportfile-sarif phpmd-results.sarif
         continue-on-error: true
 
       - name: Upload analysis results to GitHub
