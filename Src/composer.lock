@@ -8,16 +8,16 @@
     "packages": [
         {
             "name": "guibranco/pancake",
-            "version": "v1.9.24",
+            "version": "v1.9.26",
             "source": {
                 "type": "git",
                 "url": "https://github.com/guibranco/pancake.git",
-                "reference": "4ad12d647316a983611dc810b9fed01c3e874a85"
+                "reference": "b0d816e735c36070fd2f6b51ab9def8b40f0ae98"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/guibranco/pancake/zipball/4ad12d647316a983611dc810b9fed01c3e874a85",
-                "reference": "4ad12d647316a983611dc810b9fed01c3e874a85",
+                "url": "https://api.github.com/repos/guibranco/pancake/zipball/b0d816e735c36070fd2f6b51ab9def8b40f0ae98",
+                "reference": "b0d816e735c36070fd2f6b51ab9def8b40f0ae98",
                 "shasum": ""
             },
             "require": {
@@ -25,7 +25,7 @@
                 "psr/container": "^1.1 || ^2.0"
             },
             "require-dev": {
-                "phpunit/phpunit": "13.4.1"
+                "phpunit/phpunit": "13.4.2"
             },
             "type": "library",
             "autoload": {
@@ -46,9 +46,9 @@
             "description": "The Pancake project, a toolkit for PHP projects",
             "support": {
                 "issues": "https://github.com/guibranco/pancake/issues",
-                "source": "https://github.com/guibranco/pancake/tree/v1.9.24"
+                "source": "https://github.com/guibranco/pancake/tree/v1.9.26"
             },
-            "time": "2026-10-16T13:40:14+00:00"
+            "time": "2026-10-19T03:48:40+00:00"
         },
         {
             "name": "lcobucci/jwt",
