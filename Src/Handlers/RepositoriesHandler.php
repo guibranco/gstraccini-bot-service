@@ -26,6 +26,10 @@ class RepositoriesHandler implements IHandler
 {
     private CheckupRepository $repository;
 
+    /**
+     * @param CheckupRepository|null $repository `github_repositories` access, for recording a
+     *                                           repository that turned out to be gone; built when omitted.
+     */
     public function __construct(?CheckupRepository $repository = null)
     {
         $this->repository = $repository ?? new CheckupRepository();
@@ -44,9 +48,10 @@ class RepositoriesHandler implements IHandler
             $repository->DeliveryIdText
         );
 
-        if (self::isRemoved($repository)) {
+        if ($this->isRemoved($repository)) {
+            $installationAction = $repository->InstallationAction ?? "none";
             echo "⛔ Repository is no longer accessible to installation #{$repository->InstallationId} " .
-                "(LastAction: {$repository->LastAction}, InstallationAction: " . ($repository->InstallationAction ?? "none") . ") — nothing to set up\n";
+                "(LastAction: {$repository->LastAction}, InstallationAction: {$installationAction}) — nothing to set up\n";
             $logStream?->info(
                 "Skipping removed repository {$repository->FullName}",
                 [
@@ -103,8 +108,10 @@ class RepositoriesHandler implements IHandler
      * (together with InstallationAction `removed`).
      *
      * @param object $repository A row from the `github_repositories` table.
+     *
+     * @return bool True when the row says the repository is gone.
      */
-    public static function isRemoved(object $repository): bool
+    public function isRemoved(object $repository): bool
     {
         return ($repository->LastAction ?? null) === "deleted"
             || ($repository->InstallationAction ?? null) === "removed";
