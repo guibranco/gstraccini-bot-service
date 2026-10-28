@@ -108,7 +108,7 @@ class RepositoriesHandlerTest extends TestCase
     {
         $repository = $this->createMock(CheckupRepository::class);
         $repository->expects($this->never())->method("markRepositoryRemoved");
-        $repository->expects($this->never())->method("existsRepository");
+        $repository->expects($this->never())->method("isRepositoryActiveForInstallation");
 
         $output = $this->runHandler($repository, $this->buildRow(["LastAction" => "deleted", "InstallationAction" => "removed"]));
 
@@ -122,7 +122,7 @@ class RepositoriesHandlerTest extends TestCase
         self::$tokenResponse = $this->gitHubError($status);
 
         $repository = $this->createMock(CheckupRepository::class);
-        $repository->method("existsRepository")->with(self::REPOSITORY_ID)->willReturn(true);
+        $repository->method("isRepositoryActiveForInstallation")->with(self::REPOSITORY_ID, self::INSTALLATION_ID)->willReturn(true);
         $repository->expects($this->once())
             ->method("markRepositoryRemoved")
             ->with(self::REPOSITORY_ID, self::INSTALLATION_ID, $this->stringStartsWith("repositories_handler:"));
@@ -130,6 +130,7 @@ class RepositoriesHandlerTest extends TestCase
         $output = $this->runHandler($repository, $this->buildRow());
 
         $this->assertStringContainsString($reason, $output);
+        $this->assertStringContainsString("marking repository removed", $output);
         // The token is scoped by repository id (rename/transfer safe), never by name.
         $this->assertCount(1, self::$tokenRequests);
         $this->assertSame((string) self::INSTALLATION_ID, self::$tokenRequests[0]["installationId"]);
@@ -137,17 +138,23 @@ class RepositoriesHandlerTest extends TestCase
         $this->assertNull(self::$tokenRequests[0]["permissions"]);
     }
 
-    public function testNoDuplicateRemovedRowIsAppended(): void
+    /**
+     * A stale row — the repository's latest row already records the removal
+     * (a sync got there first) or belongs to another installation (it was
+     * transferred or re-registered since this row was queued) — is finalized
+     * without writing a removed row, which would retire the live repository.
+     */
+    public function testStaleRowDoesNotRecordTheRemoval(): void
     {
-        self::$tokenResponse = $this->gitHubError(404);
+        self::$tokenResponse = $this->gitHubError(422);
 
-        // The latest row already says the repository is gone (a sync got there first).
         $repository = $this->createMock(CheckupRepository::class);
-        $repository->method("existsRepository")->with(self::REPOSITORY_ID)->willReturn(false);
+        $repository->method("isRepositoryActiveForInstallation")->with(self::REPOSITORY_ID, self::INSTALLATION_ID)->willReturn(false);
         $repository->expects($this->never())->method("markRepositoryRemoved");
 
         $output = $this->runHandler($repository, $this->buildRow());
 
+        $this->assertStringContainsString("belongs to another installation, leaving it as is", $output);
         $this->assertStringContainsString("nothing to set up", $output);
     }
 

@@ -20,7 +20,9 @@ use RuntimeException;
  * any more — so they are finalized without a GitHub call. Likewise a
  * repository whose installation no longer exists (token request 404) or
  * that the installation can no longer access (422) is recorded as removed,
- * as the syncs do, and finalized instead of failing again every hour.
+ * as the syncs do — unless its latest row already says so or belongs to
+ * another installation, i.e. this row is stale — and finalized instead of
+ * failing again every hour.
  */
 class RepositoriesHandler implements IHandler
 {
@@ -150,23 +152,30 @@ class RepositoriesHandler implements IHandler
         };
 
         if ($reason !== null) {
-            echo "⚠️ {$reason} (token request HTTP {$status}) — marking repository removed, nothing to set up\n";
+            // Only the latest row says what the repository's current state is. This row is stale when
+            // that row already records the removal (a sync got there first) or belongs to another
+            // installation (the repository was transferred or re-registered since this row was queued):
+            // in both cases there is nothing to record, and a removed row written now would wrongly
+            // retire a repository that is live under its new installation.
+            $recordRemoval = $this->repository->isRepositoryActiveForInstallation($repositoryId, $installationId);
+            $outcome = $recordRemoval ? "marking repository removed" : "its latest row is already removed or belongs to another installation, leaving it as is";
+
+            echo "⚠️ {$reason} (token request HTTP {$status}) — {$outcome}, nothing to set up\n";
             $logStream?->warning(
-                "Repository {$repository->FullName} is gone: {$reason} — marking removed",
+                "Repository {$repository->FullName} is gone for installation #{$installationId}: {$reason} — {$outcome}",
                 [
                     'repo' => $repository->FullName,
                     'owner' => $repository->OwnerLogin,
                     'repositoryId' => $repositoryId,
                     'installationId' => $installationId,
                     'status' => $status,
+                    'removalRecorded' => $recordRemoval,
                 ],
                 "repositories",
                 $repository->DeliveryIdText
             );
 
-            // Only the latest row says whether the repository is still registered as active;
-            // a sync may already have appended the removed row in the meantime.
-            if ($this->repository->existsRepository($repositoryId)) {
+            if ($recordRemoval) {
                 $this->repository->markRepositoryRemoved(
                     $repositoryId,
                     $installationId,
