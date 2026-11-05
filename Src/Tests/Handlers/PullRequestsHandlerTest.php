@@ -228,7 +228,7 @@ class PullRequestsHandlerTest extends TestCase
     private function fakeReactions(array $logins, int $commentId = self::REQUEST_ID): void
     {
         $reactions = array_map(
-            static fn(string $login): object => (object) ["content" => "+1", "user" => (object) ["login" => $login]],
+            static fn (string $login): object => (object) ["content" => "+1", "user" => (object) ["login" => $login]],
             $logins
         );
 
@@ -257,7 +257,7 @@ class PullRequestsHandlerTest extends TestCase
     {
         return array_values(array_filter(
             array_column(self::$requestLog, "url"),
-            static fn(string $url): bool => str_contains($url, "/reactions")
+            static fn (string $url): bool => str_contains($url, "/reactions")
         ));
     }
 

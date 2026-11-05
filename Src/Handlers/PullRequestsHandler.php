@@ -923,7 +923,7 @@ class PullRequestsHandler implements IHandler
                 $this->listComments($metadata),
                 $headSha,
                 new DateTimeImmutable(),
-                fn(object $comment): bool => $this->hasReactionFrom($metadata, $comment, $pullRequest->Sender)
+                fn (object $comment): bool => $this->hasReactionFrom($metadata, $comment, $pullRequest->Sender)
             );
             $logContext = [
                 'repo' => "{$metadata['owner']}/{$metadata['repo']}",

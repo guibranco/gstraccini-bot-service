@@ -240,7 +240,7 @@ class RecreateRequestAnalyzerTest extends TestCase
 
     public function testAReactionFromSomeoneElseIsNotTheAcknowledgement(): void
     {
-        $nobodyFromTheBot = static fn(object $comment): bool => false;
+        $nobodyFromTheBot = static fn (object $comment): bool => false;
         $comments = [$this->request(self::REQUESTED_AT, 1)];
 
         $waiting = $this->analyzer->analyze($comments, self::HEAD_SHA, $this->after(5), $nobodyFromTheBot);
@@ -256,7 +256,7 @@ class RecreateRequestAnalyzerTest extends TestCase
             [$this->request(self::REQUESTED_AT, 2)],
             self::HEAD_SHA,
             $this->after(86400),
-            static fn(object $comment): bool => true
+            static fn (object $comment): bool => true
         );
 
         $this->assertSame(RecreateRequestAnalyzer::STATUS_ACKNOWLEDGED, $result["status"]);
