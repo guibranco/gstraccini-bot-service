@@ -2,9 +2,11 @@
 
 namespace GuiBranco\GStracciniBot\Handlers;
 
+use DateTimeImmutable;
 use GuiBranco\GStracciniBot\Library\DependencyFileLabelService;
 use GuiBranco\GStracciniBot\Library\MarkdownGroupCheckboxValidator;
 use GuiBranco\GStracciniBot\Library\PullRequestCodeScanner;
+use GuiBranco\GStracciniBot\Library\RecreateRequestAnalyzer;
 use GuiBranco\GStracciniBot\Library\VersionBumpAnalyzer;
 use GuiBranco\GStracciniBot\Library\VersionBumpCommentBuilder;
 
@@ -17,6 +19,11 @@ define("PULLS", "/pulls/");
  */
 class PullRequestsHandler implements IHandler
 {
+    private const COMMENTS_PER_PAGE = 100;
+
+    /** Stops a comments listing that never returns a short page. */
+    private const COMMENTS_MAX_PAGES = 30;
+
     public function handleItem($pullRequest, $isRetry = false)
     {
         global $logStream;
@@ -908,24 +915,89 @@ class PullRequestsHandler implements IHandler
             }
             echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Recreate via bot - Sender: " . $pullRequest->Sender . " ☢️\n";
 
-            $prefix = "<!--GStraccini:{$pullRequestUpdated->head->sha}-->\n";
-            $commentExists = $this->findCommentByContent($metadata, $pullRequestUpdated, $prefix);
+            // The marker comment being there doesn't mean the request was received: Dependabot and Depfu
+            // react to a command they picked up, so one left without a reaction is posted again.
+            $analyzer = new RecreateRequestAnalyzer();
+            $headSha = $pullRequestUpdated->head->sha;
+            $request = $analyzer->analyze($this->listComments($metadata), $headSha, new DateTimeImmutable());
+            $logContext = [
+                'repo' => "{$metadata['owner']}/{$metadata['repo']}",
+                'sender' => $pullRequest->Sender,
+                'head_sha' => $headSha,
+                'requests' => $request["requests"],
+                'last_requested_at' => $request["lastRequestedAt"]
+            ];
 
-            if ($commentExists) {
-                echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Already requested to recreate - Sender: " . $pullRequest->Sender . " ⚠️\n";
-                return;
+            switch ($request["status"]) {
+                case RecreateRequestAnalyzer::STATUS_ACKNOWLEDGED:
+                    echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Already requested to recreate - Sender: " . $pullRequest->Sender . " ⚠️\n";
+                    return;
+                case RecreateRequestAnalyzer::STATUS_WAITING:
+                    echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Already requested to recreate, not acknowledged yet - Sender: " . $pullRequest->Sender . " ⏳\n";
+                    return;
+                case RecreateRequestAnalyzer::STATUS_GAVE_UP:
+                    echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Recreate requested " . $request["requests"] . " times and never acknowledged, giving up - Sender: " . $pullRequest->Sender . " ❌\n";
+                    $logStream?->warning(
+                        "PR #{$pullRequest->Number} still has conflicts — {$request["requests"]} recreate requests were never acknowledged, giving up",
+                        $logContext,
+                        "pull_requests",
+                        $pullRequest->DeliveryIdText
+                    );
+                    return;
+                case RecreateRequestAnalyzer::STATUS_UNACKNOWLEDGED:
+                    echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Recreate request from " . $request["lastRequestedAt"] . " was never acknowledged, requesting again (" . ($request["requests"] + 1) . "/" . RecreateRequestAnalyzer::MAX_REQUESTS . ") - Sender: " . $pullRequest->Sender . " 🔁\n";
+                    $logStream?->warning(
+                        "PR #{$pullRequest->Number} recreate request was never acknowledged — requesting again",
+                        $logContext,
+                        "pull_requests",
+                        $pullRequest->DeliveryIdText
+                    );
+                    break;
             }
 
-            if ($pullRequest->Sender === "dependabot[bot]") {
-                $comment = array("body" => "{$prefix}@dependabot recreate");
-            } else {
-                $comment = array("body" => "{$prefix}@depfu recreate");
-            }
+            $mention = $pullRequest->Sender === "dependabot[bot]" ? "@dependabot" : "@depfu";
+            $comment = array("body" => $analyzer->marker($headSha) . "\n{$mention} recreate");
 
             doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
         } else {
             echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - No conflicts - Sender: " . $pullRequest->Sender . " 🆒\n";
         }
+    }
+
+    /**
+     * Lists every comment of the pull request, following the pagination: the
+     * recreate requests of a long-lived pull request are among its newest
+     * comments, past the first page.
+     *
+     * @param array $metadata Metadata for the GitHub API request. Must include `commentsUrl` and `token`.
+     *
+     * @return array<int, object> The comments, oldest first.
+     *
+     * @throws \GuiBranco\Pancake\RequestException When a page can't be fetched: a partial list
+     *                                              could hide a request that was already posted.
+     */
+    private function listComments(array $metadata): array
+    {
+        $comments = [];
+
+        for ($page = 1; $page <= self::COMMENTS_MAX_PAGES; $page++) {
+            $url = "{$metadata["commentsUrl"]}?per_page=" . self::COMMENTS_PER_PAGE . "&page={$page}";
+            $commentsResponse = doRequestGitHub($metadata["token"], $url, null, "GET");
+            $commentsResponse->ensureSuccessStatus();
+            $pageComments = json_decode($commentsResponse->getBody());
+
+            if (!is_array($pageComments)) {
+                break;
+            }
+
+            $comments = array_merge($comments, $pageComments);
+
+            if (count($pageComments) < self::COMMENTS_PER_PAGE) {
+                break;
+            }
+        }
+
+        return $comments;
     }
 
     /**
