@@ -916,10 +916,15 @@ class PullRequestsHandler implements IHandler
             echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Recreate via bot - Sender: " . $pullRequest->Sender . " ☢️\n";
 
             // The marker comment being there doesn't mean the request was received: Dependabot and Depfu
-            // react to a command they picked up, so one left without a reaction is posted again.
+            // react to a command they picked up, so one left without their reaction is posted again.
             $analyzer = new RecreateRequestAnalyzer();
             $headSha = $pullRequestUpdated->head->sha;
-            $request = $analyzer->analyze($this->listComments($metadata), $headSha, new DateTimeImmutable());
+            $request = $analyzer->analyze(
+                $this->listComments($metadata),
+                $headSha,
+                new DateTimeImmutable(),
+                fn(object $comment): bool => $this->hasReactionFrom($metadata, $comment, $pullRequest->Sender)
+            );
             $logContext = [
                 'repo' => "{$metadata['owner']}/{$metadata['repo']}",
                 'sender' => $pullRequest->Sender,
@@ -998,6 +1003,44 @@ class PullRequestsHandler implements IHandler
         }
 
         return $comments;
+    }
+
+    /**
+     * Whether a login is among those who reacted to a comment. The comments
+     * listing only carries the reaction totals, and a reaction from someone
+     * else is not the dependency bot's acknowledgement of a recreate request.
+     *
+     * @param array  $metadata Metadata for the GitHub API request. Must include `owner`, `repo` and `token`.
+     * @param object $comment  The comment, as the comments listing returns it.
+     * @param string $login    The login to look for (e.g. `dependabot[bot]`).
+     *
+     * @return bool True when the login reacted — or when the reactions can't be listed, so that
+     *              a request is never posted again on a guess.
+     */
+    private function hasReactionFrom(array $metadata, object $comment, string $login): bool
+    {
+        if (!isset($comment->id)) {
+            return true;
+        }
+
+        $url = "repos/{$metadata["owner"]}/{$metadata["repo"]}/issues/comments/{$comment->id}/reactions?per_page=100";
+        $reactionsResponse = doRequestGitHub($metadata["token"], $url, null, "GET");
+        if ($reactionsResponse->getStatusCode() !== 200) {
+            return true;
+        }
+
+        $reactions = json_decode($reactionsResponse->getBody());
+        if (!is_array($reactions)) {
+            return true;
+        }
+
+        foreach ($reactions as $reaction) {
+            if (strcasecmp($reaction->user->login ?? "", $login) === 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

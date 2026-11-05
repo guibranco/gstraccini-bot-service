@@ -92,7 +92,7 @@ class RecreateRequestAnalyzerTest extends TestCase
         $this->assertSame(0, $result["requests"]);
     }
 
-    public function testAcknowledgedWhenTheRequestHasAReaction(): void
+    public function testAnyReactionCountsWithoutAWayToTellWhoReacted(): void
     {
         $result = $this->analyzer->analyze([$this->request(self::REQUESTED_AT, 1)], self::HEAD_SHA, $this->after(5));
 
@@ -236,6 +236,82 @@ class RecreateRequestAnalyzerTest extends TestCase
 
         $this->assertSame(RecreateRequestAnalyzer::STATUS_UNACKNOWLEDGED, $result["status"]);
         $this->assertSame(1, $result["requests"]);
+    }
+
+    public function testAReactionFromSomeoneElseIsNotTheAcknowledgement(): void
+    {
+        $nobodyFromTheBot = static fn(object $comment): bool => false;
+        $comments = [$this->request(self::REQUESTED_AT, 1)];
+
+        $waiting = $this->analyzer->analyze($comments, self::HEAD_SHA, $this->after(5), $nobodyFromTheBot);
+        $timedOut = $this->analyzer->analyze($comments, self::HEAD_SHA, $this->after(86400), $nobodyFromTheBot);
+
+        $this->assertSame(RecreateRequestAnalyzer::STATUS_WAITING, $waiting["status"]);
+        $this->assertSame(RecreateRequestAnalyzer::STATUS_UNACKNOWLEDGED, $timedOut["status"]);
+    }
+
+    public function testAcknowledgedWhenTheDependencyBotIsAmongThoseWhoReacted(): void
+    {
+        $result = $this->analyzer->analyze(
+            [$this->request(self::REQUESTED_AT, 2)],
+            self::HEAD_SHA,
+            $this->after(86400),
+            static fn(object $comment): bool => true
+        );
+
+        $this->assertSame(RecreateRequestAnalyzer::STATUS_ACKNOWLEDGED, $result["status"]);
+    }
+
+    public function testWhoReactedIsOnlyAskedAboutRequestsThatHaveReactions(): void
+    {
+        $withoutReactions = $this->request(self::REQUESTED_AT, 0);
+        $withReactions = $this->request("2026-10-22T08:00:00Z", 1);
+        $otherComment = $this->comment("Quality Gate passed");
+        $otherComment->reactions->total_count = 3;
+        $comments = [
+            $withoutReactions,
+            $otherComment,
+            $this->request("2026-10-15T06:00:00Z", 1, self::OTHER_SHA),
+            $withReactions,
+        ];
+
+        $asked = [];
+        $result = $this->analyzer->analyze(
+            $comments,
+            self::HEAD_SHA,
+            new DateTimeImmutable("2026-11-05T16:58:00Z"),
+            static function (object $comment) use (&$asked): bool {
+                $asked[] = $comment;
+                return false;
+            }
+        );
+
+        $this->assertSame([$withReactions], $asked);
+        $this->assertSame(RecreateRequestAnalyzer::STATUS_UNACKNOWLEDGED, $result["status"]);
+        $this->assertSame(2, $result["requests"]);
+    }
+
+    public function testWhoReactedIsNotAskedAgainOnceARequestIsAcknowledged(): void
+    {
+        $comments = [
+            $this->request(self::REQUESTED_AT, 1),
+            $this->request("2026-10-22T08:00:00Z", 1),
+        ];
+
+        $asked = 0;
+        $result = $this->analyzer->analyze(
+            $comments,
+            self::HEAD_SHA,
+            new DateTimeImmutable("2026-11-05T16:58:00Z"),
+            static function (object $comment) use (&$asked): bool {
+                $asked++;
+                return true;
+            }
+        );
+
+        $this->assertSame(1, $asked);
+        $this->assertSame(RecreateRequestAnalyzer::STATUS_ACKNOWLEDGED, $result["status"]);
+        $this->assertSame(2, $result["requests"]);
     }
 
     public function testARequestWithoutTheReactionsRollupIsTakenAsAcknowledged(): void

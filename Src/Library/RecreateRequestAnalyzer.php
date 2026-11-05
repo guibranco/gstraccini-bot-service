@@ -3,7 +3,6 @@
 namespace GuiBranco\GStracciniBot\Library;
 
 use DateTimeImmutable;
-use Exception;
 
 /**
  * Reads, from a pull request's comments, where the bot stands with the
@@ -13,17 +12,18 @@ use Exception;
  *
  * The comment being there is not proof the dependency bot received it. Both
  * Dependabot and Depfu acknowledge a command by reacting to its comment
- * (a 👍, within seconds) before they act on it, so a request that still has
- * no reaction long after it was posted never reached them: the pull request
- * keeps its head commit, the marker for that commit keeps matching, and the
- * conflict is never resolved. Such a request is posted again, a limited
- * number of times per head commit.
+ * (a 👍, within seconds) before they act on it, so a request they still
+ * haven't reacted to long after it was posted never reached them: the pull
+ * request keeps its head commit, the marker for that commit keeps matching,
+ * and the conflict is never resolved. Such a request is posted again, a
+ * limited number of times per head commit.
  *
- * Pure: no HTTP access, the caller hands in the comments and the time.
+ * Pure: no HTTP access of its own, the caller hands in the comments, the
+ * time and the way to tell who reacted to a comment.
  */
 class RecreateRequestAnalyzer
 {
-    /** Seconds a request may go without any reaction before it counts as never received. */
+    /** Seconds a request may go without an acknowledgement before it counts as never received. */
     public const ACKNOWLEDGEMENT_TIMEOUT_SECONDS = 3600;
 
     /** Requests posted for the same head commit before the bot stops asking. */
@@ -38,10 +38,10 @@ class RecreateRequestAnalyzer
     /** The dependency bot reacted to a request for the head commit: nothing left to do. */
     public const STATUS_ACKNOWLEDGED = "acknowledged";
 
-    /** The last request timed out without a reaction: post it again. */
+    /** The last request timed out without an acknowledgement: post it again. */
     public const STATUS_UNACKNOWLEDGED = "unacknowledged";
 
-    /** MAX_REQUESTS requests timed out without a reaction: stop asking. */
+    /** MAX_REQUESTS requests timed out without an acknowledgement: stop asking. */
     public const STATUS_GAVE_UP = "gave_up";
 
     /**
@@ -59,11 +59,15 @@ class RecreateRequestAnalyzer
      *                                     (`body`, `created_at` and the `reactions` rollup are read).
      * @param string             $headSha  The pull request's current head commit.
      * @param DateTimeImmutable  $now      The moment the requests are evaluated at.
+     * @param callable|null      $reactedByBot `fn(object $comment): bool` telling whether the dependency
+     *                                     bot is among those who reacted to a request. The rollup only has totals,
+     *                                     so it is asked about the requests that have reactions; without it, a
+     *                                     reaction from anyone counts.
      *
      * @return array{status: string, requests: int, lastRequestedAt: ?string} One of the STATUS_* values, how many
      *         requests were posted for the head commit, and when the last one was (GitHub's `created_at`).
      */
-    public function analyze(array $comments, string $headSha, DateTimeImmutable $now): array
+    public function analyze(array $comments, string $headSha, DateTimeImmutable $now, ?callable $reactedByBot = null): array
     {
         $marker = $this->marker($headSha);
         $requests = 0;
@@ -77,7 +81,7 @@ class RecreateRequestAnalyzer
             }
 
             $requests++;
-            $acknowledged = $acknowledged || $this->isAcknowledged($comment);
+            $acknowledged = $acknowledged || $this->isAcknowledged($comment, $reactedByBot);
 
             $requestedAt = $comment->created_at ?? null;
             if (is_string($requestedAt) && ($lastRequestedAt === null || strcmp($requestedAt, $lastRequestedAt) > 0)) {
@@ -97,18 +101,23 @@ class RecreateRequestAnalyzer
     }
 
     /**
-     * Any reaction counts: whatever the dependency bot answered with, it saw
-     * the request, and asking again would not change its answer. A comment
+     * Any reaction of the dependency bot counts: whatever it answered with,
+     * it saw the request, and asking again would not change its answer. A
+     * reaction from someone else is not its acknowledgement. A comment
      * without the reactions rollup can't be judged, so it is taken as
      * acknowledged rather than posted again on a guess.
      */
-    private function isAcknowledged(object $comment): bool
+    private function isAcknowledged(object $comment, ?callable $reactedByBot): bool
     {
         if (!isset($comment->reactions->total_count)) {
             return true;
         }
 
-        return (int) $comment->reactions->total_count > 0;
+        if ((int) $comment->reactions->total_count === 0) {
+            return false;
+        }
+
+        return $reactedByBot === null || $reactedByBot($comment) === true;
     }
 
     /**
@@ -117,16 +126,11 @@ class RecreateRequestAnalyzer
      */
     private function hasTimedOut(?string $lastRequestedAt, DateTimeImmutable $now): bool
     {
-        if ($lastRequestedAt === null) {
+        $requestedAt = $lastRequestedAt === null ? false : strtotime($lastRequestedAt);
+        if ($requestedAt === false) {
             return false;
         }
 
-        try {
-            $requestedAt = new DateTimeImmutable($lastRequestedAt);
-        } catch (Exception) {
-            return false;
-        }
-
-        return $now->getTimestamp() - $requestedAt->getTimestamp() >= self::ACKNOWLEDGEMENT_TIMEOUT_SECONDS;
+        return $now->getTimestamp() - $requestedAt >= self::ACKNOWLEDGEMENT_TIMEOUT_SECONDS;
     }
 }

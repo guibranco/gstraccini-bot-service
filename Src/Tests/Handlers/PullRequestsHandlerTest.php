@@ -31,6 +31,8 @@ class PullRequestsHandlerTest extends TestCase
 
     private const COMMENTS_URL = "repos/owner/repo/issues/1/comments";
 
+    private const REQUEST_ID = 6322533681;
+
     /** @var array<string, Response> Maps a substring of a request URL to the fake response for it. */
     private static array $responses = [];
 
@@ -199,11 +201,13 @@ class PullRequestsHandlerTest extends TestCase
      * A recreate request as the comments endpoint lists it.
      *
      * @param int $secondsAgo How long ago it was posted.
-     * @param int $reactions  How many reactions it has (the dependency bot's acknowledgement).
+     * @param int $reactions  How many reactions its rollup counts (who reacted comes from fakeReactions()).
+     * @param int $id         The comment id.
      */
-    private function buildRecreateRequest(int $secondsAgo, int $reactions): object
+    private function buildRecreateRequest(int $secondsAgo, int $reactions, int $id = self::REQUEST_ID): object
     {
         return (object) [
+            "id" => $id,
             "body" => "<!--GStraccini:" . self::HEAD_SHA . "-->\n@dependabot recreate",
             "created_at" => gmdate("Y-m-d\TH:i:s\Z", time() - $secondsAgo),
             "reactions" => (object) ["total_count" => $reactions, "+1" => $reactions],
@@ -216,6 +220,19 @@ class PullRequestsHandlerTest extends TestCase
     private function fakeComments(array $comments, int $page = 1): void
     {
         self::$responses[self::COMMENTS_URL . "?per_page=100&page={$page}"] = Response::success(json_encode($comments), "", [], 200);
+    }
+
+    /**
+     * @param array<int, string> $logins Who the fake endpoint lists as having reacted to the comment.
+     */
+    private function fakeReactions(array $logins, int $commentId = self::REQUEST_ID): void
+    {
+        $reactions = array_map(
+            static fn(string $login): object => (object) ["content" => "+1", "user" => (object) ["login" => $login]],
+            $logins
+        );
+
+        self::$responses["issues/comments/{$commentId}/reactions"] = Response::success(json_encode($reactions), "", [], 200);
     }
 
     /**
@@ -233,9 +250,20 @@ class PullRequestsHandlerTest extends TestCase
         return $bodies;
     }
 
+    /**
+     * @return array<int, string> The URL of every request the handler made to a reactions endpoint.
+     */
+    private function reactionsRequests(): array
+    {
+        return array_values(array_filter(
+            array_column(self::$requestLog, "url"),
+            static fn(string $url): bool => str_contains($url, "/reactions")
+        ));
+    }
+
     public function testRequestsTheRecreateOfAConflictingDependabotPullRequest(): void
     {
-        $this->fakeComments([(object) ["body" => "Review skipped", "created_at" => "2026-10-15T05:54:00Z", "reactions" => (object) ["total_count" => 0]]]);
+        $this->fakeComments([(object) ["id" => 1, "body" => "Review skipped", "created_at" => "2026-10-15T05:54:00Z", "reactions" => (object) ["total_count" => 0]]]);
 
         $this->invokeResolveConflicts($this->buildConflictingPullRequest());
 
@@ -251,13 +279,26 @@ class PullRequestsHandlerTest extends TestCase
         $this->assertSame(["<!--GStraccini:" . self::HEAD_SHA . "-->\n@depfu recreate"], $this->postedComments());
     }
 
-    public function testDoesNotRequestAgainOnceTheRequestWasAcknowledged(): void
+    public function testDoesNotRequestAgainOnceDependabotAcknowledgedTheRequest(): void
     {
         $this->fakeComments([$this->buildRecreateRequest(14 * 86400, 1)]);
+        $this->fakeReactions(["dependabot[bot]"]);
 
         $output = $this->invokeResolveConflicts($this->buildConflictingPullRequest());
 
         $this->assertSame([], $this->postedComments(), "A request the dependency bot reacted to must not be posted again.");
+        $this->assertStringContainsString("Already requested to recreate", $output);
+        $this->assertSame(["repos/owner/repo/issues/comments/" . self::REQUEST_ID . "/reactions?per_page=100"], $this->reactionsRequests());
+    }
+
+    public function testDoesNotRequestAgainOnceDepfuAcknowledgedTheRequest(): void
+    {
+        $this->fakeComments([$this->buildRecreateRequest(14 * 86400, 2)]);
+        $this->fakeReactions(["guibranco", "depfu[bot]"]);
+
+        $output = $this->invokeResolveConflicts($this->buildConflictingPullRequest(), "depfu[bot]");
+
+        $this->assertSame([], $this->postedComments());
         $this->assertStringContainsString("Already requested to recreate", $output);
     }
 
@@ -284,14 +325,47 @@ class PullRequestsHandlerTest extends TestCase
 
         $this->assertSame(["<!--GStraccini:" . self::HEAD_SHA . "-->\n@dependabot recreate"], $this->postedComments());
         $this->assertStringContainsString("was never acknowledged, requesting again (2/3)", $output);
+        $this->assertSame([], $this->reactionsRequests(), "A request without reactions needs no look at who reacted.");
+    }
+
+    public function testAReactionFromSomeoneElseIsNotTheAcknowledgement(): void
+    {
+        $this->fakeComments([$this->buildRecreateRequest(14 * 86400, 1)]);
+        $this->fakeReactions(["guibranco"]);
+
+        $output = $this->invokeResolveConflicts($this->buildConflictingPullRequest());
+
+        $this->assertSame(["<!--GStraccini:" . self::HEAD_SHA . "-->\n@dependabot recreate"], $this->postedComments());
+        $this->assertStringContainsString("was never acknowledged, requesting again (2/3)", $output);
+    }
+
+    public function testAReactionThatIsNotListedAnyMoreIsNotTheAcknowledgement(): void
+    {
+        $this->fakeComments([$this->buildRecreateRequest(14 * 86400, 1)]);
+        $this->fakeReactions([]);
+
+        $this->invokeResolveConflicts($this->buildConflictingPullRequest());
+
+        $this->assertSame(["<!--GStraccini:" . self::HEAD_SHA . "-->\n@dependabot recreate"], $this->postedComments());
+    }
+
+    public function testTakesTheRequestAsAcknowledgedWhenTheReactionsCannotBeListed(): void
+    {
+        $this->fakeComments([$this->buildRecreateRequest(14 * 86400, 1)]);
+        self::$responses["issues/comments/" . self::REQUEST_ID . "/reactions"] = Response::error("Bad gateway", "", 502);
+
+        $output = $this->invokeResolveConflicts($this->buildConflictingPullRequest());
+
+        $this->assertSame([], $this->postedComments(), "Without knowing who reacted, the request must not be posted again on a guess.");
+        $this->assertStringContainsString("Already requested to recreate", $output);
     }
 
     public function testGivesUpAfterThreeRequestsWereNeverAcknowledged(): void
     {
         $this->fakeComments([
-            $this->buildRecreateRequest(14 * 86400, 0),
-            $this->buildRecreateRequest(13 * 86400, 0),
-            $this->buildRecreateRequest(11 * 86400, 0),
+            $this->buildRecreateRequest(14 * 86400, 0, 101),
+            $this->buildRecreateRequest(13 * 86400, 0, 102),
+            $this->buildRecreateRequest(11 * 86400, 0, 103),
         ]);
 
         $output = $this->invokeResolveConflicts($this->buildConflictingPullRequest());
@@ -302,16 +376,17 @@ class PullRequestsHandlerTest extends TestCase
 
     public function testFindsARequestBeyondTheFirstPageOfComments(): void
     {
-        $otherComment = (object) ["body" => "Quality Gate passed", "created_at" => "2026-10-15T05:54:00Z", "reactions" => (object) ["total_count" => 0]];
+        $otherComment = (object) ["id" => 1, "body" => "Quality Gate passed", "created_at" => "2026-10-15T05:54:00Z", "reactions" => (object) ["total_count" => 0]];
         $this->fakeComments(array_fill(0, 100, $otherComment), 1);
         $this->fakeComments([$this->buildRecreateRequest(14 * 86400, 1)], 2);
+        $this->fakeReactions(["dependabot[bot]"]);
 
         $this->invokeResolveConflicts($this->buildConflictingPullRequest());
 
         $this->assertSame([], $this->postedComments(), "A request listed on the second page of comments must still be found.");
         $this->assertSame(
             [self::COMMENTS_URL . "?per_page=100&page=1", self::COMMENTS_URL . "?per_page=100&page=2"],
-            array_column(self::$requestLog, "url")
+            array_slice(array_column(self::$requestLog, "url"), 0, 2)
         );
     }
 
