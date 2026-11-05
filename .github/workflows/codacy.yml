@@ -33,10 +33,77 @@ jobs:
       actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
     name: Codacy Security Scan
     runs-on: ubuntu-latest
+    # A run takes 5 to 7 minutes. When the CLI stops without exiting, as described below,
+    # nothing else ends the job before GitHub's limit of 6 hours.
+    timeout-minutes: 30
     steps:
       # Checkout the repository to the GitHub Actions runner
       - name: Checkout code
         uses: actions/checkout@v7
+
+      # To fingerprint its results, the CLI reads every file that has one in chunks of 8192 bytes,
+      # with a reader (better-files 3.8.0) that fails when a multi-byte UTF-8 character lies across
+      # two chunks. The CLI then stops with a `MalformedInputException` but never exits, and the
+      # job stays in the analysis step until it is cancelled. Whether a file is hit only depends
+      # on the byte its emojis and accented letters happen to start at, so in the runner's copy,
+      # and nowhere else, such a character is replaced by an ASCII letter. Lines and columns stay
+      # where they are.
+      - name: Keep multi-byte characters off the CLI's read boundaries
+        shell: python
+        run: |
+          import os
+          import subprocess
+          import sys
+
+          CHUNK = 8192
+
+
+          def continues_a_character(content, index):
+              """Whether the byte is one of those that follow the first byte of a character (10xxxxxx)."""
+              return index < len(content) and content[index] & 0b11000000 == 0b10000000
+
+
+          sys.stdout.reconfigure(errors="backslashreplace")
+          tracked = subprocess.run(["git", "ls-files", "-z"], check=True, capture_output=True).stdout
+          replaced = 0
+
+          for path in filter(None, tracked.split(b"\0")):
+              if os.path.islink(path) or not os.path.isfile(path) or os.path.getsize(path) <= CHUNK:
+                  continue
+
+              with open(path, "rb") as file:
+                  content = bytearray(file.read())
+
+              try:
+                  content.decode("utf-8")
+              except UnicodeDecodeError:
+                  continue  # Not UTF-8 text: its bytes do not mean what is looked for below.
+
+              name = os.fsdecode(path)
+              found = 0
+              for boundary in range(CHUNK, len(content), CHUNK):
+                  # A byte right after a boundary that continues a character belongs to one that started
+                  # before the boundary. Replacing it moves the rest of the file, so the same boundary
+                  # is looked at again.
+                  while continues_a_character(content, boundary):
+                      start = boundary - 1
+                      while continues_a_character(content, start):
+                          start -= 1
+                      end = boundary + 1
+                      while continues_a_character(content, end):
+                          end += 1
+                      line = content.count(b"\n", 0, start) + 1
+                      code_point = ord(content[start:end].decode("utf-8"))
+                      print(f"{name}:{line}: U+{code_point:04X} lies across byte {boundary}, replaced by x")
+                      content[start:end] = b"x"
+                      found += 1
+
+              if found > 0:
+                  with open(path, "wb") as file:
+                      file.write(content)
+                  replaced += found
+
+          print(f"{replaced} character(s) replaced in the runner's copy")
 
       # Execute Codacy Analysis CLI and generate a SARIF output with the security issues identified during the analysis
       - name: Run Codacy Analysis CLI
