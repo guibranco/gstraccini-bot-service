@@ -76,6 +76,22 @@ GStraccini-bot runs automated tasks at regular intervals on its infrastructure:
 | Repositories | ![Repositories](https://healthchecks.io/b/3/4ef0ee6c-38f8-4c79-b9f7-049438bd39a9.svg) | 🕛 every 1 minute |
 | Users | ![Users](https://healthchecks.io/b/3/fb14f4cc-0ee1-4da2-94eb-bd5f3be46e9b.svg) | 🕛 every 1 minute |
 
+### 🔄 Scheduled syncs
+
+Two of the workers above also reconcile the database with GitHub's actual state on a schedule, independently of webhook events (see [ADR-0001](docs/adr/0001-scheduled-github-sync.md)):
+
+| Sync | Runs from | When | What |
+| --- | --- | --- | --- |
+| Installations | Installations worker | 🗓️ 1st of every month (or the first run after it) | Registers the app's installations, updates their account metadata, marks uninstalled ones, and re-lists the repositories of every installation never synced or last synced over 3 months ago (`github_installations.LastSyncDate`). |
+| Repositories | Repositories worker | ⏰ every hour, one repository | Takes the active repository with the oldest `github_repositories.LastSyncDate`, refreshes its metadata (name, visibility, owner) and reconciles its open pull requests, open issues and branches. |
+
+Both can be run by hand, from the CLI or through `POST /v1/jobs/{syncInstallations|syncRepositories}/`:
+
+```bash
+php Src/Workers/syncInstallations.php [--installation=<id>] [--force] [--throttle=<seconds>] [--dry-run]
+php Src/Workers/syncRepositories.php [--repository=<id>] [--limit=<n>] [--throttle=<seconds>] [--dry-run]
+```
+
 ## 🔗 Useful Links
 
 - 🛒 [GitHub Marketplace](https://github.com/marketplace/gstraccini-bot)

@@ -12,6 +12,10 @@ use GuiBranco\GStracciniBot\Library\Checkup\GitHubCollectionFetcher;
  *
  * The branches list endpoint has no "creator" — the repository owner is
  * used as the best-effort sender placeholder for backfilled rows.
+ *
+ * The repository's default branch is skipped: `github_branches_view` (which
+ * `existsBranch()` reads) deliberately excludes it, so checking it would
+ * never find it and would insert a new row on every run.
  */
 class BranchesCheckupHandler
 {
@@ -51,6 +55,10 @@ class BranchesCheckupHandler
         ];
 
         foreach ($branches as $branch) {
+            if ($branch->name === $repoContext->defaultBranch) {
+                continue;
+            }
+
             $checked++;
             echo "    Branch: {$branch->name}\n";
 

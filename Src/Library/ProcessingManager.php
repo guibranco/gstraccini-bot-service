@@ -2,6 +2,8 @@
 
 namespace GuiBranco\GStracciniBot\Library;
 
+use DateTimeImmutable;
+use GuiBranco\GStracciniBot\Library\Sync\ScheduledJob;
 use GuiBranco\Pancake\HealthChecks;
 use GuiBranco\Pancake\Logger;
 use GuiBranco\Pancake\LogStream;
@@ -15,6 +17,12 @@ class ProcessingManager
     private $healthChecks;
     private $logger;
     private ?LogStream $logStream;
+
+    /** @var array<int, ScheduledJob> */
+    private array $scheduledJobs = [];
+
+    /** Whether the last batch ran a scheduled job (so the daemon pings HealthChecks right after it). */
+    private bool $scheduledJobRanInLastBatch = false;
 
     /**
     * @param string $entity Entity name for processing
@@ -39,6 +47,18 @@ class ProcessingManager
         $this->logStream = $logStream;
 
         $this->healthChecks->setHeaders([constant("USER_AGENT"), "Content-Type: application/json; charset=utf-8"]);
+    }
+
+    /**
+     * Registers a job that runs on its own schedule from this worker's loop
+     * (e.g. the installations worker's monthly sync, the repositories
+     * worker's hourly sync). It is checked after every batch, in every run
+     * mode — the 55-second cron/HTTP loop, the single HTTP batch and the
+     * daemon — and a failure is logged without stopping the worker.
+     */
+    public function addScheduledJob(ScheduledJob $job): void
+    {
+        $this->scheduledJobs[] = $job;
     }
 
     /**
@@ -135,6 +155,9 @@ class ProcessingManager
         pcntl_signal(SIGINT, $shutdown);
 
         echo "[" . date('Y-m-d H:i:s') . "] Daemon started for '{$this->entity}'.\n";
+        foreach ($this->scheduledJobs as $job) {
+            echo "[" . date('Y-m-d H:i:s') . "] Scheduled job registered: {$job->describe()}.\n";
+        }
         $this->logStream?->info("Daemon started", ['entity' => $this->entity], $this->entity);
         $this->healthChecks->start();
         $lastPing = time();
@@ -168,8 +191,10 @@ class ProcessingManager
                 );
             }
 
+            // A scheduled sync can take a while (GitHub calls, throttled); ping right after one
+            // so the gap it opened in the regular cadence doesn't read as a dead worker.
             $now = time();
-            if ($now - $lastPing >= $healthCheckInterval) {
+            if ($this->scheduledJobRanInLastBatch || $now - $lastPing >= $healthCheckInterval) {
                 $this->healthChecks->end();
                 $lastPing = $now;
             }
@@ -221,12 +246,49 @@ class ProcessingManager
             $this->process($handler);
         } finally {
             $result = ob_get_clean();
+            if (!empty($result) && ($this->config->debug->all === true || ($this->config->debug->{$this->entity} ?? false) === true)) {
+                echo $result;
+            }
+
+            // In the finally so a failing item (processItem() rethrows) can't keep the syncs from running.
+            $this->runScheduledJobs();
         }
-        if (empty($result)) {
-            return;
-        }
-        if ($this->config->debug->all === true || $this->config->debug->{$this->entity} === true) {
-            echo $result;
+    }
+
+    /**
+     * Gives every registered scheduled job the chance to run. Their output
+     * isn't buffered like the batch's: a scheduled run is rare (hourly,
+     * monthly) and its report is worth having in the worker's log
+     * regardless of the entity's debug flag.
+     */
+    private function runScheduledJobs(): void
+    {
+        $this->scheduledJobRanInLastBatch = false;
+
+        foreach ($this->scheduledJobs as $job) {
+            try {
+                if ($job->runIfDue(new DateTimeImmutable())) {
+                    $this->scheduledJobRanInLastBatch = true;
+                }
+            } catch (\Throwable $e) {
+                $this->scheduledJobRanInLastBatch = true;
+                $this->logger->log(
+                    "Scheduled job '{$job->getName()}' failed (Entity: {$this->entity}): {$e->getMessage()}",
+                    [
+                        'error' => [
+                            'message' => $e->getMessage(),
+                            'code' => $e->getCode(),
+                            'file' => $e->getFile(),
+                            'line' => $e->getLine()
+                        ]
+                    ]
+                );
+                $this->logStream?->error(
+                    "Scheduled job '{$job->getName()}' failed: {$e->getMessage()}",
+                    ['entity' => $this->entity, 'job' => $job->getName(), 'file' => $e->getFile(), 'line' => $e->getLine()],
+                    $this->entity
+                );
+            }
         }
     }
 

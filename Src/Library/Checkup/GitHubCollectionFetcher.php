@@ -3,12 +3,23 @@
 namespace GuiBranco\GStracciniBot\Library\Checkup;
 
 use GuiBranco\Pancake\Response;
+use RuntimeException;
 
 /**
  * Pages through a GitHub REST list endpoint, pacing requests so the
  * checkup job doesn't burn through the installation's rate-limit budget.
  * Sleeps `throttleSeconds` between every request, and additionally backs
  * off until the rate-limit reset time if the remaining quota gets low.
+ *
+ * By default a page that fails (any non-2xx status) ends the listing and
+ * whatever was collected so far is returned — fine for the checkup, which
+ * only ever inserts missing rows. A fetcher built with `failOnError` throws
+ * instead, so callers that *remove* or *close* things based on what GitHub
+ * didn't list (the scheduled syncs) never mistake a partial list for the
+ * truth. Such a fetcher also refuses to wait out a low rate limit: the
+ * syncs run inside a worker's loop, which must not sleep for up to an
+ * hour, so the pass is abandoned (and retried at the job's own cadence)
+ * instead.
  */
 class GitHubCollectionFetcher
 {
@@ -16,10 +27,16 @@ class GitHubCollectionFetcher
     private const RATE_LIMIT_SAFETY_THRESHOLD = 50;
 
     private int $throttleSeconds;
+    private bool $failOnError;
 
-    public function __construct(int $throttleSeconds)
+    /**
+     * @param int  $throttleSeconds Seconds to sleep between consecutive requests.
+     * @param bool $failOnError     When true, a failed page throws instead of ending the listing early.
+     */
+    public function __construct(int $throttleSeconds, bool $failOnError = false)
     {
         $this->throttleSeconds = max(0, $throttleSeconds);
+        $this->failOnError = $failOnError;
     }
 
     /**
@@ -33,6 +50,8 @@ class GitHubCollectionFetcher
      *                                that return a bare array.
      *
      * @return array<int, object> All items across every page.
+     *
+     * @throws RuntimeException When built with `failOnError` and a page comes back with a non-2xx status.
      */
     public function fetchAllPages(string $token, string $url, ?string $wrapperKey = null): array
     {
@@ -44,13 +63,7 @@ class GitHubCollectionFetcher
             $pagedUrl = $url . $separator . "per_page=" . self::PER_PAGE . "&page=" . $page;
             $response = doRequestGitHub($token, $pagedUrl, null, "GET");
 
-            if ($response->getStatusCode() >= 300) {
-                break;
-            }
-
-            $decoded = json_decode($response->getBody());
-            $pageItems = $wrapperKey !== null ? ($decoded->$wrapperKey ?? []) : (is_array($decoded) ? $decoded : []);
-
+            $pageItems = $this->readPage($response, $pagedUrl, $wrapperKey);
             if (empty($pageItems)) {
                 break;
             }
@@ -69,8 +82,37 @@ class GitHubCollectionFetcher
     }
 
     /**
+     * The items of one page, or an empty array when the page failed (and
+     * the fetcher is lenient) or is empty.
+     *
+     * @return array<int, object>
+     */
+    private function readPage(Response $response, string $pagedUrl, ?string $wrapperKey): array
+    {
+        if ($response->getStatusCode() >= 300 || $response->getStatusCode() <= 0) {
+            if ($this->failOnError) {
+                throw new RuntimeException(
+                    "GitHub listing failed for '{$pagedUrl}': HTTP status {$response->getStatusCode()}. " .
+                    "Body: " . ($response->getBody() ?? $response->getMessage())
+                );
+            }
+            return [];
+        }
+
+        $decoded = json_decode($response->getBody());
+        if ($wrapperKey !== null) {
+            return is_object($decoded) && is_array($decoded->$wrapperKey ?? null) ? $decoded->$wrapperKey : [];
+        }
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    /**
      * Sleeps the configured throttle between calls, and additionally waits
-     * out the rate-limit window if the remaining quota is running low.
+     * out the rate-limit window if the remaining quota is running low — or,
+     * when built with `failOnError`, throws instead of waiting.
+     *
+     * @throws RuntimeException When built with `failOnError` and the rate limit is running low.
      */
     public function pace(Response $response): void
     {
@@ -80,6 +122,13 @@ class GitHubCollectionFetcher
 
         if ($remaining !== null && $remaining < self::RATE_LIMIT_SAFETY_THRESHOLD && $reset !== null) {
             $waitSeconds = max(0, $reset - time()) + 1;
+
+            if ($this->failOnError) {
+                throw new RuntimeException(
+                    "GitHub rate limit low ({$remaining} remaining, resets in {$waitSeconds}s) — not waiting it out inside the worker"
+                );
+            }
+
             echo "Rate limit low ({$remaining} remaining) — sleeping {$waitSeconds}s until reset\n";
             sleep($waitSeconds);
             return;

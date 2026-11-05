@@ -145,7 +145,12 @@ paths:
   /jobs/{job}/:
     post:
       summary: Trigger a background job
-      description: Fires a background processing job and returns immediately. The job runs asynchronously.
+      description: |
+        Fires a background processing job and returns immediately. The job runs asynchronously.
+
+        The reconciliation jobs accept options as query-string parameters:
+        `checkup` (`installation`, `throttle`, `dryRun`), `syncInstallations` (`installation`, `force`, `throttle`, `dryRun`)
+        and `syncRepositories` (`repository`, `limit`, `throttle`, `dryRun`).
       operationId: triggerJob
       tags:
         - Jobs
@@ -167,6 +172,8 @@ paths:
               - pullRequests
               - pushes
               - repositories
+              - syncInstallations
+              - syncRepositories
               - users
       responses:
         '202':

@@ -82,19 +82,52 @@ class CheckupRepository
         $mysqli->close();
     }
 
+    /**
+     * Whether the repository is currently registered as active: its most
+     * recent `github_repositories` row (highest Sequence) is not a `deleted`
+     * one. The table holds one row per event that announced the repository
+     * (and `markRepositoryRemoved()` appends a `deleted` row), so only the
+     * latest row says what the repository's current state is — an older,
+     * still-`created` row must not count once a later row marked it removed.
+     */
     public function existsRepository(int $repositoryId): bool
+    {
+        $row = $this->fetchLatestRepositoryState($repositoryId);
+        return $row !== null && $row['LastAction'] !== 'deleted';
+    }
+
+    /**
+     * Whether the repository is currently registered as active **for this
+     * installation**: its most recent `github_repositories` row is not a
+     * `deleted` one and carries this InstallationId. A repository moved to
+     * another installation (transferred, or re-registered after the app was
+     * reinstalled) has a more recent row under the new installation, so a
+     * stale row of the old one must not be allowed to record its removal.
+     */
+    public function isRepositoryActiveForInstallation(int $repositoryId, int $installationId): bool
+    {
+        $row = $this->fetchLatestRepositoryState($repositoryId);
+        return $row !== null && $row['LastAction'] !== 'deleted' && (int) $row['InstallationId'] === $installationId;
+    }
+
+    /**
+     * The state columns of the repository's most recent row (highest Sequence).
+     *
+     * @return array{LastAction: string, InstallationId: int|string}|null Null when the repository was never registered.
+     */
+    private function fetchLatestRepositoryState(int $repositoryId): ?array
     {
         $mysqli = connectToDatabase();
         $stmt = $mysqli->prepare(
-            "SELECT 1 FROM github_repositories WHERE Id = ? AND LastAction != 'deleted' ORDER BY Sequence DESC LIMIT 1"
+            "SELECT LastAction, InstallationId FROM github_repositories WHERE Id = ? ORDER BY Sequence DESC LIMIT 1"
         );
         $stmt->bind_param("i", $repositoryId);
         $stmt->execute();
-        $stmt->store_result();
-        $exists = $stmt->num_rows > 0;
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
         $stmt->close();
         $mysqli->close();
-        return $exists;
+        return $row ?: null;
     }
 
     public function insertRepository(object $repository, int $installationId, string $webhooksHandlerVersion): void
@@ -217,7 +250,8 @@ class CheckupRepository
             "Id", "NodeId", "Name", "FullName", "Private",
             "OwnerLogin", "OwnerId", "OwnerNodeId",
             "SenderLogin", "SenderId", "SenderNodeId",
-            "InstallationId", "WebhooksHandlerVersion"
+            "InstallationId", "WebhooksHandlerVersion",
+            "LastAction", "LastActionDate", "InstallationAction", "InstallationActionDate"
         ];
 
         $sql = "INSERT INTO github_repositories (`" . implode("`,`", $fields) . "`) ";
