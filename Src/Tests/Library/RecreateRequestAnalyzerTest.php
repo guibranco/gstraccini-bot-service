@@ -2,341 +2,255 @@
 
 namespace GuiBranco\GStracciniBot\Tests\Library;
 
+use Closure;
 use DateTimeImmutable;
+use ErrorException;
 use GuiBranco\GStracciniBot\Library\RecreateRequestAnalyzer;
+use GuiBranco\GStracciniBot\Library\RecreateRequestStatus;
+use LogicException;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * How RecreateRequestAnalyzer reads the requests posted for a head commit:
+ * how many there are, when the last one was, and what that adds up to as
+ * time passes without a reaction.
+ */
 class RecreateRequestAnalyzerTest extends TestCase
 {
-    private const HEAD_SHA = "3e235d6b741b467bd5b06da1615c41b076cb1c0c";
+    /** The head commit of the pull request. */
+    private const HEAD_SHA = RecreateRequestFixtures::HEAD_SHA;
 
-    private const OTHER_SHA = "5ee47505d89d4f2843232dc07c981b53d67926c8";
+    /** How long a request may go without an acknowledgement, in seconds. */
+    private const TIMEOUT = RecreateRequestAnalyzer::ACKNOWLEDGEMENT_TIMEOUT_SECONDS;
 
-    private const REQUESTED_AT = "2026-10-21T17:40:38Z";
-
+    /**
+     * The analyzer under test.
+     *
+     * @var RecreateRequestAnalyzer
+     */
     private RecreateRequestAnalyzer $analyzer;
 
+    /**
+     * Builds the comments.
+     *
+     * @var RecreateRequestFixtures
+     */
+    private RecreateRequestFixtures $fixtures;
+
+    /**
+     * Stands for the look at who reacted in tests where no request has a
+     * reaction: there is nobody to ask about, so asking fails the test.
+     *
+     * @var Closure
+     */
+    private Closure $nobodyToAsk;
+
+
+    /**
+     * Starts each test with an analyzer and the fixtures.
+     *
+     * @return void
+     */
     protected function setUp(): void
     {
         $this->analyzer = new RecreateRequestAnalyzer();
-    }
+        $this->fixtures = new RecreateRequestFixtures();
+        $this->nobodyToAsk = fn (): bool => throw new LogicException("Who reacted was asked about a request without reactions.");
+
+    }//end setUp()
+
 
     /**
-     * A recreate request as GitHub lists it, with the reactions rollup.
+     * The requests already on pull requests carry this marker, so it has to
+     * stay as it is for them to be found.
      *
-     * @param string   $createdAt When the request was posted.
-     * @param int|null $reactions How many reactions it has; null leaves the rollup out.
-     * @param string   $headSha   The head commit the request was posted for.
+     * @return void
      */
-    private function request(string $createdAt = self::REQUESTED_AT, ?int $reactions = 0, string $headSha = self::HEAD_SHA): object
-    {
-        $comment = [
-            "body" => "<!--GStraccini:{$headSha}-->\n@dependabot recreate",
-            "created_at" => $createdAt,
-            "user" => (object) ["login" => "guibranco"],
-        ];
-
-        if ($reactions !== null) {
-            $comment["reactions"] = (object) ["total_count" => $reactions, "+1" => $reactions];
-        }
-
-        return (object) $comment;
-    }
-
-    private function comment(string $body, string $createdAt = "2026-10-15T05:54:00Z"): object
-    {
-        return (object) [
-            "body" => $body,
-            "created_at" => $createdAt,
-            "user" => (object) ["login" => "coderabbitai[bot]"],
-            "reactions" => (object) ["total_count" => 0],
-        ];
-    }
-
-    /**
-     * The moment the requests are evaluated at, counted from REQUESTED_AT.
-     */
-    private function after(int $seconds): DateTimeImmutable
-    {
-        return (new DateTimeImmutable(self::REQUESTED_AT))->modify("+{$seconds} seconds");
-    }
-
     public function testMarkerKeepsTheFormatOfTheRequestsAlreadyPosted(): void
     {
-        $this->assertSame("<!--GStraccini:" . self::HEAD_SHA . "-->", $this->analyzer->marker(self::HEAD_SHA));
-    }
+        $this->assertSame("<!--GStraccini:3e235d6b741b467bd5b06da1615c41b076cb1c0c-->", $this->analyzer->marker(self::HEAD_SHA));
 
-    public function testNotRequestedWhenThereAreNoComments(): void
-    {
-        $result = $this->analyzer->analyze([], self::HEAD_SHA, $this->after(0));
+    }//end testMarkerKeepsTheFormatOfTheRequestsAlreadyPosted()
 
-        $this->assertSame(
-            ["status" => RecreateRequestAnalyzer::STATUS_NOT_REQUESTED, "requests" => 0, "lastRequestedAt" => null],
-            $result
-        );
-    }
-
-    public function testNotRequestedWhenNoCommentCarriesTheMarkerOfTheHeadCommit(): void
-    {
-        $comments = [
-            $this->comment("Review skipped\n\nBot user detected."),
-            $this->comment("@dependabot recreate"),
-            (object) ["body" => null, "created_at" => "2026-10-15T05:55:00Z"],
-            // A request for a previous head commit: that recreate happened, this is a new conflict.
-            $this->request("2026-10-15T06:00:00Z", 1, self::OTHER_SHA),
-        ];
-
-        $result = $this->analyzer->analyze($comments, self::HEAD_SHA, $this->after(86400));
-
-        $this->assertSame(RecreateRequestAnalyzer::STATUS_NOT_REQUESTED, $result["status"]);
-        $this->assertSame(0, $result["requests"]);
-    }
-
-    public function testAnyReactionCountsWithoutAWayToTellWhoReacted(): void
-    {
-        $result = $this->analyzer->analyze([$this->request(self::REQUESTED_AT, 1)], self::HEAD_SHA, $this->after(5));
-
-        $this->assertSame(
-            ["status" => RecreateRequestAnalyzer::STATUS_ACKNOWLEDGED, "requests" => 1, "lastRequestedAt" => self::REQUESTED_AT],
-            $result
-        );
-    }
-
-    public function testAnAcknowledgedRequestIsNeverPostedAgainHoweverOldItGets(): void
-    {
-        $result = $this->analyzer->analyze([$this->request(self::REQUESTED_AT, 1)], self::HEAD_SHA, $this->after(30 * 86400));
-
-        $this->assertSame(RecreateRequestAnalyzer::STATUS_ACKNOWLEDGED, $result["status"]);
-    }
-
-    public function testWaitingWhileTheRequestIsRecentAndHasNoReactionYet(): void
-    {
-        $justPosted = $this->analyzer->analyze([$this->request()], self::HEAD_SHA, $this->after(2));
-        $lastSecond = $this->analyzer->analyze(
-            [$this->request()],
-            self::HEAD_SHA,
-            $this->after(RecreateRequestAnalyzer::ACKNOWLEDGEMENT_TIMEOUT_SECONDS - 1)
-        );
-
-        $this->assertSame(RecreateRequestAnalyzer::STATUS_WAITING, $justPosted["status"]);
-        $this->assertSame(RecreateRequestAnalyzer::STATUS_WAITING, $lastSecond["status"]);
-        $this->assertSame(1, $lastSecond["requests"]);
-    }
-
-    public function testUnacknowledgedOnceTheRequestTimedOutWithoutAnyReaction(): void
-    {
-        $result = $this->analyzer->analyze(
-            [$this->request()],
-            self::HEAD_SHA,
-            $this->after(RecreateRequestAnalyzer::ACKNOWLEDGEMENT_TIMEOUT_SECONDS)
-        );
-
-        $this->assertSame(
-            ["status" => RecreateRequestAnalyzer::STATUS_UNACKNOWLEDGED, "requests" => 1, "lastRequestedAt" => self::REQUESTED_AT],
-            $result
-        );
-    }
 
     /**
-     * guibranco/grimoire-ui#350: requested on 2026-10-21, never reacted to, and
-     * still sitting there with the same head commit two weeks later.
+     * A pull request without comments was never asked to be recreated.
+     *
+     * @return void
+     */
+    public function testNotRequestedWhenThereAreNoComments(): void
+    {
+        $status = $this->analyzer->analyze([], self::HEAD_SHA, $this->fixtures->after(0), $this->nobodyToAsk);
+
+        $this->assertSame(RecreateRequestStatus::NOT_REQUESTED, $status->status());
+        $this->assertSame(0, $status->requests());
+        $this->assertNull($status->lastRequestedAt());
+
+    }//end testNotRequestedWhenThereAreNoComments()
+
+
+    /**
+     * Neither a comment without the marker nor a request for a previous head
+     * commit is a request for this one: that recreate happened, and this is
+     * a new conflict. A comment without a body is passed over quietly, which
+     * the test checks by turning anything PHP has to say into an error.
+     *
+     * @return void
+     */
+    public function testNotRequestedWhenNoCommentCarriesTheMarkerOfTheHeadCommit(): void
+    {
+        $withoutBody = $this->fixtures->comment("", "2026-10-15T05:55:00Z");
+        $withoutBody->body = null;
+        $comments = [$this->fixtures->comment("Review skipped\n\nBot user detected.", "2026-10-15T05:54:00Z")];
+        $comments[] = $this->fixtures->comment("@dependabot recreate", "2026-10-15T05:54:30Z");
+        $comments[] = $withoutBody;
+        $comments[] = $this->fixtures->requestFor(RecreateRequestFixtures::OTHER_SHA, "2026-10-15T06:00:00Z", 1);
+
+        set_error_handler(fn (int $severity, string $message): bool => throw new ErrorException($message, 0, $severity));
+        try {
+            $status = $this->analyzer->analyze($comments, self::HEAD_SHA, $this->fixtures->after(86400), $this->nobodyToAsk);
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertSame(RecreateRequestStatus::NOT_REQUESTED, $status->status());
+        $this->assertSame(0, $status->requests());
+
+    }//end testNotRequestedWhenNoCommentCarriesTheMarkerOfTheHeadCommit()
+
+
+    /**
+     * The dependency bots react within seconds, but a request is given the
+     * whole timeout before it counts as never received.
+     *
+     * @return void
+     */
+    public function testWaitingWhileTheRequestIsRecentAndHasNoReactionYet(): void
+    {
+        $comments = [$this->fixtures->request(RecreateRequestFixtures::REQUESTED_AT, 0)];
+
+        $justPosted = $this->analyzer->analyze($comments, self::HEAD_SHA, $this->fixtures->after(2), $this->nobodyToAsk);
+        $lastSecond = $this->analyzer->analyze($comments, self::HEAD_SHA, $this->fixtures->after((self::TIMEOUT - 1)), $this->nobodyToAsk);
+
+        $this->assertSame(RecreateRequestStatus::WAITING, $justPosted->status());
+        $this->assertSame(RecreateRequestStatus::WAITING, $lastSecond->status());
+        $this->assertSame(1, $lastSecond->requests());
+
+    }//end testWaitingWhileTheRequestIsRecentAndHasNoReactionYet()
+
+
+    /**
+     * From the timeout on, a request without a reaction was never received.
+     *
+     * @return void
+     */
+    public function testUnacknowledgedOnceTheRequestTimedOutWithoutAnyReaction(): void
+    {
+        $comments = [$this->fixtures->request(RecreateRequestFixtures::REQUESTED_AT, 0)];
+
+        $status = $this->analyzer->analyze($comments, self::HEAD_SHA, $this->fixtures->after(self::TIMEOUT), $this->nobodyToAsk);
+
+        $this->assertSame(RecreateRequestStatus::UNACKNOWLEDGED, $status->status());
+        $this->assertSame(1, $status->requests());
+        $this->assertSame(RecreateRequestFixtures::REQUESTED_AT, $status->lastRequestedAt());
+
+    }//end testUnacknowledgedOnceTheRequestTimedOutWithoutAnyReaction()
+
+
+    /**
+     * The case of guibranco/grimoire-ui#350: requested on 2026-10-21, never
+     * reacted to, and still there with the same head commit two weeks later.
+     *
+     * @return void
      */
     public function testUnacknowledgedForARequestLeftWithoutReactionForTwoWeeks(): void
     {
-        $comments = [
-            $this->comment("### Labels\n\nThe following labels could not be found: `dependencies`."),
-            $this->comment("Review skipped\n\nBot user detected."),
-            $this->request(),
-        ];
+        $comments = [$this->fixtures->comment("### Labels\n\nThe following labels could not be found: `dependencies`.", "2026-10-15T05:54:00Z")];
+        $comments[] = $this->fixtures->comment("Review skipped\n\nBot user detected.", "2026-10-15T05:54:30Z");
+        $comments[] = $this->fixtures->request(RecreateRequestFixtures::REQUESTED_AT, 0);
+        $now = new DateTimeImmutable(RecreateRequestFixtures::TWO_WEEKS_LATER);
 
-        $result = $this->analyzer->analyze($comments, self::HEAD_SHA, new DateTimeImmutable("2026-11-05T16:58:00Z"));
+        $status = $this->analyzer->analyze($comments, self::HEAD_SHA, $now, $this->nobodyToAsk);
 
-        $this->assertSame(RecreateRequestAnalyzer::STATUS_UNACKNOWLEDGED, $result["status"]);
-        $this->assertSame(1, $result["requests"]);
-    }
+        $this->assertSame(RecreateRequestStatus::UNACKNOWLEDGED, $status->status());
+        $this->assertSame(1, $status->requests());
 
+    }//end testUnacknowledgedForARequestLeftWithoutReactionForTwoWeeks()
+
+
+    /**
+     * A request that was posted again starts a new wait.
+     *
+     * @return void
+     */
     public function testTheTimeoutCountsFromTheLastRequest(): void
     {
-        $comments = [
-            $this->request(self::REQUESTED_AT),
-            $this->request("2026-10-22T08:00:00Z"),
-        ];
+        $comments = [$this->fixtures->request(RecreateRequestFixtures::REQUESTED_AT, 0)];
+        $comments[] = $this->fixtures->request("2026-10-22T08:00:00Z", 0);
 
-        $waiting = $this->analyzer->analyze($comments, self::HEAD_SHA, new DateTimeImmutable("2026-10-22T08:30:00Z"));
-        $timedOut = $this->analyzer->analyze($comments, self::HEAD_SHA, new DateTimeImmutable("2026-10-22T09:00:00Z"));
+        $waiting = $this->analyzer->analyze($comments, self::HEAD_SHA, new DateTimeImmutable("2026-10-22T08:30:00Z"), $this->nobodyToAsk);
+        $timedOut = $this->analyzer->analyze($comments, self::HEAD_SHA, new DateTimeImmutable("2026-10-22T09:00:00Z"), $this->nobodyToAsk);
 
-        $this->assertSame(
-            ["status" => RecreateRequestAnalyzer::STATUS_WAITING, "requests" => 2, "lastRequestedAt" => "2026-10-22T08:00:00Z"],
-            $waiting
-        );
-        $this->assertSame(RecreateRequestAnalyzer::STATUS_UNACKNOWLEDGED, $timedOut["status"]);
-        $this->assertSame(2, $timedOut["requests"]);
-    }
+        $this->assertSame(RecreateRequestStatus::WAITING, $waiting->status());
+        $this->assertSame(2, $waiting->requests());
+        $this->assertSame("2026-10-22T08:00:00Z", $waiting->lastRequestedAt());
+        $this->assertSame(RecreateRequestStatus::UNACKNOWLEDGED, $timedOut->status());
+        $this->assertSame(2, $timedOut->requests());
 
+    }//end testTheTimeoutCountsFromTheLastRequest()
+
+
+    /**
+     * The last request is the one posted last, not the one listed last.
+     *
+     * @return void
+     */
     public function testTheLastRequestIsFoundWhateverTheOrderOfTheComments(): void
     {
-        $comments = [
-            $this->request("2026-10-22T08:00:00Z"),
-            $this->request(self::REQUESTED_AT),
-        ];
+        $comments = [$this->fixtures->request("2026-10-22T08:00:00Z", 0)];
+        $comments[] = $this->fixtures->request(RecreateRequestFixtures::REQUESTED_AT, 0);
 
-        $result = $this->analyzer->analyze($comments, self::HEAD_SHA, new DateTimeImmutable("2026-10-22T08:30:00Z"));
+        $status = $this->analyzer->analyze($comments, self::HEAD_SHA, new DateTimeImmutable("2026-10-22T08:30:00Z"), $this->nobodyToAsk);
 
-        $this->assertSame("2026-10-22T08:00:00Z", $result["lastRequestedAt"]);
-        $this->assertSame(RecreateRequestAnalyzer::STATUS_WAITING, $result["status"]);
-    }
+        $this->assertSame("2026-10-22T08:00:00Z", $status->lastRequestedAt());
+        $this->assertSame(RecreateRequestStatus::WAITING, $status->status());
 
+    }//end testTheLastRequestIsFoundWhateverTheOrderOfTheComments()
+
+
+    /**
+     * The bot stops asking once the requests allowed for a head commit all
+     * timed out.
+     *
+     * @return void
+     */
     public function testGivesUpAfterTheMaximumNumberOfUnacknowledgedRequests(): void
     {
-        $comments = [];
-        for ($request = 0; $request < RecreateRequestAnalyzer::MAX_REQUESTS; $request++) {
-            $comments[] = $this->request("2026-10-2" . ($request + 1) . "T17:40:38Z");
-        }
+        $comments = $this->fixtures->unanswered(RecreateRequestStatus::MAX_REQUESTS);
+        $now = new DateTimeImmutable(RecreateRequestFixtures::TWO_WEEKS_LATER);
 
-        $result = $this->analyzer->analyze($comments, self::HEAD_SHA, new DateTimeImmutable("2026-11-05T16:58:00Z"));
+        $status = $this->analyzer->analyze($comments, self::HEAD_SHA, $now, $this->nobodyToAsk);
 
-        $this->assertSame(RecreateRequestAnalyzer::STATUS_GAVE_UP, $result["status"]);
-        $this->assertSame(RecreateRequestAnalyzer::MAX_REQUESTS, $result["requests"]);
-    }
+        $this->assertSame(RecreateRequestStatus::GAVE_UP, $status->status());
+        $this->assertSame(RecreateRequestStatus::MAX_REQUESTS, $status->requests());
 
+    }//end testGivesUpAfterTheMaximumNumberOfUnacknowledgedRequests()
+
+
+    /**
+     * The last request allowed gets its wait like the others.
+     *
+     * @return void
+     */
     public function testStillWaitsForTheLastAllowedRequestBeforeGivingUp(): void
     {
-        $comments = [];
-        for ($request = 0; $request < RecreateRequestAnalyzer::MAX_REQUESTS; $request++) {
-            $comments[] = $this->request("2026-10-2" . ($request + 1) . "T17:40:38Z");
-        }
+        $comments = $this->fixtures->unanswered(RecreateRequestStatus::MAX_REQUESTS);
 
-        $result = $this->analyzer->analyze($comments, self::HEAD_SHA, new DateTimeImmutable("2026-10-23T17:45:00Z"));
+        $status = $this->analyzer->analyze($comments, self::HEAD_SHA, new DateTimeImmutable("2026-10-23T17:45:00Z"), $this->nobodyToAsk);
 
-        $this->assertSame(RecreateRequestAnalyzer::STATUS_WAITING, $result["status"]);
-    }
+        $this->assertSame(RecreateRequestStatus::WAITING, $status->status());
 
-    public function testAcknowledgedWhenAnyRequestForTheHeadCommitHasAReaction(): void
-    {
-        $comments = [
-            $this->request(self::REQUESTED_AT, 0),
-            $this->request("2026-10-22T08:00:00Z", 1),
-            $this->request("2026-10-23T08:00:00Z", 0),
-        ];
+    }//end testStillWaitsForTheLastAllowedRequestBeforeGivingUp()
 
-        $result = $this->analyzer->analyze($comments, self::HEAD_SHA, new DateTimeImmutable("2026-11-05T16:58:00Z"));
 
-        $this->assertSame(RecreateRequestAnalyzer::STATUS_ACKNOWLEDGED, $result["status"]);
-        $this->assertSame(3, $result["requests"]);
-    }
-
-    public function testAReactionOnARequestForAnotherHeadCommitDoesNotCount(): void
-    {
-        $comments = [
-            $this->request("2026-10-15T06:00:00Z", 1, self::OTHER_SHA),
-            $this->request(),
-        ];
-
-        $result = $this->analyzer->analyze($comments, self::HEAD_SHA, new DateTimeImmutable("2026-11-05T16:58:00Z"));
-
-        $this->assertSame(RecreateRequestAnalyzer::STATUS_UNACKNOWLEDGED, $result["status"]);
-        $this->assertSame(1, $result["requests"]);
-    }
-
-    public function testAReactionFromSomeoneElseIsNotTheAcknowledgement(): void
-    {
-        $nobodyFromTheBot = static fn (object $comment): bool => false;
-        $comments = [$this->request(self::REQUESTED_AT, 1)];
-
-        $waiting = $this->analyzer->analyze($comments, self::HEAD_SHA, $this->after(5), $nobodyFromTheBot);
-        $timedOut = $this->analyzer->analyze($comments, self::HEAD_SHA, $this->after(86400), $nobodyFromTheBot);
-
-        $this->assertSame(RecreateRequestAnalyzer::STATUS_WAITING, $waiting["status"]);
-        $this->assertSame(RecreateRequestAnalyzer::STATUS_UNACKNOWLEDGED, $timedOut["status"]);
-    }
-
-    public function testAcknowledgedWhenTheDependencyBotIsAmongThoseWhoReacted(): void
-    {
-        $result = $this->analyzer->analyze(
-            [$this->request(self::REQUESTED_AT, 2)],
-            self::HEAD_SHA,
-            $this->after(86400),
-            static fn (object $comment): bool => true
-        );
-
-        $this->assertSame(RecreateRequestAnalyzer::STATUS_ACKNOWLEDGED, $result["status"]);
-    }
-
-    public function testWhoReactedIsOnlyAskedAboutRequestsThatHaveReactions(): void
-    {
-        $withoutReactions = $this->request(self::REQUESTED_AT, 0);
-        $withReactions = $this->request("2026-10-22T08:00:00Z", 1);
-        $otherComment = $this->comment("Quality Gate passed");
-        $otherComment->reactions->total_count = 3;
-        $comments = [
-            $withoutReactions,
-            $otherComment,
-            $this->request("2026-10-15T06:00:00Z", 1, self::OTHER_SHA),
-            $withReactions,
-        ];
-
-        $asked = [];
-        $result = $this->analyzer->analyze(
-            $comments,
-            self::HEAD_SHA,
-            new DateTimeImmutable("2026-11-05T16:58:00Z"),
-            static function (object $comment) use (&$asked): bool {
-                $asked[] = $comment;
-                return false;
-            }
-        );
-
-        $this->assertSame([$withReactions], $asked);
-        $this->assertSame(RecreateRequestAnalyzer::STATUS_UNACKNOWLEDGED, $result["status"]);
-        $this->assertSame(2, $result["requests"]);
-    }
-
-    public function testWhoReactedIsNotAskedAgainOnceARequestIsAcknowledged(): void
-    {
-        $comments = [
-            $this->request(self::REQUESTED_AT, 1),
-            $this->request("2026-10-22T08:00:00Z", 1),
-        ];
-
-        $asked = 0;
-        $result = $this->analyzer->analyze(
-            $comments,
-            self::HEAD_SHA,
-            new DateTimeImmutable("2026-11-05T16:58:00Z"),
-            static function (object $comment) use (&$asked): bool {
-                $asked++;
-                return true;
-            }
-        );
-
-        $this->assertSame(1, $asked);
-        $this->assertSame(RecreateRequestAnalyzer::STATUS_ACKNOWLEDGED, $result["status"]);
-        $this->assertSame(2, $result["requests"]);
-    }
-
-    public function testARequestWithoutTheReactionsRollupIsTakenAsAcknowledged(): void
-    {
-        $result = $this->analyzer->analyze(
-            [$this->request(self::REQUESTED_AT, null)],
-            self::HEAD_SHA,
-            new DateTimeImmutable("2026-11-05T16:58:00Z")
-        );
-
-        $this->assertSame(RecreateRequestAnalyzer::STATUS_ACKNOWLEDGED, $result["status"]);
-    }
-
-    public function testARequestWithoutAReadableDateNeverTimesOut(): void
-    {
-        $unreadable = $this->request("not a date");
-        $missing = $this->request();
-        unset($missing->created_at);
-
-        $now = new DateTimeImmutable("2026-11-05T16:58:00Z");
-
-        $this->assertSame(RecreateRequestAnalyzer::STATUS_WAITING, $this->analyzer->analyze([$unreadable], self::HEAD_SHA, $now)["status"]);
-        $this->assertSame(
-            ["status" => RecreateRequestAnalyzer::STATUS_WAITING, "requests" => 1, "lastRequestedAt" => null],
-            $this->analyzer->analyze([$missing], self::HEAD_SHA, $now)
-        );
-    }
-}
+}//end class
