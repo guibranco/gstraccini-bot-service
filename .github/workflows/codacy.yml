@@ -54,8 +54,34 @@ jobs:
           # This will handover control about PR rejection to the GitHub side
           max-allowed-issues: 2147483647
 
-      # Upload the SARIF file generated in the previous step
+      # The CLI writes one SARIF run per tool execution, and a tool that is executed once per
+      # language (Opengrep, Checkov, PMD, Spectral...) gets several runs under the same name.
+      # Code scanning rejects a file with more than one run per tool and category, and with
+      # more than 20 runs, so the runs of each tool are merged into a single one. Rules and
+      # artifacts become the union of the merged runs, which is why the results drop their
+      # positions in those lists and keep pointing at them by `ruleId` and `uri`.
+      - name: Merge the SARIF runs of each tool
+        run: |
+          jq '
+            .runs |= (
+              group_by(.tool.driver.name)
+              | map(
+                  . as $runs
+                  | first
+                  | .tool.driver.rules = ([$runs[].tool.driver.rules[]?] | unique_by(.id))
+                  | .artifacts = ([$runs[].artifacts[]?] | unique_by(.location.uri))
+                  | .results = [
+                      $runs[].results[]?
+                      | del(.ruleIndex, .locations[]?.physicalLocation.artifactLocation.index)
+                    ]
+                )
+            )
+          ' results.sarif > results.merged.sarif
+          echo "SARIF runs: $(jq '.runs | length' results.sarif) written by the CLI, $(jq '.runs | length' results.merged.sarif) after merging"
+          jq -r '.runs[] | "- \(.tool.driver.name): \(.results | length) results"' results.merged.sarif
+
+      # Upload the SARIF file generated in the previous steps
       - name: Upload SARIF results file
         uses: github/codeql-action/upload-sarif@v4.39.1
         with:
-          sarif_file: results.sarif
+          sarif_file: results.merged.sarif
