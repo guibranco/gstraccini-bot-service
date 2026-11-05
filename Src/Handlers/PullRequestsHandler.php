@@ -17,6 +17,13 @@ define("PULLS", "/pulls/");
  */
 class PullRequestsHandler implements IHandler
 {
+    private const DEPENDENCY_BOTS = [
+        "dependabot[bot]",
+        "depfu[bot]",
+        "codefactor-io[bot]",
+        "deepsource-autofix[bot]",
+        "net-framework-updater[bot]"
+    ];
     public function handleItem($pullRequest, $isRetry = false)
     {
         global $logStream;
@@ -535,17 +542,18 @@ class PullRequestsHandler implements IHandler
      * If the description is missing or too short, it applies
      * a template or default message.
      * Validates the presence of groups and checkboxes in the description.
+     * Skips validation for dependency bots.
      *
      * @param array $metadata Metadata for the GitHub API request
      * @param object  $pullRequestUpdated The updated pull request data
+     * @param string $sender The sender of the pull request
      */
     private function checkPullRequestDescription($metadata, $pullRequestUpdated, $sender)
     {
         $type = "pull request description";
         $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, $type);
 
-        $dependencyBots = ["dependabot[bot]", "depfu[bot]", "codefactor-io[bot]", "deepsource-autofix[bot]", "net-framework-updater[bot]"];
-        if (in_array($sender, $dependencyBots)) {
+        if (in_array($sender, self::DEPENDENCY_BOTS)) {
             setCheckRunSucceeded($metadata, $checkRunId, $type, "Skipped for dependency bot PR");
             return;
         }
