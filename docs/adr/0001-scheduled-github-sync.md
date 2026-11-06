@@ -114,5 +114,13 @@ default because it only ever inserts.
   their `closed` event was missed, so the bot's pull requests and issues workers get a little extra
   work right after a sync. Rows re-added by the sync (repositories, pull requests, issues, branches) are
   inserted `NEW` and onboarded by the regular workers, exactly like webhook-created rows.
+- The `deleted`/`removed` rows the installations handler and the syncs append are inserted `NEW` too
+  (the table has no other default), so they reach the repositories handler like any event. The handler
+  finalizes them without a GitHub call — there is nothing to set up for a repository that is gone — and,
+  when a token request for a row that still looks active answers 404 (installation gone) or 422
+  (repository not accessible), records the removal itself, the way the syncs do, instead of failing and
+  being retried every hour — unless the repository's latest row already records it or belongs to another
+  installation (the row was stale: a sync got there first, or the repository was transferred or
+  re-registered since it was queued), in which case nothing is written and the row is just finalized.
 - `settings` (a webhooks table) now holds one row written by this service; its name is prefixed with
   `gstraccini-bot.` so it can't collide with that project's settings.

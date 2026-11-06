@@ -92,9 +92,34 @@ class CheckupRepository
      */
     public function existsRepository(int $repositoryId): bool
     {
+        $row = $this->fetchLatestRepositoryState($repositoryId);
+        return $row !== null && $row['LastAction'] !== 'deleted';
+    }
+
+    /**
+     * Whether the repository is currently registered as active **for this
+     * installation**: its most recent `github_repositories` row is not a
+     * `deleted` one and carries this InstallationId. A repository moved to
+     * another installation (transferred, or re-registered after the app was
+     * reinstalled) has a more recent row under the new installation, so a
+     * stale row of the old one must not be allowed to record its removal.
+     */
+    public function isRepositoryActiveForInstallation(int $repositoryId, int $installationId): bool
+    {
+        $row = $this->fetchLatestRepositoryState($repositoryId);
+        return $row !== null && $row['LastAction'] !== 'deleted' && (int) $row['InstallationId'] === $installationId;
+    }
+
+    /**
+     * The state columns of the repository's most recent row (highest Sequence).
+     *
+     * @return array{LastAction: string, InstallationId: int|string}|null Null when the repository was never registered.
+     */
+    private function fetchLatestRepositoryState(int $repositoryId): ?array
+    {
         $mysqli = connectToDatabase();
         $stmt = $mysqli->prepare(
-            "SELECT LastAction FROM github_repositories WHERE Id = ? ORDER BY Sequence DESC LIMIT 1"
+            "SELECT LastAction, InstallationId FROM github_repositories WHERE Id = ? ORDER BY Sequence DESC LIMIT 1"
         );
         $stmt->bind_param("i", $repositoryId);
         $stmt->execute();
@@ -102,7 +127,7 @@ class CheckupRepository
         $row = $result->fetch_assoc();
         $stmt->close();
         $mysqli->close();
-        return $row !== null && $row['LastAction'] !== 'deleted';
+        return $row ?: null;
     }
 
     public function insertRepository(object $repository, int $installationId, string $webhooksHandlerVersion): void
