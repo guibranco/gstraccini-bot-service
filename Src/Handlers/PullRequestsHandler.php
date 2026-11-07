@@ -2,9 +2,11 @@
 
 namespace GuiBranco\GStracciniBot\Handlers;
 
+use DateTimeImmutable;
 use GuiBranco\GStracciniBot\Library\DependencyFileLabelService;
 use GuiBranco\GStracciniBot\Library\MarkdownGroupCheckboxValidator;
 use GuiBranco\GStracciniBot\Library\PullRequestCodeScanner;
+use GuiBranco\GStracciniBot\Library\RecreateRequester;
 use GuiBranco\GStracciniBot\Library\VersionBumpAnalyzer;
 use GuiBranco\GStracciniBot\Library\VersionBumpCommentBuilder;
 
@@ -916,21 +918,20 @@ class PullRequestsHandler implements IHandler
             }
             echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Recreate via bot - Sender: " . $pullRequest->Sender . " ☢️\n";
 
-            $prefix = "<!--GStraccini:{$pullRequestUpdated->head->sha}-->\n";
-            $commentExists = $this->findCommentByContent($metadata, $pullRequestUpdated, $prefix);
-
-            if ($commentExists) {
-                echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Already requested to recreate - Sender: " . $pullRequest->Sender . " ⚠️\n";
-                return;
+            // The marker comment being there doesn't mean the request was received: Dependabot and Depfu
+            // react to a command they picked up, so one left without their reaction is posted again.
+            $recreate = (new RecreateRequester())->request($metadata, $pullRequestUpdated->head->sha, $pullRequest->Sender, new DateTimeImmutable());
+            if ($recreate->summary() !== "") {
+                echo "State: {$pullRequestUpdated->mergeable_state} - Resolve conflicts - {$recreate->summary()} - Sender: {$pullRequest->Sender} {$recreate->icon()}\n";
             }
 
-            if ($pullRequest->Sender === "dependabot[bot]") {
-                $comment = array("body" => "{$prefix}@dependabot recreate");
-            } else {
-                $comment = array("body" => "{$prefix}@depfu recreate");
+            if ($recreate->warning() !== "") {
+                $context = $recreate->context();
+                $context["repo"] = "{$metadata['owner']}/{$metadata['repo']}";
+                $context["sender"] = $pullRequest->Sender;
+                $context["head_sha"] = $pullRequestUpdated->head->sha;
+                $logStream?->warning("PR #{$pullRequest->Number} {$recreate->warning()}", $context, "pull_requests", $pullRequest->DeliveryIdText);
             }
-
-            doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
         } else {
             echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - No conflicts - Sender: " . $pullRequest->Sender . " 🆒\n";
         }
