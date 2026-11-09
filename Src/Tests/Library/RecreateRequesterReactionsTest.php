@@ -137,7 +137,7 @@ class RecreateRequesterReactionsTest extends TestCase
         $anonymous->user = null;
         $this->github->reactions(RecreateRequestFixtures::REQUEST_ID, [$anonymous, $this->fixtures->reaction("dependabot[bot]")]);
 
-        set_error_handler(fn (int $severity, string $message) => $this->fail("PHP reported (level {$severity}): {$message}"));
+        set_error_handler(fn (int $severity, string $message) => $this->fail("PHP error {$severity}: {$message}"));
         try {
             $status = $this->request();
         } finally {

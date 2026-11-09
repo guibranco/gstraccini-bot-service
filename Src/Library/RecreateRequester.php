@@ -148,7 +148,8 @@ class RecreateRequester
         $reactions = null;
 
         if (isset($comment->id) === true) {
-            $url = "repos/{$metadata["owner"]}/{$metadata["repo"]}/issues/comments/{$comment->id}/reactions?per_page=100";
+            $repository = "{$metadata["owner"]}/{$metadata["repo"]}";
+            $url = "repos/{$repository}/issues/comments/{$comment->id}/reactions?per_page=100";
             $response = doRequestGitHub($metadata["token"], $url, null, "GET");
             if ($response->getStatusCode() === 200) {
                 $reactions = json_decode($response->getBody());
