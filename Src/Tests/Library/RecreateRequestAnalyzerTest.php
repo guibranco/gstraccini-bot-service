@@ -4,7 +4,6 @@ namespace GuiBranco\GStracciniBot\Tests\Library;
 
 use Closure;
 use DateTimeImmutable;
-use ErrorException;
 use GuiBranco\GStracciniBot\Library\RecreateRequestAnalyzer;
 use GuiBranco\GStracciniBot\Library\RecreateRequestStatus;
 use LogicException;
@@ -106,7 +105,7 @@ class RecreateRequestAnalyzerTest extends TestCase
         $comments[] = $withoutBody;
         $comments[] = $this->fixtures->requestFor(RecreateRequestFixtures::OTHER_SHA, "2026-10-15T06:00:00Z", 1);
 
-        set_error_handler(fn (int $severity, string $message): bool => throw new ErrorException($message, 0, $severity));
+        set_error_handler(fn (int $severity, string $message) => $this->fail("PHP reported (level {$severity}): {$message}"));
         try {
             $status = $this->analyzer->analyze($comments, self::HEAD_SHA, $this->fixtures->after(86400), $this->nobodyToAsk);
         } finally {
