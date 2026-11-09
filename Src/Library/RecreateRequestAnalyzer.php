@@ -93,7 +93,7 @@ class RecreateRequestAnalyzer
     {
         $body = ($comment->body ?? null);
 
-        return (is_string($body) === true && str_contains($body, $marker) === true);
+        return is_string($body) === true && str_contains($body, $marker) === true;
 
     }//end isRequest()
 
@@ -121,7 +121,7 @@ class RecreateRequestAnalyzer
             return false;
         }
 
-        return ($reactedByBot($comment) === true);
+        return $reactedByBot($comment) === true;
 
     }//end isAcknowledged()
 
@@ -170,7 +170,7 @@ class RecreateRequestAnalyzer
             return false;
         }
 
-        return (($now->getTimestamp() - $requestedAt) >= self::ACKNOWLEDGEMENT_TIMEOUT_SECONDS);
+        return ($now->getTimestamp() - $requestedAt) >= self::ACKNOWLEDGEMENT_TIMEOUT_SECONDS;
 
     }//end hasTimedOut()
 

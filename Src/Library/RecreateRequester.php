@@ -119,18 +119,8 @@ class RecreateRequester
      */
     private function hasReactionFrom(array $metadata, object $comment, string $login): bool
     {
-        if (isset($comment->id) === false) {
-            return true;
-        }
-
-        $url = "repos/{$metadata["owner"]}/{$metadata["repo"]}/issues/comments/{$comment->id}/reactions?per_page=100";
-        $response = doRequestGitHub($metadata["token"], $url, null, "GET");
-        if ($response->getStatusCode() !== 200) {
-            return true;
-        }
-
-        $reactions = json_decode($response->getBody());
-        if (is_array($reactions) === false) {
+        $reactions = $this->listReactions($metadata, $comment);
+        if ($reactions === null) {
             return true;
         }
 
@@ -143,6 +133,36 @@ class RecreateRequester
         return false;
 
     }//end hasReactionFrom()
+
+
+    /**
+     * Lists the reactions to a comment.
+     *
+     * @param array  $metadata Metadata for the GitHub API request. Must include `owner`, `repo` and `token`.
+     * @param object $comment  The comment, as the comments listing returns it.
+     *
+     * @return array|null The reactions, null when they can't be listed.
+     */
+    private function listReactions(array $metadata, object $comment): ?array
+    {
+        $reactions = null;
+
+        if (isset($comment->id) === true) {
+            $repository = "{$metadata["owner"]}/{$metadata["repo"]}";
+            $url = "repos/{$repository}/issues/comments/{$comment->id}/reactions?per_page=100";
+            $response = doRequestGitHub($metadata["token"], $url, null, "GET");
+            if ($response->getStatusCode() === 200) {
+                $reactions = json_decode($response->getBody());
+            }
+        }
+
+        if (is_array($reactions) === false) {
+            return null;
+        }
+
+        return $reactions;
+
+    }//end listReactions()
 
 
     /**
