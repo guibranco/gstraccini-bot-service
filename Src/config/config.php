@@ -90,7 +90,8 @@ if (file_exists($logStreamSecretsFile)) {
 $logStream = null;
 $logStreamConfig = loadConfig();
 $logStreamEnabled = !isset($logStreamConfig->logStream->enabled) || $logStreamConfig->logStream->enabled === true;
-if ($logStreamEnabled === true && empty($logStreamServer) === false && empty($logStreamApiKey) === false && empty($logStreamApiToken) === false) {
+$hasLogStreamCreds = (empty($logStreamApiKey) === false && empty($logStreamApiToken) === false);
+if ($logStreamEnabled === true && empty($logStreamServer) === false && $hasLogStreamCreds === true) {
     $logStream = new LogStream(
         baseUrl: $logStreamServer,
         appKey: $logStreamApiKey,
