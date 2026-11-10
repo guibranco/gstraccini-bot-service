@@ -10,6 +10,7 @@ use GuiBranco\GStracciniBot\Library\InfisicalIgnoreSuggestionParser;
 use GuiBranco\GStracciniBot\Library\LabelHelper;
 use GuiBranco\GStracciniBot\Library\LabelService;
 use GuiBranco\GStracciniBot\Library\LogContext;
+use GuiBranco\GStracciniBot\Library\PullRequestHeadWatcher;
 use GuiBranco\GStracciniBot\Library\RepositoryManager;
 use GuiBranco\GStracciniBot\Library\VersionBumpCommentBuilder;
 use GuiBranco\GStracciniBot\Library\VersionBumpCommitService;
@@ -1054,6 +1055,26 @@ class CommentsHandler implements IHandler
         $commitsResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"] . "/commits?per_page=100", null, "GET");
         $commits = json_decode($commitsResponse->getBody());
     
+        upsertPullRequest($this->buildPullRequestRow($comment, $pullRequestUpdated));
+
+        $commitsList = "";
+        foreach ($commits as $commitItem) {
+            $commitsList .= "SHA: [{$commitItem->sha}](https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/pull/{$comment->PullRequestNumber}/commits/{$commitItem->sha})\n";
+
+            upsertPush($this->buildPushRow($comment, $pullRequestUpdated->head->ref, $commitItem));
+        }
+        $body = "Reviewing this pull request! :eyes:\n";
+        $body .= "Mergeable state: {$pullRequestUpdated->mergeable_state}\n\n";
+        $body .= "Commits included:\n {$commitsList}";
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    }
+
+    /**
+     * Builds the `github_pull_requests` row used to (re-)queue a pull request for the
+     * pull requests worker, from the comment that triggered the action.
+     */
+    private function buildPullRequestRow($comment, object $pullRequestUpdated): \stdClass
+    {
         $pullRequest = new \stdClass();
         $pullRequest->DeliveryId = $comment->DeliveryIdText;
         $pullRequest->HookId = $comment->HookId;
@@ -1068,38 +1089,78 @@ class CommentsHandler implements IHandler
         $pullRequest->Title = $pullRequestUpdated->title;
         $pullRequest->Ref = $pullRequestUpdated->head->ref;
         $pullRequest->InstallationId = $comment->InstallationId;
-    
-        upsertPullRequest($pullRequest);
-    
-        $commitsList = "";
-        foreach ($commits as $commitItem) {
-            $commit = new \stdClass();
-            $commit->HookId = $comment->HookId;
-            $commit->TargetId = $comment->TargetId;
-            $commit->TargetType = $comment->TargetType;
-            $commit->RepositoryOwner = $comment->RepositoryOwner;
-            $commit->RepositoryName = $comment->RepositoryName;
-            $commit->Ref = $pullRequestUpdated->head->ref;
-            $commit->HeadCommitId = $commitItem->sha;
-            $commit->HeadCommitTreeId = $commitItem->commit->tree->sha;
-            $commit->HeadCommitMessage = $commitItem->commit->message;
-            $commit->HeadCommitTimestamp = date("Y-m-d H:i:s", strtotime($commitItem->commit->author->date));
-            $commit->HeadCommitAuthorName = $commitItem->commit->author->name;
-            $commit->HeadCommitAuthorEmail = $commitItem->commit->author->email;
-            $commit->HeadCommitCommitterName = $commitItem->commit->committer->name;
-            $commit->HeadCommitCommitterEmail = $commitItem->commit->committer->email;
-            $commit->InstallationId = $comment->InstallationId;
-    
-            $commitsList .= "SHA: [{$commitItem->sha}](https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/pull/{$comment->PullRequestNumber}/commits/{$commitItem->sha})\n";
-    
-            upsertPush($commit);
-        }
-        $body = "Reviewing this pull request! :eyes:\n";
-        $body .= "Mergeable state: {$pullRequestUpdated->mergeable_state}\n\n";
-        $body .= "Commits included:\n {$commitsList}";
-        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+
+        return $pullRequest;
     }
-    
+
+    /**
+     * Builds the `github_pushes` row used to (re-)queue a commit for the pushes worker.
+     * `$commitItem` has the shape returned by the GitHub commits API
+     * (`sha`, `commit.tree.sha`, `commit.message`, `commit.author`, `commit.committer`).
+     */
+    private function buildPushRow($comment, string $ref, object $commitItem): \stdClass
+    {
+        $commit = new \stdClass();
+        $commit->HookId = $comment->HookId;
+        $commit->TargetId = $comment->TargetId;
+        $commit->TargetType = $comment->TargetType;
+        $commit->RepositoryOwner = $comment->RepositoryOwner;
+        $commit->RepositoryName = $comment->RepositoryName;
+        $commit->Ref = $ref;
+        $commit->HeadCommitId = $commitItem->sha;
+        $commit->HeadCommitTreeId = $commitItem->commit->tree->sha;
+        $commit->HeadCommitMessage = $commitItem->commit->message;
+        $commit->HeadCommitTimestamp = date("Y-m-d H:i:s", strtotime($commitItem->commit->author->date));
+        $commit->HeadCommitAuthorName = $commitItem->commit->author->name;
+        $commit->HeadCommitAuthorEmail = $commitItem->commit->author->email;
+        $commit->HeadCommitCommitterName = $commitItem->commit->committer->name;
+        $commit->HeadCommitCommitterEmail = $commitItem->commit->committer->email;
+        $commit->InstallationId = $comment->InstallationId;
+
+        return $commit;
+    }
+
+    /**
+     * Queues the pull request and the commit the bot just pushed onto its branch,
+     * so the checks run for the new head SHA. The bot can't rely on the
+     * `push` / `pull_request.synchronize` webhooks for its own commits: those
+     * aren't processed for commits the bot authored, which left the new head
+     * without any check runs (e.g. "GStraccini Checks: Pull Request" never
+     * resolving after a version bump commit).
+     */
+    private function queueChecksForBotCommit($metadata, $comment, object $pullRequestUpdated, string $sha): void
+    {
+        global $logStream;
+
+        $commitResponse = doRequestGitHub($metadata["token"], "{$metadata['repoPrefix']}/commits/{$sha}", null, "GET");
+        if ($commitResponse->getStatusCode() === 200) {
+            upsertPush($this->buildPushRow($comment, $pullRequestUpdated->head->ref, json_decode($commitResponse->getBody())));
+        } else {
+            $logStream?->warning(
+                'Failed to fetch bot commit {commit} on {repo}#{pr} — queueing the pull request only',
+                (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", pr: $comment->PullRequestNumber, commit: $sha))->toArray(),
+                "comments",
+                $comment->DeliveryIdText
+            );
+        }
+
+        $watcher = new PullRequestHeadWatcher();
+        $newHead = $watcher->waitForNewHead($metadata["token"], $metadata["pullRequestUrl"], $pullRequestUpdated->head->sha);
+        if ($newHead === null) {
+            echo "Head of #{$comment->PullRequestNumber} still at {$pullRequestUpdated->head->sha} after bot commit {$sha} — not re-queuing ⚠️\n";
+            $logStream?->warning(
+                'Head of {repo}#{pr} did not move after bot commit {commit} — pull request not re-queued',
+                (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", pr: $comment->PullRequestNumber, commit: $sha))->toArray(),
+                "comments",
+                $comment->DeliveryIdText
+            );
+            return;
+        }
+
+        upsertPullRequest($this->buildPullRequestRow($comment, $pullRequestUpdated));
+        echo "Queued checks for bot commit {$sha} (head {$newHead}) on #{$comment->PullRequestNumber} 🔁\n";
+    }
+
     private function execute_updateSnapshot($config, $metadata, $comment): void
     {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
@@ -1202,14 +1263,18 @@ class CommentsHandler implements IHandler
 
         $completion = $builder->buildCompletion($result["sha"] ?? "n/a", $result["message"]);
         doRequestGitHub($metadata["token"], $approvalCommentUrl, array("body" => $body . $completion), "PATCH");
+
+        if (!empty($result["sha"])) {
+            $this->queueChecksForBotCommit($metadata, $comment, $pullRequest, $result["sha"]);
+        }
     }
 
     /**
      * Handles an edit to the bot's own version-bump decision comment: once the user
      * checks one of the three options, either resolves the pending "GStraccini Checks:
      * Pull Request" check run directly (no version bump), or pushes a dummy commit
-     * carrying the matching `+semver` directive (minor/major), letting the next
-     * pull_request synchronize event resolve the check run naturally.
+     * carrying the matching `+semver` directive (minor/major) and queues the pull
+     * request so the checks run for that new head commit and resolve the check run.
      */
     private function execute_applyVersionBumpDecision($config, $metadata, $comment): void
     {
@@ -1263,6 +1328,8 @@ class CommentsHandler implements IHandler
 
         $completion = $builder->buildCompletion(ucfirst($choice) . " version bump", $result["sha"]);
         doRequestGitHub($metadata["token"], $commentUrl, array("body" => $body . $completion), "PATCH");
+
+        $this->queueChecksForBotCommit($metadata, $comment, $pullRequest, $result["sha"]);
     }
 
     /**
