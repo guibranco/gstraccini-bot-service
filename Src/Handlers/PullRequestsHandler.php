@@ -21,20 +21,40 @@ define("PULLS", "/pulls/");
  */
 class PullRequestsHandler implements IHandler
 {
+    private const AWAITING_TRIAGE_LABEL = "🚦 awaiting triage";
+
     /** The category every entry of this handler is logged under. */
     private const LOG_CATEGORY = "pull_requests";
 
     /**
      * The delivery the pull request being processed belongs to, sent as the
      * trace id of every entry so all the steps of one run are grouped.
+     *
+     * @var string|null
      */
     private ?string $traceId = null;
 
-    /** The `owner/name` of the repository of the pull request being processed. */
+    /**
+     * The `owner/name` of the repository of the pull request being processed.
+     *
+     * @var string
+     */
     private string $repoSlug = "";
 
-    /** The number of the pull request being processed. */
+    /**
+     * The number of the pull request being processed.
+     *
+     * @var integer
+     */
     private int $prNumber = 0;
+
+    /**
+     * When the processing of the current pull request started, in seconds.
+     *
+     * @var float
+     */
+    private float $startedAt = 0.0;
+
 
     /**
      * Sends a step of the processing to LogStream, with the repository, the
@@ -50,13 +70,30 @@ class PullRequestsHandler implements IHandler
     {
         global $logStream;
 
-        if ($logStream === null || !method_exists($logStream, $level)) {
+        if ($logStream === null || method_exists($logStream, $level) === false) {
             return;
         }
 
         $values = array_merge(["repo" => $this->repoSlug, "pr" => $this->prNumber], $context);
         $logStream->{$level}($message, (new LogContext(...$values))->toArray(), self::LOG_CATEGORY, $this->traceId);
-    }
+
+    }//end trace()
+
+
+    /**
+     * Logs the end of the processing of the pull request, with how its check run was left.
+     *
+     * @param string $outcome How the "pull request" check run was left.
+     *
+     * @return void
+     */
+    private function traceFinished(string $outcome): void
+    {
+        $elapsed = (int) round((microtime(true) - $this->startedAt) * 1000);
+        $this->trace('info', 'Finished processing pull request {repo}#{pr} — check run {outcome} in {elapsed_ms} ms', ["outcome" => $outcome, "elapsed_ms" => $elapsed]);
+
+    }//end traceFinished()
+
 
     public function handleItem($pullRequest, $isRetry = false)
     {
@@ -65,7 +102,7 @@ class PullRequestsHandler implements IHandler
         $this->traceId = $pullRequest->DeliveryIdText ?? null;
         $this->repoSlug = "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}";
         $this->prNumber = (int) $pullRequest->Number;
-        $startedAt = microtime(true);
+        $this->startedAt = microtime(true);
 
         if (!$isRetry) {
             echo "https://github.com/{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}/pull/{$pullRequest->Number}:\n\n";
@@ -168,6 +205,8 @@ class PullRequestsHandler implements IHandler
 
         $existingCheckRun = $this->findExistingCheckRun($metadata, $pullRequestUpdated->head->sha, "pull request");
         $alreadyActionRequired = $existingCheckRun !== null && $existingCheckRun->conclusion === "action_required";
+        $checkRunId = null;
+
         $this->trace(
             'debug',
             'PR {repo}#{pr}: existing "pull request" check run {check_run_id} ({conclusion})',
@@ -181,9 +220,40 @@ class PullRequestsHandler implements IHandler
 
         if (!$alreadyActionRequired) {
             $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, "pull request");
-            $this->trace('debug', 'PR {repo}#{pr}: "pull request" check run {check_run_id} set in progress', ["check_run_id" => $checkRunId ?? null]);
+            $this->trace('debug', 'PR {repo}#{pr}: "pull request" check run {check_run_id} set in progress', ["check_run_id" => $checkRunId]);
         }
 
+        try {
+            $this->runChecks($pullRequest, $pullRequestUpdated, $metadata, $config, $existingCheckRun, $alreadyActionRequired, $checkRunId);
+        } catch (\Throwable $e) {
+            $this->trace('error', 'PR {repo}#{pr}: processing failed: {error}', ["error" => $e->getMessage(), "file" => $e->getFile(), "line" => $e->getLine(), "check_run_id" => $checkRunId]);
+            // Only a check run this run started is failed; an existing action_required one keeps its state.
+            if ($checkRunId !== null) {
+                failCheckRunOnError($metadata, $checkRunId, "pull request", $e);
+            }
+
+            throw $e;
+        }
+    }
+
+
+    /**
+     * Runs the pull request checks once its check run is in progress, and completes the check run.
+     * Split from handleItem() so any failure in here completes the check run as failed instead of
+     * leaving it in progress.
+     *
+     * @param object       $pullRequest        The pull request item being processed.
+     * @param object       $pullRequestUpdated The pull request as returned by the GitHub API.
+     * @param array        $metadata           Metadata for the GitHub API requests.
+     * @param object       $config             The bot configuration.
+     * @param object|null  $existingCheckRun   The bot's existing check run for the head commit, if any.
+     * @param boolean      $actionRequired     Whether the existing check run already requires action.
+     * @param integer|null $checkRunId         The check run started for this run, if any.
+     *
+     * @return void
+     */
+    private function runChecks($pullRequest, $pullRequestUpdated, array $metadata, $config, ?object $existingCheckRun, bool $actionRequired, ?int $checkRunId): void
+    {
         $this->trace('debug', 'PR {repo}#{pr}: step enable auto-merge');
         $this->enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config);
         $this->trace('debug', 'PR {repo}#{pr}: step add labels from linked issues');
@@ -199,78 +269,13 @@ class PullRequestsHandler implements IHandler
         $collaboratorsResponse = doRequestGitHub($metadata["token"], $metadata["collaboratorsUrl"], null, "GET");
         $collaboratorsLogins = array_column(json_decode($collaboratorsResponse->getBody()), "login");
 
-        $botReviewed = false;
-        $invokerReviewed = false;
-
         $reviewsLogins = $this->getReviewsLogins($metadata);
-        if (in_array($config->botName . "[bot]", $reviewsLogins)) {
-            $botReviewed = true;
-        }
-
-        $intersections = array_intersect($reviewsLogins, $collaboratorsLogins);
-
-        if (count($intersections) > 0) {
-            $invokerReviewed = true;
-        }
-
-        $autoReview = in_array($pullRequest->Sender, $config->pullRequests->autoReviewSubmitters);
         $iAmTheOwner = in_array($config->ownerHandler, $collaboratorsLogins);
-
-        $this->trace(
-            'debug',
-            'PR {repo}#{pr}: review state — bot reviewed {bot_reviewed}, collaborator reviewed {collaborator_reviewed}',
-            [
-                "collaborators" => $collaboratorsLogins,
-                "collaborators_status" => $collaboratorsResponse->getStatusCode(),
-                "reviewers" => array_values(array_unique($reviewsLogins)),
-                "bot_reviewed" => $botReviewed,
-                "collaborator_reviewed" => $invokerReviewed,
-                "auto_review_submitter" => $autoReview,
-                "owner_is_collaborator" => $iAmTheOwner,
-                "sender" => $pullRequest->Sender,
-            ]
+        $this->trace('debug', 'PR {repo}#{pr}: step review and assign', ["collaborators_status" => $collaboratorsResponse->getStatusCode(), "owner_is_collaborator" => $iAmTheOwner]);
+        $labelsToAdd = array_merge(
+            $labelsToAdd,
+            $this->reviewAndAssign($metadata, $pullRequest, $pullRequestUpdated, $config, $collaboratorsLogins, $reviewsLogins, $iAmTheOwner)
         );
-
-        if ($pullRequestUpdated->assignee == null) {
-            $body = array("assignees" => $collaboratorsLogins);
-            $response = doRequestGitHub($metadata["token"], $metadata["assigneesUrl"], $body, "POST");
-            $this->trace('info', 'PR {repo}#{pr}: assigned collaborators (HTTP {status})', ["assignees" => $collaboratorsLogins, "status" => $response->getStatusCode()]);
-        } else {
-            $this->trace('debug', 'PR {repo}#{pr}: already assigned to {assignee} — skipping assignment', ["assignee" => $pullRequestUpdated->assignee->login ?? null]);
-        }
-
-        if (!$botReviewed) {
-            $body = array("event" => "APPROVE");
-            $response = doRequestGitHub($metadata["token"], $metadata["reviewsUrl"], $body, "POST");
-            $this->trace('info', 'PR {repo}#{pr}: approved by the bot (HTTP {status})', ["status" => $response->getStatusCode()]);
-        } else {
-            $this->trace('debug', 'PR {repo}#{pr}: bot already reviewed — skipping bot approval');
-        }
-
-        if (!$invokerReviewed && $autoReview && $iAmTheOwner) {
-            $bodyMsg = "Automatically approved by " . $metadata["botNameMarkdown"];
-            $body = array("event" => "APPROVE", "body" => $bodyMsg);
-            $response = doRequestGitHub($metadata["userToken"], $metadata["reviewsUrl"], $body, "POST");
-            $this->trace('info', 'PR {repo}#{pr}: auto-approved as owner for submitter {sender} (HTTP {status})', ["sender" => $pullRequest->Sender, "status" => $response->getStatusCode()]);
-        }
-
-        if (!$invokerReviewed && !$autoReview) {
-            $reviewers = $collaboratorsLogins;
-            if (in_array($pullRequest->Sender, $reviewers)) {
-                $reviewers = array_values(array_diff($reviewers, array($pullRequest->Sender)));
-            }
-            if (count($reviewers) > 0) {
-                $body = array("reviewers" => $reviewers);
-                $response = doRequestGitHub($metadata["token"], $metadata["requestReviewUrl"], $body, "POST");
-                $this->trace('info', 'PR {repo}#{pr}: requested review from {reviewers} (HTTP {status})', ["reviewers" => implode(", ", $reviewers), "status" => $response->getStatusCode()]);
-            } else {
-                $this->trace('debug', 'PR {repo}#{pr}: no reviewers to request (sender is the only collaborator)');
-            }
-
-            if (!in_array($pullRequest->Sender, $collaboratorsLogins)) {
-                $labelsToAdd[] = "🚦 awaiting triage";
-            }
-        }
 
         $this->trace('debug', 'PR {repo}#{pr}: step awaiting-triage cleanup');
         $this->removeAwaitingTriageIfReviewed($metadata, $pullRequestUpdated, $collaboratorsLogins, $reviewsLogins, $pullRequest->Sender);
@@ -286,7 +291,9 @@ class PullRequestsHandler implements IHandler
             $this->resolveConflicts($metadata, $pullRequest, $pullRequestUpdated);
             $this->trace('debug', 'PR {repo}#{pr}: step comment to merge');
             $this->handleCommentToMerge($metadata, $pullRequest, $collaboratorsLogins);
-        } else {
+        }
+
+        if ($iAmTheOwner === false) {
             $this->trace('debug', 'PR {repo}#{pr}: owner {owner} is not a collaborator — skipping conflicts and merge comment', ["owner" => $config->ownerHandler]);
         }
 
@@ -300,29 +307,119 @@ class PullRequestsHandler implements IHandler
         $this->trace('debug', 'PR {repo}#{pr}: step dependency changes check');
         $this->checkDependencyChanges($metadata, $pullRequestUpdated);
 
-        if ($versionBumpResolved) {
-            setCheckRunSucceeded($metadata, $checkRunId ?? $existingCheckRun->id, "pull request");
-            $checkRunOutcome = "success";
-        } elseif ($alreadyActionRequired) {
-            echo "State: Version bump decision pending - check run already action_required, skipping redundant update ⚠️\n";
-            $checkRunOutcome = "action_required (unchanged)";
-        } else {
-            setCheckRunActionRequired(
-                $metadata,
-                $checkRunId,
-                "pull request",
-                "Waiting on a version bump decision. Check one of the boxes on the bot's comment to continue."
-            );
-            echo "State: Version bump decision pending - marking 'pull request' check run as action_required ⚠️\n";
-            $checkRunOutcome = "action_required";
+        if ($versionBumpResolved === true) {
+            setCheckRunSucceeded($metadata, ($checkRunId ?? $existingCheckRun->id), "pull request");
+            $this->traceFinished("success");
+            return;
         }
 
-        $this->trace(
-            'info',
-            'Finished processing pull request {repo}#{pr} — check run {outcome} in {elapsed_ms} ms',
-            ["outcome" => $checkRunOutcome, "elapsed_ms" => (int) round((microtime(true) - $startedAt) * 1000)]
+        if ($actionRequired === true) {
+            echo "State: Version bump decision pending - check run already action_required, skipping redundant update ⚠️\n";
+            $this->traceFinished("action_required (unchanged)");
+            return;
+        }
+
+        setCheckRunActionRequired(
+            $metadata,
+            $checkRunId,
+            "pull request",
+            "Waiting on a version bump decision. Check one of the boxes on the bot's comment to continue."
         );
-    }
+        echo "State: Version bump decision pending - marking 'pull request' check run as action_required ⚠️\n";
+        $this->traceFinished("action_required");
+
+    }//end runChecks()
+
+
+    /**
+     * Assigns the collaborators, approves as the bot, auto-approves for trusted submitters and requests reviewers.
+     *
+     * @param array   $metadata            Metadata for the GitHub API requests.
+     * @param object  $pullRequest         The pull request item being processed.
+     * @param object  $pullRequestUpdated  The pull request as returned by the GitHub API.
+     * @param object  $config              The bot configuration.
+     * @param array   $collaboratorsLogins The logins of the repository collaborators.
+     * @param array   $reviewsLogins       The logins of the users who reviewed the pull request.
+     * @param boolean $iAmTheOwner         Whether the bot owner is a collaborator of the repository.
+     *
+     * @return string[] The labels to add to the pull request.
+     */
+    private function reviewAndAssign(array $metadata, $pullRequest, $pullRequestUpdated, $config, array $collaboratorsLogins, array $reviewsLogins, bool $iAmTheOwner): array
+    {
+        $botLogin = "{$config->botName}[bot]";
+        $botReviewed = in_array($botLogin, $reviewsLogins, true);
+        $invokerReviewed = (count(array_intersect($reviewsLogins, $collaboratorsLogins)) > 0);
+        $autoReview = in_array($pullRequest->Sender, $config->pullRequests->autoReviewSubmitters, true);
+        $this->trace(
+            'debug',
+            'PR {repo}#{pr}: review state — bot reviewed {bot_reviewed}, collaborator reviewed {collaborator_reviewed}',
+            [
+                "collaborators" => implode(", ", $collaboratorsLogins),
+                "reviewers" => implode(", ", array_unique($reviewsLogins)),
+                "bot_reviewed" => $botReviewed,
+                "collaborator_reviewed" => $invokerReviewed,
+                "auto_review_submitter" => $autoReview,
+                "sender" => $pullRequest->Sender,
+            ]
+        );
+
+        if ($pullRequestUpdated->assignee === null) {
+            $response = doRequestGitHub($metadata["token"], $metadata["assigneesUrl"], ["assignees" => $collaboratorsLogins], "POST");
+            $this->trace('info', 'PR {repo}#{pr}: assigned collaborators (HTTP {status})', ["assignees" => implode(", ", $collaboratorsLogins), "status" => $response->getStatusCode()]);
+        }
+
+        if ($botReviewed === false) {
+            $response = doRequestGitHub($metadata["token"], $metadata["reviewsUrl"], ["event" => "APPROVE"], "POST");
+            $this->trace('info', 'PR {repo}#{pr}: approved by the bot (HTTP {status})', ["status" => $response->getStatusCode()]);
+        }
+
+        if ($invokerReviewed === true) {
+            $this->trace('debug', 'PR {repo}#{pr}: a collaborator already reviewed — no review request');
+            return [];
+        }
+
+        if ($autoReview === true && $iAmTheOwner === true) {
+            $bodyMsg = "Automatically approved by {$metadata["botNameMarkdown"]}";
+            $response = doRequestGitHub($metadata["userToken"], $metadata["reviewsUrl"], ["event" => "APPROVE", "body" => $bodyMsg], "POST");
+            $this->trace('info', 'PR {repo}#{pr}: auto-approved as owner for submitter {sender} (HTTP {status})', ["sender" => $pullRequest->Sender, "status" => $response->getStatusCode()]);
+        }
+
+        if ($autoReview === true) {
+            return [];
+        }
+
+        return $this->requestReviewers($metadata, $pullRequest->Sender, $collaboratorsLogins);
+
+    }//end reviewAndAssign()
+
+
+    /**
+     * Requests the collaborators other than the sender as reviewers, and flags a sender who
+     * is not a collaborator for triage.
+     *
+     * @param array  $metadata            Metadata for the GitHub API requests.
+     * @param string $sender              The login of the pull request sender.
+     * @param array  $collaboratorsLogins The logins of the repository collaborators.
+     *
+     * @return string[] The labels to add to the pull request.
+     */
+    private function requestReviewers(array $metadata, string $sender, array $collaboratorsLogins): array
+    {
+        $reviewers = array_values(array_diff($collaboratorsLogins, [$sender]));
+        if (count($reviewers) > 0) {
+            $response = doRequestGitHub($metadata["token"], $metadata["requestReviewUrl"], ["reviewers" => $reviewers], "POST");
+            $this->trace('info', 'PR {repo}#{pr}: requested review from {reviewers} (HTTP {status})', ["reviewers" => implode(", ", $reviewers), "status" => $response->getStatusCode()]);
+        }
+
+        if (in_array($sender, $collaboratorsLogins, true) === true) {
+            return [];
+        }
+
+        $this->trace('debug', 'PR {repo}#{pr}: sender {sender} is not a collaborator — flagging for triage', ["sender" => $sender]);
+        return [self::AWAITING_TRIAGE_LABEL];
+
+    }//end requestReviewers()
+
 
     /**
      * Finds the bot's existing check run of the given type for a commit sha, if any.
@@ -421,7 +518,7 @@ class PullRequestsHandler implements IHandler
     private function removeAwaitingTriageIfReviewed($metadata, $pullRequestUpdated, $collaboratorsLogins, $reviewsLogins, $sender)
     {
         $currentLabels = array_column($pullRequestUpdated->labels, "name");
-        if (!in_array("🚦 awaiting triage", $currentLabels)) {
+        if (in_array(self::AWAITING_TRIAGE_LABEL, $currentLabels) === false) {
             $this->trace('debug', 'PR {repo}#{pr}: awaiting triage — label not present, nothing to do');
             return;
         }
@@ -463,7 +560,7 @@ class PullRequestsHandler implements IHandler
             return;
         }
 
-        $labelToRemove = str_replace(" ", "%20", "🚦 awaiting triage");
+        $labelToRemove = str_replace(" ", "%20", self::AWAITING_TRIAGE_LABEL);
         $url = $metadata["pullRequestUrl"] . "/labels/{$labelToRemove}";
         $response = doRequestGitHub($metadata["token"], $url, null, "DELETE");
 
@@ -912,6 +1009,7 @@ class PullRequestsHandler implements IHandler
             !isset($referencedIssue->data->repository) ||
             count($referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes) == 0
         ) {
+            $this->trace('debug', 'PR {repo}#{pr}: no linked issues — no labels to copy');
             return;
         }
 
@@ -971,7 +1069,6 @@ class PullRequestsHandler implements IHandler
             !isset($referencedIssue->data->repository) ||
             count($referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes) == 0
         ) {
-            $this->trace('debug', 'PR {repo}#{pr}: no linked issues — no labels to copy');
             return;
         }
 
