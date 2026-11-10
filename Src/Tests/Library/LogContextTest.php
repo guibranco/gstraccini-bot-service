@@ -72,7 +72,7 @@ class LogContextTest extends TestCase
      *
      * @return void
      */
-    public function testTheContextResolvesEveryPlaceholderOfItsTemplate(): void
+    public function testEveryPlaceholderIsAContextKey(): void
     {
         $context = (new LogContext(repo: "owner/repo", pr: 350))->toArray();
         preg_match_all("/\\{([A-Za-z_][A-Za-z0-9_.]*)\\}/", self::TEMPLATE, $matches);
@@ -82,7 +82,7 @@ class LogContextTest extends TestCase
             $this->assertArrayHasKey($placeholder, $context);
         }
 
-    }//end testTheContextResolvesEveryPlaceholderOfItsTemplate()
+    }//end testEveryPlaceholderIsAContextKey()
 
 
 }//end class
