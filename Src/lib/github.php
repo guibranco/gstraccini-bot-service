@@ -405,8 +405,8 @@ function setCheckRunFailed(array $metadata, int $checkRunId, string $type, strin
 function failCheckRunOnError(array $metadata, int $checkRunId, string $type, \Throwable $error): void
 {
     try {
-        $details = "The bot hit an internal error while checking this " . strtolower($type) . ":\n\n" .
-            "```\n" . get_class($error) . ": " . $error->getMessage() . "\n```";
+        $template = "The bot hit an internal error while checking this %s:\n\n```\n%s: %s\n```";
+        $details = sprintf($template, strtolower($type), get_class($error), $error->getMessage());
         setCheckRunFailed($metadata, $checkRunId, $type, mb_substr($details, 0, 60000));
     } catch (\Throwable $e) {
         error_log("[gstraccini-bot] Failed to mark check run {$checkRunId} as failed: {$e->getMessage()}");

@@ -8,4 +8,4 @@ namespace GuiBranco\GStracciniBot\Library;
  */
 class DatabaseException extends \RuntimeException
 {
-}
+}//end class

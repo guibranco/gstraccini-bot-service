@@ -3,14 +3,6 @@
 use GuiBranco\GStracciniBot\Library\DatabaseException;
 use GuiBranco\Pancake\GUIDv4;
 
-/**
- * Builds the exception for a MySQL statement that failed to execute.
- */
-function statementFailed(mysqli_stmt $stmt): DatabaseException
-{
-    return new DatabaseException("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
-}
-
 function connectToDatabase($isRetry = false)
 {
     global $mySqlHost, $mySqlUser, $mySqlPassword, $mySqlDatabase;
@@ -21,7 +13,7 @@ function connectToDatabase($isRetry = false)
             sleep(10);
             return connectToDatabase(true);
         } elseif ($mysqli->connect_errno) {
-            throw new DatabaseException("Failed to connect to MySQL: " . $mysqli->connect_error);
+            throw new DatabaseException("Failed to connect to MySQL: {$mysqli->connect_error}");
         }
 
         $mysqli->set_charset("utf8mb4");
@@ -35,6 +27,21 @@ function connectToDatabase($isRetry = false)
         return connectToDatabase(true);
     }
 }
+
+
+/**
+ * Builds the exception for a MySQL statement that failed to execute.
+ *
+ * @param mysqli_stmt $stmt The statement that failed.
+ *
+ * @return DatabaseException The exception to throw.
+ */
+function statementFailed(mysqli_stmt $stmt): DatabaseException
+{
+    return new DatabaseException(sprintf("Execute failed: (%d) %s", $stmt->errno, $stmt->error));
+
+}//end statementFailed()
+
 
 function readTable($tableName): ?array
 {
