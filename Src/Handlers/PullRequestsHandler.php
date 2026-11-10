@@ -129,7 +129,7 @@ class PullRequestsHandler implements IHandler
      * Split from handleItem() so any failure in here completes the check run as failed instead of
      * leaving it in progress.
      */
-    private function runChecks($pullRequest, $pullRequestUpdated, array $metadata, $config, ?object $existingCheckRun, bool $alreadyActionRequired, ?int $checkRunId): void
+    private function runChecks($pullRequest, $pullRequestUpdated, array $metadata, $config, ?object $existingCheckRun, bool $actionRequired, ?int $checkRunId): void
     {
         $this->enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config);
         $this->addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated);
@@ -143,53 +143,12 @@ class PullRequestsHandler implements IHandler
         $collaboratorsResponse = doRequestGitHub($metadata["token"], $metadata["collaboratorsUrl"], null, "GET");
         $collaboratorsLogins = array_column(json_decode($collaboratorsResponse->getBody()), "login");
 
-        $botReviewed = false;
-        $invokerReviewed = false;
-
         $reviewsLogins = $this->getReviewsLogins($metadata);
-        if (in_array($config->botName . "[bot]", $reviewsLogins)) {
-            $botReviewed = true;
-        }
-
-        $intersections = array_intersect($reviewsLogins, $collaboratorsLogins);
-
-        if (count($intersections) > 0) {
-            $invokerReviewed = true;
-        }
-
-        if ($pullRequestUpdated->assignee == null) {
-            $body = array("assignees" => $collaboratorsLogins);
-            doRequestGitHub($metadata["token"], $metadata["assigneesUrl"], $body, "POST");
-        }
-
-        if (!$botReviewed) {
-            $body = array("event" => "APPROVE");
-            doRequestGitHub($metadata["token"], $metadata["reviewsUrl"], $body, "POST");
-        }
-
-        $autoReview = in_array($pullRequest->Sender, $config->pullRequests->autoReviewSubmitters);
         $iAmTheOwner = in_array($config->ownerHandler, $collaboratorsLogins);
-
-        if (!$invokerReviewed && $autoReview && $iAmTheOwner) {
-            $bodyMsg = "Automatically approved by " . $metadata["botNameMarkdown"];
-            $body = array("event" => "APPROVE", "body" => $bodyMsg);
-            doRequestGitHub($metadata["userToken"], $metadata["reviewsUrl"], $body, "POST");
-        }
-
-        if (!$invokerReviewed && !$autoReview) {
-            $reviewers = $collaboratorsLogins;
-            if (in_array($pullRequest->Sender, $reviewers)) {
-                $reviewers = array_values(array_diff($reviewers, array($pullRequest->Sender)));
-            }
-            if (count($reviewers) > 0) {
-                $body = array("reviewers" => $reviewers);
-                doRequestGitHub($metadata["token"], $metadata["requestReviewUrl"], $body, "POST");
-            }
-
-            if (!in_array($pullRequest->Sender, $collaboratorsLogins)) {
-                $labelsToAdd[] = "🚦 awaiting triage";
-            }
-        }
+        $labelsToAdd = array_merge(
+            $labelsToAdd,
+            $this->reviewAndAssign($metadata, $pullRequest, $pullRequestUpdated, $config, $collaboratorsLogins, $reviewsLogins, $iAmTheOwner)
+        );
 
         $this->removeAwaitingTriageIfReviewed($metadata, $pullRequestUpdated, $collaboratorsLogins, $reviewsLogins, $pullRequest->Sender);
 
@@ -211,7 +170,7 @@ class PullRequestsHandler implements IHandler
 
         if ($versionBumpResolved) {
             setCheckRunSucceeded($metadata, $checkRunId ?? $existingCheckRun->id, "pull request");
-        } elseif ($alreadyActionRequired) {
+        } elseif ($actionRequired) {
             echo "State: Version bump decision pending - check run already action_required, skipping redundant update ⚠️\n";
         } else {
             setCheckRunActionRequired(
@@ -222,6 +181,50 @@ class PullRequestsHandler implements IHandler
             );
             echo "State: Version bump decision pending - marking 'pull request' check run as action_required ⚠️\n";
         }
+    }
+
+    /**
+     * Assigns the collaborators, approves as the bot, auto-approves for trusted submitters and requests reviewers.
+     *
+     * @return string[] The labels to add to the pull request.
+     */
+    private function reviewAndAssign(array $metadata, $pullRequest, $pullRequestUpdated, $config, array $collaboratorsLogins, array $reviewsLogins, bool $iAmTheOwner): array
+    {
+        $labelsToAdd = [];
+        $botReviewed = in_array($config->botName . "[bot]", $reviewsLogins);
+        $invokerReviewed = count(array_intersect($reviewsLogins, $collaboratorsLogins)) > 0;
+
+        if ($pullRequestUpdated->assignee == null) {
+            $body = array("assignees" => $collaboratorsLogins);
+            doRequestGitHub($metadata["token"], $metadata["assigneesUrl"], $body, "POST");
+        }
+
+        if (!$botReviewed) {
+            $body = array("event" => "APPROVE");
+            doRequestGitHub($metadata["token"], $metadata["reviewsUrl"], $body, "POST");
+        }
+
+        $autoReview = in_array($pullRequest->Sender, $config->pullRequests->autoReviewSubmitters);
+
+        if (!$invokerReviewed && $autoReview && $iAmTheOwner) {
+            $bodyMsg = "Automatically approved by " . $metadata["botNameMarkdown"];
+            $body = array("event" => "APPROVE", "body" => $bodyMsg);
+            doRequestGitHub($metadata["userToken"], $metadata["reviewsUrl"], $body, "POST");
+        }
+
+        if (!$invokerReviewed && !$autoReview) {
+            $reviewers = array_values(array_diff($collaboratorsLogins, array($pullRequest->Sender)));
+            if (count($reviewers) > 0) {
+                $body = array("reviewers" => $reviewers);
+                doRequestGitHub($metadata["token"], $metadata["requestReviewUrl"], $body, "POST");
+            }
+
+            if (!in_array($pullRequest->Sender, $collaboratorsLogins)) {
+                $labelsToAdd[] = "🚦 awaiting triage";
+            }
+        }
+
+        return $labelsToAdd;
     }
 
     /**
