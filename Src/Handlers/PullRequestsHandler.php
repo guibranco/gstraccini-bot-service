@@ -1015,16 +1015,27 @@ class PullRequestsHandler implements IHandler
         $url = $metadata["pullRequestUrl"] . "/update-branch";
         $body = array("expected_head_sha" => $pullRequestUpdated->head->sha);
         $updateResponse = doRequestGitHub($metadata["token"], $url, $body, "PUT");
-
-        // The merge commit created by update-branch is authored by the bot, and the
-        // synchronize event for it isn't processed, so re-queue the pull request
-        // ourselves to get the checks running on the new head commit. update-branch
-        // is asynchronous, so wait for the new head first: otherwise the worker could
-        // pick the pull request up on the old head and update the branch again.
-        if ($updateResponse->getStatusCode() !== 202) {
-            return;
+        if ($updateResponse->getStatusCode() === 202) {
+            $this->requeueAfterBranchUpdate($metadata, $pullRequest, $pullRequestUpdated);
         }
+    }
 
+    /**
+     * Re-queues the pull request once its branch was updated. The merge commit created
+     * by update-branch is authored by the bot, and the synchronize event for it isn't
+     * processed, so the bot re-queues the pull request itself to get the checks running
+     * on the new head commit. update-branch is asynchronous, so it waits for the new head
+     * first: otherwise the worker could pick the pull request up on the old head and
+     * update the branch again.
+     *
+     * @param array  $metadata           Metadata for the GitHub API request.
+     * @param object $pullRequest        The queued `github_pull_requests` row.
+     * @param object $pullRequestUpdated The pull request as fetched before the update.
+     *
+     * @return void
+     */
+    private function requeueAfterBranchUpdate(array $metadata, object $pullRequest, object $pullRequestUpdated): void
+    {
         $watcher = new PullRequestHeadWatcher(sleep(...));
         $newHead = $watcher->waitForNewHead($metadata["token"], $metadata["pullRequestUrl"], $pullRequestUpdated->head->sha);
         if ($newHead === null) {
