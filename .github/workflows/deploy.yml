@@ -122,10 +122,16 @@ jobs:
           cd Src
           mkdir -p secrets
           cd secrets
-          echo "<?php" >> logStream.secrets.php
-          echo "\$logStreamServer = \"${LOGSTREAM_SERVER}\";" >> logStream.secrets.php
-          echo "\$logStreamApiKey = \"${LOGSTREAM_API_KEY}\";" >> logStream.secrets.php
-          echo "\$logStreamApiToken = \"${LOGSTREAM_API_TOKEN}\";" >> logStream.secrets.php
+          php_literal() {
+            local value="${1//\\/\\\\}"
+            printf "'%s'" "${value//\'/\\\'}"
+          }
+          {
+            echo "<?php"
+            echo "\$logStreamServer = $(php_literal "$LOGSTREAM_SERVER");"
+            echo "\$logStreamApiKey = $(php_literal "$LOGSTREAM_API_KEY");"
+            echo "\$logStreamApiToken = $(php_literal "$LOGSTREAM_API_TOKEN");"
+          } >> logStream.secrets.php
 
       - name: 🔑 Generate MySQL Configuration
         run: |
