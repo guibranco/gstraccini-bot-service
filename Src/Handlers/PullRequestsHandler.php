@@ -66,7 +66,7 @@ class PullRequestsHandler implements IHandler
      *
      * @return void
      */
-    private function trace(string $level, string $message, array $context = []): void
+    private function trace(string $level, string $message, array $context): void
     {
         global $logStream;
 
@@ -118,7 +118,7 @@ class PullRequestsHandler implements IHandler
         $this->trace('debug', 'PR {repo}#{pr}: generating installation token', ["installation_id" => $pullRequest->InstallationId, "retry" => $isRetry]);
         $token = generateInstallationToken($pullRequest->InstallationId, $pullRequest->RepositoryName);
         $metadata = $this->createMetadata($token, $pullRequest, $config);
-        $this->trace('debug', 'PR {repo}#{pr}: fetching pull request from GitHub');
+        $this->trace('debug', 'PR {repo}#{pr}: fetching pull request from GitHub', []);
         $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
         try {
             $pullRequestResponse->ensureSuccessStatus();
@@ -159,10 +159,10 @@ class PullRequestsHandler implements IHandler
             $this->removeLabels($metadata, $pullRequestUpdated);
             $this->checkForOtherPullRequests($metadata, $pullRequest);
             removeUnreadActionsForPullRequest($pullRequestUpdated->node_id);
-            $this->trace('debug', 'PR {repo}#{pr}: removed unread actions of the closed pull request');
+            $this->trace('debug', 'PR {repo}#{pr}: removed unread actions of the closed pull request', []);
 
             if ($pullRequestUpdated->merged) {
-                $this->trace('info', 'PR {repo}#{pr} was merged — recording recent activity');
+                $this->trace('info', 'PR {repo}#{pr} was merged — recording recent activity', []);
                 recordRecentActivity(
                     $pullRequest->RepositoryOwner,
                     $pullRequest->RepositoryName,
@@ -254,11 +254,11 @@ class PullRequestsHandler implements IHandler
      */
     private function runChecks($pullRequest, $pullRequestUpdated, array $metadata, $config, ?object $existingCheckRun, bool $actionRequired, ?int $checkRunId): void
     {
-        $this->trace('debug', 'PR {repo}#{pr}: step enable auto-merge');
+        $this->trace('debug', 'PR {repo}#{pr}: step enable auto-merge', []);
         $this->enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config);
-        $this->trace('debug', 'PR {repo}#{pr}: step add labels from linked issues');
+        $this->trace('debug', 'PR {repo}#{pr}: step add labels from linked issues', []);
         $this->addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated);
-        $this->trace('debug', 'PR {repo}#{pr}: step update branch');
+        $this->trace('debug', 'PR {repo}#{pr}: step update branch', []);
         $this->updateBranch($metadata, $pullRequest, $pullRequestUpdated);
 
         $labelsToAdd = [];
@@ -277,19 +277,19 @@ class PullRequestsHandler implements IHandler
             $this->reviewAndAssign($metadata, $pullRequest, $pullRequestUpdated, $config, $collaboratorsLogins, $reviewsLogins, $iAmTheOwner)
         );
 
-        $this->trace('debug', 'PR {repo}#{pr}: step awaiting-triage cleanup');
+        $this->trace('debug', 'PR {repo}#{pr}: step awaiting-triage cleanup', []);
         $this->removeAwaitingTriageIfReviewed($metadata, $pullRequestUpdated, $collaboratorsLogins, $reviewsLogins, $pullRequest->Sender);
 
         if (!empty($labelsToAdd)) {
-            $body = array("labels" => $labelsToAdd);
+            $body = ["labels" => $labelsToAdd];
             $response = doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $body, "POST");
             $this->trace('info', 'PR {repo}#{pr}: added labels {labels} (HTTP {status})', ["labels" => implode(", ", $labelsToAdd), "status" => $response->getStatusCode()]);
         }
 
         if ($iAmTheOwner) {
-            $this->trace('debug', 'PR {repo}#{pr}: step resolve conflicts');
+            $this->trace('debug', 'PR {repo}#{pr}: step resolve conflicts', []);
             $this->resolveConflicts($metadata, $pullRequest, $pullRequestUpdated);
-            $this->trace('debug', 'PR {repo}#{pr}: step comment to merge');
+            $this->trace('debug', 'PR {repo}#{pr}: step comment to merge', []);
             $this->handleCommentToMerge($metadata, $pullRequest, $collaboratorsLogins);
         }
 
@@ -297,14 +297,14 @@ class PullRequestsHandler implements IHandler
             $this->trace('debug', 'PR {repo}#{pr}: owner {owner} is not a collaborator — skipping conflicts and merge comment', ["owner" => $config->ownerHandler]);
         }
 
-        $this->trace('debug', 'PR {repo}#{pr}: step version bump');
+        $this->trace('debug', 'PR {repo}#{pr}: step version bump', []);
         $versionBumpResolved = $this->checkVersionBump($metadata, $pullRequestUpdated);
 
-        $this->trace('debug', 'PR {repo}#{pr}: step description check');
+        $this->trace('debug', 'PR {repo}#{pr}: step description check', []);
         $this->checkPullRequestDescription($metadata, $pullRequestUpdated, $pullRequest->Sender);
-        $this->trace('debug', 'PR {repo}#{pr}: step content check');
+        $this->trace('debug', 'PR {repo}#{pr}: step content check', []);
         $this->checkPullRequestContent($metadata, $pullRequestUpdated);
-        $this->trace('debug', 'PR {repo}#{pr}: step dependency changes check');
+        $this->trace('debug', 'PR {repo}#{pr}: step dependency changes check', []);
         $this->checkDependencyChanges($metadata, $pullRequestUpdated);
 
         if ($versionBumpResolved === true) {
@@ -374,7 +374,7 @@ class PullRequestsHandler implements IHandler
         }
 
         if ($invokerReviewed === true) {
-            $this->trace('debug', 'PR {repo}#{pr}: a collaborator already reviewed — no review request');
+            $this->trace('debug', 'PR {repo}#{pr}: a collaborator already reviewed — no review request', []);
             return [];
         }
 
@@ -488,18 +488,19 @@ class PullRequestsHandler implements IHandler
         // getting flipped back to action_required). The completion marker is the
         // durable signal that the decision was already made.
         if ($this->findCommentByContent($metadata, $pullRequestUpdated, VersionBumpCommentBuilder::COMPLETION_MARKER)) {
-            $this->trace('debug', 'PR {repo}#{pr}: version bump resolved — decision already recorded in a comment');
+            $this->trace('debug', 'PR {repo}#{pr}: version bump resolved — decision already recorded in a comment', []);
             return true;
         }
 
-        if (!$this->findCommentByContent($metadata, $pullRequestUpdated, VersionBumpCommentBuilder::MARKER)) {
-            $builder = new VersionBumpCommentBuilder();
-            $body = $builder->build($pullRequestUpdated->title);
-            $response = doRequestGitHub($metadata["token"], $metadata["commentsUrl"], array("body" => $body), "POST");
-            $this->trace('info', 'PR {repo}#{pr}: posted version bump decision comment (HTTP {status})', ["status" => $response->getStatusCode()]);
-        } else {
-            $this->trace('debug', 'PR {repo}#{pr}: version bump decision comment already posted — waiting on the user');
+        if ($this->findCommentByContent($metadata, $pullRequestUpdated, VersionBumpCommentBuilder::MARKER) === true) {
+            $this->trace('debug', 'PR {repo}#{pr}: version bump decision comment already posted — waiting on the user', []);
+            return false;
         }
+
+        $builder = new VersionBumpCommentBuilder();
+        $body = $builder->build($pullRequestUpdated->title);
+        $response = doRequestGitHub($metadata["token"], $metadata["commentsUrl"], ["body" => $body], "POST");
+        $this->trace('info', 'PR {repo}#{pr}: posted version bump decision comment (HTTP {status})', ["status" => $response->getStatusCode()]);
 
         return false;
     }
@@ -519,7 +520,7 @@ class PullRequestsHandler implements IHandler
     {
         $currentLabels = array_column($pullRequestUpdated->labels, "name");
         if (in_array(self::AWAITING_TRIAGE_LABEL, $currentLabels) === false) {
-            $this->trace('debug', 'PR {repo}#{pr}: awaiting triage — label not present, nothing to do');
+            $this->trace('debug', 'PR {repo}#{pr}: awaiting triage — label not present, nothing to do', []);
             return;
         }
 
@@ -566,7 +567,7 @@ class PullRequestsHandler implements IHandler
 
         if ($response->getStatusCode() < 300) {
             echo "Awaiting triage: Label removed - All reviewers have reviewed and last review is recent ✅\n";
-            $this->trace('info', 'PR {repo}#{pr}: awaiting triage label removed — all reviewers reviewed after the last commit');
+            $this->trace('info', 'PR {repo}#{pr}: awaiting triage label removed — all reviewers reviewed after the last commit', []);
         } else {
             echo "Awaiting triage: Failed to remove label (HTTP {$response->getStatusCode()}) ❌\n";
             $this->trace('warning', 'PR {repo}#{pr}: failed to remove awaiting triage label (HTTP {status})', ["status" => $response->getStatusCode()]);
@@ -788,13 +789,13 @@ class PullRequestsHandler implements IHandler
         if ($bodyLength === 0) {
             $templateContent = $this->getPullRequestTemplate($metadata);
             if ($templateContent) {
-                $this->trace('info', 'PR {repo}#{pr}: empty description — applying the pull request template');
+                $this->trace('info', 'PR {repo}#{pr}: empty description — applying the pull request template', []);
                 $this->updatePullRequestDescription($metadata, $templateContent);
                 return;
             }
 
             $defaultMessage = "Please provide a description for this pull request.";
-            $this->trace('info', 'PR {repo}#{pr}: empty description and no template found — asking for a description');
+            $this->trace('info', 'PR {repo}#{pr}: empty description and no template found — asking for a description', []);
             $this->updatePullRequestDescription($metadata, $defaultMessage);
             setCheckRunFailed($metadata, $checkRunId, $type, $defaultMessage);
             return;
@@ -907,7 +908,7 @@ class PullRequestsHandler implements IHandler
 
         if (count($pullRequestsOpen) === 0) {
             echo "No other pull requests to review ❌\n";
-            $this->trace('debug', 'PR {repo}#{pr}: no other open pull requests to trigger');
+            $this->trace('debug', 'PR {repo}#{pr}: no other open pull requests to trigger', []);
             return;
         }
 
@@ -985,20 +986,21 @@ class PullRequestsHandler implements IHandler
             }
         }
 
-        if (!$found) {
-            $comment = array("body" => $commentToLookup);
-            $commentResponse = doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
-
-            $label = array("labels" => array("☑️ auto-merge"));
-            $labelResponse = doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $label, "POST");
-            $this->trace(
-                'info',
-                'PR {repo}#{pr}: posted "{comment}" for {sender} (comment HTTP {comment_status}, label HTTP {label_status})',
-                ["comment" => $commentToLookup, "sender" => $senderToLookup, "comment_status" => $commentResponse->getStatusCode(), "label_status" => $labelResponse->getStatusCode()]
-            );
-        } else {
+        if ($found === true) {
             $this->trace('debug', 'PR {repo}#{pr}: "{comment}" already posted by a collaborator', ["comment" => $commentToLookup]);
+            return;
         }
+
+        $comment = array("body" => $commentToLookup);
+        $commentResponse = doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
+
+        $label = array("labels" => array("☑️ auto-merge"));
+        $labelResponse = doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $label, "POST");
+        $this->trace(
+            'info',
+            'PR {repo}#{pr}: posted "{comment}" for {sender} (comment HTTP {comment_status}, label HTTP {label_status})',
+            ["comment" => $commentToLookup, "sender" => $senderToLookup, "comment_status" => $commentResponse->getStatusCode(), "label_status" => $labelResponse->getStatusCode()]
+        );
     }
 
     private function removeIssueWipLabel($metadata, $pullRequest)
@@ -1009,7 +1011,7 @@ class PullRequestsHandler implements IHandler
             !isset($referencedIssue->data->repository) ||
             count($referencedIssue->data->repository->pullRequest->closingIssuesReferences->nodes) == 0
         ) {
-            $this->trace('debug', 'PR {repo}#{pr}: no linked issues — no labels to copy');
+            $this->trace('debug', 'PR {repo}#{pr}: no linked issues — no labels to copy', []);
             return;
         }
 
@@ -1112,6 +1114,14 @@ class PullRequestsHandler implements IHandler
         global $logStream;
 
         $isSenderAutoMerge = in_array($pullRequest->Sender, $config->pullRequests->autoMergeSubmitters);
+        if ($pullRequestUpdated->auto_merge !== null || $isSenderAutoMerge === false) {
+            $this->trace(
+                'debug',
+                'PR {repo}#{pr}: auto-merge not enabled — already on {already_enabled}, auto-merge submitter {auto_merge_submitter}',
+                ["already_enabled" => $pullRequestUpdated->auto_merge !== null, "auto_merge_submitter" => $isSenderAutoMerge]
+            );
+        }
+
         if (
             $pullRequestUpdated->auto_merge == null &&
             $isSenderAutoMerge
@@ -1127,18 +1137,14 @@ class PullRequestsHandler implements IHandler
             if ($autoMergeResponse->getStatusCode() < 300) {
                 markPullRequestAutoMergeEnabled($pullRequest->Sequence);
                 $this->trace('info', 'PR {repo}#{pr}: auto-merge (squash) enabled for submitter {sender}', ["sender" => $pullRequest->Sender]);
-            } else {
+            }
+
+            if ($autoMergeResponse->getStatusCode() >= 300) {
                 $this->trace('warning', 'PR {repo}#{pr}: failed to enable auto-merge (HTTP {status})', ["status" => $autoMergeResponse->getStatusCode(), "sender" => $pullRequest->Sender]);
             }
 
             $label = array("labels" => array("☑️ auto-merge"));
             doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $label, "POST");
-        } else {
-            $this->trace(
-                'debug',
-                'PR {repo}#{pr}: auto-merge not enabled — already on {already_enabled}, auto-merge submitter {auto_merge_submitter}',
-                ["already_enabled" => $pullRequestUpdated->auto_merge !== null, "auto_merge_submitter" => $isSenderAutoMerge]
-            );
         }
 
         if ($pullRequestUpdated->mergeable_state === "clean" && $pullRequestUpdated->mergeable) {
