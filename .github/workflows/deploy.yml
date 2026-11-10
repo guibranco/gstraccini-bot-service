@@ -114,14 +114,18 @@ jobs:
           echo "\$loggerApiToken = \"${{ secrets.LOGGER_APITOKEN }}\";" >> logger.secrets.php
 
       - name: 🔑 Generate LogStream Configuration
+        env:
+          LOGSTREAM_SERVER: ${{ secrets.LOGSTREAM_SERVER }}
+          LOGSTREAM_API_KEY: ${{ secrets.LOGSTREAM_API_KEY }}
+          LOGSTREAM_API_TOKEN: ${{ secrets.LOGSTREAM_API_TOKEN }}
         run: |
           cd Src
           mkdir -p secrets
           cd secrets
           echo "<?php" >> logStream.secrets.php
-          echo "\$logStreamServer = \"${{ secrets.LOGSTREAM_SERVER }}\";" >> logStream.secrets.php
-          echo "\$logStreamApiKey = \"${{ secrets.LOGSTREAM_API_KEY }}\";" >> logStream.secrets.php
-          echo "\$logStreamApiToken = \"${{ secrets.LOGSTREAM_API_TOKEN }}\";" >> logStream.secrets.php
+          echo "\$logStreamServer = \"${LOGSTREAM_SERVER}\";" >> logStream.secrets.php
+          echo "\$logStreamApiKey = \"${LOGSTREAM_API_KEY}\";" >> logStream.secrets.php
+          echo "\$logStreamApiToken = \"${LOGSTREAM_API_TOKEN}\";" >> logStream.secrets.php
 
       - name: 🔑 Generate MySQL Configuration
         run: |
