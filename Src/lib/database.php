@@ -1,5 +1,6 @@
 <?php
 
+use GuiBranco\GStracciniBot\Library\DatabaseException;
 use GuiBranco\Pancake\GUIDv4;
 
 function connectToDatabase($isRetry = false)
@@ -12,7 +13,7 @@ function connectToDatabase($isRetry = false)
             sleep(10);
             return connectToDatabase(true);
         } elseif ($mysqli->connect_errno) {
-            die("Failed to connect to MySQL: " . $mysqli->connect_error);
+            throw new DatabaseException("Failed to connect to MySQL: {$mysqli->connect_error}");
         }
 
         $mysqli->set_charset("utf8mb4");
@@ -26,6 +27,21 @@ function connectToDatabase($isRetry = false)
         return connectToDatabase(true);
     }
 }
+
+
+/**
+ * Builds the exception for a MySQL statement that failed to execute.
+ *
+ * @param mysqli_stmt $stmt The statement that failed.
+ *
+ * @return DatabaseException The exception to throw.
+ */
+function statementFailed(mysqli_stmt $stmt): DatabaseException
+{
+    return new DatabaseException(sprintf("Execute failed: (%d) %s", $stmt->errno, $stmt->error));
+
+}//end statementFailed()
+
 
 function readTable($tableName): ?array
 {
@@ -163,7 +179,7 @@ function upsertPullRequest($pullRequest)
         $sequence = $row["Sequence"];
 
         if (!$stmt->execute()) {
-            die("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+            throw statementFailed($stmt);
         }
 
     } else {
@@ -217,7 +233,7 @@ function upsertPullRequest($pullRequest)
         $installationId = $pullRequest->InstallationId;
 
         if (!$stmt->execute()) {
-            die("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+            throw statementFailed($stmt);
         }
     }
 
@@ -398,7 +414,7 @@ function createReadyToMergeAction($pullRequest, $pullRequestUpdated): void
     );
 
     if (!$stmt->execute()) {
-        die("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+        throw statementFailed($stmt);
     }
 
     $notificationSequence = $stmt->insert_id;
@@ -424,7 +440,7 @@ function createReadyToMergeAction($pullRequest, $pullRequestUpdated): void
     );
 
     if (!$stmt->execute()) {
-        die("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+        throw statementFailed($stmt);
     }
 
     $stmt->close();
@@ -474,7 +490,7 @@ function upsertPush($commit)
         $sequence = $row["Sequence"];
 
         if (!$stmt->execute()) {
-            die("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+            throw statementFailed($stmt);
         }
 
     } else {
@@ -538,7 +554,7 @@ function upsertPush($commit)
         $installationId = $commit->InstallationId;
 
         if (!$stmt->execute()) {
-            die("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+            throw statementFailed($stmt);
         }
     }
 

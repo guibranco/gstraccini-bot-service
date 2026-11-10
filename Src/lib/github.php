@@ -393,6 +393,27 @@ function setCheckRunFailed(array $metadata, int $checkRunId, string $type, strin
     doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
 }
 /**
+ * Completes a check run as failed because the worker hit an error while it was in progress,
+ * so it doesn't stay "in progress" forever. Never throws: it runs while another error is
+ * being handled, and that original error is the one to report.
+ *
+ * @param array      $metadata   Metadata for the GitHub API request (token, checkRunUrl, dashboardUrl).
+ * @param int        $checkRunId The ID of the check run in progress.
+ * @param string     $type       The check type, used to build the check run name and summary.
+ * @param \Throwable $error      The error that interrupted the checks.
+ */
+function failCheckRunOnError(array $metadata, int $checkRunId, string $type, \Throwable $error): void
+{
+    try {
+        $template = "The bot hit an internal error while checking this %s:\n\n```\n%s: %s\n```";
+        $details = sprintf($template, strtolower($type), get_class($error), $error->getMessage());
+        setCheckRunFailed($metadata, $checkRunId, $type, mb_substr($details, 0, 60000));
+    } catch (\Throwable $e) {
+        error_log("[gstraccini-bot] Failed to mark check run {$checkRunId} as failed: {$e->getMessage()}");
+    }
+}
+
+/**
  * Creates a new check run in queued status via the GitHub API.
  *
  * @param array  $metadata Metadata array for GitHub check run creation.

@@ -21,6 +21,9 @@ define("PULLS", "/pulls/");
  */
 class PullRequestsHandler implements IHandler
 {
+    private const AWAITING_TRIAGE_LABEL = "🚦 awaiting triage";
+
+
     public function handleItem($pullRequest, $isRetry = false)
     {
         global $logStream;
@@ -108,11 +111,42 @@ class PullRequestsHandler implements IHandler
 
         $existingCheckRun = $this->findExistingCheckRun($metadata, $pullRequestUpdated->head->sha, "pull request");
         $alreadyActionRequired = $existingCheckRun !== null && $existingCheckRun->conclusion === "action_required";
+        $checkRunId = null;
 
         if (!$alreadyActionRequired) {
             $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, "pull request");
         }
 
+        try {
+            $this->runChecks($pullRequest, $pullRequestUpdated, $metadata, $config, $existingCheckRun, $alreadyActionRequired, $checkRunId);
+        } catch (\Throwable $e) {
+            // Only a check run this run started is failed; an existing action_required one keeps its state.
+            if ($checkRunId !== null) {
+                failCheckRunOnError($metadata, $checkRunId, "pull request", $e);
+            }
+
+            throw $e;
+        }
+    }
+
+
+    /**
+     * Runs the pull request checks once its check run is in progress, and completes the check run.
+     * Split from handleItem() so any failure in here completes the check run as failed instead of
+     * leaving it in progress.
+     *
+     * @param object       $pullRequest        The pull request item being processed.
+     * @param object       $pullRequestUpdated The pull request as returned by the GitHub API.
+     * @param array        $metadata           Metadata for the GitHub API requests.
+     * @param object       $config             The bot configuration.
+     * @param object|null  $existingCheckRun   The bot's existing check run for the head commit, if any.
+     * @param boolean      $actionRequired     Whether the existing check run already requires action.
+     * @param integer|null $checkRunId         The check run started for this run, if any.
+     *
+     * @return void
+     */
+    private function runChecks($pullRequest, $pullRequestUpdated, array $metadata, $config, ?object $existingCheckRun, bool $actionRequired, ?int $checkRunId): void
+    {
         $this->enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config);
         $this->addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated);
         $this->updateBranch($metadata, $pullRequest, $pullRequestUpdated);
@@ -125,53 +159,12 @@ class PullRequestsHandler implements IHandler
         $collaboratorsResponse = doRequestGitHub($metadata["token"], $metadata["collaboratorsUrl"], null, "GET");
         $collaboratorsLogins = array_column(json_decode($collaboratorsResponse->getBody()), "login");
 
-        $botReviewed = false;
-        $invokerReviewed = false;
-
         $reviewsLogins = $this->getReviewsLogins($metadata);
-        if (in_array($config->botName . "[bot]", $reviewsLogins)) {
-            $botReviewed = true;
-        }
-
-        $intersections = array_intersect($reviewsLogins, $collaboratorsLogins);
-
-        if (count($intersections) > 0) {
-            $invokerReviewed = true;
-        }
-
-        if ($pullRequestUpdated->assignee == null) {
-            $body = array("assignees" => $collaboratorsLogins);
-            doRequestGitHub($metadata["token"], $metadata["assigneesUrl"], $body, "POST");
-        }
-
-        if (!$botReviewed) {
-            $body = array("event" => "APPROVE");
-            doRequestGitHub($metadata["token"], $metadata["reviewsUrl"], $body, "POST");
-        }
-
-        $autoReview = in_array($pullRequest->Sender, $config->pullRequests->autoReviewSubmitters);
         $iAmTheOwner = in_array($config->ownerHandler, $collaboratorsLogins);
-
-        if (!$invokerReviewed && $autoReview && $iAmTheOwner) {
-            $bodyMsg = "Automatically approved by " . $metadata["botNameMarkdown"];
-            $body = array("event" => "APPROVE", "body" => $bodyMsg);
-            doRequestGitHub($metadata["userToken"], $metadata["reviewsUrl"], $body, "POST");
-        }
-
-        if (!$invokerReviewed && !$autoReview) {
-            $reviewers = $collaboratorsLogins;
-            if (in_array($pullRequest->Sender, $reviewers)) {
-                $reviewers = array_values(array_diff($reviewers, array($pullRequest->Sender)));
-            }
-            if (count($reviewers) > 0) {
-                $body = array("reviewers" => $reviewers);
-                doRequestGitHub($metadata["token"], $metadata["requestReviewUrl"], $body, "POST");
-            }
-
-            if (!in_array($pullRequest->Sender, $collaboratorsLogins)) {
-                $labelsToAdd[] = "🚦 awaiting triage";
-            }
-        }
+        $labelsToAdd = array_merge(
+            $labelsToAdd,
+            $this->reviewAndAssign($metadata, $pullRequest, $pullRequestUpdated, $config, $collaboratorsLogins, $reviewsLogins, $iAmTheOwner)
+        );
 
         $this->removeAwaitingTriageIfReviewed($metadata, $pullRequestUpdated, $collaboratorsLogins, $reviewsLogins, $pullRequest->Sender);
 
@@ -191,20 +184,98 @@ class PullRequestsHandler implements IHandler
         $this->checkPullRequestContent($metadata, $pullRequestUpdated);
         $this->checkDependencyChanges($metadata, $pullRequestUpdated);
 
-        if ($versionBumpResolved) {
-            setCheckRunSucceeded($metadata, $checkRunId ?? $existingCheckRun->id, "pull request");
-        } elseif ($alreadyActionRequired) {
-            echo "State: Version bump decision pending - check run already action_required, skipping redundant update ⚠️\n";
-        } else {
-            setCheckRunActionRequired(
-                $metadata,
-                $checkRunId,
-                "pull request",
-                "Waiting on a version bump decision. Check one of the boxes on the bot's comment to continue."
-            );
-            echo "State: Version bump decision pending - marking 'pull request' check run as action_required ⚠️\n";
+        if ($versionBumpResolved === true) {
+            setCheckRunSucceeded($metadata, ($checkRunId ?? $existingCheckRun->id), "pull request");
+            return;
         }
-    }
+
+        if ($actionRequired === true) {
+            echo "State: Version bump decision pending - check run already action_required, skipping redundant update ⚠️\n";
+            return;
+        }
+
+        setCheckRunActionRequired(
+            $metadata,
+            $checkRunId,
+            "pull request",
+            "Waiting on a version bump decision. Check one of the boxes on the bot's comment to continue."
+        );
+        echo "State: Version bump decision pending - marking 'pull request' check run as action_required ⚠️\n";
+
+    }//end runChecks()
+
+
+    /**
+     * Assigns the collaborators, approves as the bot, auto-approves for trusted submitters and requests reviewers.
+     *
+     * @param array   $metadata            Metadata for the GitHub API requests.
+     * @param object  $pullRequest         The pull request item being processed.
+     * @param object  $pullRequestUpdated  The pull request as returned by the GitHub API.
+     * @param object  $config              The bot configuration.
+     * @param array   $collaboratorsLogins The logins of the repository collaborators.
+     * @param array   $reviewsLogins       The logins of the users who reviewed the pull request.
+     * @param boolean $iAmTheOwner         Whether the bot owner is a collaborator of the repository.
+     *
+     * @return string[] The labels to add to the pull request.
+     */
+    private function reviewAndAssign(array $metadata, $pullRequest, $pullRequestUpdated, $config, array $collaboratorsLogins, array $reviewsLogins, bool $iAmTheOwner): array
+    {
+        $botLogin = "{$config->botName}[bot]";
+        $botReviewed = in_array($botLogin, $reviewsLogins, true);
+        $invokerReviewed = (count(array_intersect($reviewsLogins, $collaboratorsLogins)) > 0);
+        $autoReview = in_array($pullRequest->Sender, $config->pullRequests->autoReviewSubmitters, true);
+
+        if ($pullRequestUpdated->assignee === null) {
+            doRequestGitHub($metadata["token"], $metadata["assigneesUrl"], ["assignees" => $collaboratorsLogins], "POST");
+        }
+
+        if ($botReviewed === false) {
+            doRequestGitHub($metadata["token"], $metadata["reviewsUrl"], ["event" => "APPROVE"], "POST");
+        }
+
+        if ($invokerReviewed === true) {
+            return [];
+        }
+
+        if ($autoReview === true && $iAmTheOwner === true) {
+            $bodyMsg = "Automatically approved by {$metadata["botNameMarkdown"]}";
+            doRequestGitHub($metadata["userToken"], $metadata["reviewsUrl"], ["event" => "APPROVE", "body" => $bodyMsg], "POST");
+        }
+
+        if ($autoReview === true) {
+            return [];
+        }
+
+        return $this->requestReviewers($metadata, $pullRequest->Sender, $collaboratorsLogins);
+
+    }//end reviewAndAssign()
+
+
+    /**
+     * Requests the collaborators other than the sender as reviewers, and flags a sender who
+     * is not a collaborator for triage.
+     *
+     * @param array  $metadata            Metadata for the GitHub API requests.
+     * @param string $sender              The login of the pull request sender.
+     * @param array  $collaboratorsLogins The logins of the repository collaborators.
+     *
+     * @return string[] The labels to add to the pull request.
+     */
+    private function requestReviewers(array $metadata, string $sender, array $collaboratorsLogins): array
+    {
+        $reviewers = array_values(array_diff($collaboratorsLogins, [$sender]));
+        if (count($reviewers) > 0) {
+            doRequestGitHub($metadata["token"], $metadata["requestReviewUrl"], ["reviewers" => $reviewers], "POST");
+        }
+
+        if (in_array($sender, $collaboratorsLogins, true) === true) {
+            return [];
+        }
+
+        return [self::AWAITING_TRIAGE_LABEL];
+
+    }//end requestReviewers()
+
 
     /**
      * Finds the bot's existing check run of the given type for a commit sha, if any.
@@ -297,7 +368,7 @@ class PullRequestsHandler implements IHandler
     private function removeAwaitingTriageIfReviewed($metadata, $pullRequestUpdated, $collaboratorsLogins, $reviewsLogins, $sender)
     {
         $currentLabels = array_column($pullRequestUpdated->labels, "name");
-        if (!in_array("🚦 awaiting triage", $currentLabels)) {
+        if (in_array(self::AWAITING_TRIAGE_LABEL, $currentLabels) === false) {
             return;
         }
 
@@ -335,7 +406,7 @@ class PullRequestsHandler implements IHandler
             return;
         }
 
-        $labelToRemove = str_replace(" ", "%20", "🚦 awaiting triage");
+        $labelToRemove = str_replace(" ", "%20", self::AWAITING_TRIAGE_LABEL);
         $url = $metadata["pullRequestUrl"] . "/labels/{$labelToRemove}";
         $response = doRequestGitHub($metadata["token"], $url, null, "DELETE");
 
