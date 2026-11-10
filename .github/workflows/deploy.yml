@@ -120,8 +120,8 @@ jobs:
           cd secrets
           echo "<?php" >> logStream.secrets.php
           echo "\$logStreamServer = \"${{ secrets.LOGSTREAM_SERVER }}\";" >> logStream.secrets.php
-          echo "\$logStreamToken  = \"${{ secrets.LOGSTREAM_TOKEN }}\";" >> logStream.secrets.php
-          echo "\$logStreamAppId  = \"${{ vars.LOGSTREAM_APP_ID }}\";" >> logStream.secrets.php
+          echo "\$logStreamApiKey = \"${{ secrets.LOGSTREAM_API_KEY }}\";" >> logStream.secrets.php
+          echo "\$logStreamApiToken = \"${{ secrets.LOGSTREAM_API_TOKEN }}\";" >> logStream.secrets.php
 
       - name: 🔑 Generate MySQL Configuration
         run: |
