@@ -4,6 +4,7 @@ namespace GuiBranco\GStracciniBot\Library\Checkup;
 
 use GuiBranco\Pancake\Response;
 use RuntimeException;
+use GuiBranco\GStracciniBot\Library\LogsToStream;
 
 /**
  * Pages through a GitHub REST list endpoint, pacing requests so the
@@ -23,6 +24,10 @@ use RuntimeException;
  */
 class GitHubCollectionFetcher
 {
+    use LogsToStream;
+
+    private const LOG_CHANNEL = "github";
+
     private const PER_PAGE = 100;
     private const RATE_LIMIT_SAFETY_THRESHOLD = 50;
 
@@ -129,7 +134,7 @@ class GitHubCollectionFetcher
                 );
             }
 
-            echo "Rate limit low ({$remaining} remaining) — sleeping {$waitSeconds}s until reset\n";
+            $this->logToStream("warning", 'GitHub rate limit low ({remaining} remaining) — sleeping {waitSeconds}s until reset', ["remaining" => $remaining, "waitSeconds" => $waitSeconds]);
             sleep($waitSeconds);
             return;
         }

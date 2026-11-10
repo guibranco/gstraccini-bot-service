@@ -68,8 +68,6 @@ class CommentsHandler implements IHandler
         global $logStream;
     
         $repoUrl = "https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/issues/{$comment->PullRequestNumber}/#issuecomment-{$comment->CommentId}";
-        echo "{$repoUrl}:\n\n";
-        echo "Comment: {$comment->CommentBody} | Sender: {$comment->CommentSender}\n";
     
         $config = loadConfig();
         $sender = $comment->CommentSender;
@@ -101,7 +99,6 @@ class CommentsHandler implements IHandler
                     return;
                 }
             }
-            echo "Skipping this comment! 🚷\n";
             $logStream?->info(
                 'Skipping comment from ignored bot {sender} on {repo}',
                 (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", sender: $sender))->toArray(),
@@ -572,6 +569,8 @@ class CommentsHandler implements IHandler
     
     private function execute_copyLabels($config, $metadata, $comment): void
     {
+        global $logStream;
+
         $pattern = '/\b(\w+)\/(\w+)\b/';
         preg_match($pattern, $comment->CommentBody, $matches);
     
@@ -623,7 +622,12 @@ class CommentsHandler implements IHandler
         $totalLabelsToCreate = count($labelsToCreateObject);
         $totalLabelsToUpdate = count($labelsToUpdateObject);
     
-        echo "Creating labels {$totalLabelsToCreate} | Updating labels: {$totalLabelsToUpdate}\n";
+        $logStream?->info(
+            'Labels of {repo}: {toCreate} to create, {toUpdate} to update',
+            (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", pr: $comment->PullRequestNumber, toCreate: $totalLabelsToCreate, toUpdate: $totalLabelsToUpdate))->toArray(),
+            "comments",
+            $comment->DeliveryIdText
+        );
     
         if ($totalLabelsToCreate === 0 && $totalLabelsToUpdate === 0) {
             $body = array("body" => "No labels to create or update! :no_entry:");
@@ -1165,7 +1169,6 @@ class CommentsHandler implements IHandler
         $watcher = new PullRequestHeadWatcher(sleep(...));
         $newHead = $watcher->waitForNewHead($metadata["token"], $metadata["pullRequestUrl"], $pullRequestUpdated->head->sha);
         if ($newHead === null) {
-            echo "Head of #{$comment->PullRequestNumber} still at {$pullRequestUpdated->head->sha} after bot commit {$sha} — not re-queuing ⚠️\n";
             $logStream?->warning(
                 'Head of {repo}#{pr} did not move after bot commit {commit} — pull request not re-queued',
                 (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", pr: $comment->PullRequestNumber, commit: $sha))->toArray(),
@@ -1176,7 +1179,12 @@ class CommentsHandler implements IHandler
         }
 
         upsertPullRequest($this->buildPullRequestRow($comment, $pullRequestUpdated));
-        echo "Queued checks for bot commit {$sha} (head {$newHead}) on #{$comment->PullRequestNumber} 🔁\n";
+        $logStream?->info(
+            'Queued checks for bot commit {commit} (head {head}) on {repo}#{pr}',
+            (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", pr: $comment->PullRequestNumber, commit: $sha, head: $newHead))->toArray(),
+            "comments",
+            $comment->DeliveryIdText
+        );
     }
 
     private function execute_updateSnapshot($config, $metadata, $comment): void

@@ -60,7 +60,6 @@ class CheckupHandler
     {
         global $logStream;
 
-        echo "==> Checkup started" . ($this->dryRun ? " (dry run)" : "") . "\n";
         $logStream?->info("Checkup started", ["dryRun" => $this->dryRun, "installationId" => $onlyInstallationId], "checkup");
 
         $installationsResult = $this->installationsHandler->check($onlyInstallationId);
@@ -68,15 +67,13 @@ class CheckupHandler
 
         foreach ($installationsResult["contexts"] as $installationContext) {
             if ($installationContext->suspended) {
-                echo "  ⏸️  Installation {$installationContext->login} is suspended — skipping its repositories\n";
+                $logStream?->info('Installation {login} is suspended — skipping its repositories', ["login" => $installationContext->login], "checkup");
                 continue;
             }
 
             $this->checkInstallation($installationContext);
         }
 
-        echo "==> Checkup finished\n";
-        $this->printSummary();
         $logStream?->info("Checkup finished", $this->report, "checkup");
 
         return $this->report;
@@ -118,14 +115,5 @@ class CheckupHandler
     {
         $this->report[$category]["checked"] += $result["checked"];
         $this->report[$category]["backfilled"] += $result["backfilled"];
-    }
-
-    private function printSummary(): void
-    {
-        echo "\n===== Checkup summary" . ($this->dryRun ? " (dry run — nothing was written)" : "") . " =====\n";
-        foreach ($this->report as $category => $counts) {
-            echo str_pad($category, 16) . " checked: " . str_pad((string) $counts["checked"], 6) . " backfilled: " . $counts["backfilled"] . "\n";
-        }
-        echo "comments: rules not yet defined, always skipped (see Handlers/Checkup/CommentsCheckupHandler.php)\n";
     }
 }

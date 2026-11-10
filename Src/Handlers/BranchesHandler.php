@@ -14,7 +14,6 @@ class BranchesHandler implements IHandler
     {
         global $logStream;
 
-        echo "https://github.com/{$branch->RepositoryOwner}/{$branch->RepositoryName}/tree/{$branch->Ref}:\n\n";
 
         $logStream?->info(
             'Processing branch event {event} on {ref} of {repo}',

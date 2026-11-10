@@ -13,6 +13,7 @@ use GuiBranco\GStracciniBot\Library\Sync\RepositoryMetadata;
 use GuiBranco\GStracciniBot\Library\Sync\ScheduledJob;
 use RuntimeException;
 use Throwable;
+use GuiBranco\GStracciniBot\Library\LogsToStream;
 
 /**
  * The hourly repositories sync: takes the active repository that has gone
@@ -55,6 +56,8 @@ use Throwable;
  */
 class RepositorySyncHandler
 {
+    use LogsToStream;
+
     /** Seconds between two scheduled runs (one repository each). */
     public const SCHEDULE_INTERVAL_SECONDS = 3600;
 
@@ -139,7 +142,6 @@ class RepositorySyncHandler
             "branches" => ["checked" => 0, "backfilled" => 0, "deleted" => 0],
         ];
 
-        echo "==> Repositories sync started" . ($this->dryRun ? " (dry run)" : "") . "\n";
         $logStream?->info(
             "Repositories sync started",
             ["dryRun" => $this->dryRun, "repositoryId" => $onlyRepositoryId, "limit" => $limit],
@@ -149,7 +151,7 @@ class RepositorySyncHandler
         if ($onlyRepositoryId !== null) {
             $repository = $this->repository->claimRepositoryToSync($onlyRepositoryId, !$this->dryRun);
             if ($repository === null) {
-                echo "Repository #{$onlyRepositoryId} is not registered as active (or another run just claimed it) — nothing to sync\n";
+                $this->logToStream("notice", 'Repository #{repositoryId} is not registered as active (or another run just claimed it) — nothing to sync', ["repositoryId" => $onlyRepositoryId]);
             } else {
                 $this->syncRepository($repository);
             }
@@ -157,7 +159,7 @@ class RepositorySyncHandler
             for ($taken = 0; $taken < max(1, $limit); $taken++) {
                 $repository = $this->repository->claimNextRepositoryToSync(!$this->dryRun);
                 if ($repository === null) {
-                    echo "No active repositories to sync\n";
+                    $this->logToStream("info", "No active repositories to sync", []);
                     break;
                 }
 
@@ -170,8 +172,6 @@ class RepositorySyncHandler
             }
         }
 
-        echo "==> Repositories sync finished\n";
-        $this->printSummary();
         $logStream?->info("Repositories sync finished", $this->report, self::LOG_CHANNEL);
 
         return $this->report;
@@ -182,7 +182,6 @@ class RepositorySyncHandler
         global $logStream;
 
         $lastSynced = $row->LastSyncDate ?? "never";
-        echo "Repository: {$row->FullName} (#{$row->Id}) — installation #{$row->InstallationId}, last synced: {$lastSynced}\n";
         $logStream?->info(
             'Syncing repository {repo}',
             ["repo" => $row->FullName, "repositoryId" => (int) $row->Id, "installationId" => (int) $row->InstallationId, "lastSyncDate" => $row->LastSyncDate],
@@ -193,7 +192,6 @@ class RepositorySyncHandler
         try {
             $this->reconcile($row);
         } catch (Throwable $e) {
-            echo "  Sync failed: {$e->getMessage()} ❌\n";
             $failure = ["repo" => $row->FullName];
             $failure["repositoryId"] = (int) $row->Id;
             $failure["error"] = $e->getMessage();
@@ -248,7 +246,7 @@ class RepositorySyncHandler
         $metadata = $this->syncMetadata($row, $repository, $installationId);
 
         if (!empty($repository->archived)) {
-            echo "  Archived on GitHub 📦 — contents are read-only there, still reconciling\n";
+            $this->logToStream("info", 'Repository {repo} is archived on GitHub — contents are read-only there, still reconciling', ["repo" => $repository->full_name, "repositoryId" => $repositoryId]);
         }
 
         $context = (object) [
@@ -276,7 +274,7 @@ class RepositorySyncHandler
         $changes = RepositoryMetadata::changes($row, $metadata);
 
         if (RepositoryMetadata::isRenamed($changes)) {
-            echo "  Renamed/transferred: {$row->FullName} → {$repository->full_name} — updating references 🔁\n";
+            $this->logToStream("notice", 'Repository {previous} was renamed/transferred to {repo} — updating references', ["previous" => $row->FullName, "repo" => $repository->full_name, "repositoryId" => (int) $row->Id, "dryRun" => $this->dryRun]);
             if (!$this->dryRun) {
                 $this->repository->renameRepositoryReferences(
                     (string) $row->OwnerLogin,
@@ -289,11 +287,11 @@ class RepositorySyncHandler
         }
 
         if (empty($changes)) {
-            echo "  Metadata up to date\n";
+            $this->logToStream("debug", 'Metadata of {repo} is up to date', ["repo" => $repository->full_name]);
             return $metadata;
         }
 
-        echo "  Metadata: updating " . implode(", ", array_keys($changes)) . " 📝\n";
+        $this->logToStream("info", 'Updating metadata of {repo}: {changes}', ["repo" => $repository->full_name, "changes" => implode(", ", array_keys($changes)), "dryRun" => $this->dryRun]);
         if (!$this->dryRun) {
             $this->repository->updateRepositoryMetadata((int) $row->Sequence, $metadata, $installationId);
         }
@@ -304,7 +302,6 @@ class RepositorySyncHandler
 
     private function syncPullRequests(object $context): void
     {
-        echo "  Pull requests:\n";
         $result = $this->pullRequestsHandler->check($context);
         $this->accumulate("pullRequests", $result);
 
@@ -317,11 +314,11 @@ class RepositorySyncHandler
             }
 
             if ($stored->ProcessingState !== "PROCESSED") {
-                echo "    PR #{$number} is not open on GitHub but is still queued ({$stored->ProcessingState}) — the handler will close it\n";
+                $this->logToStream("debug", 'PR {repo}#{pr} is not open on GitHub but is still queued ({state}) — the handler will close it', ["repo" => "{$context->owner}/{$context->name}", "pr" => $number, "state" => $stored->ProcessingState]);
                 continue;
             }
 
-            echo "    PR #{$number} is not open on GitHub any more — re-requesting processing 🔄\n";
+            $this->logToStream("notice", 'PR {repo}#{pr} is not open on GitHub any more — re-requesting processing', ["repo" => "{$context->owner}/{$context->name}", "pr" => $number, "dryRun" => $this->dryRun]);
             if (!$this->dryRun) {
                 $this->repository->reRequestPullRequest((int) $stored->Sequence);
             }
@@ -329,13 +326,12 @@ class RepositorySyncHandler
         }
 
         if (empty($openNumbers)) {
-            echo "    No open pull requests on GitHub\n";
+            $this->logToStream("debug", 'No open pull requests on GitHub for {repo}', ["repo" => "{$context->owner}/{$context->name}"]);
         }
     }
 
     private function syncIssues(object $context): void
     {
-        echo "  Issues:\n";
         $result = $this->issuesHandler->check($context);
         $this->accumulate("issues", $result);
 
@@ -348,11 +344,11 @@ class RepositorySyncHandler
             }
 
             if ($stored->ProcessingState !== "PROCESSED") {
-                echo "    Issue #{$number} is not open on GitHub but is still queued ({$stored->ProcessingState}) — the handler will close it\n";
+                $this->logToStream("debug", 'Issue {repo}#{issue} is not open on GitHub but is still queued ({state}) — the handler will close it', ["repo" => "{$context->owner}/{$context->name}", "issue" => $number, "state" => $stored->ProcessingState]);
                 continue;
             }
 
-            echo "    Issue #{$number} is not open on GitHub any more — re-requesting processing 🔄\n";
+            $this->logToStream("notice", 'Issue {repo}#{issue} is not open on GitHub any more — re-requesting processing', ["repo" => "{$context->owner}/{$context->name}", "issue" => $number, "dryRun" => $this->dryRun]);
             if (!$this->dryRun) {
                 $this->repository->reRequestIssue((int) $stored->Sequence);
             }
@@ -360,13 +356,12 @@ class RepositorySyncHandler
         }
 
         if (empty($openNumbers)) {
-            echo "    No open issues on GitHub\n";
+            $this->logToStream("debug", 'No open issues on GitHub for {repo}', ["repo" => "{$context->owner}/{$context->name}"]);
         }
     }
 
     private function syncBranches(object $context): void
     {
-        echo "  Branches:\n";
         $result = $this->branchesHandler->check($context);
         $this->accumulate("branches", $result);
 
@@ -377,7 +372,7 @@ class RepositorySyncHandler
                 continue;
             }
 
-            echo "    Branch {$ref} no longer exists on GitHub — recording its deletion 🗑️\n";
+            $this->logToStream("notice", 'Branch {ref} of {repo} no longer exists on GitHub — recording its deletion', ["repo" => "{$context->owner}/{$context->name}", "ref" => $ref, "dryRun" => $this->dryRun]);
             if (!$this->dryRun) {
                 $this->repository->markBranchDeleted($context->owner, $context->name, $ref);
             }
@@ -385,13 +380,13 @@ class RepositorySyncHandler
         }
 
         if (empty($refs)) {
-            echo "    No branches besides {$context->defaultBranch} on GitHub\n";
+            $this->logToStream("debug", 'No branches besides {defaultBranch} on GitHub for {repo}', ["repo" => "{$context->owner}/{$context->name}", "defaultBranch" => $context->defaultBranch]);
         }
     }
 
     private function markRemoved(object $row, string $reason): void
     {
-        echo "  {$reason} — marking removed ⚠️\n";
+        $this->logToStream("warning", 'Repository {repo}: {reason} — marking removed', ["repo" => $row->FullName, "repositoryId" => (int) $row->Id, "installationId" => (int) $row->InstallationId, "reason" => $reason, "dryRun" => $this->dryRun]);
         if (!$this->dryRun) {
             $this->repository->markRepositoryRemoved((int) $row->Id, (int) $row->InstallationId, $this->webhooksHandlerVersion);
         }
@@ -405,17 +400,5 @@ class RepositorySyncHandler
     {
         $this->report[$category]["checked"] += $result["checked"];
         $this->report[$category]["backfilled"] += $result["backfilled"];
-    }
-
-    private function printSummary(): void
-    {
-        echo "\n===== Repositories sync summary" . ($this->dryRun ? " (dry run — nothing was written)" : "") . " =====\n";
-        foreach ($this->report as $category => $counters) {
-            $parts = [];
-            foreach ($counters as $name => $value) {
-                $parts[] = "{$name}: {$value}";
-            }
-            echo str_pad($category, 16) . implode("  ", $parts) . "\n";
-        }
     }
 }

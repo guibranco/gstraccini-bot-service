@@ -130,7 +130,7 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
  */
 function handleResponse(Response $response, string $method, string $accept): Response
 {
-    global $logger;
+    global $logger, $logStream;
 
     $statusCode = $response->getStatusCode();
     $info = $response->toJson();
@@ -168,8 +168,18 @@ function handleResponse(Response $response, string $method, string $accept): Res
 
     if ($statusCode <= 0 || ($statusCode >= 300 && $statusCode !== 404)) {
         $logger->log($errorMessage, $info);
+        $logStream?->error(
+            'GitHub API {method} request failed with HTTP {status}: {error}',
+            ['method' => $method, 'status' => $statusCode, 'error' => $errorMessage, 'response' => $info],
+            "github"
+        );
     } elseif (empty($body) && $method !== "DELETE" && $statusCode !== 204 && $accept !== "application/vnd.github.v3.diff") {
         $logger->log("Unexpected empty response", $info);
+        $logStream?->warning(
+            'GitHub API {method} request returned an unexpected empty response (HTTP {status})',
+            ['method' => $method, 'status' => $statusCode, 'response' => $info],
+            "github"
+        );
     }
 
     return $response;
@@ -379,6 +389,14 @@ function setCheckRunInProgress(array $metadata, string $commitId, string $type):
  */
 function setCheckRunFailed(array $metadata, int $checkRunId, string $type, string $details): void
 {
+    global $logStream;
+
+    $logStream?->error(
+        'Check run {checkRun} #{checkRunId} failed: {details}',
+        ['checkRun' => constant("BOT_CHECK_MESSAGE_PREFIX") . ucwords($type), 'checkRunId' => $checkRunId, 'checkRunUrl' => $metadata["checkRunUrl"], 'details' => mb_substr($details, 0, 2000)],
+        "check_runs"
+    );
+
     $checkRunBody = array(
         "name" => constant("BOT_CHECK_MESSAGE_PREFIX") . ucwords($type),
         "details_url" => $metadata["dashboardUrl"],
@@ -410,6 +428,16 @@ function failCheckRunOnError(array $metadata, int $checkRunId, string $type, \Th
         setCheckRunFailed($metadata, $checkRunId, $type, mb_substr($details, 0, 60000));
     } catch (\Throwable $e) {
         error_log("[gstraccini-bot] Failed to mark check run {$checkRunId} as failed: {$e->getMessage()}");
+        try {
+            global $logStream;
+            $logStream?->critical(
+                'Failed to mark check run #{checkRunId} as failed — it stays in progress: {error}',
+                ['checkRunId' => $checkRunId, 'checkRunUrl' => $metadata["checkRunUrl"], 'error' => $e->getMessage(), 'originalError' => $error->getMessage()],
+                "check_runs"
+            );
+        } catch (\Throwable) {
+            // Nothing more to do: the error_log line above already has it.
+        }
     }
 }
 

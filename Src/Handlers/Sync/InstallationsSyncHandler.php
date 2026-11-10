@@ -12,6 +12,7 @@ use GuiBranco\GStracciniBot\Library\Sync\RepositoriesSyncRepository;
 use GuiBranco\GStracciniBot\Library\Sync\SettingsSyncStateStore;
 use GuiBranco\GStracciniBot\Library\Sync\SyncStateStoreInterface;
 use Throwable;
+use GuiBranco\GStracciniBot\Library\LogsToStream;
 
 /**
  * The monthly installations sync: reconciles `github_installations` with
@@ -48,6 +49,8 @@ use Throwable;
  */
 class InstallationsSyncHandler
 {
+    use LogsToStream;
+
     public const REPOSITORIES_RESYNC_MONTHS = 3;
 
     /** Day of the month the scheduled run becomes due. */
@@ -132,7 +135,6 @@ class InstallationsSyncHandler
             "repositories" => ["checked" => 0, "added" => 0, "updated" => 0, "renamed" => 0, "removed" => 0],
         ];
 
-        echo "==> Installations sync started" . ($this->dryRun ? " (dry run)" : "") . "\n";
         $logStream?->info(
             "Installations sync started",
             ["dryRun" => $this->dryRun, "installationId" => $onlyInstallationId, "force" => $force],
@@ -159,8 +161,6 @@ class InstallationsSyncHandler
             $this->markUnlistedInstallations($known, $listedIds);
         }
 
-        echo "==> Installations sync finished\n";
-        $this->printSummary();
         $logStream?->info("Installations sync finished", $this->report, self::LOG_CHANNEL);
 
         return $this->report;
@@ -216,7 +216,7 @@ class InstallationsSyncHandler
 
         $login = (string) $installation->account->login;
         $suspended = isset($installation->suspended_at) && $installation->suspended_at !== null;
-        echo "Installation: {$login} (#{$installation->id})" . ($suspended ? " — suspended ⏸️" : "") . "\n";
+        $this->logToStream("debug", 'Checking installation {login} (#{installationId})', ["login" => $login, "installationId" => (int) $installation->id, "suspended" => $suspended]);
 
         if ($existing === null) {
             $this->registerInstallation($installation, $suspended);
@@ -237,7 +237,7 @@ class InstallationsSyncHandler
                 continue;
             }
 
-            echo "Installation: {$row->AccountLogin} (#{$installationId}) — not listed by GitHub any more, marking uninstalled ⚠️\n";
+            $this->logToStream("warning", 'Installation {login} (#{installationId}) is not listed by GitHub any more — marking uninstalled', ["login" => $row->AccountLogin, "installationId" => $installationId, "dryRun" => $this->dryRun]);
             if (!$this->dryRun) {
                 $this->repository->markInstallationRemoved((int) $row->Sequence);
             }
@@ -250,12 +250,12 @@ class InstallationsSyncHandler
         $installationId = (int) $installation->id;
         $login = (string) $installation->account->login;
 
-        echo "  Not registered — adding ✅\n";
+        $this->logToStream("notice", 'Installation {login} (#{installationId}) is not registered — adding', ["login" => $login, "installationId" => $installationId, "dryRun" => $this->dryRun]);
         $this->report["installations"]["registered"]++;
 
         $synced = false;
         if ($suspended) {
-            echo "  Suspended — repositories not synced\n";
+            $this->logToStream("info", 'Installation {login} (#{installationId}) is suspended — repositories not synced', ["login" => $login, "installationId" => $installationId]);
             $this->report["installations"]["skipped"]++;
         } else {
             $synced = $this->syncRepositories($installationId, $login);
@@ -282,7 +282,7 @@ class InstallationsSyncHandler
 
         $changes = self::installationChanges($existing, $installation);
         if (!empty($changes)) {
-            echo "  Updating " . implode(", ", $changes) . " 📝\n";
+            $this->logToStream("info", 'Updating installation {login} (#{installationId}): {changes}', ["login" => $login, "installationId" => $installationId, "changes" => implode(", ", $changes), "dryRun" => $this->dryRun]);
             if (!$this->dryRun) {
                 $this->repository->updateInstallationMetadata($sequence, $installation);
             }
@@ -290,7 +290,7 @@ class InstallationsSyncHandler
         }
 
         if ($existing->Status === "0") {
-            echo "  Registered as uninstalled but GitHub still lists it — reactivating ♻️\n";
+            $this->logToStream("notice", 'Installation {login} (#{installationId}) is registered as uninstalled but GitHub still lists it — reactivating', ["login" => $login, "installationId" => $installationId, "dryRun" => $this->dryRun]);
             if (!$this->dryRun) {
                 $this->repository->markInstallationActive($sequence);
             }
@@ -298,7 +298,7 @@ class InstallationsSyncHandler
         }
 
         if ($suspended) {
-            echo "  Suspended — repositories not synced\n";
+            $this->logToStream("info", 'Installation {login} (#{installationId}) is suspended — repositories not synced', ["login" => $login, "installationId" => $installationId]);
             $this->report["installations"]["skipped"]++;
             return;
         }
@@ -308,7 +308,7 @@ class InstallationsSyncHandler
             $nextCheck = (new DateTimeImmutable($lastSyncDate, $now->getTimezone()))
                 ->modify("+" . self::REPOSITORIES_RESYNC_MONTHS . " months")
                 ->format("Y-m-d");
-            echo "  Repositories synced on {$lastSyncDate} — due again from {$nextCheck}\n";
+            $this->logToStream("debug", 'Repositories of {login} synced on {lastSyncDate} — due again from {nextCheck}', ["login" => $login, "installationId" => $installationId, "lastSyncDate" => $lastSyncDate, "nextCheck" => $nextCheck]);
             return;
         }
 
@@ -319,7 +319,7 @@ class InstallationsSyncHandler
         } else {
             $reason = "last synced on {$lastSyncDate}, over " . self::REPOSITORIES_RESYNC_MONTHS . " months ago";
         }
-        echo "  Repositories {$reason} — syncing 🔄\n";
+        $this->logToStream("info", 'Syncing repositories of {login} ({reason})', ["login" => $login, "installationId" => $installationId, "reason" => $reason]);
 
         if ($this->syncRepositories($installationId, $login)) {
             if (!$this->dryRun) {
@@ -339,7 +339,6 @@ class InstallationsSyncHandler
         try {
             $result = $this->repositoriesHandler->sync($installationId, $login);
         } catch (Throwable $e) {
-            echo "  Repositories sync failed: {$e->getMessage()} ❌\n";
             $logStream?->error(
                 'Repositories sync failed for installation {login}: {error}',
                 (new LogContext(installationId: $installationId, login: $login))->withError($e)->toArray(),
@@ -353,21 +352,8 @@ class InstallationsSyncHandler
             $this->report["repositories"][$counter] += $value;
         }
 
-        echo "  Repositories: {$result['checked']} checked, {$result['added']} added, {$result['updated']} updated, " .
-            "{$result['renamed']} renamed, {$result['removed']} removed\n";
+        $this->logToStream("info", 'Repositories of {login} synced: {checked} checked, {added} added, {updated} updated, {renamed} renamed, {removed} removed', array_merge(["login" => $login, "installationId" => $installationId], $result));
 
         return true;
-    }
-
-    private function printSummary(): void
-    {
-        echo "\n===== Installations sync summary" . ($this->dryRun ? " (dry run — nothing was written)" : "") . " =====\n";
-        foreach ($this->report as $category => $counters) {
-            $parts = [];
-            foreach ($counters as $name => $value) {
-                $parts[] = "{$name}: {$value}";
-            }
-            echo str_pad($category, 16) . implode("  ", $parts) . "\n";
-        }
     }
 }

@@ -4,6 +4,7 @@ namespace GuiBranco\GStracciniBot\Handlers\Checkup;
 
 use GuiBranco\GStracciniBot\Library\Checkup\CheckupRepository;
 use GuiBranco\GStracciniBot\Library\Checkup\GitHubCollectionFetcher;
+use GuiBranco\GStracciniBot\Library\LogsToStream;
 
 /**
  * Lists every open issue of a repository and makes sure each one has a
@@ -15,6 +16,10 @@ use GuiBranco\GStracciniBot\Library\Checkup\GitHubCollectionFetcher;
  */
 class IssuesCheckupHandler
 {
+    use LogsToStream;
+
+    private const LOG_CHANNEL = "checkup";
+
     private CheckupRepository $repository;
     private GitHubCollectionFetcher $fetcher;
     private bool $dryRun;
@@ -50,10 +55,9 @@ class IssuesCheckupHandler
             }
 
             $checked++;
-            echo "    Issue #{$issue->number}: {$issue->title}\n";
 
             if (!$this->repository->existsIssue($repoContext->owner, $repoContext->name, (int) $issue->number)) {
-                echo "      ⚠️  Missing in github_issues — backfilling\n";
+                $this->logToStream("warning", 'Issue {repo}#{issue} is missing in github_issues — backfilling', ["repo" => "{$repoContext->owner}/{$repoContext->name}", "issue" => $issue->number, "title" => $issue->title, "dryRun" => $this->dryRun]);
                 if (!$this->dryRun) {
                     $this->repository->insertIssue(
                         $issue,

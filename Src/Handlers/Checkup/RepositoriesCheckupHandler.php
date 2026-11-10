@@ -4,6 +4,7 @@ namespace GuiBranco\GStracciniBot\Handlers\Checkup;
 
 use GuiBranco\GStracciniBot\Library\Checkup\CheckupRepository;
 use GuiBranco\GStracciniBot\Library\Checkup\GitHubCollectionFetcher;
+use GuiBranco\GStracciniBot\Library\LogsToStream;
 
 /**
  * Lists every repository accessible to an installation and makes sure each
@@ -12,6 +13,10 @@ use GuiBranco\GStracciniBot\Library\Checkup\GitHubCollectionFetcher;
  */
 class RepositoriesCheckupHandler
 {
+    use LogsToStream;
+
+    private const LOG_CHANNEL = "checkup";
+
     private CheckupRepository $repository;
     private GitHubCollectionFetcher $fetcher;
     private bool $dryRun;
@@ -43,10 +48,9 @@ class RepositoriesCheckupHandler
 
         foreach ($response as $repository) {
             $checked++;
-            echo "  Repository: {$repository->full_name}\n";
 
             if (!$this->repository->existsRepository((int) $repository->id)) {
-                echo "    ⚠️  Missing in github_repositories — backfilling\n";
+                $this->logToStream("warning", 'Repository {repo} is missing in github_repositories — backfilling', ["repo" => $repository->full_name, "dryRun" => $this->dryRun]);
                 if (!$this->dryRun) {
                     $this->repository->insertRepository($repository, $installationContext->id, $this->webhooksHandlerVersion);
                 }
