@@ -27,9 +27,9 @@ class PullRequestHeadWatcher
      */
     private Closure $sleep;
 
-    public function __construct(?callable $sleep = null)
+    public function __construct(?Closure $sleep = null)
     {
-        $this->sleep = Closure::fromCallable($sleep ?? 'sleep');
+        $this->sleep = $sleep ?? sleep(...);
     }
 
     /**

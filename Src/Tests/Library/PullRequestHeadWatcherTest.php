@@ -56,7 +56,7 @@ class PullRequestHeadWatcherTest extends TestCase
     /**
      * A watcher whose pauses are recorded, and which runs a step on each pause.
      */
-    private function watcher(?callable $onPause = null): PullRequestHeadWatcher
+    private function watcher(?\Closure $onPause = null): PullRequestHeadWatcher
     {
         return new PullRequestHeadWatcher(function (int $seconds) use ($onPause): void {
             $this->pauses[] = $seconds;
@@ -68,7 +68,7 @@ class PullRequestHeadWatcherTest extends TestCase
     }//end watcher()
 
 
-    public function testReturnsTheNewHeadRightAwayWhenItAlreadyMoved(): void
+    public function testReturnsAnAlreadyMovedHead(): void
     {
         $this->head(self::NEW_HEAD);
 
@@ -78,7 +78,7 @@ class PullRequestHeadWatcherTest extends TestCase
         $this->assertSame([self::FETCH], $this->github->requests());
         $this->assertSame([], $this->pauses);
 
-    }//end testReturnsTheNewHeadRightAwayWhenItAlreadyMoved()
+    }//end testReturnsAnAlreadyMovedHead()
 
 
     public function testKeepsFetchingUntilTheHeadMoves(): void

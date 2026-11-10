@@ -15,6 +15,7 @@ use GuiBranco\GStracciniBot\Library\RepositoryManager;
 use GuiBranco\GStracciniBot\Library\VersionBumpCommentBuilder;
 use GuiBranco\GStracciniBot\Library\VersionBumpCommitService;
 use RuntimeException;
+use stdClass;
 
 /**
  * Handles issue-comment events shared by the HTTP webhook entry point
@@ -1073,9 +1074,9 @@ class CommentsHandler implements IHandler
      * Builds the `github_pull_requests` row used to (re-)queue a pull request for the
      * pull requests worker, from the comment that triggered the action.
      */
-    private function buildPullRequestRow($comment, object $pullRequestUpdated): \stdClass
+    private function buildPullRequestRow($comment, object $pullRequestUpdated): stdClass
     {
-        $pullRequest = new \stdClass();
+        $pullRequest = new stdClass();
         $pullRequest->DeliveryId = $comment->DeliveryIdText;
         $pullRequest->HookId = $comment->HookId;
         $pullRequest->TargetId = $comment->TargetId;
@@ -1098,9 +1099,9 @@ class CommentsHandler implements IHandler
      * `$commitItem` has the shape returned by the GitHub commits API
      * (`sha`, `commit.tree.sha`, `commit.message`, `commit.author`, `commit.committer`).
      */
-    private function buildPushRow($comment, string $ref, object $commitItem): \stdClass
+    private function buildPushRow($comment, string $ref, object $commitItem): stdClass
     {
-        $commit = new \stdClass();
+        $commit = new stdClass();
         $commit->HookId = $comment->HookId;
         $commit->TargetId = $comment->TargetId;
         $commit->TargetType = $comment->TargetType;
