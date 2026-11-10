@@ -29,7 +29,6 @@ class PullRequestsHandler implements IHandler
         global $logStream;
 
         if (!$isRetry) {
-            echo "https://github.com/{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}/pull/{$pullRequest->Number}:\n\n";
             $logStream?->info(
                 'Processing pull request {repo}#{pr}',
                 (new LogContext(repo: "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}", pr: $pullRequest->Number, sender: $pullRequest->Sender))->toArray(),
@@ -45,7 +44,6 @@ class PullRequestsHandler implements IHandler
         try {
             $pullRequestResponse->ensureSuccessStatus();
         } catch (\Exception $e) {
-            echo "Failed to fetch PR #{$pullRequest->Number}: {$e->getMessage()} ❌\n";
             $logStream?->error(
                 'Failed to fetch pull request {repo}#{pr}: {error}',
                 (new LogContext(repo: "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}", pr: $pullRequest->Number))->withError($e)->toArray(),
@@ -84,7 +82,6 @@ class PullRequestsHandler implements IHandler
         }
 
         if ($pullRequestUpdated->state != "open") {
-            echo "PR State: {$pullRequestUpdated->state} ⛔\n";
             $logStream?->info(
                 'PR {repo}#{pr} state is {state} — skipping',
                 (new LogContext(repo: "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}", pr: $pullRequest->Number, state: $pullRequestUpdated->state))->toArray(),
@@ -98,7 +95,6 @@ class PullRequestsHandler implements IHandler
 
         if ($isRetry === false && $pullRequestUpdated->mergeable_state === "unknown") {
             sleep(5);
-            echo "State: {$pullRequestUpdated->mergeable_state} - Retrying #{$pullRequestUpdated->number} - Sender: " . $pullRequest->Sender . " 🔄\n";
             $logStream?->warning(
                 'PR {repo}#{pr} has unknown mergeable state — retrying',
                 (new LogContext(repo: "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}", pr: $pullRequest->Number, sender: $pullRequest->Sender))->toArray(),
@@ -147,6 +143,8 @@ class PullRequestsHandler implements IHandler
      */
     private function runChecks($pullRequest, $pullRequestUpdated, array $metadata, $config, ?object $existingCheckRun, bool $actionRequired, ?int $checkRunId): void
     {
+        global $logStream;
+
         $this->enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config);
         $this->addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated);
         $this->updateBranch($metadata, $pullRequest, $pullRequestUpdated);
@@ -190,7 +188,12 @@ class PullRequestsHandler implements IHandler
         }
 
         if ($actionRequired === true) {
-            echo "State: Version bump decision pending - check run already action_required, skipping redundant update ⚠️\n";
+            $logStream?->info(
+                'Version bump decision pending on {repo}#{pr} — check run already action_required, skipping redundant update',
+                (new LogContext(repo: "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}", pr: $pullRequest->Number))->toArray(),
+                "pull_requests",
+                $pullRequest->DeliveryIdText
+            );
             return;
         }
 
@@ -200,7 +203,12 @@ class PullRequestsHandler implements IHandler
             "pull request",
             "Waiting on a version bump decision. Check one of the boxes on the bot's comment to continue."
         );
-        echo "State: Version bump decision pending - marking 'pull request' check run as action_required ⚠️\n";
+        $logStream?->warning(
+            'Version bump decision pending on {repo}#{pr} — "pull request" check run marked as action_required',
+            (new LogContext(repo: "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}", pr: $pullRequest->Number, checkRunId: $checkRunId))->toArray(),
+            "pull_requests",
+            $pullRequest->DeliveryIdText
+        );
 
     }//end runChecks()
 
@@ -367,6 +375,8 @@ class PullRequestsHandler implements IHandler
      */
     private function removeAwaitingTriageIfReviewed($metadata, $pullRequestUpdated, $collaboratorsLogins, $reviewsLogins, $sender)
     {
+        global $logStream;
+
         $currentLabels = array_column($pullRequestUpdated->labels, "name");
         if (in_array(self::AWAITING_TRIAGE_LABEL, $currentLabels) === false) {
             return;
@@ -387,7 +397,11 @@ class PullRequestsHandler implements IHandler
 
         $reviewedCollaborators = array_intersect($reviewsLogins, $collaboratorsLogins);
         if (count($reviewedCollaborators) < count($requiredReviewers)) {
-            echo "Awaiting triage: Not all required reviewers have reviewed ({" . count($reviewedCollaborators) . "}/{" . count($requiredReviewers) . "}) ⏳\n";
+            $logStream?->info(
+                'Awaiting triage on {repo}#{pr}: {reviewed}/{required} required reviewers have reviewed',
+                (new LogContext(repo: "{$metadata['owner']}/{$metadata['repo']}", pr: $pullRequestUpdated->number, reviewed: count($reviewedCollaborators), required: count($requiredReviewers)))->toArray(),
+                "pull_requests"
+            );
             return;
         }
 
@@ -402,7 +416,11 @@ class PullRequestsHandler implements IHandler
         }
 
         if (strtotime($lastReviewTimestamp) <= strtotime($lastCommitTimestamp)) {
-            echo "Awaiting triage: Last review ({$lastReviewTimestamp}) is not after last commit ({$lastCommitTimestamp}) ⏰\n";
+            $logStream?->info(
+                'Awaiting triage on {repo}#{pr}: last review ({lastReview}) is not after last commit ({lastCommit})',
+                (new LogContext(repo: "{$metadata['owner']}/{$metadata['repo']}", pr: $pullRequestUpdated->number, lastReview: $lastReviewTimestamp, lastCommit: $lastCommitTimestamp))->toArray(),
+                "pull_requests"
+            );
             return;
         }
 
@@ -411,9 +429,17 @@ class PullRequestsHandler implements IHandler
         $response = doRequestGitHub($metadata["token"], $url, null, "DELETE");
 
         if ($response->getStatusCode() < 300) {
-            echo "Awaiting triage: Label removed - All reviewers have reviewed and last review is recent ✅\n";
+            $logStream?->info(
+                'Awaiting triage label removed from {repo}#{pr} — all reviewers have reviewed after the last commit',
+                (new LogContext(repo: "{$metadata['owner']}/{$metadata['repo']}", pr: $pullRequestUpdated->number))->toArray(),
+                "pull_requests"
+            );
         } else {
-            echo "Awaiting triage: Failed to remove label (HTTP {$response->getStatusCode()}) ❌\n";
+            $logStream?->error(
+                'Failed to remove the awaiting triage label from {repo}#{pr} (HTTP {status})',
+                (new LogContext(repo: "{$metadata['owner']}/{$metadata['repo']}", pr: $pullRequestUpdated->number, status: $response->getStatusCode(), body: $response->getBody()))->toArray(),
+                "pull_requests"
+            );
         }
     }
 
@@ -731,12 +757,19 @@ class PullRequestsHandler implements IHandler
 
     private function checkForOtherPullRequests($metadata, $pullRequest)
     {
+        global $logStream;
+
         $pullRequestsOpenResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestsUrl"] . "?state=open&sort=created", null, "GET");
         $pullRequestsOpen = json_decode($pullRequestsOpenResponse->getBody());
         $any = false;
 
         if (count($pullRequestsOpen) === 0) {
-            echo "No other pull requests to review ❌\n";
+            $logStream?->debug(
+                'No other open pull requests to review in {repo}',
+                (new LogContext(repo: "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}", pr: $pullRequest->Number))->toArray(),
+                "pull_requests",
+                $pullRequest->DeliveryIdText
+            );
             return;
         }
 
@@ -767,6 +800,8 @@ class PullRequestsHandler implements IHandler
 
     private function triggerReview($pullRequest, $pullRequestPending)
     {
+        global $logStream;
+
         $prUpsert = new \stdClass();
         $prUpsert->DeliveryId = $pullRequest->DeliveryIdText;
         $prUpsert->HookId = $pullRequest->HookId;
@@ -781,7 +816,12 @@ class PullRequestsHandler implements IHandler
         $prUpsert->Title = $pullRequestPending->title;
         $prUpsert->Ref = $pullRequestPending->head->ref;
         $prUpsert->InstallationId = $pullRequest->InstallationId;
-        echo "Triggering review of #{$pullRequestPending->number} - Sender: " . $pullRequest->Sender . " 🔄\n";
+        $logStream?->info(
+            'Triggering review of {repo}#{pending}',
+            (new LogContext(repo: "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}", pr: $pullRequest->Number, pending: $pullRequestPending->number, sender: $pullRequest->Sender))->toArray(),
+            "pull_requests",
+            $pullRequest->DeliveryIdText
+        );
         upsertPullRequest($prUpsert);
     }
 
@@ -947,7 +987,6 @@ class PullRequestsHandler implements IHandler
         }
 
         if ($pullRequestUpdated->mergeable_state === "clean" && $pullRequestUpdated->mergeable) {
-            echo "State: " . $pullRequestUpdated->mergeable_state . " - Enable auto merge - Is mergeable - Sender auto merge: " . ($isSenderAutoMerge ? "✅" : "⛔") . " - Sender: " . $pullRequest->Sender . " ✅\n";
             $logStream?->info(
                 'PR {repo}#{pr} is mergeable — recording ready-to-merge action',
                 (new LogContext(repo: "{$metadata['owner']}/{$metadata['repo']}", pr: $pullRequest->Number, mergeable_state: $pullRequestUpdated->mergeable_state, auto_merge_submitter: $isSenderAutoMerge))->toArray(),
@@ -956,7 +995,6 @@ class PullRequestsHandler implements IHandler
             );
             createReadyToMergeAction($pullRequest, $pullRequestUpdated);
         } else {
-            echo "State: " . $pullRequestUpdated->mergeable_state . " - Enable auto merge - Is NOT mergeable - Sender auto merge: " . ($isSenderAutoMerge ? "✅" : "⛔") . " - Sender: " . $pullRequest->Sender . " ⛔\n";
             $logStream?->warning(
                 'PR {repo}#{pr} is not mergeable ({mergeable_state})',
                 (new LogContext(repo: "{$metadata['owner']}/{$metadata['repo']}", pr: $pullRequest->Number, mergeable_state: $pullRequestUpdated->mergeable_state, sender: $pullRequest->Sender))->toArray(),
@@ -972,7 +1010,6 @@ class PullRequestsHandler implements IHandler
 
         if ($pullRequestUpdated->mergeable_state !== "clean" && $pullRequestUpdated->mergeable === false) {
             if ($pullRequest->Sender !== "dependabot[bot]" && $pullRequest->Sender !== "depfu[bot]") {
-                echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Conflicts - Sender: " . $pullRequest->Sender . " ⚠️\n";
                 $logStream?->warning(
                     'PR {repo}#{pr} has conflicts',
                     (new LogContext(repo: "{$metadata['owner']}/{$metadata['repo']}", pr: $pullRequest->Number, sender: $pullRequest->Sender, mergeable_state: $pullRequestUpdated->mergeable_state))->toArray(),
@@ -981,13 +1018,23 @@ class PullRequestsHandler implements IHandler
                 );
                 return;
             }
-            echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Recreate via bot - Sender: " . $pullRequest->Sender . " ☢️\n";
+            $logStream?->notice(
+                'PR {repo}#{pr} has conflicts — asking {sender} to recreate it',
+                (new LogContext(repo: "{$metadata['owner']}/{$metadata['repo']}", pr: $pullRequest->Number, sender: $pullRequest->Sender, mergeable_state: $pullRequestUpdated->mergeable_state))->toArray(),
+                "pull_requests",
+                $pullRequest->DeliveryIdText
+            );
 
             // The marker comment being there doesn't mean the request was received: Dependabot and Depfu
             // react to a command they picked up, so one left without their reaction is posted again.
             $recreate = (new RecreateRequester())->request($metadata, $pullRequestUpdated->head->sha, $pullRequest->Sender, new DateTimeImmutable());
             if ($recreate->summary() !== "") {
-                echo "State: {$pullRequestUpdated->mergeable_state} - Resolve conflicts - {$recreate->summary()} - Sender: {$pullRequest->Sender} {$recreate->icon()}\n";
+                $logStream?->info(
+                    'PR {repo}#{pr} recreate request: {summary}',
+                    (new LogContext(repo: "{$metadata['owner']}/{$metadata['repo']}", pr: $pullRequest->Number, summary: $recreate->summary(), sender: $pullRequest->Sender, mergeable_state: $pullRequestUpdated->mergeable_state))->toArray(),
+                    "pull_requests",
+                    $pullRequest->DeliveryIdText
+                );
             }
 
             if ($recreate->warning() !== "") {
@@ -999,7 +1046,12 @@ class PullRequestsHandler implements IHandler
                 $logStream?->warning(sprintf('PR {repo}#{pr} %s', $recreate->warning()), $context, "pull_requests", $pullRequest->DeliveryIdText);
             }
         } else {
-            echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - No conflicts - Sender: " . $pullRequest->Sender . " 🆒\n";
+            $logStream?->debug(
+                'PR {repo}#{pr} has no conflicts',
+                (new LogContext(repo: "{$metadata['owner']}/{$metadata['repo']}", pr: $pullRequest->Number, mergeable_state: $pullRequestUpdated->mergeable_state))->toArray(),
+                "pull_requests",
+                $pullRequest->DeliveryIdText
+            );
         }
     }
 
@@ -1068,6 +1120,8 @@ class PullRequestsHandler implements IHandler
      */
     private function updateBranch($metadata, $pullRequest, $pullRequestUpdated)
     {
+        global $logStream;
+
         $baseRef = urlencode($pullRequestUpdated->base->ref);
         $headRef = urlencode($pullRequestUpdated->head->ref);
 
@@ -1078,11 +1132,21 @@ class PullRequestsHandler implements IHandler
         $compare = json_decode($compareResponse->getBody());
 
         if ($compare->behind_by === 0) {
-            echo "State: {$pullRequestUpdated->mergeable_state} - Commits Behind: 0 - Updating branch: No - Sender: {$pullRequestUpdated->user->login} 👎🏻\n";
+            $logStream?->debug(
+                'PR {repo}#{pr} is up to date with its base branch',
+                (new LogContext(repo: "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}", pr: $pullRequest->Number, mergeable_state: $pullRequestUpdated->mergeable_state))->toArray(),
+                "pull_requests",
+                $pullRequest->DeliveryIdText
+            );
             return;
         }
 
-        echo "State: {$pullRequestUpdated->mergeable_state} - Commits Behind: {$compare->behind_by} - Updating branch: Yes - Sender: {$pullRequestUpdated->user->login} 👍🏻\n";
+        $logStream?->info(
+            'PR {repo}#{pr} is {behind} commit(s) behind its base branch — updating the branch',
+            (new LogContext(repo: "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}", pr: $pullRequest->Number, behind: $compare->behind_by, mergeable_state: $pullRequestUpdated->mergeable_state))->toArray(),
+            "pull_requests",
+            $pullRequest->DeliveryIdText
+        );
         $url = $metadata["pullRequestUrl"] . "/update-branch";
         $body = array("expected_head_sha" => $pullRequestUpdated->head->sha);
         $updateResponse = doRequestGitHub($metadata["token"], $url, $body, "PUT");
@@ -1107,14 +1171,26 @@ class PullRequestsHandler implements IHandler
      */
     private function requeueAfterBranchUpdate(array $metadata, object $pullRequest, object $pullRequestUpdated): void
     {
+        global $logStream;
+
         $watcher = new PullRequestHeadWatcher(sleep(...));
         $newHead = $watcher->waitForNewHead($metadata["token"], $metadata["pullRequestUrl"], $pullRequestUpdated->head->sha);
         if ($newHead === null) {
-            echo "State: Branch update requested but head still at {$pullRequestUpdated->head->sha} - not re-queuing ⚠️\n";
+            $logStream?->warning(
+                'Branch update of {repo}#{pr} requested but head still at {head} — not re-queuing',
+                (new LogContext(repo: "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}", pr: $pullRequest->Number, head: $pullRequestUpdated->head->sha))->toArray(),
+                "pull_requests",
+                $pullRequest->DeliveryIdText
+            );
             return;
         }
 
         upsertPullRequest($pullRequest);
-        echo "State: Branch updated - new head {$newHead} - re-queued for checks 🔁\n";
+        $logStream?->info(
+            'Branch of {repo}#{pr} updated — new head {head}, re-queued for checks',
+            (new LogContext(repo: "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}", pr: $pullRequest->Number, head: $newHead))->toArray(),
+            "pull_requests",
+            $pullRequest->DeliveryIdText
+        );
     }
 }

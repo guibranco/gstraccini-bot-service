@@ -4,6 +4,7 @@ namespace GuiBranco\GStracciniBot\Handlers\Checkup;
 
 use GuiBranco\GStracciniBot\Library\Checkup\CheckupRepository;
 use GuiBranco\GStracciniBot\Library\Checkup\GitHubCollectionFetcher;
+use GuiBranco\GStracciniBot\Library\LogsToStream;
 
 /**
  * Lists every installation of the GitHub App and makes sure each one has a
@@ -11,6 +12,10 @@ use GuiBranco\GStracciniBot\Library\Checkup\GitHubCollectionFetcher;
  */
 class InstallationsCheckupHandler
 {
+    use LogsToStream;
+
+    private const LOG_CHANNEL = "checkup";
+
     private CheckupRepository $repository;
     private GitHubCollectionFetcher $fetcher;
     private bool $dryRun;
@@ -48,10 +53,9 @@ class InstallationsCheckupHandler
             }
 
             $checked++;
-            echo "Installation: {$installation->account->login} (#{$installation->id})\n";
 
             if (!$this->repository->existsInstallation((int) $installation->id)) {
-                echo "  ⚠️  Missing in github_installations — backfilling\n";
+                $this->logToStream("warning", 'Installation {login} (#{installationId}) is missing in github_installations — backfilling', ["login" => $installation->account->login, "installationId" => (int) $installation->id, "dryRun" => $this->dryRun]);
                 if (!$this->dryRun) {
                     $this->repository->insertInstallation($installation, $this->webhooksHandlerVersion);
                 }

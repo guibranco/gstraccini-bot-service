@@ -28,7 +28,6 @@ class UsersHandler implements IHandler
 
         $userId = (int) $user->UserId;
 
-        echo "Mapping installations for user {$user->Login} (#{$userId}):\n\n";
         $logStream?->info(
             'Processing user event for {user}',
             ['user' => $user->Login, 'userId' => $userId],
@@ -36,7 +35,6 @@ class UsersHandler implements IHandler
         );
 
         if (empty($user->Token)) {
-            echo "⛔ No token available for user {$user->Login} — skipping\n";
             $logStream?->warning(
                 'No token available for user {user} — skipping installation mapping',
                 ['user' => $user->Login, 'userId' => $userId],
@@ -52,12 +50,12 @@ class UsersHandler implements IHandler
             $installationId = (int) $installation->id;
             $activeInstallationIds[] = $installationId;
             upsertUserInstallation($userId, $installationId);
-            echo "  Installation: {$installation->account->login} (#{$installationId}) ✅\n";
+            $logStream?->debug('Mapped installation {login} (#{installationId}) to user {user}', ['user' => $user->Login, 'userId' => $userId, 'login' => $installation->account->login, 'installationId' => $installationId], "users");
         }
 
         $removed = removeStaleUserInstallations($userId, $activeInstallationIds);
         if ($removed > 0) {
-            echo "  Removed {$removed} stale installation mapping(s) ⚠️\n";
+            $logStream?->notice('Removed {removed} stale installation mapping(s) of user {user}', ['user' => $user->Login, 'userId' => $userId, 'removed' => $removed], "users");
         }
     }
 }

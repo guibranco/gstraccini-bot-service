@@ -11,6 +11,10 @@ namespace GuiBranco\GStracciniBot\Library;
  */
 class LabelHelper
 {
+    use LogsToStream;
+
+    private const LOG_CHANNEL = "labels";
+
     /**
      * Creates labels based on the provided metadata, style, and categories.
      *
@@ -25,7 +29,7 @@ class LabelHelper
         $labelService = new LabelService();
         $labelsToCreate = $labelService->loadFromConfig($categories);
         if ($labelsToCreate === null || count($labelsToCreate) === 0) {
-            echo "⛔ No labels to create\n";
+            $this->logToStream("notice", 'No labels to create in {repo}', ["repo" => "{$metadata["repositoryOwner"]}/{$metadata["repositoryName"]}", "categories" => implode(", ", $categories)]);
             return ["result" => -1];
         }
 
@@ -64,10 +68,17 @@ class LabelHelper
         $totalLabelsToCreate = count($labelsToCreateObject);
         $totalLabelsToUpdate = count($labelsToUpdateObject);
 
-        echo "🏷️ Total labels to create: {$totalLabelsToCreate}\n";
-        echo "🏷️ Total labels to update: {$totalLabelsToUpdate}\n";
-        echo "Styles: {$style}\n";
-        echo "Categories: " . implode(", ", $categories) . "\n";
+        $this->logToStream(
+            "info",
+            'Labels of {repo}: {toCreate} to create, {toUpdate} to update',
+            [
+                "repo" => "{$metadata["repositoryOwner"]}/{$metadata["repositoryName"]}",
+                "toCreate" => $totalLabelsToCreate,
+                "toUpdate" => $totalLabelsToUpdate,
+                "style" => $style,
+                "categories" => implode(", ", $categories),
+            ]
+        );
 
         if ($totalLabelsToCreate === 0 && $totalLabelsToUpdate === 0) {
             return ["result" => 0];
