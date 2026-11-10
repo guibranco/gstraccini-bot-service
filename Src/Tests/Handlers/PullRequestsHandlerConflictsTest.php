@@ -251,7 +251,7 @@ class PullRequestsHandlerConflictsTest extends TestCase
      *
      * @return void
      */
-    public function testTracesTheStepWithThePullRequestBeingProcessed(): void
+    public function testTracesStepWithPullRequestContext(): void
     {
         (new ReflectionProperty(PullRequestsHandler::class, "traceId"))->setValue($this->handler, self::DELIVERY_ID);
         (new ReflectionProperty(PullRequestsHandler::class, "repoSlug"))->setValue($this->handler, "owner/repo");
@@ -266,7 +266,7 @@ class PullRequestsHandlerConflictsTest extends TestCase
         $this->assertSame(LogStreamSpy::PULL_REQUESTS, $debug[0]["category"]);
         $this->assertSame(self::DELIVERY_ID, $debug[0]["traceId"]);
 
-    }//end testTracesTheStepWithThePullRequestBeingProcessed()
+    }//end testTracesStepWithPullRequestContext()
 
 
 }//end class
