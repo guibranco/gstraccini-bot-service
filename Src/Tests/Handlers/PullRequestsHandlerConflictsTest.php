@@ -7,6 +7,7 @@ use GuiBranco\GStracciniBot\Tests\Library\FakeGitHub;
 use GuiBranco\GStracciniBot\Tests\Library\RecreateRequestFixtures;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
+use ReflectionProperty;
 use stdClass;
 
 /**
@@ -43,6 +44,13 @@ class PullRequestsHandlerConflictsTest extends TestCase
      */
     private LogStreamSpy $warnings;
 
+    /**
+     * The handler under test.
+     *
+     * @var PullRequestsHandler
+     */
+    private PullRequestsHandler $handler;
+
 
     /**
      * Starts each test with a GitHub that knows nothing and a log stream
@@ -58,6 +66,7 @@ class PullRequestsHandlerConflictsTest extends TestCase
         $this->fixtures = new RecreateRequestFixtures();
         $this->warnings = new LogStreamSpy();
         $logStream = $this->warnings;
+        $this->handler = new PullRequestsHandler();
 
     }//end setUp()
 
@@ -99,7 +108,7 @@ class PullRequestsHandlerConflictsTest extends TestCase
 
         ob_start();
         try {
-            $method->invoke(new PullRequestsHandler(), $this->github->metadata(), $pullRequest, $pullRequestUpdated);
+            $method->invoke($this->handler, $this->github->metadata(), $pullRequest, $pullRequestUpdated);
         } finally {
             $output = ob_get_clean();
         }
@@ -233,6 +242,31 @@ class PullRequestsHandlerConflictsTest extends TestCase
         $this->assertSame([], $this->warnings->warnings());
 
     }//end testDoesNothingWhenThereAreNoConflicts()
+
+
+    /**
+     * Each step is traced with the repository, the pull request and the
+     * delivery being processed, so all the steps of a run can be followed
+     * together.
+     *
+     * @return void
+     */
+    public function testTracesTheStepWithThePullRequestBeingProcessed(): void
+    {
+        (new ReflectionProperty(PullRequestsHandler::class, "traceId"))->setValue($this->handler, self::DELIVERY_ID);
+        (new ReflectionProperty(PullRequestsHandler::class, "repoSlug"))->setValue($this->handler, "owner/repo");
+        (new ReflectionProperty(PullRequestsHandler::class, "prNumber"))->setValue($this->handler, 350);
+
+        $this->resolveConflicts("dependabot[bot]", "clean");
+        $debug = $this->warnings->entries("debug");
+
+        $this->assertCount(1, $debug);
+        $this->assertSame('PR {repo}#{pr}: no conflicts ({mergeable_state})', $debug[0]["message"]);
+        $this->assertSame(["repo" => "owner/repo", "pr" => 350, "mergeable_state" => "clean"], $debug[0]["context"]);
+        $this->assertSame(LogStreamSpy::PULL_REQUESTS, $debug[0]["category"]);
+        $this->assertSame(self::DELIVERY_ID, $debug[0]["traceId"]);
+
+    }//end testTracesTheStepWithThePullRequestBeingProcessed()
 
 
 }//end class
