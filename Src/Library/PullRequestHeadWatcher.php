@@ -24,13 +24,23 @@ class PullRequestHeadWatcher
 
     /**
      * Pauses between two fetches: takes the number of seconds.
+     *
+     * @var Closure
      */
     private Closure $sleep;
 
-    public function __construct(?Closure $sleep = null)
+
+    /**
+     * Takes how to pause between two fetches.
+     *
+     * @param Closure $sleep Pauses for a number of seconds: `sleep(...)` in production.
+     */
+    public function __construct(Closure $sleep)
     {
-        $this->sleep = $sleep ?? sleep(...);
-    }
+        $this->sleep = $sleep;
+
+    }//end __construct()
+
 
     /**
      * Fetches the pull request until its head is no longer the given commit.
@@ -44,12 +54,9 @@ class PullRequestHeadWatcher
     public function waitForNewHead(string $token, string $pullRequestUrl, string $previousSha): ?string
     {
         for ($attempt = 1; $attempt <= self::ATTEMPTS; $attempt++) {
-            $response = doRequestGitHub($token, $pullRequestUrl, null, "GET");
-            if ($response->getStatusCode() === 200) {
-                $sha = json_decode($response->getBody())->head->sha ?? null;
-                if ($sha !== null && $sha !== $previousSha) {
-                    return $sha;
-                }
+            $sha = $this->fetchHead($token, $pullRequestUrl);
+            if ($sha !== null && $sha !== $previousSha) {
+                return $sha;
             }
 
             if ($attempt < self::ATTEMPTS) {
@@ -58,5 +65,33 @@ class PullRequestHeadWatcher
         }
 
         return null;
-    }
-}
+
+    }//end waitForNewHead()
+
+
+    /**
+     * Fetches the head commit of the pull request.
+     *
+     * @param string $token          The installation token.
+     * @param string $pullRequestUrl The pull request endpoint, relative to the API root.
+     *
+     * @return string|null The head commit, or null if GitHub didn't answer with it.
+     */
+    private function fetchHead(string $token, string $pullRequestUrl): ?string
+    {
+        $response = doRequestGitHub($token, $pullRequestUrl, null, "GET");
+        if ($response->getStatusCode() !== 200) {
+            return null;
+        }
+
+        $pullRequest = json_decode($response->getBody());
+        if (isset($pullRequest->head->sha) === false) {
+            return null;
+        }
+
+        return $pullRequest->head->sha;
+
+    }//end fetchHead()
+
+
+}//end class

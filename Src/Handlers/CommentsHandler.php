@@ -1145,7 +1145,7 @@ class CommentsHandler implements IHandler
             );
         }
 
-        $watcher = new PullRequestHeadWatcher();
+        $watcher = new PullRequestHeadWatcher(sleep(...));
         $newHead = $watcher->waitForNewHead($metadata["token"], $metadata["pullRequestUrl"], $pullRequestUpdated->head->sha);
         if ($newHead === null) {
             echo "Head of #{$comment->PullRequestNumber} still at {$pullRequestUpdated->head->sha} after bot commit {$sha} — not re-queuing ⚠️\n";

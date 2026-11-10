@@ -35,17 +35,45 @@ class PullRequestHeadWatcherTest extends TestCase
      *
      * @var array
      */
-    private array $pauses = [];
+    private array $pauses;
+
+    /**
+     * After which pause GitHub starts answering with the new head, 0 for never.
+     *
+     * @var integer
+     */
+    private int $movesAfter;
+
+    /**
+     * The watcher under test, whose pauses are recorded.
+     *
+     * @var PullRequestHeadWatcher
+     */
+    private PullRequestHeadWatcher $watcher;
 
 
+    /**
+     * Starts with a GitHub that answers with nothing and a head that never moves.
+     *
+     * @return void
+     */
     protected function setUp(): void
     {
-        $this->github = new FakeGitHub();
-        $this->pauses = [];
+        $this->github     = new FakeGitHub();
+        $this->pauses     = [];
+        $this->movesAfter = 0;
+        $this->watcher    = new PullRequestHeadWatcher($this->pause(...));
 
     }//end setUp()
 
 
+    /**
+     * Sets up the head GitHub answers with.
+     *
+     * @param string $sha The head commit.
+     *
+     * @return void
+     */
     private function head(string $sha): void
     {
         $this->github->answer(self::PULL_REQUEST_URL, json_encode(["head" => ["sha" => $sha]]));
@@ -54,25 +82,33 @@ class PullRequestHeadWatcherTest extends TestCase
 
 
     /**
-     * A watcher whose pauses are recorded, and which runs a step on each pause.
+     * Records a pause, and moves the head when it is the pause it is set to move after.
+     *
+     * @param integer $seconds The length of the pause.
+     *
+     * @return void
      */
-    private function watcher(?\Closure $onPause = null): PullRequestHeadWatcher
+    private function pause(int $seconds): void
     {
-        return new PullRequestHeadWatcher(function (int $seconds) use ($onPause): void {
-            $this->pauses[] = $seconds;
-            if ($onPause !== null) {
-                $onPause(count($this->pauses));
-            }
-        });
+        $this->pauses[] = $seconds;
+        if (count($this->pauses) === $this->movesAfter) {
+            $this->github = new FakeGitHub();
+            $this->head(self::NEW_HEAD);
+        }
 
-    }//end watcher()
+    }//end pause()
 
 
+    /**
+     * A head that already moved is returned at once.
+     *
+     * @return void
+     */
     public function testReturnsAnAlreadyMovedHead(): void
     {
         $this->head(self::NEW_HEAD);
 
-        $sha = $this->watcher()->waitForNewHead(FakeGitHub::TOKEN, self::PULL_REQUEST_URL, self::OLD_HEAD);
+        $sha = $this->watcher->waitForNewHead(FakeGitHub::TOKEN, self::PULL_REQUEST_URL, self::OLD_HEAD);
 
         $this->assertSame(self::NEW_HEAD, $sha);
         $this->assertSame([self::FETCH], $this->github->requests());
@@ -81,46 +117,54 @@ class PullRequestHeadWatcherTest extends TestCase
     }//end testReturnsAnAlreadyMovedHead()
 
 
+    /**
+     * The pull request is fetched again after each pause until its head moves.
+     *
+     * @return void
+     */
     public function testKeepsFetchingUntilTheHeadMoves(): void
     {
         $this->head(self::OLD_HEAD);
+        $this->movesAfter = 2;
 
-        $sha = $this->watcher(function (int $pause): void {
-            if ($pause === 2) {
-                $this->head(self::NEW_HEAD);
-            }
-        })->waitForNewHead(FakeGitHub::TOKEN, self::PULL_REQUEST_URL, self::OLD_HEAD);
+        $sha = $this->watcher->waitForNewHead(FakeGitHub::TOKEN, self::PULL_REQUEST_URL, self::OLD_HEAD);
 
         $this->assertSame(self::NEW_HEAD, $sha);
-        $this->assertCount(3, $this->github->requests());
+        $this->assertSame([self::FETCH], $this->github->requests());
         $this->assertSame([PullRequestHeadWatcher::DELAY_SECONDS, PullRequestHeadWatcher::DELAY_SECONDS], $this->pauses);
 
     }//end testKeepsFetchingUntilTheHeadMoves()
 
 
+    /**
+     * Nothing is returned when the head never moves.
+     *
+     * @return void
+     */
     public function testGivesUpWhenTheHeadNeverMoves(): void
     {
         $this->head(self::OLD_HEAD);
 
-        $sha = $this->watcher()->waitForNewHead(FakeGitHub::TOKEN, self::PULL_REQUEST_URL, self::OLD_HEAD);
+        $sha = $this->watcher->waitForNewHead(FakeGitHub::TOKEN, self::PULL_REQUEST_URL, self::OLD_HEAD);
 
         $this->assertNull($sha);
         $this->assertCount(PullRequestHeadWatcher::ATTEMPTS, $this->github->requests());
-        $this->assertCount(PullRequestHeadWatcher::ATTEMPTS - 1, $this->pauses);
+        $this->assertCount((PullRequestHeadWatcher::ATTEMPTS - 1), $this->pauses);
 
     }//end testGivesUpWhenTheHeadNeverMoves()
 
 
+    /**
+     * A failed fetch is retried after a pause.
+     *
+     * @return void
+     */
     public function testKeepsTryingWhenGitHubFails(): void
     {
         $this->github->fail(self::PULL_REQUEST_URL, 502);
+        $this->movesAfter = 1;
 
-        $sha = $this->watcher(function (int $pause): void {
-            if ($pause === 1) {
-                $this->github = new FakeGitHub();
-                $this->head(self::NEW_HEAD);
-            }
-        })->waitForNewHead(FakeGitHub::TOKEN, self::PULL_REQUEST_URL, self::OLD_HEAD);
+        $sha = $this->watcher->waitForNewHead(FakeGitHub::TOKEN, self::PULL_REQUEST_URL, self::OLD_HEAD);
 
         $this->assertSame(self::NEW_HEAD, $sha);
 

@@ -1025,7 +1025,7 @@ class PullRequestsHandler implements IHandler
             return;
         }
 
-        $watcher = new PullRequestHeadWatcher();
+        $watcher = new PullRequestHeadWatcher(sleep(...));
         $newHead = $watcher->waitForNewHead($metadata["token"], $metadata["pullRequestUrl"], $pullRequestUpdated->head->sha);
         if ($newHead === null) {
             echo "State: Branch update requested but head still at {$pullRequestUpdated->head->sha} - not re-queuing ⚠️\n";
