@@ -3,6 +3,14 @@
 use GuiBranco\GStracciniBot\Library\DatabaseException;
 use GuiBranco\Pancake\GUIDv4;
 
+/**
+ * Builds the exception for a MySQL statement that failed to execute.
+ */
+function statementFailed(mysqli_stmt $stmt): DatabaseException
+{
+    return new DatabaseException("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+}
+
 function connectToDatabase($isRetry = false)
 {
     global $mySqlHost, $mySqlUser, $mySqlPassword, $mySqlDatabase;
@@ -164,7 +172,7 @@ function upsertPullRequest($pullRequest)
         $sequence = $row["Sequence"];
 
         if (!$stmt->execute()) {
-            throw new DatabaseException("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+            throw statementFailed($stmt);
         }
 
     } else {
@@ -218,7 +226,7 @@ function upsertPullRequest($pullRequest)
         $installationId = $pullRequest->InstallationId;
 
         if (!$stmt->execute()) {
-            throw new DatabaseException("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+            throw statementFailed($stmt);
         }
     }
 
@@ -399,7 +407,7 @@ function createReadyToMergeAction($pullRequest, $pullRequestUpdated): void
     );
 
     if (!$stmt->execute()) {
-        throw new DatabaseException("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+        throw statementFailed($stmt);
     }
 
     $notificationSequence = $stmt->insert_id;
@@ -425,7 +433,7 @@ function createReadyToMergeAction($pullRequest, $pullRequestUpdated): void
     );
 
     if (!$stmt->execute()) {
-        throw new DatabaseException("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+        throw statementFailed($stmt);
     }
 
     $stmt->close();
@@ -475,7 +483,7 @@ function upsertPush($commit)
         $sequence = $row["Sequence"];
 
         if (!$stmt->execute()) {
-            throw new DatabaseException("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+            throw statementFailed($stmt);
         }
 
     } else {
@@ -539,7 +547,7 @@ function upsertPush($commit)
         $installationId = $commit->InstallationId;
 
         if (!$stmt->execute()) {
-            throw new DatabaseException("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+            throw statementFailed($stmt);
         }
     }
 
