@@ -68,17 +68,13 @@ class LabelHelper
         $totalLabelsToCreate = count($labelsToCreateObject);
         $totalLabelsToUpdate = count($labelsToUpdateObject);
 
-        $this->logToStream(
-            "info",
-            'Labels of {repo}: {toCreate} to create, {toUpdate} to update',
-            [
-                "repo" => "{$metadata["repositoryOwner"]}/{$metadata["repositoryName"]}",
-                "toCreate" => $totalLabelsToCreate,
-                "toUpdate" => $totalLabelsToUpdate,
-                "style" => $style,
-                "categories" => implode(", ", $categories),
-            ]
-        );
+        $labelsContext = [];
+        $labelsContext["repo"] = "{$metadata["repositoryOwner"]}/{$metadata["repositoryName"]}";
+        $labelsContext["toCreate"] = $totalLabelsToCreate;
+        $labelsContext["toUpdate"] = $totalLabelsToUpdate;
+        $labelsContext["style"] = $style;
+        $labelsContext["categories"] = implode(", ", $categories);
+        $this->logToStream("info", 'Labels of {repo}: {toCreate} to create, {toUpdate} to update', $labelsContext);
 
         if ($totalLabelsToCreate === 0 && $totalLabelsToUpdate === 0) {
             return ["result" => 0];

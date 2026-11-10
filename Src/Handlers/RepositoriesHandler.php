@@ -93,11 +93,11 @@ class RepositoriesHandler implements IHandler
         $repositoryManager = new RepositoryManager();
         $repositoryOptions = $repositoryManager->getBotOptions($metadata["token"], $metadata["repositoryOwner"], $metadata["repositoryName"]);
         $languages = $repositoryManager->getLanguages($metadata["token"], $metadata["repositoryOwner"], $metadata["repositoryName"]);
-        $logStream?->debug(
-            'Languages of {repo}: {languages}',
-            ['repo' => "{$repositoryOwner}/{$repositoryName}", 'languages' => implode(", ", array_keys($languages)), 'bytes' => $languages],
-            "repositories"
-        );
+        $languagesContext = [];
+        $languagesContext['repo'] = "{$repositoryOwner}/{$repositoryName}";
+        $languagesContext['languages'] = implode(", ", array_keys($languages));
+        $languagesContext['bytes'] = $languages;
+        $logStream?->debug('Languages of {repo}: {languages}', $languagesContext, "repositories");
         $this->createRepositoryLabels($metadata, $repositoryOptions);
     }
 

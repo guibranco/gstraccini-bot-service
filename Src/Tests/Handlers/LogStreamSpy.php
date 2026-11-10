@@ -22,16 +22,14 @@ class LogStreamSpy
     /**
      * Takes a debug entry the way LogStream::debug() does.
      *
-     * @param string      $message  The message template.
-     * @param array|null  $context  The details that go with it.
-     * @param string      $category The category it is logged under.
-     * @param string|null $traceId  The delivery it belongs to.
+     * @param string $message      The message template.
+     * @param mixed  ...$arguments The context, the category and the trace id, as LogStream takes them.
      *
      * @return void
      */
-    public function debug(string $message, ?array $context = null, string $category = "", ?string $traceId = null): void
+    public function debug(string $message, mixed ...$arguments): void
     {
-        $this->record("debug", $message, $context, $category, $traceId);
+        $this->record("debug", $message, $arguments);
 
     }//end debug()
 
@@ -39,16 +37,14 @@ class LogStreamSpy
     /**
      * Takes an info entry the way LogStream::info() does.
      *
-     * @param string      $message  The message template.
-     * @param array|null  $context  The details that go with it.
-     * @param string      $category The category it is logged under.
-     * @param string|null $traceId  The delivery it belongs to.
+     * @param string $message      The message template.
+     * @param mixed  ...$arguments The context, the category and the trace id, as LogStream takes them.
      *
      * @return void
      */
-    public function info(string $message, ?array $context = null, string $category = "", ?string $traceId = null): void
+    public function info(string $message, mixed ...$arguments): void
     {
-        $this->record("info", $message, $context, $category, $traceId);
+        $this->record("info", $message, $arguments);
 
     }//end info()
 
@@ -56,16 +52,14 @@ class LogStreamSpy
     /**
      * Takes a notice entry the way LogStream::notice() does.
      *
-     * @param string      $message  The message template.
-     * @param array|null  $context  The details that go with it.
-     * @param string      $category The category it is logged under.
-     * @param string|null $traceId  The delivery it belongs to.
+     * @param string $message      The message template.
+     * @param mixed  ...$arguments The context, the category and the trace id, as LogStream takes them.
      *
      * @return void
      */
-    public function notice(string $message, ?array $context = null, string $category = "", ?string $traceId = null): void
+    public function notice(string $message, mixed ...$arguments): void
     {
-        $this->record("notice", $message, $context, $category, $traceId);
+        $this->record("notice", $message, $arguments);
 
     }//end notice()
 
@@ -73,16 +67,14 @@ class LogStreamSpy
     /**
      * Takes a warning the way LogStream::warning() does.
      *
-     * @param string      $message  What is warned about.
-     * @param array|null  $context  The details that go with it.
-     * @param string      $category The category it is logged under.
-     * @param string|null $traceId  The delivery it belongs to.
+     * @param string $message      What is warned about.
+     * @param mixed  ...$arguments The context, the category and the trace id, as LogStream takes them.
      *
      * @return void
      */
-    public function warning(string $message, ?array $context = null, string $category = "", ?string $traceId = null): void
+    public function warning(string $message, mixed ...$arguments): void
     {
-        $this->record("warning", $message, $context, $category, $traceId);
+        $this->record("warning", $message, $arguments);
 
     }//end warning()
 
@@ -90,16 +82,14 @@ class LogStreamSpy
     /**
      * Takes an error entry the way LogStream::error() does.
      *
-     * @param string      $message  The message template.
-     * @param array|null  $context  The details that go with it.
-     * @param string      $category The category it is logged under.
-     * @param string|null $traceId  The delivery it belongs to.
+     * @param string $message      The message template.
+     * @param mixed  ...$arguments The context, the category and the trace id, as LogStream takes them.
      *
      * @return void
      */
-    public function error(string $message, ?array $context = null, string $category = "", ?string $traceId = null): void
+    public function error(string $message, mixed ...$arguments): void
     {
-        $this->record("error", $message, $context, $category, $traceId);
+        $this->record("error", $message, $arguments);
 
     }//end error()
 
@@ -107,16 +97,14 @@ class LogStreamSpy
     /**
      * Takes a critical entry the way LogStream::critical() does.
      *
-     * @param string      $message  The message template.
-     * @param array|null  $context  The details that go with it.
-     * @param string      $category The category it is logged under.
-     * @param string|null $traceId  The delivery it belongs to.
+     * @param string $message      The message template.
+     * @param mixed  ...$arguments The context, the category and the trace id, as LogStream takes them.
      *
      * @return void
      */
-    public function critical(string $message, ?array $context = null, string $category = "", ?string $traceId = null): void
+    public function critical(string $message, mixed ...$arguments): void
     {
-        $this->record("critical", $message, $context, $category, $traceId);
+        $this->record("critical", $message, $arguments);
 
     }//end critical()
 
@@ -155,11 +143,11 @@ class LogStreamSpy
             $replacements = [];
             foreach ($entry["context"] as $key => $value) {
                 if (is_scalar($value) === true) {
-                    $replacements["{" . $key . "}"] = (string) $value;
+                    $replacements[sprintf("{%s}", $key)] = (string) $value;
                 }
             }
 
-            $lines[] = $entry["level"] . ": " . strtr($entry["message"], $replacements);
+            $lines[] = sprintf("%s: %s", $entry["level"], strtr($entry["message"], $replacements));
         }
 
         return $lines;
@@ -170,17 +158,17 @@ class LogStreamSpy
     /**
      * Keeps an entry.
      *
-     * @param string      $level    The level it was sent at.
-     * @param string      $message  The message template.
-     * @param array|null  $context  The details that go with it.
-     * @param string      $category The category it is logged under.
-     * @param string|null $traceId  The delivery it belongs to.
+     * @param string $level     The level it was sent at.
+     * @param string $message   The message template.
+     * @param array  $arguments The context, the category and the trace id, when given.
      *
      * @return void
      */
-    private function record(string $level, string $message, ?array $context, string $category, ?string $traceId): void
+    private function record(string $level, string $message, array $arguments): void
     {
-        $context = ($context ?? []);
+        $context = ($arguments[0] ?? []);
+        $category = ($arguments[1] ?? "");
+        $traceId = ($arguments[2] ?? null);
         $this->entries[] = compact("level", "message", "context", "category", "traceId");
 
     }//end record()

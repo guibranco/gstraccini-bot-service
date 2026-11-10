@@ -58,6 +58,11 @@ class RepositoriesHandlerTest extends TestCase
         $logStream = new LogStreamSpy();
     }
 
+    /**
+     * Leaves the other tests without a log stream.
+     *
+     * @return void
+     */
     protected function tearDown(): void
     {
         global $logStream;

@@ -9,21 +9,22 @@ namespace GuiBranco\GStracciniBot\Library;
  */
 trait LogsToStream
 {
+
+
     /**
      * Sends one entry to LogStream.
      *
-     * @param string      $level   debug, info, notice, warning, error or critical.
-     * @param string      $message The message template; its placeholders are keys of the context.
-     * @param array       $context The values of the placeholders, plus any other detail worth keeping.
-     * @param string|null $traceId The delivery the entry belongs to, when there is one.
+     * @param string $level   debug, info, notice, warning, error or critical.
+     * @param string $message The message template; its placeholders are keys of the context.
+     * @param array  $context The values of the placeholders, plus any other detail worth keeping.
      *
      * @return void
      */
-    private function logToStream(string $level, string $message, array $context = [], ?string $traceId = null): void
+    private function logToStream(string $level, string $message, array $context): void
     {
         global $logStream;
 
-        $logStream?->{$level}($message, $context, static::LOG_CHANNEL, $traceId);
+        $logStream?->{$level}($message, $context, static::LOG_CHANNEL);
 
     }//end logToStream()
 

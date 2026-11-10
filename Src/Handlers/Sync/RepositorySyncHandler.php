@@ -159,7 +159,7 @@ class RepositorySyncHandler
             for ($taken = 0; $taken < max(1, $limit); $taken++) {
                 $repository = $this->repository->claimNextRepositoryToSync(!$this->dryRun);
                 if ($repository === null) {
-                    $this->logToStream("info", "No active repositories to sync");
+                    $this->logToStream("info", "No active repositories to sync", []);
                     break;
                 }
 

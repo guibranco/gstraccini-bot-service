@@ -53,12 +53,12 @@ class InstallationsHandler implements IHandler
             $fetchedRepositoryIds[] = $repositoryId;
 
             if ($this->repository->existsRepository($repositoryId)) {
-                $logStream?->debug('Repository {repo} is already mapped to installation {login}', ['repo' => $repository->full_name, 'installationId' => $installationId, 'login' => $installation->AccountLogin], "installations", $installation->DeliveryIdText ?? null);
+                $logStream?->debug('Repository {repo} is already mapped to installation {login}', ['repo' => $repository->full_name, 'installationId' => $installationId, 'login' => $installation->AccountLogin], "installations", ($installation->DeliveryIdText ?? null));
                 continue;
             }
 
             $this->repository->insertRepository($repository, $installationId, $webhooksHandlerVersion);
-            $logStream?->info('Repository {repo} added to installation {login}', ['repo' => $repository->full_name, 'installationId' => $installationId, 'login' => $installation->AccountLogin], "installations", $installation->DeliveryIdText ?? null);
+            $logStream?->info('Repository {repo} added to installation {login}', ['repo' => $repository->full_name, 'installationId' => $installationId, 'login' => $installation->AccountLogin], "installations", ($installation->DeliveryIdText ?? null));
         }
 
         $activeRepositoryIds = $this->repository->getActiveRepositoryIdsForInstallation($installationId);
@@ -66,7 +66,7 @@ class InstallationsHandler implements IHandler
 
         foreach ($staleRepositoryIds as $repositoryId) {
             $this->repository->markRepositoryRemoved($repositoryId, $installationId, $webhooksHandlerVersion);
-            $logStream?->warning('Repository #{repositoryId} removed from installation {login}', ['repositoryId' => $repositoryId, 'installationId' => $installationId, 'login' => $installation->AccountLogin], "installations", $installation->DeliveryIdText ?? null);
+            $logStream?->warning('Repository #{repositoryId} removed from installation {login}', ['repositoryId' => $repositoryId, 'installationId' => $installationId, 'login' => $installation->AccountLogin], "installations", ($installation->DeliveryIdText ?? null));
         }
     }
 }
