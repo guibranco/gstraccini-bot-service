@@ -89,7 +89,7 @@ class PullRequestsHandler implements IHandler
      */
     private function traceFinished(string $outcome): void
     {
-        $elapsed = (int) round((microtime(true) - $this->startedAt) * 1000);
+        $elapsed = (int) round(((microtime(true) - $this->startedAt) * 1000));
         $this->trace('info', 'Finished processing pull request {repo}#{pr} — check run {outcome} in {elapsed_ms} ms', ["outcome" => $outcome, "elapsed_ms" => $elapsed]);
 
     }//end traceFinished()
@@ -99,10 +99,12 @@ class PullRequestsHandler implements IHandler
     {
         global $logStream;
 
-        $this->traceId = $pullRequest->DeliveryIdText ?? null;
+        $this->traceId = ($pullRequest->DeliveryIdText ?? null);
         $this->repoSlug = "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}";
         $this->prNumber = (int) $pullRequest->Number;
-        $this->startedAt = microtime(true);
+        if ($isRetry === false) {
+            $this->startedAt = microtime(true);
+        }
 
         if (!$isRetry) {
             echo "https://github.com/{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}/pull/{$pullRequest->Number}:\n\n";
@@ -133,20 +135,16 @@ class PullRequestsHandler implements IHandler
             return;
         }
         $pullRequestUpdated = json_decode($pullRequestResponse->getBody());
-        $this->trace(
-            'debug',
-            'PR {repo}#{pr} fetched: state {state}, mergeable_state {mergeable_state}, head {head_sha}',
-            [
-                "state" => $pullRequestUpdated->state,
-                "mergeable_state" => $pullRequestUpdated->mergeable_state ?? null,
-                "mergeable" => $pullRequestUpdated->mergeable ?? null,
-                "head_sha" => $pullRequestUpdated->head->sha ?? null,
-                "head_ref" => $pullRequestUpdated->head->ref ?? null,
-                "base_ref" => $pullRequestUpdated->base->ref ?? null,
-                "draft" => $pullRequestUpdated->draft ?? null,
-                "author" => $pullRequestUpdated->user->login ?? null,
-            ]
-        );
+        $fetched = [];
+        $fetched["state"] = $pullRequestUpdated->state;
+        $fetched["mergeable_state"] = ($pullRequestUpdated->mergeable_state ?? null);
+        $fetched["mergeable"] = ($pullRequestUpdated->mergeable ?? null);
+        $fetched["head_sha"] = ($pullRequestUpdated->head->sha ?? null);
+        $fetched["head_ref"] = ($pullRequestUpdated->head->ref ?? null);
+        $fetched["base_ref"] = ($pullRequestUpdated->base->ref ?? null);
+        $fetched["draft"] = ($pullRequestUpdated->draft ?? null);
+        $fetched["author"] = ($pullRequestUpdated->user->login ?? null);
+        $this->trace('debug', 'PR {repo}#{pr} fetched: state {state}, mergeable_state {mergeable_state}, head {head_sha}', $fetched);
 
         if ($pullRequestUpdated->state === "closed") {
             $logStream?->info(
@@ -207,16 +205,12 @@ class PullRequestsHandler implements IHandler
         $alreadyActionRequired = $existingCheckRun !== null && $existingCheckRun->conclusion === "action_required";
         $checkRunId = null;
 
-        $this->trace(
-            'debug',
-            'PR {repo}#{pr}: existing "pull request" check run {check_run_id} ({conclusion})',
-            [
-                "check_run_id" => $existingCheckRun->id ?? null,
-                "status" => $existingCheckRun->status ?? null,
-                "conclusion" => $existingCheckRun->conclusion ?? null,
-                "already_action_required" => $alreadyActionRequired,
-            ]
-        );
+        $existing = [];
+        $existing["check_run_id"] = ($existingCheckRun->id ?? null);
+        $existing["status"] = ($existingCheckRun->status ?? null);
+        $existing["conclusion"] = ($existingCheckRun->conclusion ?? null);
+        $existing["already_action_required"] = $alreadyActionRequired;
+        $this->trace('debug', 'PR {repo}#{pr}: existing "pull request" check run {check_run_id} ({conclusion})', $existing);
 
         if (!$alreadyActionRequired) {
             $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, "pull request");
@@ -280,7 +274,7 @@ class PullRequestsHandler implements IHandler
         $this->trace('debug', 'PR {repo}#{pr}: step awaiting-triage cleanup', []);
         $this->removeAwaitingTriageIfReviewed($metadata, $pullRequestUpdated, $collaboratorsLogins, $reviewsLogins, $pullRequest->Sender);
 
-        if (!empty($labelsToAdd)) {
+        if (empty($labelsToAdd) === false) {
             $body = ["labels" => $labelsToAdd];
             $response = doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $body, "POST");
             $this->trace('info', 'PR {repo}#{pr}: added labels {labels} (HTTP {status})', ["labels" => implode(", ", $labelsToAdd), "status" => $response->getStatusCode()]);
@@ -350,18 +344,14 @@ class PullRequestsHandler implements IHandler
         $botReviewed = in_array($botLogin, $reviewsLogins, true);
         $invokerReviewed = (count(array_intersect($reviewsLogins, $collaboratorsLogins)) > 0);
         $autoReview = in_array($pullRequest->Sender, $config->pullRequests->autoReviewSubmitters, true);
-        $this->trace(
-            'debug',
-            'PR {repo}#{pr}: review state — bot reviewed {bot_reviewed}, collaborator reviewed {collaborator_reviewed}',
-            [
-                "collaborators" => implode(", ", $collaboratorsLogins),
-                "reviewers" => implode(", ", array_unique($reviewsLogins)),
-                "bot_reviewed" => $botReviewed,
-                "collaborator_reviewed" => $invokerReviewed,
-                "auto_review_submitter" => $autoReview,
-                "sender" => $pullRequest->Sender,
-            ]
-        );
+        $reviewState = [];
+        $reviewState["collaborators"] = implode(", ", $collaboratorsLogins);
+        $reviewState["reviewers"] = implode(", ", array_unique($reviewsLogins));
+        $reviewState["bot_reviewed"] = $botReviewed;
+        $reviewState["collaborator_reviewed"] = $invokerReviewed;
+        $reviewState["auto_review_submitter"] = $autoReview;
+        $reviewState["sender"] = $pullRequest->Sender;
+        $this->trace('debug', 'PR {repo}#{pr}: review state — bot reviewed {bot_reviewed}, collaborator reviewed {collaborator_reviewed}', $reviewState);
 
         if ($pullRequestUpdated->assignee === null) {
             $response = doRequestGitHub($metadata["token"], $metadata["assigneesUrl"], ["assignees" => $collaboratorsLogins], "POST");
@@ -500,6 +490,11 @@ class PullRequestsHandler implements IHandler
         $builder = new VersionBumpCommentBuilder();
         $body = $builder->build($pullRequestUpdated->title);
         $response = doRequestGitHub($metadata["token"], $metadata["commentsUrl"], ["body" => $body], "POST");
+        if ($response->getStatusCode() >= 300) {
+            $this->trace('warning', 'PR {repo}#{pr}: failed to post version bump decision comment (HTTP {status})', ["status" => $response->getStatusCode()]);
+            return false;
+        }
+
         $this->trace('info', 'PR {repo}#{pr}: posted version bump decision comment (HTTP {status})', ["status" => $response->getStatusCode()]);
 
         return false;
@@ -894,7 +889,7 @@ class PullRequestsHandler implements IHandler
 
         foreach ($intersect as $label) {
             $encoded = str_replace(" ", "%20", $label);
-            $url = $metadata["pullRequestUrl"] . "/labels/{$encoded}";
+            $url = "{$metadata["pullRequestUrl"]}/labels/{$encoded}";
             $response = doRequestGitHub($metadata["token"], $url, null, "DELETE");
             $this->trace('info', 'PR {repo}#{pr}: removed label {label} from closed pull request (HTTP {status})', ["label" => $label, "status" => $response->getStatusCode()]);
         }
@@ -957,7 +952,7 @@ class PullRequestsHandler implements IHandler
         $prUpsert->InstallationId = $pullRequest->InstallationId;
         echo "Triggering review of #{$pullRequestPending->number} - Sender: " . $pullRequest->Sender . " 🔄\n";
         upsertPullRequest($prUpsert);
-        $this->trace('info', 'PR {repo}#{pr}: re-queued #{next_pr} for processing', ["next_pr" => $pullRequestPending->number, "auto_merge" => $pullRequestPending->auto_merge !== null]);
+        $this->trace('info', 'PR {repo}#{pr}: re-queued #{next_pr} for processing', ["next_pr" => $pullRequestPending->number, "auto_merge" => ($pullRequestPending->auto_merge !== null)]);
     }
 
     private function handleCommentToMerge($metadata, $pullRequest, $collaboratorsLogins)
@@ -991,16 +986,17 @@ class PullRequestsHandler implements IHandler
             return;
         }
 
-        $comment = array("body" => $commentToLookup);
+        $comment = ["body" => $commentToLookup];
         $commentResponse = doRequestGitHub($metadata["userToken"], $metadata["commentsUrl"], $comment, "POST");
 
-        $label = array("labels" => array("☑️ auto-merge"));
+        $label = ["labels" => ["☑️ auto-merge"]];
         $labelResponse = doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $label, "POST");
-        $this->trace(
-            'info',
-            'PR {repo}#{pr}: posted "{comment}" for {sender} (comment HTTP {comment_status}, label HTTP {label_status})',
-            ["comment" => $commentToLookup, "sender" => $senderToLookup, "comment_status" => $commentResponse->getStatusCode(), "label_status" => $labelResponse->getStatusCode()]
-        );
+        $posted = [];
+        $posted["comment"] = $commentToLookup;
+        $posted["sender"] = $senderToLookup;
+        $posted["comment_status"] = $commentResponse->getStatusCode();
+        $posted["label_status"] = $labelResponse->getStatusCode();
+        $this->trace('info', 'PR {repo}#{pr}: posted "{comment}" for {sender} (comment HTTP {comment_status}, label HTTP {label_status})', $posted);
     }
 
     private function removeIssueWipLabel($metadata, $pullRequest)
@@ -1087,7 +1083,7 @@ class PullRequestsHandler implements IHandler
                 unset($labelsIssue[$position]);
             } else {
                 $body = array("labels" => array("🛠 WIP"));
-                $response = doRequestGitHub($metadata["token"], $metadata["issuesUrl"] . "/" . $issueNumber . "/labels", $body, "POST");
+                $response = doRequestGitHub($metadata["token"], "{$metadata["issuesUrl"]}/{$issueNumber}/labels", $body, "POST");
                 $this->trace('info', 'PR {repo}#{pr}: added WIP label to linked issue #{issue} (HTTP {status})', ["issue" => $issueNumber, "status" => $response->getStatusCode()]);
             }
 
@@ -1115,11 +1111,10 @@ class PullRequestsHandler implements IHandler
 
         $isSenderAutoMerge = in_array($pullRequest->Sender, $config->pullRequests->autoMergeSubmitters);
         if ($pullRequestUpdated->auto_merge !== null || $isSenderAutoMerge === false) {
-            $this->trace(
-                'debug',
-                'PR {repo}#{pr}: auto-merge not enabled — already on {already_enabled}, auto-merge submitter {auto_merge_submitter}',
-                ["already_enabled" => $pullRequestUpdated->auto_merge !== null, "auto_merge_submitter" => $isSenderAutoMerge]
-            );
+            $skipped = [];
+            $skipped["already_enabled"] = ($pullRequestUpdated->auto_merge !== null);
+            $skipped["auto_merge_submitter"] = $isSenderAutoMerge;
+            $this->trace('debug', 'PR {repo}#{pr}: auto-merge not enabled — already on {already_enabled}, auto-merge submitter {auto_merge_submitter}', $skipped);
         }
 
         if (
@@ -1283,7 +1278,7 @@ class PullRequestsHandler implements IHandler
 
         if ($compare->behind_by === 0) {
             echo "State: {$pullRequestUpdated->mergeable_state} - Commits Behind: 0 - Updating branch: No - Sender: {$pullRequestUpdated->user->login} 👎🏻\n";
-            $this->trace('debug', 'PR {repo}#{pr}: branch up to date with {base} — no update needed', ["base" => $pullRequestUpdated->base->ref, "ahead_by" => $compare->ahead_by ?? null]);
+            $this->trace('debug', 'PR {repo}#{pr}: branch up to date with {base} — no update needed', ["base" => $pullRequestUpdated->base->ref, "ahead_by" => ($compare->ahead_by ?? null)]);
             return;
         }
 
@@ -1296,11 +1291,12 @@ class PullRequestsHandler implements IHandler
             $updateLevel = 'info';
         }
 
-        $this->trace(
-            $updateLevel,
-            'PR {repo}#{pr}: branch {behind_by} commit(s) behind {base} — update requested (HTTP {status})',
-            ["behind_by" => $compare->behind_by, "base" => $pullRequestUpdated->base->ref, "head_sha" => $pullRequestUpdated->head->sha, "status" => $updateResponse->getStatusCode()]
-        );
+        $update = [];
+        $update["behind_by"] = $compare->behind_by;
+        $update["base"] = $pullRequestUpdated->base->ref;
+        $update["head_sha"] = $pullRequestUpdated->head->sha;
+        $update["status"] = $updateResponse->getStatusCode();
+        $this->trace($updateLevel, 'PR {repo}#{pr}: branch {behind_by} commit(s) behind {base} — update requested (HTTP {status})', $update);
         if ($updateResponse->getStatusCode() === 202) {
             $this->requeueAfterBranchUpdate($metadata, $pullRequest, $pullRequestUpdated);
         }
