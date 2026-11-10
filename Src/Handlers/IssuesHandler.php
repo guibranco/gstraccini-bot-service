@@ -2,6 +2,8 @@
 
 namespace GuiBranco\GStracciniBot\Handlers;
 
+use GuiBranco\GStracciniBot\Library\LogContext;
+
 /**
  * Handles issue events shared by the HTTP webhook entry point
  * (Src/issues.php) and the queue worker (Src/Workers/issues.php).
@@ -15,8 +17,8 @@ class IssuesHandler implements IHandler
         echo "https://github.com/{$issue->RepositoryOwner}/{$issue->RepositoryName}/issues/{$issue->Number}:\n\n";
 
         $logStream?->info(
-            "Processing issue #{$issue->Number}",
-            ['repo' => "{$issue->RepositoryOwner}/{$issue->RepositoryName}", 'sender' => $issue->Sender ?? null],
+            'Processing issue {repo}#{issue}',
+            (new LogContext(repo: "{$issue->RepositoryOwner}/{$issue->RepositoryName}", issue: $issue->Number, sender: ($issue->Sender ?? null)))->toArray(),
             "issues",
             $issue->DeliveryIdText
         );
@@ -37,8 +39,8 @@ class IssuesHandler implements IHandler
 
         if ($issueUpdated->state === "closed") {
             $logStream?->info(
-                "Issue #{$issue->Number} is closed — removing labels",
-                ['repo' => "{$issue->RepositoryOwner}/{$issue->RepositoryName}"],
+                'Issue {repo}#{issue} is closed — removing labels',
+                (new LogContext(repo: "{$issue->RepositoryOwner}/{$issue->RepositoryName}", issue: $issue->Number))->toArray(),
                 "issues",
                 $issue->DeliveryIdText
             );
@@ -85,8 +87,8 @@ class IssuesHandler implements IHandler
 
         $this->addLabels($issueUpdated, $collaboratorsLogins, $metadata);
         $logStream?->info(
-            "Issue #{$issue->Number} processed",
-            ['repo' => "{$issue->RepositoryOwner}/{$issue->RepositoryName}", 'user' => $issueUpdated->user->login],
+            'Issue {repo}#{issue} processed',
+            (new LogContext(repo: "{$issue->RepositoryOwner}/{$issue->RepositoryName}", issue: $issue->Number, user: $issueUpdated->user->login))->toArray(),
             "issues",
             $issue->DeliveryIdText
         );

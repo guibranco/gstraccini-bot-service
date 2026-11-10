@@ -9,6 +9,7 @@ use GuiBranco\GStracciniBot\Library\InfisicalIgnoreCommitService;
 use GuiBranco\GStracciniBot\Library\InfisicalIgnoreSuggestionParser;
 use GuiBranco\GStracciniBot\Library\LabelHelper;
 use GuiBranco\GStracciniBot\Library\LabelService;
+use GuiBranco\GStracciniBot\Library\LogContext;
 use GuiBranco\GStracciniBot\Library\RepositoryManager;
 use GuiBranco\GStracciniBot\Library\VersionBumpCommentBuilder;
 use GuiBranco\GStracciniBot\Library\VersionBumpCommitService;
@@ -72,8 +73,8 @@ class CommentsHandler implements IHandler
         $sender = $comment->CommentSender;
     
         $logStream?->info(
-            "Processing comment from {$sender}",
-            ['repo' => "{$comment->RepositoryOwner}/{$comment->RepositoryName}", 'pr' => $comment->PullRequestNumber, 'comment_id' => $comment->CommentId],
+            'Processing comment from {sender} on {repo}#{pr}',
+            (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", pr: $comment->PullRequestNumber, comment_id: $comment->CommentId, sender: $sender))->toArray(),
             "comments",
             $comment->DeliveryIdText
         );
@@ -100,8 +101,8 @@ class CommentsHandler implements IHandler
             }
             echo "Skipping this comment! 🚷\n";
             $logStream?->info(
-                "Skipping comment from ignored bot: {$sender}",
-                ['repo' => "{$comment->RepositoryOwner}/{$comment->RepositoryName}"],
+                'Skipping comment from ignored bot {sender} on {repo}',
+                (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", sender: $sender))->toArray(),
                 "comments",
                 $comment->DeliveryIdText
             );
@@ -128,8 +129,8 @@ class CommentsHandler implements IHandler
         if (!$this->isCollaborator($comment, $metadata)) {
             if ($sender !== "dependabot[bot]") {
                 $logStream?->warning(
-                    "Comment sender {$sender} is not a collaborator",
-                    ['repo' => "{$comment->RepositoryOwner}/{$comment->RepositoryName}"],
+                    'Comment sender {sender} is not a collaborator of {repo}',
+                    (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", sender: $sender))->toArray(),
                     "comments",
                     $comment->DeliveryIdText
                 );
@@ -152,8 +153,8 @@ class CommentsHandler implements IHandler
     
             if (!empty($command->requiresPullRequestOpen) && !$pullRequestIsOpen) {
                 $logStream?->warning(
-                    "Command {$command->command} requires an open PR",
-                    ['repo' => "{$comment->RepositoryOwner}/{$comment->RepositoryName}", 'pr' => $comment->PullRequestNumber],
+                    'Command {command} requires an open PR, {repo}#{pr} is not one',
+                    (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", pr: $comment->PullRequestNumber, command: $command->command))->toArray(),
                     "comments",
                     $comment->DeliveryIdText
                 );
@@ -164,8 +165,8 @@ class CommentsHandler implements IHandler
     
             $method = "execute_" . $this->toCamelCase($command->command);
             $logStream?->info(
-                "Executing command: {$command->command}",
-                ['repo' => "{$comment->RepositoryOwner}/{$comment->RepositoryName}", 'sender' => $sender, 'callable' => is_callable([$this, $method])],
+                'Executing command {command} from {sender} on {repo}',
+                (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", sender: $sender, command: $command->command, callable: is_callable([$this, $method])))->toArray(),
                 "comments",
                 $comment->DeliveryIdText
             );
@@ -186,8 +187,8 @@ class CommentsHandler implements IHandler
     
         if (!$executedAtLeastOne) {
             $logStream?->warning(
-                "No matching command found in comment",
-                ['repo' => "{$comment->RepositoryOwner}/{$comment->RepositoryName}", 'sender' => $sender],
+                'No matching command found in comment from {sender} on {repo}',
+                (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", sender: $sender))->toArray(),
                 "comments",
                 $comment->DeliveryIdText
             );

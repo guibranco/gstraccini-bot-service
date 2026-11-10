@@ -164,10 +164,11 @@ class PullRequestsHandlerConflictsTest extends TestCase
         $this->assertSame([self::DEPENDABOT_REQUEST], $this->github->posted());
         $this->assertStringEndsWith("State: dirty - Resolve conflicts - Recreate request from 2026-10-21T17:40:38Z was never acknowledged, requesting again (2/3) - Sender: dependabot[bot] 🔁\n", $output);
         $this->assertCount(1, $warnings);
-        $this->assertSame("PR #350 recreate request was never acknowledged — requesting again", $warnings[0]["message"]);
+        $this->assertSame('PR {repo}#{pr} recreate request from {last_requested_at} was never acknowledged — requesting again', $warnings[0]["message"]);
         $this->assertSame(1, $warnings[0]["context"]["requests"]);
         $this->assertSame("2026-10-21T17:40:38Z", $warnings[0]["context"]["last_requested_at"]);
         $this->assertSame("owner/repo", $warnings[0]["context"]["repo"]);
+        $this->assertSame(350, $warnings[0]["context"]["pr"]);
         $this->assertSame("dependabot[bot]", $warnings[0]["context"]["sender"]);
         $this->assertSame(RecreateRequestFixtures::HEAD_SHA, $warnings[0]["context"]["head_sha"]);
         $this->assertSame(LogStreamSpy::PULL_REQUESTS, $warnings[0]["category"]);
@@ -192,7 +193,7 @@ class PullRequestsHandlerConflictsTest extends TestCase
         $this->assertSame([], $this->github->posted());
         $this->assertStringEndsWith("State: dirty - Resolve conflicts - Recreate requested 3 times and never acknowledged, giving up - Sender: dependabot[bot] ❌\n", $output);
         $this->assertCount(1, $warnings);
-        $this->assertSame("PR #350 still has conflicts — 3 recreate requests were never acknowledged, giving up", $warnings[0]["message"]);
+        $this->assertSame('PR {repo}#{pr} still has conflicts — {requests} recreate requests were never acknowledged, giving up', $warnings[0]["message"]);
         $this->assertSame(3, $warnings[0]["context"]["requests"]);
 
     }//end testGivesUpWithAWarningAfterThreeRequestsNobodyAnswered()
@@ -213,7 +214,7 @@ class PullRequestsHandlerConflictsTest extends TestCase
         $this->assertSame([], $this->github->requests());
         $this->assertSame("State: dirty - Resolve conflicts - Conflicts - Sender: guibranco ⚠️\n", $output);
         $this->assertCount(1, $warnings);
-        $this->assertSame("PR #350 has conflicts", $warnings[0]["message"]);
+        $this->assertSame('PR {repo}#{pr} has conflicts', $warnings[0]["message"]);
 
     }//end testLeavesAConflictingPullRequestFromAPersonAlone()
 

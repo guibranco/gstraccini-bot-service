@@ -4,6 +4,7 @@ namespace GuiBranco\GStracciniBot\Handlers;
 
 use DateTimeImmutable;
 use GuiBranco\GStracciniBot\Library\DependencyFileLabelService;
+use GuiBranco\GStracciniBot\Library\LogContext;
 use GuiBranco\GStracciniBot\Library\MarkdownGroupCheckboxValidator;
 use GuiBranco\GStracciniBot\Library\PullRequestCodeScanner;
 use GuiBranco\GStracciniBot\Library\RecreateRequester;
@@ -26,8 +27,8 @@ class PullRequestsHandler implements IHandler
         if (!$isRetry) {
             echo "https://github.com/{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}/pull/{$pullRequest->Number}:\n\n";
             $logStream?->info(
-                "Processing pull request #{$pullRequest->Number}",
-                ['repo' => "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}", 'sender' => $pullRequest->Sender],
+                'Processing pull request {repo}#{pr}',
+                (new LogContext(repo: "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}", pr: $pullRequest->Number, sender: $pullRequest->Sender))->toArray(),
                 "pull_requests",
                 $pullRequest->DeliveryIdText
             );
@@ -42,8 +43,8 @@ class PullRequestsHandler implements IHandler
         } catch (\Exception $e) {
             echo "Failed to fetch PR #{$pullRequest->Number}: {$e->getMessage()} ❌\n";
             $logStream?->error(
-                "Failed to fetch pull request data: {$e->getMessage()}",
-                ['repo' => "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}", 'pr' => $pullRequest->Number],
+                'Failed to fetch pull request {repo}#{pr}: {error}',
+                (new LogContext(repo: "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}", pr: $pullRequest->Number))->withError($e)->toArray(),
                 "pull_requests",
                 $pullRequest->DeliveryIdText
             );
@@ -53,8 +54,8 @@ class PullRequestsHandler implements IHandler
 
         if ($pullRequestUpdated->state === "closed") {
             $logStream?->info(
-                "PR #{$pullRequest->Number} is closed — cleaning up labels",
-                ['repo' => "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}"],
+                'PR {repo}#{pr} is closed — cleaning up labels',
+                (new LogContext(repo: "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}", pr: $pullRequest->Number))->toArray(),
                 "pull_requests",
                 $pullRequest->DeliveryIdText
             );
@@ -81,8 +82,8 @@ class PullRequestsHandler implements IHandler
         if ($pullRequestUpdated->state != "open") {
             echo "PR State: {$pullRequestUpdated->state} ⛔\n";
             $logStream?->info(
-                "PR #{$pullRequest->Number} state is {$pullRequestUpdated->state} — skipping",
-                ['repo' => "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}", 'state' => $pullRequestUpdated->state],
+                'PR {repo}#{pr} state is {state} — skipping',
+                (new LogContext(repo: "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}", pr: $pullRequest->Number, state: $pullRequestUpdated->state))->toArray(),
                 "pull_requests",
                 $pullRequest->DeliveryIdText
             );
@@ -95,8 +96,8 @@ class PullRequestsHandler implements IHandler
             sleep(5);
             echo "State: {$pullRequestUpdated->mergeable_state} - Retrying #{$pullRequestUpdated->number} - Sender: " . $pullRequest->Sender . " 🔄\n";
             $logStream?->warning(
-                "PR #{$pullRequest->Number} has unknown mergeable state — retrying",
-                ['repo' => "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}", 'sender' => $pullRequest->Sender],
+                'PR {repo}#{pr} has unknown mergeable state — retrying',
+                (new LogContext(repo: "{$pullRequest->RepositoryOwner}/{$pullRequest->RepositoryName}", pr: $pullRequest->Number, sender: $pullRequest->Sender))->toArray(),
                 "pull_requests",
                 $pullRequest->DeliveryIdText
             );
@@ -876,8 +877,8 @@ class PullRequestsHandler implements IHandler
         if ($pullRequestUpdated->mergeable_state === "clean" && $pullRequestUpdated->mergeable) {
             echo "State: " . $pullRequestUpdated->mergeable_state . " - Enable auto merge - Is mergeable - Sender auto merge: " . ($isSenderAutoMerge ? "✅" : "⛔") . " - Sender: " . $pullRequest->Sender . " ✅\n";
             $logStream?->info(
-                "PR #{$pullRequest->Number} is mergeable — recording ready-to-merge action",
-                ['repo' => "{$metadata['owner']}/{$metadata['repo']}", 'mergeable_state' => $pullRequestUpdated->mergeable_state, 'auto_merge_submitter' => $isSenderAutoMerge],
+                'PR {repo}#{pr} is mergeable — recording ready-to-merge action',
+                (new LogContext(repo: "{$metadata['owner']}/{$metadata['repo']}", pr: $pullRequest->Number, mergeable_state: $pullRequestUpdated->mergeable_state, auto_merge_submitter: $isSenderAutoMerge))->toArray(),
                 "pull_requests",
                 $pullRequest->DeliveryIdText
             );
@@ -885,8 +886,8 @@ class PullRequestsHandler implements IHandler
         } else {
             echo "State: " . $pullRequestUpdated->mergeable_state . " - Enable auto merge - Is NOT mergeable - Sender auto merge: " . ($isSenderAutoMerge ? "✅" : "⛔") . " - Sender: " . $pullRequest->Sender . " ⛔\n";
             $logStream?->warning(
-                "PR #{$pullRequest->Number} is not mergeable",
-                ['repo' => "{$metadata['owner']}/{$metadata['repo']}", 'mergeable_state' => $pullRequestUpdated->mergeable_state, 'sender' => $pullRequest->Sender],
+                'PR {repo}#{pr} is not mergeable ({mergeable_state})',
+                (new LogContext(repo: "{$metadata['owner']}/{$metadata['repo']}", pr: $pullRequest->Number, mergeable_state: $pullRequestUpdated->mergeable_state, sender: $pullRequest->Sender))->toArray(),
                 "pull_requests",
                 $pullRequest->DeliveryIdText
             );
@@ -901,8 +902,8 @@ class PullRequestsHandler implements IHandler
             if ($pullRequest->Sender !== "dependabot[bot]" && $pullRequest->Sender !== "depfu[bot]") {
                 echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - Conflicts - Sender: " . $pullRequest->Sender . " ⚠️\n";
                 $logStream?->warning(
-                    "PR #{$pullRequest->Number} has conflicts",
-                    ['repo' => "{$metadata['owner']}/{$metadata['repo']}", 'sender' => $pullRequest->Sender, 'mergeable_state' => $pullRequestUpdated->mergeable_state],
+                    'PR {repo}#{pr} has conflicts',
+                    (new LogContext(repo: "{$metadata['owner']}/{$metadata['repo']}", pr: $pullRequest->Number, sender: $pullRequest->Sender, mergeable_state: $pullRequestUpdated->mergeable_state))->toArray(),
                     "pull_requests",
                     $pullRequest->DeliveryIdText
                 );
@@ -922,7 +923,8 @@ class PullRequestsHandler implements IHandler
                 $context["repo"] = "{$metadata['owner']}/{$metadata['repo']}";
                 $context["sender"] = $pullRequest->Sender;
                 $context["head_sha"] = $pullRequestUpdated->head->sha;
-                $logStream?->warning("PR #{$pullRequest->Number} {$recreate->warning()}", $context, "pull_requests", $pullRequest->DeliveryIdText);
+                $context["pr"] = $pullRequest->Number;
+                $logStream?->warning(sprintf('PR {repo}#{pr} %s', $recreate->warning()), $context, "pull_requests", $pullRequest->DeliveryIdText);
             }
         } else {
             echo "State: " . $pullRequestUpdated->mergeable_state . " - Resolve conflicts - No conflicts - Sender: " . $pullRequest->Sender . " 🆒\n";

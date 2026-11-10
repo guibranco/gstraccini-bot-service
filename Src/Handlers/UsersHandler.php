@@ -30,7 +30,7 @@ class UsersHandler implements IHandler
 
         echo "Mapping installations for user {$user->Login} (#{$userId}):\n\n";
         $logStream?->info(
-            "Processing user event for {$user->Login}",
+            'Processing user event for {user}',
             ['user' => $user->Login, 'userId' => $userId],
             "users"
         );
@@ -38,7 +38,7 @@ class UsersHandler implements IHandler
         if (empty($user->Token)) {
             echo "⛔ No token available for user {$user->Login} — skipping\n";
             $logStream?->warning(
-                "No token available for user {$user->Login} — skipping installation mapping",
+                'No token available for user {user} — skipping installation mapping',
                 ['user' => $user->Login, 'userId' => $userId],
                 "users"
             );
