@@ -90,13 +90,15 @@ if (file_exists($logStreamSecretsFile)) {
 $logStream = null;
 $logStreamConfig = loadConfig();
 $logStreamEnabled = !isset($logStreamConfig->logStream->enabled) || $logStreamConfig->logStream->enabled === true;
-if ($logStreamEnabled && !empty($logStreamServer) && !empty($logStreamToken)) {
+$hasLogStreamCreds = (empty($logStreamApiKey) === false && empty($logStreamApiToken) === false);
+if ($logStreamEnabled === true && empty($logStreamServer) === false && $hasLogStreamCreds === true) {
     $logStream = new LogStream(
         baseUrl: $logStreamServer,
-        appKey: "gstraccini-bot",
+        appKey: $logStreamApiKey,
         appId: $version,
-        authMode: LogStream::AUTH_BEARER,
-        apiSecret: $logStreamToken,
+        authMode: LogStream::AUTH_API_KEY,
+        apiKey: $logStreamApiKey,
+        apiToken: $logStreamApiToken,
         userAgent: constant("USER_AGENT_VENDOR")
     );
 }
