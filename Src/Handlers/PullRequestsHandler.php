@@ -7,6 +7,7 @@ use GuiBranco\GStracciniBot\Library\DependencyFileLabelService;
 use GuiBranco\GStracciniBot\Library\LogContext;
 use GuiBranco\GStracciniBot\Library\MarkdownGroupCheckboxValidator;
 use GuiBranco\GStracciniBot\Library\PullRequestCodeScanner;
+use GuiBranco\GStracciniBot\Library\PullRequestHeadWatcher;
 use GuiBranco\GStracciniBot\Library\RecreateRequester;
 use GuiBranco\GStracciniBot\Library\VersionBumpAnalyzer;
 use GuiBranco\GStracciniBot\Library\VersionBumpCommentBuilder;
@@ -114,7 +115,7 @@ class PullRequestsHandler implements IHandler
 
         $this->enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config);
         $this->addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated);
-        $this->updateBranch($metadata, $pullRequestUpdated);
+        $this->updateBranch($metadata, $pullRequest, $pullRequestUpdated);
 
         $labelsToAdd = [];
         if (strtolower($pullRequestUpdated->user->type) === "bot") {
@@ -980,6 +981,8 @@ class PullRequestsHandler implements IHandler
      *                        - 'token' (string): The GitHub API token.
      *                        - 'compareUrl' (string): The API base URL for comparing refs.
      *                        - 'pullRequestUrl' (string): The API URL for the pull request being updated.
+     * @param object $pullRequest The queued `github_pull_requests` row, re-queued after a
+     *                            successful update so the checks run on the new head commit.
      * @param object $pullRequestUpdated An object representing the updated pull request data.
      *                                   Required properties:
      *                                   - base->ref (string): The base branch name.
@@ -992,7 +995,7 @@ class PullRequestsHandler implements IHandler
      *
      * @throws SomeException If the `doRequestGitHub` function fails or returns an unexpected response.
      */
-    private function updateBranch($metadata, $pullRequestUpdated)
+    private function updateBranch($metadata, $pullRequest, $pullRequestUpdated)
     {
         $baseRef = urlencode($pullRequestUpdated->base->ref);
         $headRef = urlencode($pullRequestUpdated->head->ref);
@@ -1011,6 +1014,36 @@ class PullRequestsHandler implements IHandler
         echo "State: {$pullRequestUpdated->mergeable_state} - Commits Behind: {$compare->behind_by} - Updating branch: Yes - Sender: {$pullRequestUpdated->user->login} 👍🏻\n";
         $url = $metadata["pullRequestUrl"] . "/update-branch";
         $body = array("expected_head_sha" => $pullRequestUpdated->head->sha);
-        doRequestGitHub($metadata["token"], $url, $body, "PUT");
+        $updateResponse = doRequestGitHub($metadata["token"], $url, $body, "PUT");
+        if ($updateResponse->getStatusCode() === 202) {
+            $this->requeueAfterBranchUpdate($metadata, $pullRequest, $pullRequestUpdated);
+        }
+    }
+
+    /**
+     * Re-queues the pull request once its branch was updated. The merge commit created
+     * by update-branch is authored by the bot, and the synchronize event for it isn't
+     * processed, so the bot re-queues the pull request itself to get the checks running
+     * on the new head commit. update-branch is asynchronous, so it waits for the new head
+     * first: otherwise the worker could pick the pull request up on the old head and
+     * update the branch again.
+     *
+     * @param array  $metadata           Metadata for the GitHub API request.
+     * @param object $pullRequest        The queued `github_pull_requests` row.
+     * @param object $pullRequestUpdated The pull request as fetched before the update.
+     *
+     * @return void
+     */
+    private function requeueAfterBranchUpdate(array $metadata, object $pullRequest, object $pullRequestUpdated): void
+    {
+        $watcher = new PullRequestHeadWatcher(sleep(...));
+        $newHead = $watcher->waitForNewHead($metadata["token"], $metadata["pullRequestUrl"], $pullRequestUpdated->head->sha);
+        if ($newHead === null) {
+            echo "State: Branch update requested but head still at {$pullRequestUpdated->head->sha} - not re-queuing ⚠️\n";
+            return;
+        }
+
+        upsertPullRequest($pullRequest);
+        echo "State: Branch updated - new head {$newHead} - re-queued for checks 🔁\n";
     }
 }
