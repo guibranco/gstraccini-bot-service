@@ -25,6 +25,14 @@ class ProcessingManager
     private bool $scheduledJobRanInLastBatch = false;
 
     /**
+     * The item being handled right now, with its log context, so the shutdown
+     * function can tell which item the process died on.
+     *
+     * @var array{desc: string, context: array, traceId: ?string}|null
+     */
+    private ?array $currentItem = null;
+
+    /**
     * @param string $entity Entity name for processing
     * @param HealthChecks $healthChecks Health monitoring instance
     * @param Logger $logger Logger instance
@@ -47,6 +55,55 @@ class ProcessingManager
         $this->logStream = $logStream;
 
         $this->healthChecks->setHeaders([constant("USER_AGENT"), "Content-Type: application/json; charset=utf-8"]);
+
+        register_shutdown_function([$this, 'reportAbortedItem']);
+    }
+
+    /**
+     * Shutdown function: reports a process that ends in the middle of an item
+     * (a fatal error such as memory exhaustion or a time limit, an exit()/die()
+     * somewhere down the call stack) or with a fatal error between items.
+     * None of these reach a catch block, so without this they leave no trace
+     * but a check run stuck in progress.
+     */
+    public function reportAbortedItem(): void
+    {
+        $error = error_get_last();
+        $fatalTypes = E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR | E_USER_ERROR | E_RECOVERABLE_ERROR;
+        $isFatal = $error !== null && ($error['type'] & $fatalTypes) !== 0;
+
+        if ($this->currentItem === null && !$isFatal) {
+            return;
+        }
+
+        $itemDesc = $this->currentItem['desc'] ?? '(between items)';
+        $reason = $isFatal
+            ? "{$error['message']} in {$error['file']}:{$error['line']}"
+            : 'the process exited (exit/die) before the item finished';
+
+        // Leave whatever the item had buffered (e.g. a die() message) in the process's output.
+        while (ob_get_level() > 0) {
+            ob_end_flush();
+        }
+
+        error_log("[gstraccini-bot] Worker '{$this->entity}' aborted on {$itemDesc}: {$reason}");
+
+        try {
+            $this->logger->log(
+                "Worker aborted (Entity: {$this->entity}) on {$itemDesc}: {$reason}",
+                ['error' => $error, 'item' => $itemDesc]
+            );
+            $context = $this->currentItem['context'] ?? ['entity' => $this->entity, 'item' => $itemDesc];
+            $context['error'] = $reason;
+            $this->logStream?->critical(
+                'Worker aborted on {item}: {error}',
+                $context,
+                $this->entity,
+                $this->currentItem['traceId'] ?? null
+            );
+        } catch (\Throwable $e) {
+            error_log("[gstraccini-bot] Failed to report the aborted item: {$e->getMessage()}");
+        }
     }
 
     /**
@@ -337,6 +394,8 @@ class ProcessingManager
         }
         $context['item'] = $itemDesc;
 
+        $this->currentItem = ['desc' => $itemDesc, 'context' => $context, 'traceId' => $traceId];
+
         try {
             $this->logStream?->info(
                 'Processing item {item}',
@@ -363,7 +422,8 @@ class ProcessingManager
                     $traceId
                 );
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            // Throwable, not Exception: a TypeError or Error thrown by a handler is a failed item too.
             $this->logger->log(
                 "Failed to process item {$itemDesc}: {$e->getMessage()}.",
                 [
@@ -383,6 +443,8 @@ class ProcessingManager
                 $traceId
             );
             throw $e;
+        } finally {
+            $this->currentItem = null;
         }
     }
 }

@@ -12,7 +12,7 @@ function connectToDatabase($isRetry = false)
             sleep(10);
             return connectToDatabase(true);
         } elseif ($mysqli->connect_errno) {
-            die("Failed to connect to MySQL: " . $mysqli->connect_error);
+            throw new RuntimeException("Failed to connect to MySQL: " . $mysqli->connect_error);
         }
 
         $mysqli->set_charset("utf8mb4");
@@ -163,7 +163,7 @@ function upsertPullRequest($pullRequest)
         $sequence = $row["Sequence"];
 
         if (!$stmt->execute()) {
-            die("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+            throw new RuntimeException("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
         }
 
     } else {
@@ -217,7 +217,7 @@ function upsertPullRequest($pullRequest)
         $installationId = $pullRequest->InstallationId;
 
         if (!$stmt->execute()) {
-            die("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+            throw new RuntimeException("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
         }
     }
 
@@ -398,7 +398,7 @@ function createReadyToMergeAction($pullRequest, $pullRequestUpdated): void
     );
 
     if (!$stmt->execute()) {
-        die("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+        throw new RuntimeException("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
     }
 
     $notificationSequence = $stmt->insert_id;
@@ -424,7 +424,7 @@ function createReadyToMergeAction($pullRequest, $pullRequestUpdated): void
     );
 
     if (!$stmt->execute()) {
-        die("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+        throw new RuntimeException("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
     }
 
     $stmt->close();
@@ -474,7 +474,7 @@ function upsertPush($commit)
         $sequence = $row["Sequence"];
 
         if (!$stmt->execute()) {
-            die("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+            throw new RuntimeException("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
         }
 
     } else {
@@ -538,7 +538,7 @@ function upsertPush($commit)
         $installationId = $commit->InstallationId;
 
         if (!$stmt->execute()) {
-            die("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
+            throw new RuntimeException("Execute failed: (" . $stmt->errno . ") " . $stmt->error);
         }
     }
 

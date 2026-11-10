@@ -113,6 +113,24 @@ class PullRequestsHandler implements IHandler
             $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, "pull request");
         }
 
+        try {
+            $this->runChecks($pullRequest, $pullRequestUpdated, $metadata, $config, $existingCheckRun, $alreadyActionRequired, $checkRunId ?? null);
+        } catch (\Throwable $e) {
+            // Only a check run this run started; an existing action_required one keeps its state.
+            if (isset($checkRunId)) {
+                failCheckRunOnError($metadata, $checkRunId, "pull request", $e);
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Runs the pull request checks once its check run is in progress, and completes the check run.
+     * Split from handleItem() so any failure in here completes the check run as failed instead of
+     * leaving it in progress.
+     */
+    private function runChecks($pullRequest, $pullRequestUpdated, array $metadata, $config, ?object $existingCheckRun, bool $alreadyActionRequired, ?int $checkRunId): void
+    {
         $this->enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config);
         $this->addLabelsFromIssue($metadata, $pullRequest, $pullRequestUpdated);
         $this->updateBranch($metadata, $pullRequest, $pullRequestUpdated);

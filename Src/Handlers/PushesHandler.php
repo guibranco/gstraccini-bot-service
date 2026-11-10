@@ -40,7 +40,12 @@ class PushesHandler implements IHandler
         );
 
         $checkRunId = setCheckRunInProgress($metadata, $push->HeadCommitId, "commit");
-        setCheckRunSucceeded($metadata, $checkRunId, "commit");
+        try {
+            setCheckRunSucceeded($metadata, $checkRunId, "commit");
+        } catch (\Throwable $e) {
+            failCheckRunOnError($metadata, $checkRunId, "commit", $e);
+            throw $e;
+        }
 
         $commitSubject = strtok($push->HeadCommitMessage, "\n");
 
