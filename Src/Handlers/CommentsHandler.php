@@ -1122,28 +1122,45 @@ class CommentsHandler implements IHandler
     }
 
     /**
-     * Queues the pull request and the commit the bot just pushed onto its branch,
-     * so the checks run for the new head SHA. The bot can't rely on the
-     * `push` / `pull_request.synchronize` webhooks for its own commits: those
-     * aren't processed for commits the bot authored, which left the new head
-     * without any check runs (e.g. "GStraccini Checks: Pull Request" never
-     * resolving after a version bump commit).
+     * Queues the commit the bot just pushed for the pushes worker. When the commit
+     * can't be fetched, only the pull request gets queued.
      */
-    private function queueChecksForBotCommit($metadata, $comment, object $pullRequestUpdated, string $sha): void
+    private function queuePushForBotCommit($metadata, $comment, string $ref, string $sha): void
     {
         global $logStream;
 
         $commitResponse = doRequestGitHub($metadata["token"], "{$metadata['repoPrefix']}/commits/{$sha}", null, "GET");
         if ($commitResponse->getStatusCode() === 200) {
-            upsertPush($this->buildPushRow($comment, $pullRequestUpdated->head->ref, json_decode($commitResponse->getBody())));
-        } else {
-            $logStream?->warning(
-                'Failed to fetch bot commit {commit} on {repo}#{pr} — queueing the pull request only',
-                (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", pr: $comment->PullRequestNumber, commit: $sha))->toArray(),
-                "comments",
-                $comment->DeliveryIdText
-            );
+            upsertPush($this->buildPushRow($comment, $ref, json_decode($commitResponse->getBody())));
+            return;
         }
+
+        $logStream?->warning(
+            'Failed to fetch bot commit {commit} on {repo}#{pr} — queueing the pull request only',
+            (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", pr: $comment->PullRequestNumber, commit: $sha))->toArray(),
+            "comments",
+            $comment->DeliveryIdText
+        );
+    }
+
+    /**
+     * Queues the pull request and the commit the bot just pushed onto its branch,
+     * so the checks run for the new head SHA. The bot can't rely on the
+     * `push` / `pull_request.synchronize` webhooks for its own commits: those
+     * aren't processed for commits the bot authored, which left the new head
+     * without any check runs (e.g. "GStraccini Checks: Pull Request" never
+     * resolving after a version bump commit). Does nothing when no commit was
+     * pushed (`$sha` is null).
+     */
+    private function queueChecksForBotCommit($metadata, $comment, object $pullRequestUpdated, ?string $sha): void
+    {
+        global $logStream;
+
+        if ($sha === null) {
+            return;
+        }
+
+        $this->queuePushForBotCommit($metadata, $comment, $pullRequestUpdated->head->ref, $sha);
 
         $watcher = new PullRequestHeadWatcher(sleep(...));
         $newHead = $watcher->waitForNewHead($metadata["token"], $metadata["pullRequestUrl"], $pullRequestUpdated->head->sha);
@@ -1265,9 +1282,7 @@ class CommentsHandler implements IHandler
         $completion = $builder->buildCompletion($result["sha"] ?? "n/a", $result["message"]);
         doRequestGitHub($metadata["token"], $approvalCommentUrl, array("body" => $body . $completion), "PATCH");
 
-        if (!empty($result["sha"])) {
-            $this->queueChecksForBotCommit($metadata, $comment, $pullRequest, $result["sha"]);
-        }
+        $this->queueChecksForBotCommit($metadata, $comment, $pullRequest, $result["sha"]);
     }
 
     /**
