@@ -21,6 +21,9 @@ define("PULLS", "/pulls/");
  */
 class PullRequestsHandler implements IHandler
 {
+    private const AWAITING_TRIAGE_LABEL = "🚦 awaiting triage";
+
+
     public function handleItem($pullRequest, $isRetry = false)
     {
         global $logStream;
@@ -269,7 +272,7 @@ class PullRequestsHandler implements IHandler
             return [];
         }
 
-        return ["🚦 awaiting triage"];
+        return [self::AWAITING_TRIAGE_LABEL];
 
     }//end requestReviewers()
 
@@ -365,7 +368,7 @@ class PullRequestsHandler implements IHandler
     private function removeAwaitingTriageIfReviewed($metadata, $pullRequestUpdated, $collaboratorsLogins, $reviewsLogins, $sender)
     {
         $currentLabels = array_column($pullRequestUpdated->labels, "name");
-        if (!in_array("🚦 awaiting triage", $currentLabels)) {
+        if (in_array(self::AWAITING_TRIAGE_LABEL, $currentLabels) === false) {
             return;
         }
 
@@ -403,7 +406,7 @@ class PullRequestsHandler implements IHandler
             return;
         }
 
-        $labelToRemove = str_replace(" ", "%20", "🚦 awaiting triage");
+        $labelToRemove = str_replace(" ", "%20", self::AWAITING_TRIAGE_LABEL);
         $url = $metadata["pullRequestUrl"] . "/labels/{$labelToRemove}";
         $response = doRequestGitHub($metadata["token"], $url, null, "DELETE");
 
