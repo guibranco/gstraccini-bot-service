@@ -4,6 +4,7 @@ namespace GuiBranco\GStracciniBot\Handlers;
 
 use GuiBranco\GStracciniBot\Library\Checkup\CheckupRepository;
 use GuiBranco\GStracciniBot\Library\Checkup\GitHubCollectionFetcher;
+use GuiBranco\GStracciniBot\Library\LogContext;
 
 /**
  * Handles installation events shared by the HTTP webhook entry point
@@ -36,8 +37,8 @@ class InstallationsHandler implements IHandler
 
         echo "Mapping repositories for installation {$installation->AccountLogin} (#{$installationId}):\n\n";
         $logStream?->info(
-            "Processing installation event for {$installation->AccountLogin}",
-            ['installationId' => $installationId],
+            'Processing installation event for {login}',
+            (new LogContext(installationId: $installationId, login: $installation->AccountLogin))->toArray(),
             "installations",
             $installation->DeliveryIdText ?? null
         );

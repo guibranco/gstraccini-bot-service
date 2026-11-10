@@ -63,7 +63,7 @@ try {
 } catch (\Throwable $e) {
     echo "Installations sync failed: {$e->getMessage()} ❌\n";
     $logger->log("Installations sync failed: {$e->getMessage()}", ['error' => ['message' => $e->getMessage(), 'file' => $e->getFile(), 'line' => $e->getLine()]]);
-    $logStream?->error("Installations sync failed: {$e->getMessage()}", ['file' => $e->getFile(), 'line' => $e->getLine()], "sync_installations");
+    $logStream?->error('Installations sync failed: {error}', ['error' => $e->getMessage(), 'file' => $e->getFile(), 'line' => $e->getLine()], "sync_installations");
 
     if (php_sapi_name() === "cli") {
         exit(1);

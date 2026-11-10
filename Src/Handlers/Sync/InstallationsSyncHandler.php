@@ -4,6 +4,7 @@ namespace GuiBranco\GStracciniBot\Handlers\Sync;
 
 use DateTimeImmutable;
 use GuiBranco\GStracciniBot\Library\Checkup\GitHubCollectionFetcher;
+use GuiBranco\GStracciniBot\Library\LogContext;
 use GuiBranco\GStracciniBot\Library\Sync\MonthlySchedule;
 use GuiBranco\GStracciniBot\Library\Sync\ScheduledJob;
 use GuiBranco\GStracciniBot\Library\Sync\InstallationsSyncRepository;
@@ -340,8 +341,8 @@ class InstallationsSyncHandler
         } catch (Throwable $e) {
             echo "  Repositories sync failed: {$e->getMessage()} ❌\n";
             $logStream?->error(
-                "Repositories sync failed for installation {$login}: {$e->getMessage()}",
-                ["installationId" => $installationId, "file" => $e->getFile(), "line" => $e->getLine()],
+                'Repositories sync failed for installation {login}: {error}',
+                (new LogContext(installationId: $installationId, login: $login))->withError($e)->toArray(),
                 self::LOG_CHANNEL
             );
             $this->report["installations"]["failed"]++;

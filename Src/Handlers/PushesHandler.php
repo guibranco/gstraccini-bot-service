@@ -2,6 +2,8 @@
 
 namespace GuiBranco\GStracciniBot\Handlers;
 
+use GuiBranco\GStracciniBot\Library\LogContext;
+
 /**
  * Handles push events shared by the HTTP webhook entry point
  * (Src/pushes.php) and the queue worker (Src/Workers/pushes.php).
@@ -15,8 +17,8 @@ class PushesHandler implements IHandler
         echo "https://github.com/{$push->RepositoryOwner}/{$push->RepositoryName}/commit/{$push->HeadCommitId}:\n\n";
 
         $logStream?->info(
-            "Processing push event on {$push->Ref}",
-            ['repo' => "{$push->RepositoryOwner}/{$push->RepositoryName}", 'ref' => $push->Ref, 'commit' => $push->HeadCommitId],
+            'Processing push to {ref} of {repo}',
+            (new LogContext(repo: "{$push->RepositoryOwner}/{$push->RepositoryName}", ref: $push->Ref, commit: $push->HeadCommitId))->toArray(),
             "pushes",
             $push->DeliveryIdText
         );

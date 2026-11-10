@@ -4,6 +4,7 @@ namespace GuiBranco\GStracciniBot\Handlers;
 
 use GuiBranco\GStracciniBot\Library\Checkup\CheckupRepository;
 use GuiBranco\GStracciniBot\Library\LabelHelper;
+use GuiBranco\GStracciniBot\Library\LogContext;
 use GuiBranco\GStracciniBot\Library\RepositoryManager;
 use RuntimeException;
 
@@ -44,7 +45,7 @@ class RepositoriesHandler implements IHandler
         echo "https://github.com/{$repository->FullName}:\n\n";
 
         $logStream?->info(
-            "Processing repository event for {$repository->FullName}",
+            'Processing repository event for {repo}',
             ['repo' => $repository->FullName, 'owner' => $repository->OwnerLogin],
             "repositories",
             $repository->DeliveryIdText
@@ -55,7 +56,7 @@ class RepositoriesHandler implements IHandler
             echo "⛔ Repository is no longer accessible to installation #{$repository->InstallationId} " .
                 "(LastAction: {$repository->LastAction}, InstallationAction: {$installationAction}) — nothing to set up\n";
             $logStream?->info(
-                "Skipping removed repository {$repository->FullName}",
+                'Skipping removed repository {repo}',
                 [
                     'repo' => $repository->FullName,
                     'owner' => $repository->OwnerLogin,
@@ -162,15 +163,17 @@ class RepositoriesHandler implements IHandler
 
             echo "⚠️ {$reason} (token request HTTP {$status}) — {$outcome}, nothing to set up\n";
             $logStream?->warning(
-                "Repository {$repository->FullName} is gone for installation #{$installationId}: {$reason} — {$outcome}",
-                [
-                    'repo' => $repository->FullName,
-                    'owner' => $repository->OwnerLogin,
-                    'repositoryId' => $repositoryId,
-                    'installationId' => $installationId,
-                    'status' => $status,
-                    'removalRecorded' => $recordRemoval,
-                ],
+                'Repository {repo} is gone for installation #{installationId}: {reason} — {outcome}',
+                (new LogContext(
+                    repo: $repository->FullName,
+                    owner: $repository->OwnerLogin,
+                    repositoryId: $repositoryId,
+                    installationId: $installationId,
+                    status: $status,
+                    reason: $reason,
+                    outcome: $outcome,
+                    removalRecorded: $recordRemoval
+                ))->toArray(),
                 "repositories",
                 $repository->DeliveryIdText
             );

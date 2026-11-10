@@ -80,7 +80,7 @@ class RecreateRequestStatusTest extends TestCase
         $this->assertTrue($status->mustRequest());
         $this->assertSame("Recreate request from 2026-10-21T17:40:38Z was never acknowledged, requesting again (2/3)", $status->summary());
         $this->assertSame("🔁", $status->icon());
-        $this->assertSame("recreate request was never acknowledged — requesting again", $status->warning());
+        $this->assertSame('recreate request from {last_requested_at} was never acknowledged — requesting again', $status->warning());
 
     }//end testAnUnacknowledgedRequestIsPostedAgainWithAWarning()
 
@@ -98,7 +98,7 @@ class RecreateRequestStatusTest extends TestCase
         $this->assertFalse($status->mustRequest());
         $this->assertSame("Recreate requested 3 times and never acknowledged, giving up", $status->summary());
         $this->assertSame("❌", $status->icon());
-        $this->assertSame("still has conflicts — 3 recreate requests were never acknowledged, giving up", $status->warning());
+        $this->assertSame('still has conflicts — {requests} recreate requests were never acknowledged, giving up', $status->warning());
 
     }//end testGivingUpIsReportedWithAWarning()
 

@@ -184,7 +184,7 @@ class RepositorySyncHandler
         $lastSynced = $row->LastSyncDate ?? "never";
         echo "Repository: {$row->FullName} (#{$row->Id}) — installation #{$row->InstallationId}, last synced: {$lastSynced}\n";
         $logStream?->info(
-            "Syncing repository {$row->FullName}",
+            'Syncing repository {repo}',
             ["repo" => $row->FullName, "repositoryId" => (int) $row->Id, "installationId" => (int) $row->InstallationId, "lastSyncDate" => $row->LastSyncDate],
             self::LOG_CHANNEL
         );
@@ -194,11 +194,12 @@ class RepositorySyncHandler
             $this->reconcile($row);
         } catch (Throwable $e) {
             echo "  Sync failed: {$e->getMessage()} ❌\n";
-            $logStream?->error(
-                "Repository sync failed for {$row->FullName}: {$e->getMessage()}",
-                ["repo" => $row->FullName, "repositoryId" => (int) $row->Id, "file" => $e->getFile(), "line" => $e->getLine()],
-                self::LOG_CHANNEL
-            );
+            $failure = ["repo" => $row->FullName];
+            $failure["repositoryId"] = (int) $row->Id;
+            $failure["error"] = $e->getMessage();
+            $failure["file"] = $e->getFile();
+            $failure["line"] = $e->getLine();
+            $logStream?->error('Repository sync failed for {repo}: {error}', $failure, self::LOG_CHANNEL);
             $this->report["repositories"]["failed"]++;
         }
     }
