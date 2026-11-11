@@ -7,6 +7,7 @@ use GuiBranco\GStracciniBot\Tests\Library\FakeGitHub;
 use GuiBranco\GStracciniBot\Tests\Library\RecreateRequestFixtures;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
+use ReflectionProperty;
 use stdClass;
 
 /**
@@ -43,6 +44,13 @@ class PullRequestsHandlerConflictsTest extends TestCase
      */
     private LogStreamSpy $warnings;
 
+    /**
+     * The handler under test.
+     *
+     * @var PullRequestsHandler
+     */
+    private PullRequestsHandler $handler;
+
 
     /**
      * Starts each test with a GitHub that knows nothing and a log stream
@@ -58,6 +66,7 @@ class PullRequestsHandlerConflictsTest extends TestCase
         $this->fixtures = new RecreateRequestFixtures();
         $this->warnings = new LogStreamSpy();
         $logStream = $this->warnings;
+        $this->handler = new PullRequestsHandler();
 
     }//end setUp()
 
@@ -97,7 +106,7 @@ class PullRequestsHandlerConflictsTest extends TestCase
         $pullRequestUpdated->head->sha = RecreateRequestFixtures::HEAD_SHA;
         $method = new ReflectionMethod(PullRequestsHandler::class, "resolveConflicts");
 
-        $method->invoke(new PullRequestsHandler(), $this->github->metadata(), $pullRequest, $pullRequestUpdated);
+        $method->invoke($this->handler, $this->github->metadata(), $pullRequest, $pullRequestUpdated);
 
         return $this->warnings->lines();
 
@@ -228,6 +237,33 @@ class PullRequestsHandlerConflictsTest extends TestCase
         $this->assertSame([], $this->warnings->warnings());
 
     }//end testDoesNothingWhenThereAreNoConflicts()
+
+
+    /**
+     * Each step is traced with the repository, the pull request and the
+     * delivery being processed, so all the steps of a run can be followed
+     * together.
+     *
+     * @return void
+     */
+    public function testTracesStepWithPullRequestContext(): void
+    {
+        (new ReflectionProperty(PullRequestsHandler::class, "traceId"))->setValue($this->handler, self::DELIVERY_ID);
+        (new ReflectionProperty(PullRequestsHandler::class, "repoSlug"))->setValue($this->handler, "owner/repo");
+        (new ReflectionProperty(PullRequestsHandler::class, "prNumber"))->setValue($this->handler, 350);
+        $trace = new ReflectionMethod(PullRequestsHandler::class, "trace");
+
+        $trace->invoke($this->handler, "warning", 'PR {repo}#{pr}: step {step}', ["step" => "update branch"]);
+        $warnings = $this->warnings->warnings();
+
+        $this->assertCount(1, $warnings);
+        $this->assertSame('PR {repo}#{pr}: step {step}', $warnings[0]["message"]);
+        $this->assertSame(["repo" => "owner/repo", "pr" => 350, "step" => "update branch"], $warnings[0]["context"]);
+        $this->assertSame(LogStreamSpy::PULL_REQUESTS, $warnings[0]["category"]);
+        $this->assertSame(self::DELIVERY_ID, $warnings[0]["traceId"]);
+        $this->assertSame(["warning: PR owner/repo#350: step update branch"], $this->warnings->lines());
+
+    }//end testTracesStepWithPullRequestContext()
 
 
 }//end class
