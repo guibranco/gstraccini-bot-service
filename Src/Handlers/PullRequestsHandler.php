@@ -3,6 +3,7 @@
 namespace GuiBranco\GStracciniBot\Handlers;
 
 use DateTimeImmutable;
+use GuiBranco\GStracciniBot\Library\BranchUpdateGate;
 use GuiBranco\GStracciniBot\Library\DependencyFileLabelService;
 use GuiBranco\GStracciniBot\Library\LogContext;
 use GuiBranco\GStracciniBot\Library\MarkdownGroupCheckboxValidator;
@@ -1312,6 +1313,11 @@ class PullRequestsHandler implements IHandler
     {
         global $logStream;
 
+        if (($pullRequestUpdated->draft ?? false) === true) {
+            $this->trace('debug', 'PR {repo}#{pr}: draft — branch not updated', []);
+            return;
+        }
+
         $baseRef = urlencode($pullRequestUpdated->base->ref);
         $headRef = urlencode($pullRequestUpdated->head->ref);
 
@@ -1329,6 +1335,23 @@ class PullRequestsHandler implements IHandler
                 "pull_requests",
                 $pullRequest->DeliveryIdText
             );
+            return;
+        }
+
+        $headRepo = ($pullRequestUpdated->head->repo->full_name ?? null);
+        if ($headRepo === null) {
+            $this->trace('info', 'PR {repo}#{pr}: head repository no longer exists — branch not updated', ["behind_by" => $compare->behind_by]);
+            return;
+        }
+
+        $blockingRules = (new BranchUpdateGate())->blockingRules($metadata["token"], $headRepo, $pullRequestUpdated->head->ref);
+        if (empty($blockingRules) === false) {
+            $blocked = [];
+            $blocked["behind_by"] = $compare->behind_by;
+            $blocked["head_repo"] = $headRepo;
+            $blocked["head"] = $pullRequestUpdated->head->ref;
+            $blocked["rules"] = implode(", ", $blockingRules);
+            $this->trace('info', 'PR {repo}#{pr}: branch {behind_by} commit(s) behind but {head_repo}:{head} rules forbid updating it ({rules}) — branch not updated', $blocked);
             return;
         }
 
