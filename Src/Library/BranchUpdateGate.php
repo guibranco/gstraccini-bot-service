@@ -18,22 +18,8 @@ namespace GuiBranco\GStracciniBot\Library;
  */
 class BranchUpdateGate
 {
-    /**
-     * The rule types that make GitHub refuse a merge commit pushed onto the branch.
-     *
-     * @var string[]
-     */
-    public const BLOCKING_RULES = [
-        "update",
-        "pull_request",
-        "required_linear_history",
-        "required_signatures",
-        "required_status_checks",
-        "code_scanning",
-        "required_deployments",
-        "workflows",
-        "merge_queue",
-    ];
+    /** The endpoint listing the active rules of a branch, with the repository and the encoded branch. */
+    private const RULES_URL = "repos/%s/rules/branches/%s?per_page=100";
 
 
     /**
@@ -42,16 +28,16 @@ class BranchUpdateGate
      * When the rules can't be read the update isn't held back: the caller
      * tries it and logs whatever GitHub answers.
      *
-     * @param string $token    The installation token.
-     * @param string $repo     The repository the branch is in, as `owner/name`.
-     * @param string $branch   The branch name.
+     * @param string $token  The installation token.
+     * @param string $repo   The repository the branch is in, as `owner/name`.
+     * @param string $branch The branch name.
      *
      * @return string[] The blocking rule types, without duplicates; empty when the branch can be updated.
      */
     public function blockingRules(string $token, string $repo, string $branch): array
     {
         $encodedBranch = implode("/", array_map(rawurlencode(...), explode("/", $branch)));
-        $response = doRequestGitHub($token, "repos/{$repo}/rules/branches/{$encodedBranch}?per_page=100", null, "GET");
+        $response = doRequestGitHub($token, sprintf(self::RULES_URL, $repo, $encodedBranch), null, "GET");
         if ($response->getStatusCode() !== 200) {
             return [];
         }
@@ -64,7 +50,7 @@ class BranchUpdateGate
         $blocking = [];
         foreach ($rules as $rule) {
             $type = ($rule->type ?? null);
-            if (in_array($type, self::BLOCKING_RULES, true) === true && in_array($type, $blocking, true) === false) {
+            if ($this->isBlocking($type) === true && in_array($type, $blocking, true) === false) {
                 $blocking[] = $type;
             }
         }
@@ -72,6 +58,24 @@ class BranchUpdateGate
         return $blocking;
 
     }//end blockingRules()
+
+
+    /**
+     * Tells whether a rule type makes GitHub refuse a merge commit pushed onto the branch.
+     *
+     * @param string|null $type The rule type.
+     *
+     * @return boolean
+     */
+    private function isBlocking(?string $type): bool
+    {
+        return match ($type) {
+            "update", "pull_request", "required_linear_history", "required_signatures", "required_status_checks" => true,
+            "code_scanning", "required_deployments", "workflows", "merge_queue" => true,
+            default => false,
+        };
+
+    }//end isBlocking()
 
 
 }//end class

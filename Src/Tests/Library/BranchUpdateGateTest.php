@@ -79,7 +79,7 @@ class BranchUpdateGateTest extends TestCase
         $this->rules();
 
         $this->assertSame([], $this->blockingRules());
-        $this->assertSame(["GET fake-token " . self::RULES_URL], $this->github->requests());
+        $this->assertSame([sprintf("GET %s %s", FakeGitHub::TOKEN, self::RULES_URL)], $this->github->requests());
 
     }//end testABranchWithoutRulesCanBeUpdated()
 
@@ -107,10 +107,7 @@ class BranchUpdateGateTest extends TestCase
     {
         $this->rules("update", "required_linear_history", "pull_request", "code_scanning", "required_signatures", "deletion", "update");
 
-        $this->assertSame(
-            ["update", "required_linear_history", "pull_request", "code_scanning", "required_signatures"],
-            $this->blockingRules()
-        );
+        $this->assertSame(["update", "required_linear_history", "pull_request", "code_scanning", "required_signatures"], $this->blockingRules());
 
     }//end testRulesThatRefuseAMergeCommitBlock()
 
