@@ -51,8 +51,23 @@ class RepositoriesHandlerTest extends TestCase
 
     protected function setUp(): void
     {
+        global $logStream;
+
         self::$tokenResponse = null;
         self::$tokenRequests = [];
+        $logStream = new LogStreamSpy();
+    }
+
+    /**
+     * Leaves the other tests without a log stream.
+     *
+     * @return void
+     */
+    protected function tearDown(): void
+    {
+        global $logStream;
+
+        $logStream = null;
     }
 
     /**
@@ -113,7 +128,7 @@ class RepositoriesHandlerTest extends TestCase
         $output = $this->runHandler($repository, $this->buildRow(["LastAction" => "deleted", "InstallationAction" => "removed"]));
 
         $this->assertSame([], self::$tokenRequests, "A removed repository must not reach GitHub");
-        $this->assertStringContainsString("nothing to set up", $output);
+        $this->assertStringContainsString("info: Skipping removed repository", $output);
     }
 
     #[DataProvider("goneTokenStatuses")]
@@ -155,7 +170,6 @@ class RepositoriesHandlerTest extends TestCase
         $output = $this->runHandler($repository, $this->buildRow());
 
         $this->assertStringContainsString("belongs to another installation, leaving it as is", $output);
-        $this->assertStringContainsString("nothing to set up", $output);
     }
 
     public function testOtherTokenFailuresStillFailTheItem(): void
@@ -177,20 +191,16 @@ class RepositoriesHandlerTest extends TestCase
      * @param CheckupRepository $repository The (mocked) `github_repositories` access to hand the handler.
      * @param object            $row        The queued row.
      *
-     * @return string Everything the handler echoed.
+     * @return string Everything the handler logged, one rendered entry per line.
      */
     private function runHandler(CheckupRepository $repository, object $row): string
     {
+        global $logStream;
+
         $handler = new RepositoriesHandler($repository);
+        $handler->handleItem($row);
 
-        ob_start();
-        try {
-            $handler->handleItem($row);
-        } finally {
-            $output = ob_get_clean();
-        }
-
-        return $output;
+        return implode("\n", $logStream->lines());
     }
 
     /**

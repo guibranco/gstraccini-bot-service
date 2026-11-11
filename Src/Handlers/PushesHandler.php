@@ -14,7 +14,6 @@ class PushesHandler implements IHandler
     {
         global $logStream;
 
-        echo "https://github.com/{$push->RepositoryOwner}/{$push->RepositoryName}/commit/{$push->HeadCommitId}:\n\n";
 
         $logStream?->info(
             'Processing push to {ref} of {repo}',

@@ -61,7 +61,6 @@ try {
     $handler = new InstallationsSyncHandler($options["throttleSeconds"], $options["dryRun"], $version);
     $handler->run($options["installationId"], $options["force"]);
 } catch (\Throwable $e) {
-    echo "Installations sync failed: {$e->getMessage()} ❌\n";
     $logger->log("Installations sync failed: {$e->getMessage()}", ['error' => ['message' => $e->getMessage(), 'file' => $e->getFile(), 'line' => $e->getLine()]]);
     $logStream?->error('Installations sync failed: {error}', ['error' => $e->getMessage(), 'file' => $e->getFile(), 'line' => $e->getLine()], "sync_installations");
 

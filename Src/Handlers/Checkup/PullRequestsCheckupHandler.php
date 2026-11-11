@@ -4,6 +4,7 @@ namespace GuiBranco\GStracciniBot\Handlers\Checkup;
 
 use GuiBranco\GStracciniBot\Library\Checkup\CheckupRepository;
 use GuiBranco\GStracciniBot\Library\Checkup\GitHubCollectionFetcher;
+use GuiBranco\GStracciniBot\Library\LogsToStream;
 
 /**
  * Lists every open pull request of a repository and makes sure each one has
@@ -11,6 +12,10 @@ use GuiBranco\GStracciniBot\Library\Checkup\GitHubCollectionFetcher;
  */
 class PullRequestsCheckupHandler
 {
+    use LogsToStream;
+
+    private const LOG_CHANNEL = "checkup";
+
     private CheckupRepository $repository;
     private GitHubCollectionFetcher $fetcher;
     private bool $dryRun;
@@ -42,10 +47,9 @@ class PullRequestsCheckupHandler
 
         foreach ($pullRequests as $pullRequest) {
             $checked++;
-            echo "    PR #{$pullRequest->number}: {$pullRequest->title}\n";
 
             if (!$this->repository->existsPullRequest($repoContext->owner, $repoContext->name, (int) $pullRequest->number)) {
-                echo "      ⚠️  Missing in github_pull_requests — backfilling\n";
+                $this->logToStream("warning", 'PR {repo}#{pr} is missing in github_pull_requests — backfilling', ["repo" => "{$repoContext->owner}/{$repoContext->name}", "pr" => $pullRequest->number, "title" => $pullRequest->title, "dryRun" => $this->dryRun]);
                 if (!$this->dryRun) {
                     $this->repository->insertPullRequest(
                         $pullRequest,

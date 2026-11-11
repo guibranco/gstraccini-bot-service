@@ -220,24 +220,21 @@ class ProcessingManager
         $running = true;
         pcntl_async_signals(true);
         $shutdown = function () use (&$running) {
-            $ts = date('Y-m-d H:i:s');
-            echo "[{$ts}] Shutdown signal received for '{$this->entity}'. Finishing current batch...\n";
+            $this->logStream?->notice('Shutdown signal received for {entity} — finishing current batch', ['entity' => $this->entity], $this->entity);
             $running = false;
         };
         pcntl_signal(SIGTERM, $shutdown);
         pcntl_signal(SIGINT, $shutdown);
 
-        echo "[" . date('Y-m-d H:i:s') . "] Daemon started for '{$this->entity}'.\n";
-        foreach ($this->scheduledJobs as $job) {
-            echo "[" . date('Y-m-d H:i:s') . "] Scheduled job registered: {$job->describe()}.\n";
-        }
         $this->logStream?->info('Daemon for {entity} started', ['entity' => $this->entity], $this->entity);
+        foreach ($this->scheduledJobs as $job) {
+            $this->logStream?->info('Scheduled job registered on {entity}: {job}', ['entity' => $this->entity, 'job' => $job->describe()], $this->entity);
+        }
         $this->healthChecks->start();
         $lastPing = time();
 
         while ($running) {
             if ($this->isSystemUpdating()) {
-                echo "[" . date('Y-m-d H:i:s') . "] System updating — pausing '{$this->entity}'...\n";
                 $this->logStream?->warning('System updating — daemon for {entity} paused', ['entity' => $this->entity], $this->entity);
                 sleep(5);
                 continue;
@@ -276,7 +273,6 @@ class ProcessingManager
         }
 
         $this->logStream?->info('Daemon for {entity} stopped gracefully', ['entity' => $this->entity], $this->entity);
-        echo "[" . date('Y-m-d H:i:s') . "] Daemon for '{$this->entity}' stopped gracefully.\n";
     }
 
     /**
@@ -320,7 +316,7 @@ class ProcessingManager
         } finally {
             $result = ob_get_clean();
             if (!empty($result) && ($this->config->debug->all === true || ($this->config->debug->{$this->entity} ?? false) === true)) {
-                echo $result;
+                $this->logStream?->debug('Output of the {entity} batch', ['entity' => $this->entity, 'output' => $result], $this->entity);
             }
 
             // In the finally so a failing item (processItem() rethrows) can't keep the syncs from running.
@@ -369,10 +365,7 @@ class ProcessingManager
     {
         $items = readTable("github_{$this->entity}");
         foreach ($items as $item) {
-            echo "Sequence: {$item->Sequence}\n";
-            echo "Delivery ID: {$item->DeliveryIdText}\n";
             $this->processItem($item, $handler);
-            echo str_repeat("=-", 50) . "=\n";
         }
     }
 
@@ -425,7 +418,6 @@ class ProcessingManager
             $handler($item);
             $finalizeResult = finalizeProcessing($table, $item->Sequence);
             if ($finalizeResult === true) {
-                echo "Item processed!\n";
                 $this->logStream?->info(
                     'Item processed {item}',
                     $context,
@@ -433,7 +425,6 @@ class ProcessingManager
                     $traceId
                 );
             } else {
-                echo "Item updated by another process!\n";
                 $this->logStream?->warning(
                     'Item finalized by another process {item}',
                     $context,

@@ -42,8 +42,6 @@ class RepositoriesHandler implements IHandler
     {
         global $logStream, $gitHubUserToken;
 
-        echo "https://github.com/{$repository->FullName}:\n\n";
-
         $logStream?->info(
             'Processing repository event for {repo}',
             ['repo' => $repository->FullName, 'owner' => $repository->OwnerLogin],
@@ -53,8 +51,6 @@ class RepositoriesHandler implements IHandler
 
         if ($this->isRemoved($repository)) {
             $installationAction = $repository->InstallationAction ?? "none";
-            echo "⛔ Repository is no longer accessible to installation #{$repository->InstallationId} " .
-                "(LastAction: {$repository->LastAction}, InstallationAction: {$installationAction}) — nothing to set up\n";
             $logStream?->info(
                 'Skipping removed repository {repo}',
                 [
@@ -97,10 +93,11 @@ class RepositoriesHandler implements IHandler
         $repositoryManager = new RepositoryManager();
         $repositoryOptions = $repositoryManager->getBotOptions($metadata["token"], $metadata["repositoryOwner"], $metadata["repositoryName"]);
         $languages = $repositoryManager->getLanguages($metadata["token"], $metadata["repositoryOwner"], $metadata["repositoryName"]);
-        foreach ($languages as $language => $bytes) {
-            echo "🔤 Language: {$language}: {$bytes} bytes\n";
-        }
-        echo "\n";
+        $languagesContext = [];
+        $languagesContext['repo'] = "{$repositoryOwner}/{$repositoryName}";
+        $languagesContext['languages'] = implode(", ", array_keys($languages));
+        $languagesContext['bytes'] = $languages;
+        $logStream?->debug('Languages of {repo}: {languages}', $languagesContext, "repositories");
         $this->createRepositoryLabels($metadata, $repositoryOptions);
     }
 
@@ -161,7 +158,6 @@ class RepositoriesHandler implements IHandler
             $recordRemoval = $this->repository->isRepositoryActiveForInstallation($repositoryId, $installationId);
             $outcome = $recordRemoval ? "marking repository removed" : "its latest row is already removed or belongs to another installation, leaving it as is";
 
-            echo "⚠️ {$reason} (token request HTTP {$status}) — {$outcome}, nothing to set up\n";
             $logStream?->warning(
                 'Repository {repo} is gone for installation #{installationId}: {reason} — {outcome}',
                 (new LogContext(
@@ -201,8 +197,14 @@ class RepositoriesHandler implements IHandler
 
     private function createRepositoryLabels($metadata, $options)
     {
+        global $logStream;
+
         if (isset($options["labels"]) === false || $options["labels"] === null || $options["labels"] === "") {
-            echo "⛔ Not creating labels\n";
+            $logStream?->info(
+                'Labels not configured for {repo} — not creating labels',
+                ['repo' => "{$metadata["repositoryOwner"]}/{$metadata["repositoryName"]}"],
+                "repositories"
+            );
             return;
         }
 

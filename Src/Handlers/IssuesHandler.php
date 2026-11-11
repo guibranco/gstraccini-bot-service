@@ -14,7 +14,6 @@ class IssuesHandler implements IHandler
     {
         global $logStream;
 
-        echo "https://github.com/{$issue->RepositoryOwner}/{$issue->RepositoryName}/issues/{$issue->Number}:\n\n";
 
         $logStream?->info(
             'Processing issue {repo}#{issue}',
