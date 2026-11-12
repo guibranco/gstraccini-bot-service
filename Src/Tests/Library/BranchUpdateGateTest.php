@@ -140,4 +140,20 @@ class BranchUpdateGateTest extends TestCase
     }//end testUnreadableRulesDontBlock()
 
 
+    /**
+     * Rulesets aren't on the plan of private repositories of free accounts: the
+     * 403 GitHub answers then is expected, so it isn't logged as an error.
+     *
+     * @return void
+     */
+    public function testRulesetsNotOnThePlanAreExpected(): void
+    {
+        $this->github->fail(self::RULES_URL, 403);
+
+        $this->assertSame([], $this->blockingRules());
+        $this->assertSame([403], $this->github->expectedStatusCodes(self::RULES_URL));
+
+    }//end testRulesetsNotOnThePlanAreExpected()
+
+
 }//end class

@@ -49,6 +49,13 @@ class FakeGitHub
      */
     private array $posted = [];
 
+    /**
+     * The error status codes each caller said it handles itself, by URL.
+     *
+     * @var array
+     */
+    private array $expectedStatusCodes = [];
+
 
     /**
      * Puts this fake in use.
@@ -144,16 +151,18 @@ class FakeGitHub
      * what was set up for its URL, the first match winning, or is not found
      * when nothing was.
      *
-     * @param string $token  The token the request carries.
-     * @param string $url    The URL, relative to the API root.
-     * @param mixed  $data   The payload, null when there is none.
-     * @param string $method The HTTP method.
+     * @param string $token               The token the request carries.
+     * @param string $url                 The URL, relative to the API root.
+     * @param mixed  $data                The payload, null when there is none.
+     * @param string $method              The HTTP method.
+     * @param int[]  $expectedStatusCodes The error status codes the caller handles itself.
      *
      * @return Response
      */
-    public function handle(string $token, string $url, mixed $data, string $method): Response
+    public function handle(string $token, string $url, mixed $data, string $method, array $expectedStatusCodes = []): Response
     {
         $this->requests[] = "{$method} {$token} {$url}";
+        $this->expectedStatusCodes[$url] = $expectedStatusCodes;
         if ($method === "POST") {
             $this->posted[] = $data["body"];
 
@@ -181,6 +190,20 @@ class FakeGitHub
         return $this->requests;
 
     }//end requests()
+
+
+    /**
+     * The error status codes the caller said it handles itself, for a URL.
+     *
+     * @param string $url The URL, relative to the API root.
+     *
+     * @return int[] Empty when none were given or the URL wasn't requested.
+     */
+    public function expectedStatusCodes(string $url): array
+    {
+        return ($this->expectedStatusCodes[$url] ?? []);
+
+    }//end expectedStatusCodes()
 
 
     /**
@@ -213,15 +236,17 @@ use GuiBranco\Pancake\Response;
 /**
  * Hands the request to the fake in use.
  *
- * @param string $token  The token the request carries.
- * @param string $url    The URL, relative to the API root.
- * @param mixed  $data   The payload, null when there is none.
- * @param string $method The HTTP method.
+ * @param string $token               The token the request carries.
+ * @param string $url                 The URL, relative to the API root.
+ * @param mixed  $data                The payload, null when there is none.
+ * @param string $method              The HTTP method.
+ * @param string $accept              The Accept header.
+ * @param int[]  $expectedStatusCodes The error status codes the caller handles itself.
  *
  * @return Response What the fake answers.
  */
-function doRequestGitHub(string $token, string $url, mixed $data, string $method): Response
+function doRequestGitHub(string $token, string $url, mixed $data, string $method, string $accept = "application/vnd.github+json", array $expectedStatusCodes = []): Response
 {
-    return FakeGitHub::$current->handle($token, $url, $data, $method);
+    return FakeGitHub::$current->handle($token, $url, $data, $method, $expectedStatusCodes);
 
 }//end doRequestGitHub()

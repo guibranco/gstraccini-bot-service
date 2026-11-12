@@ -11,7 +11,7 @@ use GuiBranco\Pancake\Response;
  * this shadows the real (network-calling) implementation from Src/lib/github.php for
  * every call made from within GuiBranco\GStracciniBot\Handlers during these tests.
  */
-function doRequestGitHub(string $token, string $url, mixed $data, string $method, string $accept = "application/vnd.github+json"): Response
+function doRequestGitHub(string $token, string $url, mixed $data, string $method, string $accept = "application/vnd.github+json", array $expectedStatusCodes = []): Response
 {
     return PullRequestsHandlerTest::handleFakeRequest($url, $data, $method);
 }

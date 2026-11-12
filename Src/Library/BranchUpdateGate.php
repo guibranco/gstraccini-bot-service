@@ -15,11 +15,18 @@ namespace GuiBranco\GStracciniBot\Library;
  * Only rulesets are seen: classic branch protection can't be read without
  * admin rights, and rules the bot is allowed to bypass are still listed. A
  * refused update is still logged by the caller, so those cases stay visible.
+ *
+ * Rulesets aren't available on private repositories of free accounts: GitHub
+ * answers 403 ("Upgrade to GitHub Pro or make this repository public"). That's
+ * expected, so it isn't logged as an error and the update goes ahead.
  */
 class BranchUpdateGate
 {
     /** The endpoint listing the active rules of a branch, with the repository and the encoded branch. */
     private const RULES_URL = "repos/%s/rules/branches/%s?per_page=100";
+
+    /** Answers that only mean the rules can't be read (rulesets not on the plan, no access). */
+    private const UNREADABLE_STATUS_CODES = [403];
 
 
     /**
@@ -37,7 +44,7 @@ class BranchUpdateGate
     public function blockingRules(string $token, string $repo, string $branch): array
     {
         $encodedBranch = implode("/", array_map(rawurlencode(...), explode("/", $branch)));
-        $response = doRequestGitHub($token, sprintf(self::RULES_URL, $repo, $encodedBranch), null, "GET");
+        $response = doRequestGitHub($token, sprintf(self::RULES_URL, $repo, $encodedBranch), null, "GET", "application/vnd.github+json", self::UNREADABLE_STATUS_CODES);
         if ($response->getStatusCode() !== 200) {
             return [];
         }

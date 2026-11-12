@@ -55,11 +55,13 @@ function decodeGitHubResponse(Response $response, string $property): mixed
  * @param string accept The `accept` parameter in the `doRequestGitHub` function specifies the HTTP
  * Accept header value to be used for the request. It can be used to specify the media type of the
  * response expected from the GitHub API. The default value is "application/vnd.github+json".
+ * @param array expectedStatusCodes Error status codes the caller handles itself (e.g. a feature
+ * GitHub doesn't offer on the repository's plan); they are logged at debug level instead of as errors.
  *
  * @return Response The function `doRequestGitHub` returns an object of type `Response` which
  * represents the response of the GitHub API request.
  */
-function doRequestGitHub(string $token, string $url, mixed $data, string $method, string $accept = "application/vnd.github+json"): Response
+function doRequestGitHub(string $token, string $url, mixed $data, string $method, string $accept = "application/vnd.github+json", array $expectedStatusCodes = []): Response
 {
     global $logger;
 
@@ -109,7 +111,7 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
             break;
     }
 
-    return handleResponse($response, $method, $accept);
+    return handleResponse($response, $method, $accept, $expectedStatusCodes);
 }
 
 /**
@@ -124,11 +126,13 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
  * @param string accept The `accept` parameter in the `doRequestGitHub` function specifies the HTTP
  * Accept header value to be used for the request. It can be used to specify the media type of the
  * response expected from the GitHub API. The default value is "application/vnd.github+json".
+ * @param array expectedStatusCodes Error status codes the caller handles itself; they are logged at
+ * debug level instead of as errors.
  *
  * @return Response The function `handleResponse` returns the same `Response` object that was passed
  * as a parameter after logging and validating the response.
  */
-function handleResponse(Response $response, string $method, string $accept): Response
+function handleResponse(Response $response, string $method, string $accept, array $expectedStatusCodes = []): Response
 {
     global $logger, $logStream;
 
@@ -166,7 +170,13 @@ function handleResponse(Response $response, string $method, string $accept): Res
         }
     }
 
-    if ($statusCode <= 0 || ($statusCode >= 300 && $statusCode !== 404)) {
+    if (in_array($statusCode, $expectedStatusCodes, true) === true) {
+        $logStream?->debug(
+            'GitHub API {method} request returned an expected HTTP {status}: {error}',
+            ['method' => $method, 'status' => $statusCode, 'error' => $errorMessage],
+            "github"
+        );
+    } elseif ($statusCode <= 0 || ($statusCode >= 300 && $statusCode !== 404)) {
         $logger->log($errorMessage, $info);
         $logStream?->error(
             'GitHub API {method} request failed with HTTP {status}: {error}',
