@@ -372,6 +372,35 @@ function setCheckRunInProgress(array $metadata, string $commitId, string $type):
 }
 
 /**
+ * Makes sure GitHub accepted a check run update, so a check run isn't silently left in its
+ * previous state (in progress forever, for one) when the PATCH fails.
+ *
+ * @param Response $response   The response of the PATCH request.
+ * @param int      $checkRunId The ID of the check run updated.
+ * @param string   $conclusion The conclusion the update set.
+ *
+ * @return void
+ *
+ * @throws RuntimeException When GitHub didn't accept the update.
+ */
+function ensureCheckRunUpdated(Response $response, int $checkRunId, string $conclusion): void
+{
+    $statusCode = $response->getStatusCode();
+    if ($statusCode >= 200 && $statusCode < 300) {
+        return;
+    }
+
+    $message = sprintf(
+        "Failed to set check run #%d to %s (HTTP %d): %s",
+        $checkRunId,
+        $conclusion,
+        $statusCode,
+        (string) $response->getBody()
+    );
+    throw new RuntimeException($message);
+}
+
+/**
  * The function `setCheckRunFailed` updates a GitHub check run to mark it as failed with a specific
  * details.
  *
@@ -408,7 +437,9 @@ function setCheckRunFailed(array $metadata, int $checkRunId, string $type, strin
             "text" => $details
         )
     );
-    doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
+    $url = sprintf("%s/%d", $metadata["checkRunUrl"], $checkRunId);
+    $response = doRequestGitHub($metadata["token"], $url, $checkRunBody, "PATCH");
+    ensureCheckRunUpdated($response, $checkRunId, "failure");
 }
 /**
  * Completes a check run as failed because the worker hit an error while it was in progress,
@@ -496,7 +527,9 @@ function setCheckRunSucceeded(array $metadata, int $checkRunId, string $type, st
         )
     );
 
-    doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
+    $url = sprintf("%s/%d", $metadata["checkRunUrl"], $checkRunId);
+    $response = doRequestGitHub($metadata["token"], $url, $checkRunBody, "PATCH");
+    ensureCheckRunUpdated($response, $checkRunId, "success");
 }
 
 /**
@@ -524,5 +557,7 @@ function setCheckRunActionRequired(array $metadata, int $checkRunId, string $typ
         )
     );
 
-    doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
+    $url = sprintf("%s/%d", $metadata["checkRunUrl"], $checkRunId);
+    $response = doRequestGitHub($metadata["token"], $url, $checkRunBody, "PATCH");
+    ensureCheckRunUpdated($response, $checkRunId, "action_required");
 }
