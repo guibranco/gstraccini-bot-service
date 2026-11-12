@@ -134,14 +134,15 @@ class FakeGitHub
     /**
      * Makes the requests whose URL has a given part fail.
      *
-     * @param string $urlPart    The part of the URL.
-     * @param int    $statusCode The status GitHub answers with.
+     * @param string      $urlPart    The part of the URL.
+     * @param int         $statusCode The status GitHub answers with.
+     * @param string|null $body       The body GitHub answers with, null for none.
      *
      * @return void
      */
-    public function fail(string $urlPart, int $statusCode): void
+    public function fail(string $urlPart, int $statusCode, ?string $body = null): void
     {
-        $this->responses[$urlPart] = new Response(false, null, "HTTP {$statusCode}", $statusCode, $urlPart, null);
+        $this->responses[$urlPart] = new Response(false, $body, "HTTP {$statusCode}", $statusCode, $urlPart, null);
 
     }//end fail()
 
@@ -159,8 +160,13 @@ class FakeGitHub
      *
      * @return Response
      */
-    public function handle(string $token, string $url, mixed $data, string $method, array $expectedStatusCodes = []): Response
-    {
+    public function handle(
+        string $token,
+        string $url,
+        mixed $data,
+        string $method,
+        array $expectedStatusCodes = []
+    ): Response {
         $this->requests[] = "{$method} {$token} {$url}";
         $this->expectedStatusCodes[$url] = $expectedStatusCodes;
         if ($method === "POST") {
@@ -234,19 +240,21 @@ use GuiBranco\Pancake\Response;
 
 
 /**
- * Hands the request to the fake in use.
+ * Hands the request to the fake in use, with the error status codes the caller
+ * said it handles itself: the sixth argument of the real function, read from
+ * the arguments since the Accept header before it isn't needed here.
  *
- * @param string $token               The token the request carries.
- * @param string $url                 The URL, relative to the API root.
- * @param mixed  $data                The payload, null when there is none.
- * @param string $method              The HTTP method.
- * @param string $accept              The Accept header.
- * @param int[]  $expectedStatusCodes The error status codes the caller handles itself.
+ * @param string $token  The token the request carries.
+ * @param string $url    The URL, relative to the API root.
+ * @param mixed  $data   The payload, null when there is none.
+ * @param string $method The HTTP method.
  *
  * @return Response What the fake answers.
  */
-function doRequestGitHub(string $token, string $url, mixed $data, string $method, string $accept = "application/vnd.github+json", array $expectedStatusCodes = []): Response
+function doRequestGitHub(string $token, string $url, mixed $data, string $method): Response
 {
+    $expectedStatusCodes = (func_get_args()[5] ?? []);
+
     return FakeGitHub::$current->handle($token, $url, $data, $method, $expectedStatusCodes);
 
 }//end doRequestGitHub()

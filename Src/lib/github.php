@@ -61,8 +61,14 @@ function decodeGitHubResponse(Response $response, string $property): mixed
  * @return Response The function `doRequestGitHub` returns an object of type `Response` which
  * represents the response of the GitHub API request.
  */
-function doRequestGitHub(string $token, string $url, mixed $data, string $method, string $accept = "application/vnd.github+json", array $expectedStatusCodes = []): Response
-{
+function doRequestGitHub(
+    string $token,
+    string $url,
+    mixed $data,
+    string $method,
+    string $accept = "application/vnd.github+json",
+    array $expectedStatusCodes = []
+): Response {
     global $logger;
 
     if ($token === null || $token === "") {
@@ -132,43 +138,18 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
  * @return Response The function `handleResponse` returns the same `Response` object that was passed
  * as a parameter after logging and validating the response.
  */
-function handleResponse(Response $response, string $method, string $accept, array $expectedStatusCodes = []): Response
-{
+function handleResponse(
+    Response $response,
+    string $method,
+    string $accept,
+    array $expectedStatusCodes = []
+): Response {
     global $logger, $logStream;
 
     $statusCode = $response->getStatusCode();
     $info = $response->toJson();
     $body = $response->getBody();
-    $decoded = null;
-    if ($body !== null && empty($body) === false) {
-        $decoded = json_decode($body, true);
-    }
-
-    $errorMessage = "Invalid GitHub response. HTTP Status Code: {$statusCode}";
-
-    if (is_array($decoded)) {
-        if (!empty($decoded['message'])) {
-            $errorMessage .= " - {$decoded['message']}";
-        }
-
-        if (!empty($decoded['errors']) && is_array($decoded['errors'])) {
-            $errorMessage .= "\nErrors:";
-            foreach ($decoded['errors'] as $error) {
-                if (is_array($error)) {
-                    $resource = $error['resource'] ?? 'Unknown resource';
-                    $field = $error['field'] ?? 'unknown field';
-                    $code = $error['code'] ?? 'unknown code';
-                    $errorMessage .= "\n- [{$resource}] {$field}: {$code}";
-                } else {
-                    $errorMessage .= "\n- " . (string)$error;
-                }
-            }
-        }
-
-        if (!empty($decoded['documentation_url'])) {
-            $errorMessage .= "\n📚 See: {$decoded['documentation_url']}";
-        }
-    }
+    $errorMessage = buildGitHubErrorMessage($statusCode, $body);
 
     if (in_array($statusCode, $expectedStatusCodes, true) === true) {
         $logStream?->debug(
@@ -183,7 +164,7 @@ function handleResponse(Response $response, string $method, string $accept, arra
             ['method' => $method, 'status' => $statusCode, 'error' => $errorMessage, 'response' => $info],
             "github"
         );
-    } elseif (empty($body) && $method !== "DELETE" && $statusCode !== 204 && $accept !== "application/vnd.github.v3.diff") {
+    } elseif (isUnexpectedEmptyGitHubResponse($body, $method, $statusCode, $accept) === true) {
         $logger->log("Unexpected empty response", $info);
         $logStream?->warning(
             'GitHub API {method} request returned an unexpected empty response (HTTP {status})',
@@ -193,6 +174,79 @@ function handleResponse(Response $response, string $method, string $accept, arra
     }
 
     return $response;
+}
+
+/**
+ * Describes a GitHub API answer for the logs: its status code, plus the message, the
+ * validation errors and the documentation link of its body when GitHub sent them.
+ *
+ * @param int         $statusCode The HTTP status code.
+ * @param string|null $body       The response body.
+ *
+ * @return string The description.
+ */
+function buildGitHubErrorMessage(int $statusCode, ?string $body): string
+{
+    $errorMessage = "Invalid GitHub response. HTTP Status Code: {$statusCode}";
+    $decoded = (empty($body) === false) ? json_decode($body, true) : null;
+    if (is_array($decoded) === false) {
+        return $errorMessage;
+    }
+
+    if (empty($decoded['message']) === false) {
+        $errorMessage .= " - {$decoded['message']}";
+    }
+
+    if (empty($decoded['errors']) === false && is_array($decoded['errors']) === true) {
+        $errorMessage .= "\nErrors:";
+        foreach ($decoded['errors'] as $error) {
+            $errorMessage .= "\n- " . describeGitHubError($error);
+        }
+    }
+
+    if (empty($decoded['documentation_url']) === false) {
+        $errorMessage .= "\n📚 See: {$decoded['documentation_url']}";
+    }
+
+    return $errorMessage;
+}
+
+/**
+ * Describes one entry of the `errors` list of a GitHub API answer.
+ *
+ * @param mixed $error The entry: an object with resource, field and code, or a plain message.
+ *
+ * @return string The description.
+ */
+function describeGitHubError(mixed $error): string
+{
+    if (is_array($error) === false) {
+        return (string) $error;
+    }
+
+    $resource = $error['resource'] ?? 'Unknown resource';
+    $field = $error['field'] ?? 'unknown field';
+    $code = $error['code'] ?? 'unknown code';
+
+    return "[{$resource}] {$field}: {$code}";
+}
+
+/**
+ * Tells whether a successful GitHub API answer should have had a body.
+ *
+ * @param string|null $body       The response body.
+ * @param string      $method     The HTTP method.
+ * @param int         $statusCode The HTTP status code.
+ * @param string      $accept     The Accept header the request was sent with.
+ *
+ * @return bool
+ */
+function isUnexpectedEmptyGitHubResponse(?string $body, string $method, int $statusCode, string $accept): bool
+{
+    return empty($body) === true
+        && $method !== "DELETE"
+        && $statusCode !== 204
+        && $accept !== "application/vnd.github.v3.diff";
 }
 
 /**
