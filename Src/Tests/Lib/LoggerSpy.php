@@ -7,6 +7,7 @@ namespace GuiBranco\GStracciniBot\Tests\Lib;
  */
 class LoggerSpy
 {
+
     /**
      * The messages received, in order.
      *

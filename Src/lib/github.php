@@ -145,7 +145,37 @@ function requestGitHub(
             break;
     }
 
-    return handleResponse($response, $method, $accept, $expectedStatusCodes);
+    return handleGitHubResponse($response, $method, $accept, $expectedStatusCodes);
+}
+
+/**
+ * Logs a GitHub API answer: at debug level when the caller handles its status itself,
+ * otherwise as `handleResponse` does.
+ *
+ * @param Response $response            The response of the GitHub API request.
+ * @param string   $method              The HTTP method.
+ * @param string   $accept              The Accept header.
+ * @param array    $expectedStatusCodes The error status codes the caller handles itself.
+ *
+ * @return Response The same response.
+ */
+function handleGitHubResponse(Response $response, string $method, string $accept, array $expectedStatusCodes): Response
+{
+    global $logStream;
+
+    $statusCode = $response->getStatusCode();
+    if (in_array($statusCode, $expectedStatusCodes, true) === false) {
+        return handleResponse($response, $method, $accept);
+    }
+
+    $errorMessage = buildGitHubErrorMessage($statusCode, $response->getBody());
+    $logStream?->debug(
+        'GitHub API {method} request returned an expected HTTP {statusCode}: {errorMessage}',
+        compact('method', 'statusCode', 'errorMessage'),
+        "github"
+    );
+
+    return $response;
 }
 
 /**
@@ -160,13 +190,11 @@ function requestGitHub(
  * @param string accept The `accept` parameter in the `doRequestGitHub` function specifies the HTTP
  * Accept header value to be used for the request. It can be used to specify the media type of the
  * response expected from the GitHub API. The default value is "application/vnd.github+json".
- * @param array expectedStatusCodes Error status codes the caller handles itself; they are logged at
- * debug level instead of as errors.
  *
  * @return Response The function `handleResponse` returns the same `Response` object that was passed
  * as a parameter after logging and validating the response.
  */
-function handleResponse(Response $response, string $method, string $accept, array $expectedStatusCodes): Response
+function handleResponse(Response $response, string $method, string $accept): Response
 {
     global $logger, $logStream;
 
@@ -175,20 +203,14 @@ function handleResponse(Response $response, string $method, string $accept, arra
     $body = $response->getBody();
     $errorMessage = buildGitHubErrorMessage($statusCode, $body);
 
-    if (in_array($statusCode, $expectedStatusCodes, true) === true) {
-        $logStream?->debug(
-            'GitHub API {method} request returned an expected HTTP {status}: {error}',
-            ['method' => $method, 'status' => $statusCode, 'error' => $errorMessage],
-            "github"
-        );
-    } elseif ($statusCode <= 0 || ($statusCode >= 300 && $statusCode !== 404)) {
+    if ($statusCode <= 0 || ($statusCode >= 300 && $statusCode !== 404)) {
         $logger->log($errorMessage, $info);
         $logStream?->error(
             'GitHub API {method} request failed with HTTP {status}: {error}',
             ['method' => $method, 'status' => $statusCode, 'error' => $errorMessage, 'response' => $info],
             "github"
         );
-    } elseif (isUnexpectedEmptyGitHubResponse($body, $method, $statusCode, $accept) === true) {
+    } elseif (empty($body) && $method !== "DELETE" && $statusCode !== 204 && $accept !== "application/vnd.github.v3.diff") {
         $logger->log("Unexpected empty response", $info);
         $logStream?->warning(
             'GitHub API {method} request returned an unexpected empty response (HTTP {status})',
@@ -253,24 +275,6 @@ function describeGitHubError(mixed $error): string
     $code = $error['code'] ?? 'unknown code';
 
     return "[{$resource}] {$field}: {$code}";
-}
-
-/**
- * Tells whether a successful GitHub API answer should have had a body.
- *
- * @param string|null $body       The response body.
- * @param string      $method     The HTTP method.
- * @param int         $statusCode The HTTP status code.
- * @param string      $accept     The Accept header the request was sent with.
- *
- * @return bool
- */
-function isUnexpectedEmptyGitHubResponse(?string $body, string $method, int $statusCode, string $accept): bool
-{
-    return empty($body) === true
-        && $method !== "DELETE"
-        && $statusCode !== 204
-        && $accept !== "application/vnd.github.v3.diff";
 }
 
 /**

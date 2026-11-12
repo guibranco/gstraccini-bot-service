@@ -9,8 +9,9 @@ use PHPUnit\Framework\TestCase;
 require_once sprintf("%s/../../lib/github.php", __DIR__);
 
 /**
- * How handleResponse() logs what GitHub answers: errors, unless the caller
- * said it expects that status, in which case only at debug level.
+ * How handleGitHubResponse() and handleResponse() log what GitHub answers:
+ * errors, unless the caller said it expects that status, in which case only
+ * at debug level.
  */
 class HandleResponseTest extends TestCase
 {
@@ -71,7 +72,7 @@ class HandleResponseTest extends TestCase
      */
     public function testAnExpectedStatusIsOnlyDebugged(): void
     {
-        handleResponse($this->answer(403, "not-on-plan.json"), "GET", "application/vnd.github+json", [403]);
+        handleGitHubResponse($this->answer(403, "not-on-plan.json"), "GET", "application/vnd.github+json", [403]);
 
         $expected = sprintf("debug: GitHub API GET request returned an expected HTTP 403: %s", self::NOT_ON_PLAN);
         $this->assertSame([], $this->logger->messages());
@@ -87,7 +88,7 @@ class HandleResponseTest extends TestCase
      */
     public function testAnUnexpectedStatusIsAnError(): void
     {
-        handleResponse($this->answer(403, "not-on-plan.json"), "GET", "application/vnd.github+json", []);
+        handleGitHubResponse($this->answer(403, "not-on-plan.json"), "GET", "application/vnd.github+json", []);
 
         $expected = sprintf("error: GitHub API GET request failed with HTTP 403: %s", self::NOT_ON_PLAN);
         $this->assertSame([self::NOT_ON_PLAN], $this->logger->messages());
@@ -103,7 +104,7 @@ class HandleResponseTest extends TestCase
      */
     public function testTheErrorMessageKeepsGitHubsDetails(): void
     {
-        handleResponse($this->answer(422, "validation-failed.json"), "POST", "application/vnd.github+json", []);
+        handleResponse($this->answer(422, "validation-failed.json"), "POST", "application/vnd.github+json");
 
         $this->assertSame([$this->fixture("validation-failed.txt")], $this->logger->messages());
 
