@@ -850,8 +850,29 @@ class PullRequestsHandler implements IHandler
             return;
         }
 
+        $this->evaluateDescriptionCheckboxes($metadata, $pullRequestUpdated->body, $bodyLength, $checkRunId, $type);
+    }
+
+    /**
+     * Checks the checkbox groups of a long enough pull request description, and completes its check run.
+     *
+     * @param array  $metadata   Metadata for the GitHub API request
+     * @param string $body       The pull request description
+     * @param int    $bodyLength The description's length
+     * @param int    $checkRunId The check run in progress
+     * @param string $type       The check type
+     *
+     * @return void
+     */
+    private function evaluateDescriptionCheckboxes(
+        $metadata,
+        string $body,
+        int $bodyLength,
+        int $checkRunId,
+        string $type
+    ): void {
         $validator = new MarkdownGroupCheckboxValidator();
-        $validationResult = $validator->validateCheckboxes($pullRequestUpdated->body);
+        $validationResult = $validator->validateCheckboxes($body);
         if (isset($validationResult['errors']) && !empty($validationResult['errors'])) {
             $message = $validator->generateReport($validationResult);
             setCheckRunFailed($metadata, $checkRunId, $type, $message);
@@ -875,21 +896,20 @@ class PullRequestsHandler implements IHandler
             $metadata,
             $checkRunId,
             $type,
-            fn () => $this->evaluatePullRequestContent($metadata, $pullRequestUpdated, $checkRunId, $type)
+            fn () => $this->evaluatePullRequestContent($metadata, $checkRunId, $type)
         );
     }
 
     /**
      * Scans the pull request diff, and completes its check run.
      *
-     * @param array  $metadata           Metadata for the GitHub API request
-     * @param object $pullRequestUpdated The updated pull request data
-     * @param int    $checkRunId         The check run in progress
-     * @param string $type               The check type
+     * @param array  $metadata   Metadata for the GitHub API request
+     * @param int    $checkRunId The check run in progress
+     * @param string $type       The check type
      *
      * @return void
      */
-    private function evaluatePullRequestContent($metadata, $pullRequestUpdated, int $checkRunId, string $type): void
+    private function evaluatePullRequestContent($metadata, int $checkRunId, string $type): void
     {
         $diffResponse = getPullRequestDiff($metadata);
         $diff = $diffResponse->getBody();
@@ -921,21 +941,20 @@ class PullRequestsHandler implements IHandler
             $metadata,
             $checkRunId,
             $type,
-            fn () => $this->evaluateDependencyChanges($metadata, $pullRequestUpdated, $checkRunId, $type)
+            fn () => $this->evaluateDependencyChanges($metadata, $checkRunId, $type)
         );
     }
 
     /**
      * Labels the dependency file changes of the pull request, and completes its check run.
      *
-     * @param array  $metadata           Metadata for the GitHub API request
-     * @param object $pullRequestUpdated The updated pull request data
-     * @param int    $checkRunId         The check run in progress
-     * @param string $type               The check type
+     * @param array  $metadata   Metadata for the GitHub API request
+     * @param int    $checkRunId The check run in progress
+     * @param string $type       The check type
      *
      * @return void
      */
-    private function evaluateDependencyChanges($metadata, $pullRequestUpdated, int $checkRunId, string $type): void
+    private function evaluateDependencyChanges($metadata, int $checkRunId, string $type): void
     {
         $diffResponse = getPullRequestDiff($metadata);
         $diff = $diffResponse->getBody();
