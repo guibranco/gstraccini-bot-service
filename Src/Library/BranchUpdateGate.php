@@ -37,6 +37,9 @@ class BranchUpdateGate
     /** How GitHub's 403 starts when rulesets aren't on the repository's plan. */
     private const NOT_ON_PLAN_MESSAGE = "Upgrade to GitHub Pro";
 
+    /** What is logged when the rules can't be read for another reason. */
+    private const FORBIDDEN_WARNING = "Rules of {repo}:{branch} can't be read (HTTP 403): {body}";
+
 
     /**
      * Lists the rules of a branch that would make GitHub refuse to update it.
@@ -53,20 +56,11 @@ class BranchUpdateGate
     public function blockingRules(string $token, string $repo, string $branch): array
     {
         $encodedBranch = implode("/", array_map(rawurlencode(...), explode("/", $branch)));
-        $response = doRequestGitHub(
-            $token,
-            sprintf(self::RULES_URL, $repo, $encodedBranch),
-            null,
-            "GET",
-            "application/vnd.github+json",
-            [self::FORBIDDEN]
-        );
-        if ($response->getStatusCode() === self::FORBIDDEN && $this->isNotOnPlan($response->getBody()) === false) {
-            $this->logToStream(
-                "warning",
-                'Rules of {repo}:{branch} can\'t be read (HTTP 403): {body}',
-                ["repo" => $repo, "branch" => $branch, "body" => (string) $response->getBody()]
-            );
+        $url = sprintf(self::RULES_URL, $repo, $encodedBranch);
+        $response = doRequestGitHubExpecting($token, $url, "GET", [self::FORBIDDEN]);
+        $body = (string) $response->getBody();
+        if ($response->getStatusCode() === self::FORBIDDEN && $this->isNotOnPlan($body) === false) {
+            $this->logToStream("warning", self::FORBIDDEN_WARNING, compact("repo", "branch", "body"));
         }
 
         if ($response->getStatusCode() !== 200) {
@@ -94,13 +88,13 @@ class BranchUpdateGate
     /**
      * Tells whether a 403 from the rules endpoint only means rulesets aren't on the repository's plan.
      *
-     * @param string|null $body The response body.
+     * @param string $body The response body.
      *
      * @return boolean
      */
-    private function isNotOnPlan(?string $body): bool
+    private function isNotOnPlan(string $body): bool
     {
-        $message = (json_decode((string) $body)->message ?? "");
+        $message = (json_decode($body)->message ?? "");
 
         return str_starts_with($message, self::NOT_ON_PLAN_MESSAGE);
 

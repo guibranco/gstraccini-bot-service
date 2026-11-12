@@ -1,0 +1,5 @@
+Invalid GitHub response. HTTP Status Code: 422 - Validation Failed
+Errors:
+- [Issue] title: missing_field
+- plain
+📚 See: https://docs.github.com/rest

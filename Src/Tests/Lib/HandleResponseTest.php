@@ -6,7 +6,7 @@ use GuiBranco\GStracciniBot\Tests\Handlers\LogStreamSpy;
 use GuiBranco\Pancake\Response;
 use PHPUnit\Framework\TestCase;
 
-require_once __DIR__ . "/../../lib/github.php";
+require_once sprintf("%s/../../lib/github.php", __DIR__);
 
 /**
  * How handleResponse() logs what GitHub answers: errors, unless the caller
@@ -14,8 +14,8 @@ require_once __DIR__ . "/../../lib/github.php";
  */
 class HandleResponseTest extends TestCase
 {
-    /** The body of GitHub's answer when rulesets aren't on the repository's plan. */
-    private const NOT_ON_PLAN = '{"message":"Upgrade to GitHub Pro to enable this feature."}';
+    /** What is logged for GitHub's 403 when rulesets aren't on the repository's plan. */
+    private const NOT_ON_PLAN = "Invalid GitHub response. HTTP Status Code: 403 - Upgrade to GitHub Pro.";
 
     /**
      * What is sent to LogStream.
@@ -25,11 +25,11 @@ class HandleResponseTest extends TestCase
     private LogStreamSpy $logStream;
 
     /**
-     * The messages sent to the legacy logger.
+     * What is sent to the legacy logger.
      *
-     * @var array
+     * @var LoggerSpy
      */
-    private array $logged = [];
+    private LoggerSpy $logger;
 
 
     /**
@@ -42,32 +42,9 @@ class HandleResponseTest extends TestCase
         global $logger, $logStream;
 
         $this->logStream = new LogStreamSpy();
+        $this->logger    = new LoggerSpy();
         $logStream       = $this->logStream;
-        $logged          = &$this->logged;
-        $logger          = new class ($logged) {
-            /**
-             * Keeps the messages in the test's list.
-             *
-             * @param array $logged The test's list.
-             */
-            public function __construct(private array &$logged)
-            {
-            }
-
-
-            /**
-             * Takes a message the way the legacy logger does.
-             *
-             * @param string $message The message.
-             *
-             * @return void
-             */
-            public function log(string $message): void
-            {
-                $this->logged[] = $message;
-
-            }//end log()
-        };
+        $logger          = $this->logger;
 
     }//end setUp()
 
@@ -94,14 +71,11 @@ class HandleResponseTest extends TestCase
      */
     public function testAnExpectedStatusIsOnlyDebugged(): void
     {
-        handleResponse($this->forbidden(), "GET", "application/vnd.github+json", [403]);
+        handleResponse($this->answer(403, "not-on-plan.json"), "GET", "application/vnd.github+json", [403]);
 
-        $this->assertSame([], $this->logged);
-        $this->assertSame(
-            ["debug: GitHub API GET request returned an expected HTTP 403: "
-                . "Invalid GitHub response. HTTP Status Code: 403 - Upgrade to GitHub Pro to enable this feature."],
-            $this->logStream->lines()
-        );
+        $expected = sprintf("debug: GitHub API GET request returned an expected HTTP 403: %s", self::NOT_ON_PLAN);
+        $this->assertSame([], $this->logger->messages());
+        $this->assertSame([$expected], $this->logStream->lines());
 
     }//end testAnExpectedStatusIsOnlyDebugged()
 
@@ -113,16 +87,11 @@ class HandleResponseTest extends TestCase
      */
     public function testAnUnexpectedStatusIsAnError(): void
     {
-        handleResponse($this->forbidden(), "GET", "application/vnd.github+json");
+        handleResponse($this->answer(403, "not-on-plan.json"), "GET", "application/vnd.github+json", []);
 
-        $this->assertSame(
-            ["Invalid GitHub response. HTTP Status Code: 403 - Upgrade to GitHub Pro to enable this feature."],
-            $this->logged
-        );
-        $this->assertStringStartsWith(
-            "error: GitHub API GET request failed with HTTP 403",
-            $this->logStream->lines()[0]
-        );
+        $expected = sprintf("error: GitHub API GET request failed with HTTP 403: %s", self::NOT_ON_PLAN);
+        $this->assertSame([self::NOT_ON_PLAN], $this->logger->messages());
+        $this->assertSame([$expected], $this->logStream->lines());
 
     }//end testAnUnexpectedStatusIsAnError()
 
@@ -132,40 +101,42 @@ class HandleResponseTest extends TestCase
      *
      * @return void
      */
-    public function testTheErrorMessageDescribesGitHubsAnswer(): void
+    public function testTheErrorMessageKeepsGitHubsDetails(): void
     {
-        $body = json_encode(
-            [
-                "message"           => "Validation Failed",
-                "errors"            => [
-                    ["resource" => "Issue", "field" => "title", "code" => "missing_field"],
-                    "plain",
-                ],
-                "documentation_url" => "https://docs.github.com/rest",
-            ]
-        );
+        handleResponse($this->answer(422, "validation-failed.json"), "POST", "application/vnd.github+json", []);
 
-        handleResponse(new Response(false, $body, "", 422, "url", null), "POST", "application/vnd.github+json");
+        $this->assertSame([$this->fixture("validation-failed.txt")], $this->logger->messages());
 
-        $this->assertSame(
-            ["Invalid GitHub response. HTTP Status Code: 422 - Validation Failed\nErrors:"
-                . "\n- [Issue] title: missing_field\n- plain\n📚 See: https://docs.github.com/rest"],
-            $this->logged
-        );
-
-    }//end testTheErrorMessageDescribesGitHubsAnswer()
+    }//end testTheErrorMessageKeepsGitHubsDetails()
 
 
     /**
-     * GitHub's answer when rulesets aren't on the repository's plan.
+     * An answer GitHub could give.
+     *
+     * @param int    $statusCode The status code.
+     * @param string $fixture    The file holding the body.
      *
      * @return Response
      */
-    private function forbidden(): Response
+    private function answer(int $statusCode, string $fixture): Response
     {
-        return new Response(false, self::NOT_ON_PLAN, "", 403, "url", null);
+        return new Response(false, $this->fixture($fixture), "", $statusCode, "url", null);
 
-    }//end forbidden()
+    }//end answer()
+
+
+    /**
+     * The content of a fixture file.
+     *
+     * @param string $name The file name.
+     *
+     * @return string
+     */
+    private function fixture(string $name): string
+    {
+        return file_get_contents(sprintf("%s/Fixtures/%s", __DIR__, $name));
+
+    }//end fixture()
 
 
 }//end class

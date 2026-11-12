@@ -55,19 +55,51 @@ function decodeGitHubResponse(Response $response, string $property): mixed
  * @param string accept The `accept` parameter in the `doRequestGitHub` function specifies the HTTP
  * Accept header value to be used for the request. It can be used to specify the media type of the
  * response expected from the GitHub API. The default value is "application/vnd.github+json".
- * @param array expectedStatusCodes Error status codes the caller handles itself (e.g. a feature
- * GitHub doesn't offer on the repository's plan); they are logged at debug level instead of as errors.
  *
  * @return Response The function `doRequestGitHub` returns an object of type `Response` which
  * represents the response of the GitHub API request.
  */
-function doRequestGitHub(
+function doRequestGitHub(string $token, string $url, mixed $data, string $method, string $accept = "application/vnd.github+json"): Response
+{
+    return requestGitHub($token, $url, $data, $method, $accept, []);
+}
+
+/**
+ * Sends a request without a body to the GitHub API, for a caller that handles some error
+ * answers itself (e.g. a feature GitHub doesn't offer on the repository's plan): those are
+ * logged at debug level instead of as errors.
+ *
+ * @param string $token               The installation token.
+ * @param string $url                 The endpoint, relative to the API root.
+ * @param string $method              The HTTP method.
+ * @param array  $expectedStatusCodes The error status codes the caller handles itself.
+ *
+ * @return Response The response of the GitHub API request.
+ */
+function doRequestGitHubExpecting(string $token, string $url, string $method, array $expectedStatusCodes): Response
+{
+    return requestGitHub($token, $url, null, $method, "application/vnd.github+json", $expectedStatusCodes);
+}
+
+/**
+ * Sends a request to the GitHub API and logs its answer.
+ *
+ * @param string $token               The installation token.
+ * @param string $url                 The endpoint, relative to the API root.
+ * @param mixed  $data                The payload, encoded as JSON; null for none.
+ * @param string $method              The HTTP method.
+ * @param string $accept              The Accept header.
+ * @param array  $expectedStatusCodes The error status codes the caller handles itself.
+ *
+ * @return Response The response of the GitHub API request.
+ */
+function requestGitHub(
     string $token,
     string $url,
     mixed $data,
     string $method,
-    string $accept = "application/vnd.github+json",
-    array $expectedStatusCodes = []
+    string $accept,
+    array $expectedStatusCodes
 ): Response {
     global $logger;
 
@@ -106,10 +138,6 @@ function doRequestGitHub(
             $response = $request->patch($url, $headers, $data);
             break;
         case "DELETE":
-            if ($data === null) {
-                $response = $request->delete($url, $headers);
-                break;
-            }
             $response = $request->delete($url, $headers, $data);
             break;
         default:
@@ -138,12 +166,8 @@ function doRequestGitHub(
  * @return Response The function `handleResponse` returns the same `Response` object that was passed
  * as a parameter after logging and validating the response.
  */
-function handleResponse(
-    Response $response,
-    string $method,
-    string $accept,
-    array $expectedStatusCodes = []
-): Response {
+function handleResponse(Response $response, string $method, string $accept, array $expectedStatusCodes): Response
+{
     global $logger, $logStream;
 
     $statusCode = $response->getStatusCode();

@@ -181,7 +181,7 @@ class BranchUpdateGateTest extends TestCase
      */
     public function testRulesetsNotOnThePlanAreExpected(): void
     {
-        $this->github->fail(self::RULES_URL, 403, self::NOT_ON_PLAN);
+        $this->github->failWith(self::RULES_URL, 403, self::NOT_ON_PLAN);
 
         $this->assertSame([], $this->blockingRules());
         $this->assertSame([403], $this->github->expectedStatusCodes(self::RULES_URL));
@@ -197,11 +197,11 @@ class BranchUpdateGateTest extends TestCase
      */
     public function testOtherForbiddenAnswersAreWarned(): void
     {
-        $this->github->fail(self::RULES_URL, 403, self::NOT_ACCESSIBLE);
+        $this->github->failWith(self::RULES_URL, 403, self::NOT_ACCESSIBLE);
 
         $this->assertSame([], $this->blockingRules());
         $this->assertSame(
-            ["warning: Rules of owner/repo:feature/x+y can't be read (HTTP 403): " . self::NOT_ACCESSIBLE],
+            [sprintf("warning: Rules of owner/repo:feature/x+y can't be read (HTTP 403): %s", self::NOT_ACCESSIBLE)],
             $this->logStream->lines()
         );
 
