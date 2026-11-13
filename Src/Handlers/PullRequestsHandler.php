@@ -1455,7 +1455,9 @@ class PullRequestsHandler implements IHandler
             $conflicts["behind_by"] = $compare->behind_by;
             $conflicts["base"] = $pullRequestUpdated->base->ref;
             $conflicts["mergeable_state"] = $pullRequestUpdated->mergeable_state;
-            $this->trace('debug', 'PR {repo}#{pr}: branch {behind_by} commit(s) behind {base} but conflicts with it ({mergeable_state}) — branch not updated', $conflicts);
+            $conflictsMessage = 'PR {repo}#{pr}: branch {behind_by} commit(s) behind {base} '
+                . 'but conflicts with it ({mergeable_state}) — branch not updated';
+            $this->trace('debug', $conflictsMessage, $conflicts);
             return;
         }
 
@@ -1480,7 +1482,8 @@ class PullRequestsHandler implements IHandler
         $body = array("expected_head_sha" => $pullRequestUpdated->head->sha);
         // The pull request can change between reading it and this call (new conflicts, a new
         // head commit): those 422s are expected, so they're logged at debug level, not as errors.
-        $updateResponse = doRequestGitHubExpecting($metadata["token"], $url, "PUT", [BranchUpdateGate::UNPROCESSABLE], $body);
+        $handled = [BranchUpdateGate::UNPROCESSABLE];
+        $updateResponse = doRequestGitHubExpecting($metadata["token"], $url, "PUT", $handled, $body);
         $updateStatus = $updateResponse->getStatusCode();
         $updateLevel = 'warning';
         if ($updateStatus === 202) {
@@ -1495,7 +1498,9 @@ class PullRequestsHandler implements IHandler
         $update["head_sha"] = $pullRequestUpdated->head->sha;
         $update["status"] = $updateStatus;
         $update["reason"] = (json_decode((string) $updateResponse->getBody())->message ?? "");
-        $this->trace($updateLevel, 'PR {repo}#{pr}: branch {behind_by} commit(s) behind {base} — update requested (HTTP {status}) {reason}', $update);
+        $updateMessage = 'PR {repo}#{pr}: branch {behind_by} commit(s) behind {base} '
+            . '— update requested (HTTP {status}) {reason}';
+        $this->trace($updateLevel, $updateMessage, $update);
         if ($updateResponse->getStatusCode() === 202) {
             $this->requeueAfterBranchUpdate($metadata, $pullRequest, $pullRequestUpdated);
         }
