@@ -74,7 +74,7 @@ class SendCheckRunUpdateTest extends TestCase
      *
      * @return void
      */
-    public function testAPersistentNotFoundThrowsAfterTheLastTry(): void
+    public function testAPersistentNotFoundThrowsAtLast(): void
     {
         try {
             $this->sendAnswers([404, 404, 404, 404]);
@@ -85,7 +85,7 @@ class SendCheckRunUpdateTest extends TestCase
 
         $this->assertSame([1, 2, 4], $this->pauses);
 
-    }//end testAPersistentNotFoundThrowsAfterTheLastTry()
+    }//end testAPersistentNotFoundThrowsAtLast()
 
 
     /**
