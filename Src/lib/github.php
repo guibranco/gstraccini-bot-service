@@ -65,7 +65,7 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
 }
 
 /**
- * Sends a request without a body to the GitHub API, for a caller that handles some error
+ * Sends a request to the GitHub API, for a caller that handles some error
  * answers itself (e.g. a feature GitHub doesn't offer on the repository's plan): those are
  * logged at debug level instead of as errors.
  *
@@ -73,12 +73,13 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
  * @param string $url                 The endpoint, relative to the API root.
  * @param string $method              The HTTP method.
  * @param array  $expectedStatusCodes The error status codes the caller handles itself.
+ * @param mixed  $data                The payload, encoded as JSON; null for none.
  *
  * @return Response The response of the GitHub API request.
  */
-function doRequestGitHubExpecting(string $token, string $url, string $method, array $expectedStatusCodes): Response
+function doRequestGitHubExpecting(string $token, string $url, string $method, array $expectedStatusCodes, mixed $data = null): Response
 {
-    return requestGitHub($token, $url, null, $method, "application/vnd.github+json", $expectedStatusCodes);
+    return requestGitHub($token, $url, $data, $method, "application/vnd.github+json", $expectedStatusCodes);
 }
 
 /**

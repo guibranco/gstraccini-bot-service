@@ -1449,7 +1449,17 @@ class PullRequestsHandler implements IHandler
             return;
         }
 
-        $blockingRules = (new BranchUpdateGate())->blockingRules($metadata["token"], $headRepo, $pullRequestUpdated->head->ref);
+        $gate = new BranchUpdateGate();
+        if ($gate->hasConflicts($pullRequestUpdated) === true) {
+            $conflicts = [];
+            $conflicts["behind_by"] = $compare->behind_by;
+            $conflicts["base"] = $pullRequestUpdated->base->ref;
+            $conflicts["mergeable_state"] = $pullRequestUpdated->mergeable_state;
+            $this->trace('debug', 'PR {repo}#{pr}: branch {behind_by} commit(s) behind {base} but conflicts with it ({mergeable_state}) — branch not updated', $conflicts);
+            return;
+        }
+
+        $blockingRules = $gate->blockingRules($metadata["token"], $headRepo, $pullRequestUpdated->head->ref);
         if (empty($blockingRules) === false) {
             $blocked = [];
             $blocked["behind_by"] = $compare->behind_by;
@@ -1468,18 +1478,24 @@ class PullRequestsHandler implements IHandler
         );
         $url = $metadata["pullRequestUrl"] . "/update-branch";
         $body = array("expected_head_sha" => $pullRequestUpdated->head->sha);
-        $updateResponse = doRequestGitHub($metadata["token"], $url, $body, "PUT");
+        // The pull request can change between reading it and this call (new conflicts, a new
+        // head commit): those 422s are expected, so they're logged at debug level, not as errors.
+        $updateResponse = doRequestGitHubExpecting($metadata["token"], $url, "PUT", [BranchUpdateGate::UNPROCESSABLE], $body);
+        $updateStatus = $updateResponse->getStatusCode();
         $updateLevel = 'warning';
-        if ($updateResponse->getStatusCode() === 202) {
+        if ($updateStatus === 202) {
             $updateLevel = 'info';
+        } elseif ($gate->isExpectedRefusal($updateStatus, $updateResponse->getBody()) === true) {
+            $updateLevel = 'debug';
         }
 
         $update = [];
         $update["behind_by"] = $compare->behind_by;
         $update["base"] = $pullRequestUpdated->base->ref;
         $update["head_sha"] = $pullRequestUpdated->head->sha;
-        $update["status"] = $updateResponse->getStatusCode();
-        $this->trace($updateLevel, 'PR {repo}#{pr}: branch {behind_by} commit(s) behind {base} — update requested (HTTP {status})', $update);
+        $update["status"] = $updateStatus;
+        $update["reason"] = (json_decode((string) $updateResponse->getBody())->message ?? "");
+        $this->trace($updateLevel, 'PR {repo}#{pr}: branch {behind_by} commit(s) behind {base} — update requested (HTTP {status}) {reason}', $update);
         if ($updateResponse->getStatusCode() === 202) {
             $this->requeueAfterBranchUpdate($metadata, $pullRequest, $pullRequestUpdated);
         }
