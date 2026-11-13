@@ -198,7 +198,7 @@ class PullRequestsHandler implements IHandler
             return;
         }
 
-        $existingCheckRun = $this->findExistingCheckRun($metadata, $pullRequestUpdated->head->sha, "pull request");
+        $existingCheckRun = findBotCheckRun($metadata, $pullRequestUpdated->head->sha, "pull request");
         $alreadyActionRequired = $existingCheckRun !== null && $existingCheckRun->conclusion === "action_required";
         $checkRunId = null;
 
@@ -210,7 +210,7 @@ class PullRequestsHandler implements IHandler
         $this->trace('debug', 'PR {repo}#{pr}: existing "pull request" check run {check_run_id} ({conclusion})', $existing);
 
         if (!$alreadyActionRequired) {
-            $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, "pull request");
+            $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, "pull request", $existingCheckRun);
             $this->trace('debug', 'PR {repo}#{pr}: "pull request" check run {check_run_id} set in progress', ["check_run_id" => $checkRunId]);
         }
 
@@ -419,34 +419,6 @@ class PullRequestsHandler implements IHandler
 
     }//end requestReviewers()
 
-
-    /**
-     * Finds the bot's existing check run of the given type for a commit sha, if any.
-     * Used to avoid re-creating and re-completing a check run on every PR event while
-     * it's already sitting in a terminal state (e.g. `action_required`) with nothing changed.
-     *
-     * @param array $metadata Metadata for the GitHub API request
-     * @param string $sha The commit sha to look up check runs for
-     * @param string $type The check type (e.g. "pull request"), used to match the check run name
-     * @return object|null The matching check run, or null if none exists yet
-     */
-    private function findExistingCheckRun(array $metadata, string $sha, string $type): ?object
-    {
-        $url = "repos/{$metadata['owner']}/{$metadata['repo']}/commits/{$sha}/check-runs";
-        $response = doRequestGitHub($metadata["token"], $url, null, "GET");
-        if ($response->getStatusCode() !== 200) {
-            return null;
-        }
-
-        $checkRunName = constant("BOT_CHECK_MESSAGE_PREFIX") . ucwords($type);
-        foreach (json_decode($response->getBody())->check_runs as $checkRun) {
-            if ($checkRun->name === $checkRunName) {
-                return $checkRun;
-            }
-        }
-
-        return null;
-    }
 
     /**
      * Analyzes a pull request for a version bump decision: if it looks like a feature
