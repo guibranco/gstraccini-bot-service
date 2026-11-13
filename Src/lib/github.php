@@ -77,8 +77,13 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
  *
  * @return Response The response of the GitHub API request.
  */
-function doRequestGitHubExpecting(string $token, string $url, string $method, array $expectedStatusCodes, mixed $data = null): Response
-{
+function doRequestGitHubExpecting(
+    string $token,
+    string $url,
+    string $method,
+    array $expectedStatusCodes,
+    mixed $data = null
+): Response {
     return requestGitHub($token, $url, $data, $method, "application/vnd.github+json", $expectedStatusCodes);
 }
 

@@ -277,8 +277,13 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
  *
  * @return Response What the fake answers.
  */
-function doRequestGitHubExpecting(string $token, string $url, string $method, array $expectedStatusCodes, mixed $data = null): Response
-{
+function doRequestGitHubExpecting(
+    string $token,
+    string $url,
+    string $method,
+    array $expectedStatusCodes,
+    mixed $data = null
+): Response {
     return FakeGitHub::$current->handle($token, $url, $data, $method, $expectedStatusCodes);
 
 }//end doRequestGitHubExpecting()
