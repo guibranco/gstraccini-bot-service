@@ -15,11 +15,30 @@ namespace GuiBranco\GStracciniBot\Library;
  * Only rulesets are seen: classic branch protection can't be read without
  * admin rights, and rules the bot is allowed to bypass are still listed. A
  * refused update is still logged by the caller, so those cases stay visible.
+ *
+ * Rulesets aren't available on private repositories of free accounts: GitHub
+ * answers 403 ("Upgrade to GitHub Pro or make this repository public"). That's
+ * expected, so it's only logged at debug level and the update goes ahead. Any
+ * other 403 (missing permission, for one) is logged as a warning.
  */
 class BranchUpdateGate
 {
+    use LogsToStream;
+
+    /** The LogStream category the warnings go to. */
+    private const LOG_CHANNEL = "github";
+
     /** The endpoint listing the active rules of a branch, with the repository and the encoded branch. */
     private const RULES_URL = "repos/%s/rules/branches/%s?per_page=100";
+
+    /** The status GitHub answers with when the rules can't be read. */
+    private const FORBIDDEN = 403;
+
+    /** How GitHub's 403 starts when rulesets aren't on the repository's plan. */
+    private const NOT_ON_PLAN_MESSAGE = "Upgrade to GitHub Pro";
+
+    /** What is logged when the rules can't be read for another reason. */
+    private const FORBIDDEN_WARNING = "Rules of {repo}:{branch} can't be read (HTTP 403): {body}";
 
 
     /**
@@ -37,7 +56,13 @@ class BranchUpdateGate
     public function blockingRules(string $token, string $repo, string $branch): array
     {
         $encodedBranch = implode("/", array_map(rawurlencode(...), explode("/", $branch)));
-        $response = doRequestGitHub($token, sprintf(self::RULES_URL, $repo, $encodedBranch), null, "GET");
+        $url = sprintf(self::RULES_URL, $repo, $encodedBranch);
+        $response = doRequestGitHubExpecting($token, $url, "GET", [self::FORBIDDEN]);
+        $body = (string) $response->getBody();
+        if ($response->getStatusCode() === self::FORBIDDEN && $this->isNotOnPlan($body) === false) {
+            $this->logToStream("warning", self::FORBIDDEN_WARNING, compact("repo", "branch", "body"));
+        }
+
         if ($response->getStatusCode() !== 200) {
             return [];
         }
@@ -58,6 +83,22 @@ class BranchUpdateGate
         return $blocking;
 
     }//end blockingRules()
+
+
+    /**
+     * Tells whether a 403 from the rules endpoint only means rulesets aren't on the repository's plan.
+     *
+     * @param string $body The response body.
+     *
+     * @return boolean
+     */
+    private function isNotOnPlan(string $body): bool
+    {
+        $message = (json_decode($body)->message ?? "");
+
+        return str_starts_with($message, self::NOT_ON_PLAN_MESSAGE);
+
+    }//end isNotOnPlan()
 
 
     /**

@@ -3,6 +3,7 @@
 namespace GuiBranco\GStracciniBot\Tests\Library;
 
 use GuiBranco\GStracciniBot\Library\BranchUpdateGate;
+use GuiBranco\GStracciniBot\Tests\Handlers\LogStreamSpy;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -13,6 +14,12 @@ class BranchUpdateGateTest extends TestCase
 {
     /** The rules endpoint of the head branch. */
     private const RULES_URL = "repos/owner/repo/rules/branches/feature/x%2By?per_page=100";
+
+    /** GitHub's 403 when rulesets aren't on the repository's plan. */
+    private const NOT_ON_PLAN = '{"message":"Upgrade to GitHub Pro or make this repository public."}';
+
+    /** GitHub's 403 when the installation can't read the rules. */
+    private const NOT_ACCESSIBLE = '{"message":"Resource not accessible by integration"}';
 
     /**
      * Answers for GitHub.
@@ -28,6 +35,13 @@ class BranchUpdateGateTest extends TestCase
      */
     private BranchUpdateGate $gate;
 
+    /**
+     * What the gate sends to LogStream.
+     *
+     * @var LogStreamSpy
+     */
+    private LogStreamSpy $logStream;
+
 
     /**
      * Starts with a GitHub that answers with nothing.
@@ -36,10 +50,28 @@ class BranchUpdateGateTest extends TestCase
      */
     protected function setUp(): void
     {
-        $this->github = new FakeGitHub();
-        $this->gate   = new BranchUpdateGate();
+        global $logStream;
+
+        $this->github    = new FakeGitHub();
+        $this->gate      = new BranchUpdateGate();
+        $this->logStream = new LogStreamSpy();
+        $logStream       = $this->logStream;
 
     }//end setUp()
+
+
+    /**
+     * Stops logging to the spy.
+     *
+     * @return void
+     */
+    protected function tearDown(): void
+    {
+        global $logStream;
+
+        $logStream = null;
+
+    }//end tearDown()
 
 
     /**
@@ -138,6 +170,42 @@ class BranchUpdateGateTest extends TestCase
         $this->assertSame([], $this->blockingRules());
 
     }//end testUnreadableRulesDontBlock()
+
+
+    /**
+     * Rulesets aren't on the plan of private repositories of free accounts: the
+     * 403 GitHub answers then is expected, so it isn't logged as an error, nor
+     * warned about.
+     *
+     * @return void
+     */
+    public function testRulesetsNotOnThePlanAreExpected(): void
+    {
+        $this->github->failWith(self::RULES_URL, 403, self::NOT_ON_PLAN);
+
+        $this->assertSame([], $this->blockingRules());
+        $this->assertSame([403], $this->github->expectedStatusCodes(self::RULES_URL));
+        $this->assertSame([], $this->logStream->warnings());
+
+    }//end testRulesetsNotOnThePlanAreExpected()
+
+
+    /**
+     * Any other 403 doesn't hold the update back either, but is warned about.
+     *
+     * @return void
+     */
+    public function testOtherForbiddenAnswersAreWarned(): void
+    {
+        $this->github->failWith(self::RULES_URL, 403, self::NOT_ACCESSIBLE);
+
+        $this->assertSame([], $this->blockingRules());
+        $this->assertSame(
+            [sprintf("warning: Rules of owner/repo:feature/x+y can't be read (HTTP 403): %s", self::NOT_ACCESSIBLE)],
+            $this->logStream->lines()
+        );
+
+    }//end testOtherForbiddenAnswersAreWarned()
 
 
 }//end class
