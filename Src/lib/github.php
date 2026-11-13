@@ -499,6 +499,74 @@ function ensureCheckRunUpdated(Response $response, int $checkRunId, string $conc
 }
 
 /**
+ * Whether a refused check run update is worth sending again: GitHub sometimes answers 404 to a
+ * PATCH on a check run created a moment before (its replicas haven't caught up yet), and 5xx or
+ * no answer at all (-1) are transient too. Anything else (401, 403, 422) won't change on retry.
+ *
+ * @param integer $statusCode The status code of the PATCH.
+ *
+ * @return boolean
+ */
+function isRetryableCheckRunUpdate(int $statusCode): bool
+{
+    return $statusCode === 404 || $statusCode === -1 || $statusCode >= 500;
+
+}//end isRetryableCheckRunUpdate()
+
+
+/**
+ * Sends a check run update, sending it again after a pause while GitHub's answer is transient,
+ * and throws (through ensureCheckRunUpdated()) when it still isn't accepted after the last try.
+ *
+ * @param callable $send       Sends the PATCH and returns its Response.
+ * @param callable $pause      Waits the given number of seconds between tries.
+ * @param integer  $checkRunId The ID of the check run updated.
+ * @param string   $conclusion The conclusion the update sets.
+ *
+ * @return void
+ *
+ * @throws RuntimeException When GitHub didn't accept the update.
+ */
+function sendCheckRunUpdate(callable $send, callable $pause, int $checkRunId, string $conclusion): void
+{
+    $delays = [1, 2, 4];
+    $response = $send();
+    foreach ($delays as $delay) {
+        if (isRetryableCheckRunUpdate($response->getStatusCode()) === false) {
+            break;
+        }
+
+        $pause($delay);
+        $response = $send();
+    }
+
+    ensureCheckRunUpdated($response, $checkRunId, $conclusion);
+
+}//end sendCheckRunUpdate()
+
+
+/**
+ * PATCHes a check run with the given body, retrying transient refusals.
+ *
+ * @param array   $metadata     Metadata for the GitHub API request (token, checkRunUrl).
+ * @param integer $checkRunId   The ID of the check run to update.
+ * @param array   $checkRunBody The update.
+ * @param string  $conclusion   The conclusion the update sets.
+ *
+ * @return void
+ *
+ * @throws RuntimeException When GitHub didn't accept the update.
+ */
+function patchCheckRun(array $metadata, int $checkRunId, array $checkRunBody, string $conclusion): void
+{
+    $url = sprintf("%s/%d", $metadata["checkRunUrl"], $checkRunId);
+    $send = fn () => doRequestGitHub($metadata["token"], $url, $checkRunBody, "PATCH");
+    sendCheckRunUpdate($send, sleep(...), $checkRunId, $conclusion);
+
+}//end patchCheckRun()
+
+
+/**
  * The function `setCheckRunFailed` updates a GitHub check run to mark it as failed with a specific
  * details.
  *
@@ -535,9 +603,7 @@ function setCheckRunFailed(array $metadata, int $checkRunId, string $type, strin
             "text" => $details
         )
     );
-    $url = sprintf("%s/%d", $metadata["checkRunUrl"], $checkRunId);
-    $response = doRequestGitHub($metadata["token"], $url, $checkRunBody, "PATCH");
-    ensureCheckRunUpdated($response, $checkRunId, "failure");
+    patchCheckRun($metadata, $checkRunId, $checkRunBody, "failure");
 }
 /**
  * Completes a check run as failed because the worker hit an error while it was in progress,
@@ -625,9 +691,7 @@ function setCheckRunSucceeded(array $metadata, int $checkRunId, string $type, st
         )
     );
 
-    $url = sprintf("%s/%d", $metadata["checkRunUrl"], $checkRunId);
-    $response = doRequestGitHub($metadata["token"], $url, $checkRunBody, "PATCH");
-    ensureCheckRunUpdated($response, $checkRunId, "success");
+    patchCheckRun($metadata, $checkRunId, $checkRunBody, "success");
 }
 
 /**
@@ -655,7 +719,5 @@ function setCheckRunActionRequired(array $metadata, int $checkRunId, string $typ
         )
     );
 
-    $url = sprintf("%s/%d", $metadata["checkRunUrl"], $checkRunId);
-    $response = doRequestGitHub($metadata["token"], $url, $checkRunBody, "PATCH");
-    ensureCheckRunUpdated($response, $checkRunId, "action_required");
+    patchCheckRun($metadata, $checkRunId, $checkRunBody, "action_required");
 }
