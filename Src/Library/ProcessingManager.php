@@ -364,9 +364,8 @@ class ProcessingManager
     private function process(callable $handler): void
     {
         $items = readTable("github_{$this->entity}");
-        foreach ($items as $item) {
-            $this->processItem($item, $handler);
-        }
+        $processOne = fn ($item) => $this->processItem($item, $handler);
+        (new BatchProcessor())->processEach(($items ?? []), $processOne);
     }
 
     private function processItem($item, callable $handler): void
