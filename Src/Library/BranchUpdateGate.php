@@ -20,10 +20,26 @@ namespace GuiBranco\GStracciniBot\Library;
  * answers 403 ("Upgrade to GitHub Pro or make this repository public"). That's
  * expected, so it's only logged at debug level and the update goes ahead. Any
  * other 403 (missing permission, for one) is logged as a warning.
+ *
+ * A pull request GitHub already knows to have conflicts with its base can't be
+ * updated either ("merge conflict between base and head"), so it's skipped too.
+ * GitHub works `mergeable` out in the background, so it can still be unknown
+ * (null) or stale when the bot looks: the update is then tried, and the 422s
+ * that only mean the pull request moved on in between (conflicts, or a new head
+ * commit pushed meanwhile) are told apart from the ones worth a warning.
  */
 class BranchUpdateGate
 {
     use LogsToStream;
+
+    /** The status GitHub answers with when it refuses to update the branch. */
+    public const UNPROCESSABLE = 422;
+
+    /** How GitHub's 422 starts when the head conflicts with the base. */
+    private const CONFLICT_MESSAGE = "merge conflict between base and head";
+
+    /** How GitHub's 422 starts when the head moved since the pull request was read. */
+    private const HEAD_MOVED_MESSAGE = "expected head sha didn't match current head ref";
 
     /** The LogStream category the warnings go to. */
     private const LOG_CHANNEL = "github";
@@ -83,6 +99,49 @@ class BranchUpdateGate
         return $blocking;
 
     }//end blockingRules()
+
+
+    /**
+     * Tells whether GitHub already found the pull request to conflict with its base.
+     *
+     * Only a definite answer counts: while GitHub is still working it out
+     * (`mergeable` null, `mergeable_state` unknown) the update is tried.
+     *
+     * @param object $pullRequest The pull request, as GitHub returns it.
+     *
+     * @return boolean
+     */
+    public function hasConflicts(object $pullRequest): bool
+    {
+        return ($pullRequest->mergeable ?? null) === false
+            || ($pullRequest->mergeable_state ?? null) === "dirty";
+
+    }//end hasConflicts()
+
+
+    /**
+     * Tells whether GitHub refused the update only because the pull request
+     * changed since it was read: its head conflicts with the base, or a new
+     * head commit was pushed. Nothing is wrong with the bot then, and the
+     * next event on the pull request picks it up again.
+     *
+     * @param integer     $statusCode The status of GitHub's answer to the update.
+     * @param string|null $body       The body of GitHub's answer.
+     *
+     * @return boolean
+     */
+    public function isExpectedRefusal(int $statusCode, ?string $body): bool
+    {
+        if ($statusCode !== self::UNPROCESSABLE) {
+            return false;
+        }
+
+        $message = strtolower((json_decode((string) $body)->message ?? ""));
+
+        return str_starts_with($message, self::CONFLICT_MESSAGE)
+            || str_starts_with($message, self::HEAD_MOVED_MESSAGE);
+
+    }//end isExpectedRefusal()
 
 
     /**

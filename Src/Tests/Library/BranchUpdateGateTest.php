@@ -208,4 +208,42 @@ class BranchUpdateGateTest extends TestCase
     }//end testOtherForbiddenAnswersAreWarned()
 
 
+    /**
+     * A pull request GitHub found to conflict with its base isn't updated;
+     * one GitHub is still working out, or found mergeable, is.
+     *
+     * @return void
+     */
+    public function testOnlyAKnownConflictHoldsTheUpdateBack(): void
+    {
+        $this->assertTrue($this->gate->hasConflicts((object) ["mergeable" => false, "mergeable_state" => "dirty"]));
+        $this->assertTrue($this->gate->hasConflicts((object) ["mergeable" => null, "mergeable_state" => "dirty"]));
+        $this->assertFalse($this->gate->hasConflicts((object) ["mergeable" => null, "mergeable_state" => "unknown"]));
+        $this->assertFalse($this->gate->hasConflicts((object) ["mergeable" => true, "mergeable_state" => "behind"]));
+        $this->assertFalse($this->gate->hasConflicts((object) []));
+
+    }//end testOnlyAKnownConflictHoldsTheUpdateBack()
+
+
+    /**
+     * The 422s that only mean the pull request changed since it was read are
+     * expected; a rule violation, or any other status, isn't.
+     *
+     * @return void
+     */
+    public function testRefusalsOfAChangedPrAreExpected(): void
+    {
+        $conflict = '{"message":"merge conflict between base and head","status":"422"}';
+        $headMoved = '{"message":"expected head sha didn\'t match current head ref.","status":"422"}';
+        $ruleViolation = '{"message":"Repository rule violations found","status":"422"}';
+
+        $this->assertTrue($this->gate->isExpectedRefusal(422, $conflict));
+        $this->assertTrue($this->gate->isExpectedRefusal(422, $headMoved));
+        $this->assertFalse($this->gate->isExpectedRefusal(422, $ruleViolation));
+        $this->assertFalse($this->gate->isExpectedRefusal(422, null));
+        $this->assertFalse($this->gate->isExpectedRefusal(409, $conflict));
+
+    }//end testRefusalsOfAChangedPrAreExpected()
+
+
 }//end class

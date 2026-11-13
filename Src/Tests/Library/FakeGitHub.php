@@ -273,11 +273,17 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
  * @param string $url                 The URL, relative to the API root.
  * @param string $method              The HTTP method.
  * @param array  $expectedStatusCodes The error status codes the caller handles itself.
+ * @param mixed  $data                The payload, null when there is none.
  *
  * @return Response What the fake answers.
  */
-function doRequestGitHubExpecting(string $token, string $url, string $method, array $expectedStatusCodes): Response
-{
-    return FakeGitHub::$current->handle($token, $url, null, $method, $expectedStatusCodes);
+function doRequestGitHubExpecting(
+    string $token,
+    string $url,
+    string $method,
+    array $expectedStatusCodes,
+    mixed $data = null
+): Response {
+    return FakeGitHub::$current->handle($token, $url, $data, $method, $expectedStatusCodes);
 
 }//end doRequestGitHubExpecting()
