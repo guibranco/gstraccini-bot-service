@@ -61,6 +61,46 @@ function decodeGitHubResponse(Response $response, string $property): mixed
  */
 function doRequestGitHub(string $token, string $url, mixed $data, string $method, string $accept = "application/vnd.github+json"): Response
 {
+    return requestGitHub($token, $url, $data, $method, $accept, []);
+}
+
+/**
+ * Sends a request without a body to the GitHub API, for a caller that handles some error
+ * answers itself (e.g. a feature GitHub doesn't offer on the repository's plan): those are
+ * logged at debug level instead of as errors.
+ *
+ * @param string $token               The installation token.
+ * @param string $url                 The endpoint, relative to the API root.
+ * @param string $method              The HTTP method.
+ * @param array  $expectedStatusCodes The error status codes the caller handles itself.
+ *
+ * @return Response The response of the GitHub API request.
+ */
+function doRequestGitHubExpecting(string $token, string $url, string $method, array $expectedStatusCodes): Response
+{
+    return requestGitHub($token, $url, null, $method, "application/vnd.github+json", $expectedStatusCodes);
+}
+
+/**
+ * Sends a request to the GitHub API and logs its answer.
+ *
+ * @param string $token               The installation token.
+ * @param string $url                 The endpoint, relative to the API root.
+ * @param mixed  $data                The payload, encoded as JSON; null for none.
+ * @param string $method              The HTTP method.
+ * @param string $accept              The Accept header.
+ * @param array  $expectedStatusCodes The error status codes the caller handles itself.
+ *
+ * @return Response The response of the GitHub API request.
+ */
+function requestGitHub(
+    string $token,
+    string $url,
+    mixed $data,
+    string $method,
+    string $accept,
+    array $expectedStatusCodes
+): Response {
     global $logger;
 
     if ($token === null || $token === "") {
@@ -98,10 +138,6 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
             $response = $request->patch($url, $headers, $data);
             break;
         case "DELETE":
-            if ($data === null) {
-                $response = $request->delete($url, $headers);
-                break;
-            }
             $response = $request->delete($url, $headers, $data);
             break;
         default:
@@ -109,7 +145,37 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
             break;
     }
 
-    return handleResponse($response, $method, $accept);
+    return handleGitHubResponse($response, $method, $accept, $expectedStatusCodes);
+}
+
+/**
+ * Logs a GitHub API answer: at debug level when the caller handles its status itself,
+ * otherwise as `handleResponse` does.
+ *
+ * @param Response $response            The response of the GitHub API request.
+ * @param string   $method              The HTTP method.
+ * @param string   $accept              The Accept header.
+ * @param array    $expectedStatusCodes The error status codes the caller handles itself.
+ *
+ * @return Response The same response.
+ */
+function handleGitHubResponse(Response $response, string $method, string $accept, array $expectedStatusCodes): Response
+{
+    global $logStream;
+
+    $statusCode = $response->getStatusCode();
+    if (in_array($statusCode, $expectedStatusCodes, true) === false) {
+        return handleResponse($response, $method, $accept);
+    }
+
+    $errorMessage = buildGitHubErrorMessage($statusCode, $response->getBody());
+    $logStream?->debug(
+        'GitHub API {method} request returned an expected HTTP {statusCode}: {errorMessage}',
+        compact('method', 'statusCode', 'errorMessage'),
+        "github"
+    );
+
+    return $response;
 }
 
 /**
@@ -130,49 +196,85 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
  */
 function handleResponse(Response $response, string $method, string $accept): Response
 {
-    global $logger;
+    global $logger, $logStream;
 
     $statusCode = $response->getStatusCode();
     $info = $response->toJson();
     $body = $response->getBody();
-    $decoded = null;
-    if ($body !== null && empty($body) === false) {
-        $decoded = json_decode($body, true);
-    }
-
-    $errorMessage = "Invalid GitHub response. HTTP Status Code: {$statusCode}";
-
-    if (is_array($decoded)) {
-        if (!empty($decoded['message'])) {
-            $errorMessage .= " - {$decoded['message']}";
-        }
-
-        if (!empty($decoded['errors']) && is_array($decoded['errors'])) {
-            $errorMessage .= "\nErrors:";
-            foreach ($decoded['errors'] as $error) {
-                if (is_array($error)) {
-                    $resource = $error['resource'] ?? 'Unknown resource';
-                    $field = $error['field'] ?? 'unknown field';
-                    $code = $error['code'] ?? 'unknown code';
-                    $errorMessage .= "\n- [{$resource}] {$field}: {$code}";
-                } else {
-                    $errorMessage .= "\n- " . (string)$error;
-                }
-            }
-        }
-
-        if (!empty($decoded['documentation_url'])) {
-            $errorMessage .= "\n📚 See: {$decoded['documentation_url']}";
-        }
-    }
+    $errorMessage = buildGitHubErrorMessage($statusCode, $body);
 
     if ($statusCode <= 0 || ($statusCode >= 300 && $statusCode !== 404)) {
         $logger->log($errorMessage, $info);
+        $logStream?->error(
+            'GitHub API {method} request failed with HTTP {status}: {error}',
+            ['method' => $method, 'status' => $statusCode, 'error' => $errorMessage, 'response' => $info],
+            "github"
+        );
     } elseif (empty($body) && $method !== "DELETE" && $statusCode !== 204 && $accept !== "application/vnd.github.v3.diff") {
         $logger->log("Unexpected empty response", $info);
+        $logStream?->warning(
+            'GitHub API {method} request returned an unexpected empty response (HTTP {status})',
+            ['method' => $method, 'status' => $statusCode, 'response' => $info],
+            "github"
+        );
     }
 
     return $response;
+}
+
+/**
+ * Describes a GitHub API answer for the logs: its status code, plus the message, the
+ * validation errors and the documentation link of its body when GitHub sent them.
+ *
+ * @param int         $statusCode The HTTP status code.
+ * @param string|null $body       The response body.
+ *
+ * @return string The description.
+ */
+function buildGitHubErrorMessage(int $statusCode, ?string $body): string
+{
+    $errorMessage = "Invalid GitHub response. HTTP Status Code: {$statusCode}";
+    $decoded = (empty($body) === false) ? json_decode($body, true) : null;
+    if (is_array($decoded) === false) {
+        return $errorMessage;
+    }
+
+    if (empty($decoded['message']) === false) {
+        $errorMessage .= " - {$decoded['message']}";
+    }
+
+    if (empty($decoded['errors']) === false && is_array($decoded['errors']) === true) {
+        $errorMessage .= "\nErrors:";
+        foreach ($decoded['errors'] as $error) {
+            $errorMessage .= "\n- " . describeGitHubError($error);
+        }
+    }
+
+    if (empty($decoded['documentation_url']) === false) {
+        $errorMessage .= "\n📚 See: {$decoded['documentation_url']}";
+    }
+
+    return $errorMessage;
+}
+
+/**
+ * Describes one entry of the `errors` list of a GitHub API answer.
+ *
+ * @param mixed $error The entry: an object with resource, field and code, or a plain message.
+ *
+ * @return string The description.
+ */
+function describeGitHubError(mixed $error): string
+{
+    if (is_array($error) === false) {
+        return (string) $error;
+    }
+
+    $resource = $error['resource'] ?? 'Unknown resource';
+    $field = $error['field'] ?? 'unknown field';
+    $code = $error['code'] ?? 'unknown code';
+
+    return "[{$resource}] {$field}: {$code}";
 }
 
 /**
@@ -362,6 +464,35 @@ function setCheckRunInProgress(array $metadata, string $commitId, string $type):
 }
 
 /**
+ * Makes sure GitHub accepted a check run update, so a check run isn't silently left in its
+ * previous state (in progress forever, for one) when the PATCH fails.
+ *
+ * @param Response $response   The response of the PATCH request.
+ * @param int      $checkRunId The ID of the check run updated.
+ * @param string   $conclusion The conclusion the update set.
+ *
+ * @return void
+ *
+ * @throws RuntimeException When GitHub didn't accept the update.
+ */
+function ensureCheckRunUpdated(Response $response, int $checkRunId, string $conclusion): void
+{
+    $statusCode = $response->getStatusCode();
+    if ($statusCode >= 200 && $statusCode < 300) {
+        return;
+    }
+
+    $message = sprintf(
+        "Failed to set check run #%d to %s (HTTP %d): %s",
+        $checkRunId,
+        $conclusion,
+        $statusCode,
+        (string) $response->getBody()
+    );
+    throw new RuntimeException($message);
+}
+
+/**
  * The function `setCheckRunFailed` updates a GitHub check run to mark it as failed with a specific
  * details.
  *
@@ -379,6 +510,14 @@ function setCheckRunInProgress(array $metadata, string $commitId, string $type):
  */
 function setCheckRunFailed(array $metadata, int $checkRunId, string $type, string $details): void
 {
+    global $logStream;
+
+    $logStream?->error(
+        'Check run {checkRun} #{checkRunId} failed: {details}',
+        ['checkRun' => constant("BOT_CHECK_MESSAGE_PREFIX") . ucwords($type), 'checkRunId' => $checkRunId, 'checkRunUrl' => $metadata["checkRunUrl"], 'details' => mb_substr($details, 0, 2000)],
+        "check_runs"
+    );
+
     $checkRunBody = array(
         "name" => constant("BOT_CHECK_MESSAGE_PREFIX") . ucwords($type),
         "details_url" => $metadata["dashboardUrl"],
@@ -390,8 +529,41 @@ function setCheckRunFailed(array $metadata, int $checkRunId, string $type, strin
             "text" => $details
         )
     );
-    doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
+    $url = sprintf("%s/%d", $metadata["checkRunUrl"], $checkRunId);
+    $response = doRequestGitHub($metadata["token"], $url, $checkRunBody, "PATCH");
+    ensureCheckRunUpdated($response, $checkRunId, "failure");
 }
+/**
+ * Completes a check run as failed because the worker hit an error while it was in progress,
+ * so it doesn't stay "in progress" forever. Never throws: it runs while another error is
+ * being handled, and that original error is the one to report.
+ *
+ * @param array      $metadata   Metadata for the GitHub API request (token, checkRunUrl, dashboardUrl).
+ * @param int        $checkRunId The ID of the check run in progress.
+ * @param string     $type       The check type, used to build the check run name and summary.
+ * @param \Throwable $error      The error that interrupted the checks.
+ */
+function failCheckRunOnError(array $metadata, int $checkRunId, string $type, \Throwable $error): void
+{
+    try {
+        $template = "The bot hit an internal error while checking this %s:\n\n```\n%s: %s\n```";
+        $details = sprintf($template, strtolower($type), get_class($error), $error->getMessage());
+        setCheckRunFailed($metadata, $checkRunId, $type, mb_substr($details, 0, 60000));
+    } catch (\Throwable $e) {
+        error_log("[gstraccini-bot] Failed to mark check run {$checkRunId} as failed: {$e->getMessage()}");
+        try {
+            global $logStream;
+            $logStream?->critical(
+                'Failed to mark check run #{checkRunId} as failed — it stays in progress: {error}',
+                ['checkRunId' => $checkRunId, 'checkRunUrl' => $metadata["checkRunUrl"], 'error' => $e->getMessage(), 'originalError' => $error->getMessage()],
+                "check_runs"
+            );
+        } catch (\Throwable) {
+            // Nothing more to do: the error_log line above already has it.
+        }
+    }
+}
+
 /**
  * Creates a new check run in queued status via the GitHub API.
  *
@@ -447,7 +619,9 @@ function setCheckRunSucceeded(array $metadata, int $checkRunId, string $type, st
         )
     );
 
-    doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
+    $url = sprintf("%s/%d", $metadata["checkRunUrl"], $checkRunId);
+    $response = doRequestGitHub($metadata["token"], $url, $checkRunBody, "PATCH");
+    ensureCheckRunUpdated($response, $checkRunId, "success");
 }
 
 /**
@@ -475,5 +649,7 @@ function setCheckRunActionRequired(array $metadata, int $checkRunId, string $typ
         )
     );
 
-    doRequestGitHub($metadata["token"], $metadata["checkRunUrl"] . "/" . $checkRunId, $checkRunBody, "PATCH");
+    $url = sprintf("%s/%d", $metadata["checkRunUrl"], $checkRunId);
+    $response = doRequestGitHub($metadata["token"], $url, $checkRunBody, "PATCH");
+    ensureCheckRunUpdated($response, $checkRunId, "action_required");
 }

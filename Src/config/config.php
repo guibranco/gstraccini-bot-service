@@ -49,6 +49,7 @@ define("USER_AGENT", "User-Agent: " . USER_AGENT_VENDOR);
 
 require_once "vendor/autoload.php";
 
+use GuiBranco\GStracciniBot\Library\TimeBoxedRequest;
 use GuiBranco\Pancake\Logger;
 use GuiBranco\Pancake\LogStream;
 
@@ -99,6 +100,7 @@ if ($logStreamEnabled === true && empty($logStreamServer) === false && $hasLogSt
         authMode: LogStream::AUTH_API_KEY,
         apiKey: $logStreamApiKey,
         apiToken: $logStreamApiToken,
+        request: new TimeBoxedRequest($logStreamServer),
         userAgent: constant("USER_AGENT_VENDOR")
     );
 }

@@ -4,6 +4,7 @@ namespace GuiBranco\GStracciniBot\Handlers\Checkup;
 
 use GuiBranco\GStracciniBot\Library\Checkup\CheckupRepository;
 use GuiBranco\GStracciniBot\Library\Checkup\GitHubCollectionFetcher;
+use GuiBranco\GStracciniBot\Library\LogsToStream;
 
 /**
  * Makes sure commits are registered in `github_pushes`, backfilling any
@@ -19,6 +20,10 @@ use GuiBranco\GStracciniBot\Library\Checkup\GitHubCollectionFetcher;
  */
 class CommitsCheckupHandler
 {
+    use LogsToStream;
+
+    private const LOG_CHANNEL = "checkup";
+
     private CheckupRepository $repository;
     private GitHubCollectionFetcher $fetcher;
     private bool $dryRun;
@@ -82,7 +87,7 @@ class CommitsCheckupHandler
             return false;
         }
 
-        echo "      ⚠️  Commit {$commit->sha} missing in github_pushes — backfilling\n";
+        $this->logToStream("warning", 'Commit {commit} of {repo} ({ref}) is missing in github_pushes — backfilling', ["repo" => "{$owner}/{$repo}", "ref" => $ref, "commit" => $commit->sha, "dryRun" => $this->dryRun]);
         if (!$this->dryRun) {
             $this->repository->insertPush($commit, $owner, $repo, $ref, $installationId, $this->webhooksHandlerVersion);
         }

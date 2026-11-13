@@ -2,6 +2,8 @@
 
 namespace GuiBranco\GStracciniBot\Handlers;
 
+use GuiBranco\GStracciniBot\Library\LogContext;
+
 /**
  * Handles branch events shared by the HTTP webhook entry point
  * (Src/branches.php) and the queue worker (Src/Workers/branches.php).
@@ -12,11 +14,10 @@ class BranchesHandler implements IHandler
     {
         global $logStream;
 
-        echo "https://github.com/{$branch->RepositoryOwner}/{$branch->RepositoryName}/tree/{$branch->Ref}:\n\n";
 
         $logStream?->info(
-            "Processing branch event: {$branch->Event} on {$branch->Ref}",
-            ['repo' => "{$branch->RepositoryOwner}/{$branch->RepositoryName}", 'event' => $branch->Event, 'ref' => $branch->Ref, 'sender' => $branch->SenderLogin ?? null],
+            'Processing branch event {event} on {ref} of {repo}',
+            (new LogContext(repo: "{$branch->RepositoryOwner}/{$branch->RepositoryName}", event: $branch->Event, ref: $branch->Ref, sender: ($branch->SenderLogin ?? null)))->toArray(),
             "branches",
             $branch->DeliveryIdText
         );
@@ -31,8 +32,8 @@ class BranchesHandler implements IHandler
         $data = $this->getReferencedIssueByBranch($metadata, $branch);
         if (!isset($data->data)) {
             $logStream?->info(
-                "No linked issues found for branch {$branch->Ref}",
-                ['repo' => "{$branch->RepositoryOwner}/{$branch->RepositoryName}"],
+                'No linked issues found for branch {ref} of {repo}',
+                (new LogContext(repo: "{$branch->RepositoryOwner}/{$branch->RepositoryName}", ref: $branch->Ref))->toArray(),
                 "branches",
                 $branch->DeliveryIdText
             );

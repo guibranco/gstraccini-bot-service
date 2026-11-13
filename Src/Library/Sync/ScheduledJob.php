@@ -5,6 +5,7 @@ namespace GuiBranco\GStracciniBot\Library\Sync;
 use Closure;
 use DateTimeImmutable;
 use InvalidArgumentException;
+use GuiBranco\GStracciniBot\Library\LogsToStream;
 
 /**
  * A job that piggybacks on an existing worker (ProcessingManager): after
@@ -20,6 +21,10 @@ use InvalidArgumentException;
  */
 final class ScheduledJob
 {
+    use LogsToStream;
+
+    private const LOG_CHANNEL = "scheduled_jobs";
+
     private string $name;
     private ScheduleInterface $schedule;
     private Closure $job;
@@ -76,14 +81,14 @@ final class ScheduledJob
             return false;
         }
 
-        echo "[" . $now->format("Y-m-d H:i:s") . "] Scheduled job '{$this->name}' starting.\n";
+        $this->logToStream("info", "Scheduled job '{job}' starting", ["job" => $this->name]);
         $startedAt = microtime(true);
 
         try {
             ($this->job)();
         } finally {
             $elapsed = round(microtime(true) - $startedAt, 1);
-            echo "[" . date("Y-m-d H:i:s") . "] Scheduled job '{$this->name}' finished in {$elapsed}s.\n";
+            $this->logToStream("info", "Scheduled job '{job}' finished in {elapsed}s", ["job" => $this->name, "elapsed" => $elapsed]);
         }
 
         return true;

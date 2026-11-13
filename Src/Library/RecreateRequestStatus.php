@@ -155,15 +155,16 @@ class RecreateRequestStatus
 
 
     /**
-     * What to warn about when a request was left without an acknowledgement.
+     * What to warn about when a request was left without an acknowledgement,
+     * as a message template whose placeholders are keys of context().
      *
      * @return string An empty string when there is nothing to warn about.
      */
     public function warning(): string
     {
         return match ($this->status) {
-            self::GAVE_UP => "still has conflicts — {$this->requests} recreate requests were never acknowledged, giving up",
-            self::UNACKNOWLEDGED => "recreate request was never acknowledged — requesting again",
+            self::GAVE_UP => 'still has conflicts — {requests} recreate requests were never acknowledged, giving up',
+            self::UNACKNOWLEDGED => 'recreate request from {last_requested_at} was never acknowledged — requesting again',
             default => "",
         };
 

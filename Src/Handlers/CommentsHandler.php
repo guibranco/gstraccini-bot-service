@@ -9,10 +9,13 @@ use GuiBranco\GStracciniBot\Library\InfisicalIgnoreCommitService;
 use GuiBranco\GStracciniBot\Library\InfisicalIgnoreSuggestionParser;
 use GuiBranco\GStracciniBot\Library\LabelHelper;
 use GuiBranco\GStracciniBot\Library\LabelService;
+use GuiBranco\GStracciniBot\Library\LogContext;
+use GuiBranco\GStracciniBot\Library\PullRequestHeadWatcher;
 use GuiBranco\GStracciniBot\Library\RepositoryManager;
 use GuiBranco\GStracciniBot\Library\VersionBumpCommentBuilder;
 use GuiBranco\GStracciniBot\Library\VersionBumpCommitService;
 use RuntimeException;
+use stdClass;
 
 /**
  * Handles issue-comment events shared by the HTTP webhook entry point
@@ -65,15 +68,13 @@ class CommentsHandler implements IHandler
         global $logStream;
     
         $repoUrl = "https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/issues/{$comment->PullRequestNumber}/#issuecomment-{$comment->CommentId}";
-        echo "{$repoUrl}:\n\n";
-        echo "Comment: {$comment->CommentBody} | Sender: {$comment->CommentSender}\n";
     
         $config = loadConfig();
         $sender = $comment->CommentSender;
     
         $logStream?->info(
-            "Processing comment from {$sender}",
-            ['repo' => "{$comment->RepositoryOwner}/{$comment->RepositoryName}", 'pr' => $comment->PullRequestNumber, 'comment_id' => $comment->CommentId],
+            'Processing comment from {sender} on {repo}#{pr}',
+            (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", pr: $comment->PullRequestNumber, comment_id: $comment->CommentId, sender: $sender))->toArray(),
             "comments",
             $comment->DeliveryIdText
         );
@@ -98,10 +99,9 @@ class CommentsHandler implements IHandler
                     return;
                 }
             }
-            echo "Skipping this comment! 🚷\n";
             $logStream?->info(
-                "Skipping comment from ignored bot: {$sender}",
-                ['repo' => "{$comment->RepositoryOwner}/{$comment->RepositoryName}"],
+                'Skipping comment from ignored bot {sender} on {repo}',
+                (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", sender: $sender))->toArray(),
                 "comments",
                 $comment->DeliveryIdText
             );
@@ -128,8 +128,8 @@ class CommentsHandler implements IHandler
         if (!$this->isCollaborator($comment, $metadata)) {
             if ($sender !== "dependabot[bot]") {
                 $logStream?->warning(
-                    "Comment sender {$sender} is not a collaborator",
-                    ['repo' => "{$comment->RepositoryOwner}/{$comment->RepositoryName}"],
+                    'Comment sender {sender} is not a collaborator of {repo}',
+                    (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", sender: $sender))->toArray(),
                     "comments",
                     $comment->DeliveryIdText
                 );
@@ -152,8 +152,8 @@ class CommentsHandler implements IHandler
     
             if (!empty($command->requiresPullRequestOpen) && !$pullRequestIsOpen) {
                 $logStream?->warning(
-                    "Command {$command->command} requires an open PR",
-                    ['repo' => "{$comment->RepositoryOwner}/{$comment->RepositoryName}", 'pr' => $comment->PullRequestNumber],
+                    'Command {command} requires an open PR, {repo}#{pr} is not one',
+                    (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", pr: $comment->PullRequestNumber, command: $command->command))->toArray(),
                     "comments",
                     $comment->DeliveryIdText
                 );
@@ -164,8 +164,8 @@ class CommentsHandler implements IHandler
     
             $method = "execute_" . $this->toCamelCase($command->command);
             $logStream?->info(
-                "Executing command: {$command->command}",
-                ['repo' => "{$comment->RepositoryOwner}/{$comment->RepositoryName}", 'sender' => $sender, 'callable' => is_callable([$this, $method])],
+                'Executing command {command} from {sender} on {repo}',
+                (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", sender: $sender, command: $command->command, callable: is_callable([$this, $method])))->toArray(),
                 "comments",
                 $comment->DeliveryIdText
             );
@@ -186,8 +186,8 @@ class CommentsHandler implements IHandler
     
         if (!$executedAtLeastOne) {
             $logStream?->warning(
-                "No matching command found in comment",
-                ['repo' => "{$comment->RepositoryOwner}/{$comment->RepositoryName}", 'sender' => $sender],
+                'No matching command found in comment from {sender} on {repo}',
+                (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", sender: $sender))->toArray(),
                 "comments",
                 $comment->DeliveryIdText
             );
@@ -569,6 +569,8 @@ class CommentsHandler implements IHandler
     
     private function execute_copyLabels($config, $metadata, $comment): void
     {
+        global $logStream;
+
         $pattern = '/\b(\w+)\/(\w+)\b/';
         preg_match($pattern, $comment->CommentBody, $matches);
     
@@ -620,7 +622,12 @@ class CommentsHandler implements IHandler
         $totalLabelsToCreate = count($labelsToCreateObject);
         $totalLabelsToUpdate = count($labelsToUpdateObject);
     
-        echo "Creating labels {$totalLabelsToCreate} | Updating labels: {$totalLabelsToUpdate}\n";
+        $logStream?->info(
+            'Labels of {repo}: {toCreate} to create, {toUpdate} to update',
+            (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", pr: $comment->PullRequestNumber, toCreate: $totalLabelsToCreate, toUpdate: $totalLabelsToUpdate))->toArray(),
+            "comments",
+            $comment->DeliveryIdText
+        );
     
         if ($totalLabelsToCreate === 0 && $totalLabelsToUpdate === 0) {
             $body = array("body" => "No labels to create or update! :no_entry:");
@@ -1053,7 +1060,27 @@ class CommentsHandler implements IHandler
         $commitsResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"] . "/commits?per_page=100", null, "GET");
         $commits = json_decode($commitsResponse->getBody());
     
-        $pullRequest = new \stdClass();
+        upsertPullRequest($this->buildPullRequestRow($comment, $pullRequestUpdated));
+
+        $commitsList = "";
+        foreach ($commits as $commitItem) {
+            $commitsList .= "SHA: [{$commitItem->sha}](https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/pull/{$comment->PullRequestNumber}/commits/{$commitItem->sha})\n";
+
+            upsertPush($this->buildPushRow($comment, $pullRequestUpdated->head->ref, $commitItem));
+        }
+        $body = "Reviewing this pull request! :eyes:\n";
+        $body .= "Mergeable state: {$pullRequestUpdated->mergeable_state}\n\n";
+        $body .= "Commits included:\n {$commitsList}";
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+    }
+
+    /**
+     * Builds the `github_pull_requests` row used to (re-)queue a pull request for the
+     * pull requests worker, from the comment that triggered the action.
+     */
+    private function buildPullRequestRow($comment, object $pullRequestUpdated): stdClass
+    {
+        $pullRequest = new stdClass();
         $pullRequest->DeliveryId = $comment->DeliveryIdText;
         $pullRequest->HookId = $comment->HookId;
         $pullRequest->TargetId = $comment->TargetId;
@@ -1067,38 +1094,99 @@ class CommentsHandler implements IHandler
         $pullRequest->Title = $pullRequestUpdated->title;
         $pullRequest->Ref = $pullRequestUpdated->head->ref;
         $pullRequest->InstallationId = $comment->InstallationId;
-    
-        upsertPullRequest($pullRequest);
-    
-        $commitsList = "";
-        foreach ($commits as $commitItem) {
-            $commit = new \stdClass();
-            $commit->HookId = $comment->HookId;
-            $commit->TargetId = $comment->TargetId;
-            $commit->TargetType = $comment->TargetType;
-            $commit->RepositoryOwner = $comment->RepositoryOwner;
-            $commit->RepositoryName = $comment->RepositoryName;
-            $commit->Ref = $pullRequestUpdated->head->ref;
-            $commit->HeadCommitId = $commitItem->sha;
-            $commit->HeadCommitTreeId = $commitItem->commit->tree->sha;
-            $commit->HeadCommitMessage = $commitItem->commit->message;
-            $commit->HeadCommitTimestamp = date("Y-m-d H:i:s", strtotime($commitItem->commit->author->date));
-            $commit->HeadCommitAuthorName = $commitItem->commit->author->name;
-            $commit->HeadCommitAuthorEmail = $commitItem->commit->author->email;
-            $commit->HeadCommitCommitterName = $commitItem->commit->committer->name;
-            $commit->HeadCommitCommitterEmail = $commitItem->commit->committer->email;
-            $commit->InstallationId = $comment->InstallationId;
-    
-            $commitsList .= "SHA: [{$commitItem->sha}](https://github.com/{$comment->RepositoryOwner}/{$comment->RepositoryName}/pull/{$comment->PullRequestNumber}/commits/{$commitItem->sha})\n";
-    
-            upsertPush($commit);
-        }
-        $body = "Reviewing this pull request! :eyes:\n";
-        $body .= "Mergeable state: {$pullRequestUpdated->mergeable_state}\n\n";
-        $body .= "Commits included:\n {$commitsList}";
-        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+
+        return $pullRequest;
     }
-    
+
+    /**
+     * Builds the `github_pushes` row used to (re-)queue a commit for the pushes worker.
+     * `$commitItem` has the shape returned by the GitHub commits API
+     * (`sha`, `commit.tree.sha`, `commit.message`, `commit.author`, `commit.committer`).
+     */
+    private function buildPushRow($comment, string $ref, object $commitItem): stdClass
+    {
+        $commit = new stdClass();
+        $commit->HookId = $comment->HookId;
+        $commit->TargetId = $comment->TargetId;
+        $commit->TargetType = $comment->TargetType;
+        $commit->RepositoryOwner = $comment->RepositoryOwner;
+        $commit->RepositoryName = $comment->RepositoryName;
+        $commit->Ref = $ref;
+        $commit->HeadCommitId = $commitItem->sha;
+        $commit->HeadCommitTreeId = $commitItem->commit->tree->sha;
+        $commit->HeadCommitMessage = $commitItem->commit->message;
+        $commit->HeadCommitTimestamp = date("Y-m-d H:i:s", strtotime($commitItem->commit->author->date));
+        $commit->HeadCommitAuthorName = $commitItem->commit->author->name;
+        $commit->HeadCommitAuthorEmail = $commitItem->commit->author->email;
+        $commit->HeadCommitCommitterName = $commitItem->commit->committer->name;
+        $commit->HeadCommitCommitterEmail = $commitItem->commit->committer->email;
+        $commit->InstallationId = $comment->InstallationId;
+
+        return $commit;
+    }
+
+    /**
+     * Queues the commit the bot just pushed for the pushes worker. When the commit
+     * can't be fetched, only the pull request gets queued.
+     */
+    private function queuePushForBotCommit($metadata, $comment, string $ref, string $sha): void
+    {
+        global $logStream;
+
+        $commitResponse = doRequestGitHub($metadata["token"], "{$metadata['repoPrefix']}/commits/{$sha}", null, "GET");
+        if ($commitResponse->getStatusCode() === 200) {
+            upsertPush($this->buildPushRow($comment, $ref, json_decode($commitResponse->getBody())));
+            return;
+        }
+
+        $logStream?->warning(
+            'Failed to fetch bot commit {commit} on {repo}#{pr} — queueing the pull request only',
+            (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", pr: $comment->PullRequestNumber, commit: $sha))->toArray(),
+            "comments",
+            $comment->DeliveryIdText
+        );
+    }
+
+    /**
+     * Queues the pull request and the commit the bot just pushed onto its branch,
+     * so the checks run for the new head SHA. The bot can't rely on the
+     * `push` / `pull_request.synchronize` webhooks for its own commits: those
+     * aren't processed for commits the bot authored, which left the new head
+     * without any check runs (e.g. "GStraccini Checks: Pull Request" never
+     * resolving after a version bump commit). Does nothing when no commit was
+     * pushed (`$sha` is null).
+     */
+    private function queueChecksForBotCommit($metadata, $comment, object $pullRequestUpdated, ?string $sha): void
+    {
+        global $logStream;
+
+        if ($sha === null) {
+            return;
+        }
+
+        $this->queuePushForBotCommit($metadata, $comment, $pullRequestUpdated->head->ref, $sha);
+
+        $watcher = new PullRequestHeadWatcher(sleep(...));
+        $newHead = $watcher->waitForNewHead($metadata["token"], $metadata["pullRequestUrl"], $pullRequestUpdated->head->sha);
+        if ($newHead === null) {
+            $logStream?->warning(
+                'Head of {repo}#{pr} did not move after bot commit {commit} — pull request not re-queued',
+                (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", pr: $comment->PullRequestNumber, commit: $sha))->toArray(),
+                "comments",
+                $comment->DeliveryIdText
+            );
+            return;
+        }
+
+        upsertPullRequest($this->buildPullRequestRow($comment, $pullRequestUpdated));
+        $logStream?->info(
+            'Queued checks for bot commit {commit} (head {head}) on {repo}#{pr}',
+            (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", pr: $comment->PullRequestNumber, commit: $sha, head: $newHead))->toArray(),
+            "comments",
+            $comment->DeliveryIdText
+        );
+    }
+
     private function execute_updateSnapshot($config, $metadata, $comment): void
     {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
@@ -1201,14 +1289,16 @@ class CommentsHandler implements IHandler
 
         $completion = $builder->buildCompletion($result["sha"] ?? "n/a", $result["message"]);
         doRequestGitHub($metadata["token"], $approvalCommentUrl, array("body" => $body . $completion), "PATCH");
+
+        $this->queueChecksForBotCommit($metadata, $comment, $pullRequest, $result["sha"]);
     }
 
     /**
      * Handles an edit to the bot's own version-bump decision comment: once the user
      * checks one of the three options, either resolves the pending "GStraccini Checks:
      * Pull Request" check run directly (no version bump), or pushes a dummy commit
-     * carrying the matching `+semver` directive (minor/major), letting the next
-     * pull_request synchronize event resolve the check run naturally.
+     * carrying the matching `+semver` directive (minor/major) and queues the pull
+     * request so the checks run for that new head commit and resolve the check run.
      */
     private function execute_applyVersionBumpDecision($config, $metadata, $comment): void
     {
@@ -1262,6 +1352,8 @@ class CommentsHandler implements IHandler
 
         $completion = $builder->buildCompletion(ucfirst($choice) . " version bump", $result["sha"]);
         doRequestGitHub($metadata["token"], $commentUrl, array("body" => $body . $completion), "PATCH");
+
+        $this->queueChecksForBotCommit($metadata, $comment, $pullRequest, $result["sha"]);
     }
 
     /**
@@ -1305,8 +1397,28 @@ class CommentsHandler implements IHandler
         foreach ($result->check_runs as $checkRun) {
             $isPending = $checkRun->status !== "completed" || $checkRun->conclusion === "action_required";
             if ($checkRun->name === $checkRunName && $isPending) {
-                setCheckRunSucceeded($metadata, $checkRun->id, "pull request", $details);
+                $this->completeVersionBumpCheckRun($metadata, $checkRun->id, $details);
             }
+        }
+    }
+
+    /**
+     * Completes the pull request check run once the version bump is decided. When
+     * GitHub refuses the update, the check run is marked as failed instead, and the
+     * decision goes on being handled (its comment still gets completed).
+     *
+     * @param array  $metadata   Metadata for the GitHub API request.
+     * @param int    $checkRunId The pull request check run.
+     * @param string $details    What was decided.
+     *
+     * @return void
+     */
+    private function completeVersionBumpCheckRun(array $metadata, int $checkRunId, string $details): void
+    {
+        try {
+            setCheckRunSucceeded($metadata, $checkRunId, "pull request", $details);
+        } catch (\Throwable $e) {
+            failCheckRunOnError($metadata, $checkRunId, "pull request", $e);
         }
     }
 

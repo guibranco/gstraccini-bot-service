@@ -63,9 +63,8 @@ try {
     $handler = new RepositorySyncHandler($options["throttleSeconds"], $options["dryRun"], $version);
     $handler->run($options["repositoryId"], $options["limit"]);
 } catch (\Throwable $e) {
-    echo "Repositories sync failed: {$e->getMessage()} ❌\n";
     $logger->log("Repositories sync failed: {$e->getMessage()}", ['error' => ['message' => $e->getMessage(), 'file' => $e->getFile(), 'line' => $e->getLine()]]);
-    $logStream?->error("Repositories sync failed: {$e->getMessage()}", ['file' => $e->getFile(), 'line' => $e->getLine()], "sync_repositories");
+    $logStream?->error('Repositories sync failed: {error}', ['error' => $e->getMessage(), 'file' => $e->getFile(), 'line' => $e->getLine()], "sync_repositories");
 
     if (php_sapi_name() === "cli") {
         exit(1);

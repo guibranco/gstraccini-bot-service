@@ -6,6 +6,7 @@ use GuiBranco\GStracciniBot\Library\Checkup\GitHubCollectionFetcher;
 use GuiBranco\GStracciniBot\Library\Sync\RepositoriesSyncRepository;
 use GuiBranco\GStracciniBot\Library\Sync\RepositoryMetadata;
 use RuntimeException;
+use GuiBranco\GStracciniBot\Library\LogsToStream;
 
 /**
  * Reconciles `github_repositories` with what one installation can access
@@ -25,6 +26,10 @@ use RuntimeException;
  */
 class InstallationRepositoriesSyncHandler
 {
+    use LogsToStream;
+
+    private const LOG_CHANNEL = "sync_installations";
+
     private RepositoriesSyncRepository $repository;
     private GitHubCollectionFetcher $fetcher;
     private bool $dryRun;
@@ -84,7 +89,7 @@ class InstallationRepositoriesSyncHandler
 
         if ($latest === null || $latest->LastAction === "deleted") {
             $reason = $latest === null ? "not registered" : "registered as deleted/removed";
-            echo "  Repository: {$repository->full_name} — {$reason}, adding ✅\n";
+            $this->logToStream("notice", 'Repository {repo} is {reason} — adding', ["repo" => $repository->full_name, "installationId" => $installationId, "reason" => $reason, "dryRun" => $this->dryRun]);
             if (!$this->dryRun) {
                 $this->repository->insertRepository($repository, $installationId, $this->webhooksHandlerVersion);
             }
@@ -97,12 +102,12 @@ class InstallationRepositoriesSyncHandler
         $installationChanged = (int) $latest->InstallationId !== $installationId;
 
         if (empty($changes) && !$installationChanged) {
-            echo "  Repository: {$repository->full_name} — up to date\n";
+            $this->logToStream("debug", 'Repository {repo} is up to date', ["repo" => $repository->full_name, "installationId" => $installationId]);
             return;
         }
 
         if (RepositoryMetadata::isRenamed($changes)) {
-            echo "  Repository: {$latest->FullName} → {$repository->full_name} — renamed/transferred, updating references 🔁\n";
+            $this->logToStream("notice", 'Repository {previous} was renamed/transferred to {repo} — updating references', ["previous" => $latest->FullName, "repo" => $repository->full_name, "installationId" => $installationId, "dryRun" => $this->dryRun]);
             if (!$this->dryRun) {
                 $this->repository->renameRepositoryReferences(
                     (string) $latest->OwnerLogin,
@@ -118,7 +123,7 @@ class InstallationRepositoriesSyncHandler
         if ($installationChanged) {
             $changedColumns[] = "InstallationId";
         }
-        echo "  Repository: {$repository->full_name} — updating " . implode(", ", $changedColumns) . " 📝\n";
+        $this->logToStream("info", 'Updating repository {repo}: {changes}', ["repo" => $repository->full_name, "installationId" => $installationId, "changes" => implode(", ", $changedColumns), "dryRun" => $this->dryRun]);
         if (!$this->dryRun) {
             $this->repository->updateRepositoryMetadata((int) $latest->Sequence, $metadata, $installationId);
         }
@@ -133,7 +138,7 @@ class InstallationRepositoriesSyncHandler
         $staleIds = array_diff($this->repository->getActiveRepositoryIdsForInstallation($installationId), $listedIds);
 
         foreach ($staleIds as $staleId) {
-            echo "  Repository #{$staleId} — no longer accessible to the installation, marking removed ⚠️\n";
+            $this->logToStream("warning", 'Repository #{repositoryId} is no longer accessible to installation #{installationId} — marking removed', ["repositoryId" => $staleId, "installationId" => $installationId, "dryRun" => $this->dryRun]);
             if (!$this->dryRun) {
                 $this->repository->markRepositoryRemoved($staleId, $installationId, $this->webhooksHandlerVersion);
             }

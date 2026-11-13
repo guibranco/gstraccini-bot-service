@@ -4,6 +4,7 @@ namespace GuiBranco\GStracciniBot\Handlers\Checkup;
 
 use GuiBranco\GStracciniBot\Library\Checkup\CheckupRepository;
 use GuiBranco\GStracciniBot\Library\Checkup\GitHubCollectionFetcher;
+use GuiBranco\GStracciniBot\Library\LogsToStream;
 
 /**
  * Lists every branch of a repository and makes sure each one has a
@@ -19,6 +20,10 @@ use GuiBranco\GStracciniBot\Library\Checkup\GitHubCollectionFetcher;
  */
 class BranchesCheckupHandler
 {
+    use LogsToStream;
+
+    private const LOG_CHANNEL = "checkup";
+
     private CheckupRepository $repository;
     private GitHubCollectionFetcher $fetcher;
     private bool $dryRun;
@@ -60,10 +65,9 @@ class BranchesCheckupHandler
             }
 
             $checked++;
-            echo "    Branch: {$branch->name}\n";
 
             if (!$this->repository->existsBranch($repoContext->owner, $repoContext->name, $branch->name)) {
-                echo "      ⚠️  Missing in github_branches — backfilling\n";
+                $this->logToStream("warning", 'Branch {ref} of {repo} is missing in github_branches — backfilling', ["repo" => "{$repoContext->owner}/{$repoContext->name}", "ref" => $branch->name, "dryRun" => $this->dryRun]);
                 if (!$this->dryRun) {
                     $this->repository->insertBranch(
                         $repoContext->owner,

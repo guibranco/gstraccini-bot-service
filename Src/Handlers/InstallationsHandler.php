@@ -4,6 +4,7 @@ namespace GuiBranco\GStracciniBot\Handlers;
 
 use GuiBranco\GStracciniBot\Library\Checkup\CheckupRepository;
 use GuiBranco\GStracciniBot\Library\Checkup\GitHubCollectionFetcher;
+use GuiBranco\GStracciniBot\Library\LogContext;
 
 /**
  * Handles installation events shared by the HTTP webhook entry point
@@ -34,10 +35,9 @@ class InstallationsHandler implements IHandler
 
         $installationId = (int) $installation->InstallationId;
 
-        echo "Mapping repositories for installation {$installation->AccountLogin} (#{$installationId}):\n\n";
         $logStream?->info(
-            "Processing installation event for {$installation->AccountLogin}",
-            ['installationId' => $installationId],
+            'Processing installation event for {login}',
+            (new LogContext(installationId: $installationId, login: $installation->AccountLogin))->toArray(),
             "installations",
             $installation->DeliveryIdText ?? null
         );
@@ -53,12 +53,12 @@ class InstallationsHandler implements IHandler
             $fetchedRepositoryIds[] = $repositoryId;
 
             if ($this->repository->existsRepository($repositoryId)) {
-                echo "  Repository: {$repository->full_name} — already mapped\n";
+                $logStream?->debug('Repository {repo} is already mapped to installation {login}', ['repo' => $repository->full_name, 'installationId' => $installationId, 'login' => $installation->AccountLogin], "installations", ($installation->DeliveryIdText ?? null));
                 continue;
             }
 
             $this->repository->insertRepository($repository, $installationId, $webhooksHandlerVersion);
-            echo "  Repository: {$repository->full_name} — added ✅\n";
+            $logStream?->info('Repository {repo} added to installation {login}', ['repo' => $repository->full_name, 'installationId' => $installationId, 'login' => $installation->AccountLogin], "installations", ($installation->DeliveryIdText ?? null));
         }
 
         $activeRepositoryIds = $this->repository->getActiveRepositoryIdsForInstallation($installationId);
@@ -66,7 +66,7 @@ class InstallationsHandler implements IHandler
 
         foreach ($staleRepositoryIds as $repositoryId) {
             $this->repository->markRepositoryRemoved($repositoryId, $installationId, $webhooksHandlerVersion);
-            echo "  Repository #{$repositoryId} — removed ⚠️\n";
+            $logStream?->warning('Repository #{repositoryId} removed from installation {login}', ['repositoryId' => $repositoryId, 'installationId' => $installationId, 'login' => $installation->AccountLogin], "installations", ($installation->DeliveryIdText ?? null));
         }
     }
 }

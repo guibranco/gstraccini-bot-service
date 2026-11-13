@@ -7,6 +7,7 @@ use GuiBranco\GStracciniBot\Tests\Library\FakeGitHub;
 use GuiBranco\GStracciniBot\Tests\Library\RecreateRequestFixtures;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
+use ReflectionProperty;
 use stdClass;
 
 /**
@@ -43,6 +44,13 @@ class PullRequestsHandlerConflictsTest extends TestCase
      */
     private LogStreamSpy $warnings;
 
+    /**
+     * The handler under test.
+     *
+     * @var PullRequestsHandler
+     */
+    private PullRequestsHandler $handler;
+
 
     /**
      * Starts each test with a GitHub that knows nothing and a log stream
@@ -58,6 +66,7 @@ class PullRequestsHandlerConflictsTest extends TestCase
         $this->fixtures = new RecreateRequestFixtures();
         $this->warnings = new LogStreamSpy();
         $logStream = $this->warnings;
+        $this->handler = new PullRequestsHandler();
 
     }//end setUp()
 
@@ -82,9 +91,9 @@ class PullRequestsHandlerConflictsTest extends TestCase
      * @param string $sender         Who opened the pull request.
      * @param string $mergeableState What GitHub says of it: `dirty` when it has conflicts.
      *
-     * @return string What the handler wrote to the processing log.
+     * @return array<int, string> What the handler sent to LogStream, rendered (see LogStreamSpy::lines()).
      */
-    private function resolveConflicts(string $sender, string $mergeableState): string
+    private function resolveConflicts(string $sender, string $mergeableState): array
     {
         $pullRequest = new stdClass();
         $pullRequest->Number = 350;
@@ -97,14 +106,9 @@ class PullRequestsHandlerConflictsTest extends TestCase
         $pullRequestUpdated->head->sha = RecreateRequestFixtures::HEAD_SHA;
         $method = new ReflectionMethod(PullRequestsHandler::class, "resolveConflicts");
 
-        ob_start();
-        try {
-            $method->invoke(new PullRequestsHandler(), $this->github->metadata(), $pullRequest, $pullRequestUpdated);
-        } finally {
-            $output = ob_get_clean();
-        }
+        $method->invoke($this->handler, $this->github->metadata(), $pullRequest, $pullRequestUpdated);
 
-        return $output;
+        return $this->warnings->lines();
 
     }//end resolveConflicts()
 
@@ -122,7 +126,7 @@ class PullRequestsHandlerConflictsTest extends TestCase
         $output = $this->resolveConflicts("dependabot[bot]", "dirty");
 
         $this->assertSame([self::DEPENDABOT_REQUEST], $this->github->posted());
-        $this->assertSame("State: dirty - Resolve conflicts - Recreate via bot - Sender: dependabot[bot] ☢️\n", $output);
+        $this->assertSame(["notice: PR owner/repo#350 has conflicts — asking dependabot[bot] to recreate it"], $output);
         $this->assertSame([], $this->warnings->warnings());
 
     }//end testRequestsTheRecreateOfAConflictingDependabotPullRequest()
@@ -141,7 +145,7 @@ class PullRequestsHandlerConflictsTest extends TestCase
         $output = $this->resolveConflicts("dependabot[bot]", "dirty");
 
         $this->assertSame([], $this->github->posted());
-        $this->assertStringEndsWith("State: dirty - Resolve conflicts - Already requested to recreate - Sender: dependabot[bot] ⚠️\n", $output);
+        $this->assertSame("info: PR owner/repo#350 recreate request: Already requested to recreate", end($output));
         $this->assertSame([], $this->warnings->warnings());
 
     }//end testReportsARequestTheDependencyBotAcknowledged()
@@ -162,12 +166,13 @@ class PullRequestsHandlerConflictsTest extends TestCase
         $warnings = $this->warnings->warnings();
 
         $this->assertSame([self::DEPENDABOT_REQUEST], $this->github->posted());
-        $this->assertStringEndsWith("State: dirty - Resolve conflicts - Recreate request from 2026-10-21T17:40:38Z was never acknowledged, requesting again (2/3) - Sender: dependabot[bot] 🔁\n", $output);
+        $this->assertContains("info: PR owner/repo#350 recreate request: Recreate request from 2026-10-21T17:40:38Z was never acknowledged, requesting again (2/3)", $output);
         $this->assertCount(1, $warnings);
-        $this->assertSame("PR #350 recreate request was never acknowledged — requesting again", $warnings[0]["message"]);
+        $this->assertSame('PR {repo}#{pr} recreate request from {last_requested_at} was never acknowledged — requesting again', $warnings[0]["message"]);
         $this->assertSame(1, $warnings[0]["context"]["requests"]);
         $this->assertSame("2026-10-21T17:40:38Z", $warnings[0]["context"]["last_requested_at"]);
         $this->assertSame("owner/repo", $warnings[0]["context"]["repo"]);
+        $this->assertSame(350, $warnings[0]["context"]["pr"]);
         $this->assertSame("dependabot[bot]", $warnings[0]["context"]["sender"]);
         $this->assertSame(RecreateRequestFixtures::HEAD_SHA, $warnings[0]["context"]["head_sha"]);
         $this->assertSame(LogStreamSpy::PULL_REQUESTS, $warnings[0]["category"]);
@@ -190,9 +195,9 @@ class PullRequestsHandlerConflictsTest extends TestCase
         $warnings = $this->warnings->warnings();
 
         $this->assertSame([], $this->github->posted());
-        $this->assertStringEndsWith("State: dirty - Resolve conflicts - Recreate requested 3 times and never acknowledged, giving up - Sender: dependabot[bot] ❌\n", $output);
+        $this->assertContains("info: PR owner/repo#350 recreate request: Recreate requested 3 times and never acknowledged, giving up", $output);
         $this->assertCount(1, $warnings);
-        $this->assertSame("PR #350 still has conflicts — 3 recreate requests were never acknowledged, giving up", $warnings[0]["message"]);
+        $this->assertSame('PR {repo}#{pr} still has conflicts — {requests} recreate requests were never acknowledged, giving up', $warnings[0]["message"]);
         $this->assertSame(3, $warnings[0]["context"]["requests"]);
 
     }//end testGivesUpWithAWarningAfterThreeRequestsNobodyAnswered()
@@ -211,9 +216,9 @@ class PullRequestsHandlerConflictsTest extends TestCase
         $warnings = $this->warnings->warnings();
 
         $this->assertSame([], $this->github->requests());
-        $this->assertSame("State: dirty - Resolve conflicts - Conflicts - Sender: guibranco ⚠️\n", $output);
+        $this->assertSame(["warning: PR owner/repo#350 has conflicts"], $output);
         $this->assertCount(1, $warnings);
-        $this->assertSame("PR #350 has conflicts", $warnings[0]["message"]);
+        $this->assertSame('PR {repo}#{pr} has conflicts', $warnings[0]["message"]);
 
     }//end testLeavesAConflictingPullRequestFromAPersonAlone()
 
@@ -228,10 +233,37 @@ class PullRequestsHandlerConflictsTest extends TestCase
         $output = $this->resolveConflicts("dependabot[bot]", "clean");
 
         $this->assertSame([], $this->github->requests());
-        $this->assertSame("State: clean - Resolve conflicts - No conflicts - Sender: dependabot[bot] 🆒\n", $output);
+        $this->assertSame(["debug: PR owner/repo#350 has no conflicts"], $output);
         $this->assertSame([], $this->warnings->warnings());
 
     }//end testDoesNothingWhenThereAreNoConflicts()
+
+
+    /**
+     * Each step is traced with the repository, the pull request and the
+     * delivery being processed, so all the steps of a run can be followed
+     * together.
+     *
+     * @return void
+     */
+    public function testTracesStepWithPullRequestContext(): void
+    {
+        (new ReflectionProperty(PullRequestsHandler::class, "traceId"))->setValue($this->handler, self::DELIVERY_ID);
+        (new ReflectionProperty(PullRequestsHandler::class, "repoSlug"))->setValue($this->handler, "owner/repo");
+        (new ReflectionProperty(PullRequestsHandler::class, "prNumber"))->setValue($this->handler, 350);
+        $trace = new ReflectionMethod(PullRequestsHandler::class, "trace");
+
+        $trace->invoke($this->handler, "warning", 'PR {repo}#{pr}: step {step}', ["step" => "update branch"]);
+        $warnings = $this->warnings->warnings();
+
+        $this->assertCount(1, $warnings);
+        $this->assertSame('PR {repo}#{pr}: step {step}', $warnings[0]["message"]);
+        $this->assertSame(["repo" => "owner/repo", "pr" => 350, "step" => "update branch"], $warnings[0]["context"]);
+        $this->assertSame(LogStreamSpy::PULL_REQUESTS, $warnings[0]["category"]);
+        $this->assertSame(self::DELIVERY_ID, $warnings[0]["traceId"]);
+        $this->assertSame(["warning: PR owner/repo#350: step update branch"], $this->warnings->lines());
+
+    }//end testTracesStepWithPullRequestContext()
 
 
 }//end class

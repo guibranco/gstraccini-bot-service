@@ -4,6 +4,10 @@ namespace GuiBranco\GStracciniBot\Library;
 
 class LabelService
 {
+    use LogsToStream;
+
+    private const LOG_CHANNEL = "labels";
+
     public function loadFromConfig(array $categories): ?array
     {
         $fileNameLabels = "config/labels.json";
@@ -13,7 +17,7 @@ class LabelService
             $rawLabels = file_get_contents($fileNameLabels);
             $labels = json_decode($rawLabels, true);
         } else {
-            echo "⚠️ File {$fileNameLabels} not found!\n";
+            $this->logToStream("error", 'Labels file {file} not found', ["file" => $fileNameLabels]);
         }
 
         unset($labels["language"], $labels["package_managers"]);
@@ -21,10 +25,10 @@ class LabelService
         $keys = array_keys($labels);
 
         if (count($categories) > 1) {
-            echo "🔍 Filtering by categories: ".join(",", $categories)."\n";
+            $this->logToStream("debug", 'Filtering labels by categories: {categories}', ["categories" => implode(", ", $categories)]);
             $keys = array_intersect($keys, $categories);
         } elseif ($categories[0] !== "all") {
-            echo "🔍 Filtering by category: ".$categories[0]."\n";
+            $this->logToStream("debug", 'Filtering labels by category: {category}', ["category" => $categories[0]]);
             $keys = array();
             if (in_array($categories, $keys)) {
                 $keys = array($categories);
@@ -32,7 +36,7 @@ class LabelService
         }
 
         if (count($keys) === 0) {
-            echo "⛔ No filtered labels\n";
+            $this->logToStream("notice", 'No labels left after filtering by {categories}', ["categories" => implode(", ", $categories)]);
             return null;
         }
 
@@ -49,25 +53,25 @@ class LabelService
         foreach ($labelsToCreateObject as $label) {
             $response = doRequestGitHub($token, $labelsUrl, $label, "POST");
             if ($response->getStatusCode() === 201) {
-                echo "✅ Label created: {$label["name"]}\n";
+                $this->logToStream("debug", 'Label {label} created', ["label" => $label["name"], "url" => $labelsUrl]);
             } elseif ($response->getStatusCode() === 422) {
                 $labelToUpdate = [];
                 $labelToUpdate["color"] = $label["color"];
                 $labelToUpdate["description"] = $label["description"];
                 $labelToUpdate["new_name"] = $label["name"];
                 $labelsToUpdateObject[$label["name"]] = $labelToUpdate;
-                echo "⚠️ Label already exists: {$label["name"]}\n";
+                $this->logToStream("notice", 'Label {label} already exists — updating it instead', ["label" => $label["name"], "url" => $labelsUrl]);
             } else {
-                echo "⛔ Error creating label: {$label["name"]}\n";
+                $this->logToStream("error", 'Failed to create label {label} (HTTP {status})', ["label" => $label["name"], "url" => $labelsUrl, "status" => $response->getStatusCode(), "body" => $response->getBody()]);
             }
         }
 
         foreach ($labelsToUpdateObject as $oldName => $label) {
             $response = doRequestGitHub($token, $labelsUrl . "/" . str_replace(" ", "%20", $oldName), $label, "PATCH");
             if ($response->getStatusCode() === 200) {
-                echo "✅ Label updated: {$oldName} -> {$label["new_name"]}\n";
+                $this->logToStream("debug", 'Label {label} updated to {newName}', ["label" => $oldName, "newName" => $label["new_name"], "url" => $labelsUrl]);
             } else {
-                echo "⛔ Error updating label: {$oldName}\n";
+                $this->logToStream("error", 'Failed to update label {label} (HTTP {status})', ["label" => $oldName, "url" => $labelsUrl, "status" => $response->getStatusCode(), "body" => $response->getBody()]);
             }
         }
     }

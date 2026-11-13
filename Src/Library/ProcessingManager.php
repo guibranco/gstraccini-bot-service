@@ -25,6 +25,14 @@ class ProcessingManager
     private bool $scheduledJobRanInLastBatch = false;
 
     /**
+     * The item being handled right now, with its log context, so the shutdown
+     * function can tell which item the process died on.
+     *
+     * @var array{desc: string, context: array, traceId: ?string}|null
+     */
+    private ?array $currentItem = null;
+
+    /**
     * @param string $entity Entity name for processing
     * @param HealthChecks $healthChecks Health monitoring instance
     * @param Logger $logger Logger instance
@@ -47,7 +55,72 @@ class ProcessingManager
         $this->logStream = $logStream;
 
         $this->healthChecks->setHeaders([constant("USER_AGENT"), "Content-Type: application/json; charset=utf-8"]);
+
+        register_shutdown_function([$this, 'reportAbortedItem']);
     }
+
+
+    /**
+     * Shutdown function: reports a process that ends in the middle of an item
+     * (a fatal error such as memory exhaustion or a time limit, an exit()/die()
+     * somewhere down the call stack) or with a fatal error between items.
+     * None of these reach a catch block, so without this they leave no trace
+     * but a check run stuck in progress.
+     *
+     * @return void
+     */
+    public function reportAbortedItem(): void
+    {
+        $error = error_get_last();
+        $isFatal = $this->isFatalError($error);
+        if ($this->currentItem === null && $isFatal === false) {
+            return;
+        }
+
+        $itemDesc = ($this->currentItem['desc'] ?? '(between items)');
+        $reason = 'the process exited (exit/die) before the item finished';
+        if ($isFatal === true) {
+            $reason = "{$error['message']} in {$error['file']}:{$error['line']}";
+        }
+
+        error_log("[gstraccini-bot] Worker '{$this->entity}' aborted on {$itemDesc}: {$reason}");
+
+        try {
+            $message = "Worker aborted (Entity: {$this->entity}) on {$itemDesc}: {$reason}";
+            $this->logger->log($message, ['error' => $error, 'item' => $itemDesc]);
+
+            $context = ($this->currentItem['context'] ?? null);
+            if ($context === null) {
+                $context = [];
+                $context['entity'] = $this->entity;
+                $context['item'] = $itemDesc;
+            }
+
+            $context['error'] = $reason;
+            $traceId = ($this->currentItem['traceId'] ?? null);
+            $this->logStream?->critical('Worker aborted on {item}: {error}', $context, $this->entity, $traceId);
+        } catch (\Throwable $e) {
+            error_log("[gstraccini-bot] Failed to report the aborted item: {$e->getMessage()}");
+        }
+
+    }//end reportAbortedItem()
+
+
+    /**
+     * Tells whether an error, as returned by error_get_last(), is one that ends the process.
+     *
+     * @param array|null $error The last error, or null when there was none.
+     *
+     * @return boolean Whether it is a fatal error.
+     */
+    private function isFatalError(?array $error): bool
+    {
+        $fatalTypes = (E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR | E_USER_ERROR | E_RECOVERABLE_ERROR);
+        $type = ($error['type'] ?? 0);
+        return ($type & $fatalTypes) !== 0;
+
+    }//end isFatalError()
+
 
     /**
      * Registers a job that runs on its own schedule from this worker's loop
@@ -87,8 +160,8 @@ class ProcessingManager
                     ]
                 );
                 $this->logStream?->error(
-                    "Batch failed: {$e->getMessage()}",
-                    ['entity' => $this->entity, 'file' => $e->getFile(), 'line' => $e->getLine()],
+                    'Batch of {entity} failed: {error}',
+                    (new LogContext(entity: $this->entity))->withError($e)->toArray(),
                     $this->entity
                 );
             }
@@ -131,8 +204,8 @@ class ProcessingManager
                     ]
                 );
                 $this->logStream?->error(
-                    "Batch failed: {$e->getMessage()}",
-                    ['entity' => $this->entity, 'file' => $e->getFile(), 'line' => $e->getLine()],
+                    'Batch of {entity} failed: {error}',
+                    (new LogContext(entity: $this->entity))->withError($e)->toArray(),
                     $this->entity
                 );
             }
@@ -147,25 +220,22 @@ class ProcessingManager
         $running = true;
         pcntl_async_signals(true);
         $shutdown = function () use (&$running) {
-            $ts = date('Y-m-d H:i:s');
-            echo "[{$ts}] Shutdown signal received for '{$this->entity}'. Finishing current batch...\n";
+            $this->logStream?->notice('Shutdown signal received for {entity} — finishing current batch', ['entity' => $this->entity], $this->entity);
             $running = false;
         };
         pcntl_signal(SIGTERM, $shutdown);
         pcntl_signal(SIGINT, $shutdown);
 
-        echo "[" . date('Y-m-d H:i:s') . "] Daemon started for '{$this->entity}'.\n";
+        $this->logStream?->info('Daemon for {entity} started', ['entity' => $this->entity], $this->entity);
         foreach ($this->scheduledJobs as $job) {
-            echo "[" . date('Y-m-d H:i:s') . "] Scheduled job registered: {$job->describe()}.\n";
+            $this->logStream?->info('Scheduled job registered on {entity}: {job}', ['entity' => $this->entity, 'job' => $job->describe()], $this->entity);
         }
-        $this->logStream?->info("Daemon started", ['entity' => $this->entity], $this->entity);
         $this->healthChecks->start();
         $lastPing = time();
 
         while ($running) {
             if ($this->isSystemUpdating()) {
-                echo "[" . date('Y-m-d H:i:s') . "] System updating — pausing '{$this->entity}'...\n";
-                $this->logStream?->warning("System updating — daemon paused", ['entity' => $this->entity], $this->entity);
+                $this->logStream?->warning('System updating — daemon for {entity} paused', ['entity' => $this->entity], $this->entity);
                 sleep(5);
                 continue;
             }
@@ -185,8 +255,8 @@ class ProcessingManager
                     ]
                 );
                 $this->logStream?->error(
-                    "Daemon batch failed: {$e->getMessage()}",
-                    ['entity' => $this->entity, 'file' => $e->getFile(), 'line' => $e->getLine()],
+                    'Daemon batch of {entity} failed: {error}',
+                    (new LogContext(entity: $this->entity))->withError($e)->toArray(),
                     $this->entity
                 );
             }
@@ -202,8 +272,7 @@ class ProcessingManager
             usleep(100000);
         }
 
-        $this->logStream?->info("Daemon stopped gracefully", ['entity' => $this->entity], $this->entity);
-        echo "[" . date('Y-m-d H:i:s') . "] Daemon for '{$this->entity}' stopped gracefully.\n";
+        $this->logStream?->info('Daemon for {entity} stopped gracefully', ['entity' => $this->entity], $this->entity);
     }
 
     /**
@@ -247,7 +316,7 @@ class ProcessingManager
         } finally {
             $result = ob_get_clean();
             if (!empty($result) && ($this->config->debug->all === true || ($this->config->debug->{$this->entity} ?? false) === true)) {
-                echo $result;
+                $this->logStream?->debug('Output of the {entity} batch', ['entity' => $this->entity, 'output' => $result], $this->entity);
             }
 
             // In the finally so a failing item (processItem() rethrows) can't keep the syncs from running.
@@ -284,8 +353,8 @@ class ProcessingManager
                     ]
                 );
                 $this->logStream?->error(
-                    "Scheduled job '{$job->getName()}' failed: {$e->getMessage()}",
-                    ['entity' => $this->entity, 'job' => $job->getName(), 'file' => $e->getFile(), 'line' => $e->getLine()],
+                    "Scheduled job '{job}' of {entity} failed: {error}",
+                    (new LogContext(entity: $this->entity, job: $job->getName()))->withError($e)->toArray(),
                     $this->entity
                 );
             }
@@ -296,10 +365,7 @@ class ProcessingManager
     {
         $items = readTable("github_{$this->entity}");
         foreach ($items as $item) {
-            echo "Sequence: {$item->Sequence}\n";
-            echo "Delivery ID: {$item->DeliveryIdText}\n";
             $this->processItem($item, $handler);
-            echo str_repeat("=-", 50) . "=\n";
         }
     }
 
@@ -335,10 +401,16 @@ class ProcessingManager
         if (!empty($item->Title ?? null)) {
             $itemDesc .= ": {$item->Title}";
         }
+        $context['item'] = $itemDesc;
+
+        $this->currentItem = [];
+        $this->currentItem['desc'] = $itemDesc;
+        $this->currentItem['context'] = $context;
+        $this->currentItem['traceId'] = $traceId;
 
         try {
             $this->logStream?->info(
-                "Processing item {$itemDesc}",
+                'Processing item {item}',
                 $context,
                 $this->entity,
                 $traceId
@@ -346,23 +418,22 @@ class ProcessingManager
             $handler($item);
             $finalizeResult = finalizeProcessing($table, $item->Sequence);
             if ($finalizeResult === true) {
-                echo "Item processed!\n";
                 $this->logStream?->info(
-                    "Item processed {$itemDesc}",
+                    'Item processed {item}',
                     $context,
                     $this->entity,
                     $traceId
                 );
             } else {
-                echo "Item updated by another process!\n";
                 $this->logStream?->warning(
-                    "Item finalized by another process {$itemDesc}",
+                    'Item finalized by another process {item}',
                     $context,
                     $this->entity,
                     $traceId
                 );
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            // Throwable, not Exception: a TypeError or Error thrown by a handler is a failed item too.
             $this->logger->log(
                 "Failed to process item {$itemDesc}: {$e->getMessage()}.",
                 [
@@ -376,12 +447,14 @@ class ProcessingManager
                 ]
             );
             $this->logStream?->error(
-                "Failed to process item {$itemDesc}: {$e->getMessage()}",
-                [...$context, 'file' => $e->getFile(), 'line' => $e->getLine()],
+                'Failed to process item {item}: {error}',
+                (new LogContext(...$context))->withError($e)->toArray(),
                 $this->entity,
                 $traceId
             );
             throw $e;
+        } finally {
+            $this->currentItem = null;
         }
     }
 }
