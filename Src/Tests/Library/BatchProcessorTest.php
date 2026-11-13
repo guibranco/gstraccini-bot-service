@@ -21,11 +21,7 @@ class BatchProcessorTest extends TestCase
     public function testEveryItemIsProcessed(): void
     {
         $processed = [];
-        $items = [
-            1,
-            2,
-            3,
-        ];
+        $items = range(1, 3);
         $processOne = function ($item) use (&$processed): void {
             $processed[] = $item;
         };
@@ -47,12 +43,7 @@ class BatchProcessorTest extends TestCase
     {
         $processed = [];
         $caught = null;
-        $items = [
-            1,
-            2,
-            3,
-            4,
-        ];
+        $items = range(1, 4);
         $processOne = function ($item) use (&$processed): void {
             $processed[] = $item;
             if ($item === 2 || $item === 3) {
