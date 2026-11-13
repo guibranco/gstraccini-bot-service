@@ -795,7 +795,32 @@ class PullRequestsHandler implements IHandler
     {
         $type = "pull request description";
         $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, $type);
+        $this->runSubCheck(
+            $metadata,
+            $checkRunId,
+            $type,
+            fn () => $this->evaluatePullRequestDescription($metadata, $pullRequestUpdated, $sender, $checkRunId, $type)
+        );
+    }
 
+    /**
+     * Checks the pull request description, and completes its check run.
+     *
+     * @param array  $metadata           Metadata for the GitHub API request
+     * @param object $pullRequestUpdated The updated pull request data
+     * @param string $sender             Who triggered the check
+     * @param int    $checkRunId         The check run in progress
+     * @param string $type               The check type
+     *
+     * @return void
+     */
+    private function evaluatePullRequestDescription(
+        $metadata,
+        $pullRequestUpdated,
+        $sender,
+        int $checkRunId,
+        string $type
+    ): void {
         $dependencyBots = ["dependabot[bot]", "depfu[bot]", "codefactor-io[bot]", "deepsource-autofix[bot]", "net-framework-updater[bot]"];
         if (in_array($sender, $dependencyBots)) {
             setCheckRunSucceeded($metadata, $checkRunId, $type, "Skipped for dependency bot PR");
@@ -825,8 +850,29 @@ class PullRequestsHandler implements IHandler
             return;
         }
 
+        $this->evaluateDescriptionCheckboxes($metadata, $pullRequestUpdated->body, $bodyLength, $checkRunId, $type);
+    }
+
+    /**
+     * Checks the checkbox groups of a long enough pull request description, and completes its check run.
+     *
+     * @param array  $metadata   Metadata for the GitHub API request
+     * @param string $body       The pull request description
+     * @param int    $bodyLength The description's length
+     * @param int    $checkRunId The check run in progress
+     * @param string $type       The check type
+     *
+     * @return void
+     */
+    private function evaluateDescriptionCheckboxes(
+        $metadata,
+        string $body,
+        int $bodyLength,
+        int $checkRunId,
+        string $type
+    ): void {
         $validator = new MarkdownGroupCheckboxValidator();
-        $validationResult = $validator->validateCheckboxes($pullRequestUpdated->body);
+        $validationResult = $validator->validateCheckboxes($body);
         if (isset($validationResult['errors']) && !empty($validationResult['errors'])) {
             $message = $validator->generateReport($validationResult);
             setCheckRunFailed($metadata, $checkRunId, $type, $message);
@@ -846,6 +892,25 @@ class PullRequestsHandler implements IHandler
     {
         $type = "pull request content";
         $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, $type);
+        $this->runSubCheck(
+            $metadata,
+            $checkRunId,
+            $type,
+            fn () => $this->evaluatePullRequestContent($metadata, $checkRunId, $type)
+        );
+    }
+
+    /**
+     * Scans the pull request diff, and completes its check run.
+     *
+     * @param array  $metadata   Metadata for the GitHub API request
+     * @param int    $checkRunId The check run in progress
+     * @param string $type       The check type
+     *
+     * @return void
+     */
+    private function evaluatePullRequestContent($metadata, int $checkRunId, string $type): void
+    {
         $diffResponse = getPullRequestDiff($metadata);
         $diff = $diffResponse->getBody();
         $scanner = new PullRequestCodeScanner();
@@ -872,7 +937,25 @@ class PullRequestsHandler implements IHandler
     {
         $type = "dependency changes";
         $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, $type);
+        $this->runSubCheck(
+            $metadata,
+            $checkRunId,
+            $type,
+            fn () => $this->evaluateDependencyChanges($metadata, $checkRunId, $type)
+        );
+    }
 
+    /**
+     * Labels the dependency file changes of the pull request, and completes its check run.
+     *
+     * @param array  $metadata   Metadata for the GitHub API request
+     * @param int    $checkRunId The check run in progress
+     * @param string $type       The check type
+     *
+     * @return void
+     */
+    private function evaluateDependencyChanges($metadata, int $checkRunId, string $type): void
+    {
         $diffResponse = getPullRequestDiff($metadata);
         $diff = $diffResponse->getBody();
 
@@ -897,6 +980,28 @@ class PullRequestsHandler implements IHandler
         $report = "Detected dependency changes for package managers: " . implode(", ", array_values($detectedDependencies));
         setCheckRunSucceeded($metadata, $checkRunId, $type, $report);
         $this->trace('info', 'PR {repo}#{pr}: dependency changes detected ({managers}) — labels added (HTTP {status})', ["managers" => implode(", ", array_values($detectedDependencies)), "labels" => implode(", ", $labelsToAdd), "status" => $response->getStatusCode(), "check_run_id" => $checkRunId]);
+    }
+
+    /**
+     * Runs a sub-check whose check run is already in progress. When the check
+     * throws (a refused check run update, for one), its own check run is marked
+     * as failed before the error goes on to fail the pull request check.
+     *
+     * @param array    $metadata   Metadata for the GitHub API request
+     * @param int      $checkRunId The sub-check's check run
+     * @param string   $type       The sub-check's type
+     * @param callable $check      The sub-check, which completes its check run
+     *
+     * @return void
+     */
+    private function runSubCheck(array $metadata, int $checkRunId, string $type, callable $check): void
+    {
+        try {
+            $check();
+        } catch (\Throwable $e) {
+            failCheckRunOnError($metadata, $checkRunId, $type, $e);
+            throw $e;
+        }
     }
 
     private function removeLabels($metadata, $pullRequestUpdated)

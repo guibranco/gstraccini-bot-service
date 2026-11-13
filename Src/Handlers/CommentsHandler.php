@@ -1397,8 +1397,28 @@ class CommentsHandler implements IHandler
         foreach ($result->check_runs as $checkRun) {
             $isPending = $checkRun->status !== "completed" || $checkRun->conclusion === "action_required";
             if ($checkRun->name === $checkRunName && $isPending) {
-                setCheckRunSucceeded($metadata, $checkRun->id, "pull request", $details);
+                $this->completeVersionBumpCheckRun($metadata, $checkRun->id, $details);
             }
+        }
+    }
+
+    /**
+     * Completes the pull request check run once the version bump is decided. When
+     * GitHub refuses the update, the check run is marked as failed instead, and the
+     * decision goes on being handled (its comment still gets completed).
+     *
+     * @param array  $metadata   Metadata for the GitHub API request.
+     * @param int    $checkRunId The pull request check run.
+     * @param string $details    What was decided.
+     *
+     * @return void
+     */
+    private function completeVersionBumpCheckRun(array $metadata, int $checkRunId, string $details): void
+    {
+        try {
+            setCheckRunSucceeded($metadata, $checkRunId, "pull request", $details);
+        } catch (\Throwable $e) {
+            failCheckRunOnError($metadata, $checkRunId, "pull request", $e);
         }
     }
 
