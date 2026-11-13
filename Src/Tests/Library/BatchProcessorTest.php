@@ -2,14 +2,14 @@
 
 namespace GuiBranco\GStracciniBot\Tests\Library;
 
-use GuiBranco\GStracciniBot\Library\ProcessingManager;
+use GuiBranco\GStracciniBot\Library\BatchProcessor;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 /**
  * How a batch goes on with its other items when one of them fails.
  */
-class ProcessingManagerProcessEachTest extends TestCase
+class BatchProcessorTest extends TestCase
 {
 
 
@@ -21,12 +21,18 @@ class ProcessingManagerProcessEachTest extends TestCase
     public function testEveryItemIsProcessed(): void
     {
         $processed = [];
-
-        ProcessingManager::processEach([1, 2, 3], function ($item) use (&$processed): void {
+        $items = [
+            1,
+            2,
+            3,
+        ];
+        $processOne = function ($item) use (&$processed): void {
             $processed[] = $item;
-        });
+        };
 
-        $this->assertSame([1, 2, 3], $processed);
+        (new BatchProcessor())->processEach($items, $processOne);
+
+        $this->assertSame($items, $processed);
 
     }//end testEveryItemIsProcessed()
 
@@ -41,19 +47,26 @@ class ProcessingManagerProcessEachTest extends TestCase
     {
         $processed = [];
         $caught = null;
+        $items = [
+            1,
+            2,
+            3,
+            4,
+        ];
+        $processOne = function ($item) use (&$processed): void {
+            $processed[] = $item;
+            if ($item === 2 || $item === 3) {
+                throw new RuntimeException(sprintf("item %d failed", $item));
+            }
+        };
 
         try {
-            ProcessingManager::processEach([1, 2, 3, 4], function ($item) use (&$processed): void {
-                $processed[] = $item;
-                if ($item === 2 || $item === 3) {
-                    throw new RuntimeException("item {$item} failed");
-                }
-            });
+            (new BatchProcessor())->processEach($items, $processOne);
         } catch (RuntimeException $e) {
             $caught = $e;
         }
 
-        $this->assertSame([1, 2, 3, 4], $processed);
+        $this->assertSame($items, $processed);
         $this->assertNotNull($caught);
         $this->assertSame("item 2 failed", $caught->getMessage());
 
@@ -67,9 +80,11 @@ class ProcessingManagerProcessEachTest extends TestCase
      */
     public function testAnEmptyBatchDoesNothing(): void
     {
-        ProcessingManager::processEach([], function (): void {
+        $processOne = function (): void {
             $this->fail("No item to process");
-        });
+        };
+
+        (new BatchProcessor())->processEach([], $processOne);
 
         $this->addToAssertionCount(1);
 
