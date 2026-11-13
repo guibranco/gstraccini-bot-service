@@ -231,7 +231,7 @@ class BranchUpdateGateTest extends TestCase
      *
      * @return void
      */
-    public function testRefusalsFromAPullRequestThatChangedAreExpected(): void
+    public function testRefusalsOfAChangedPrAreExpected(): void
     {
         $conflict = '{"message":"merge conflict between base and head","status":"422"}';
         $headMoved = '{"message":"expected head sha didn\'t match current head ref.","status":"422"}';
@@ -243,7 +243,7 @@ class BranchUpdateGateTest extends TestCase
         $this->assertFalse($this->gate->isExpectedRefusal(422, null));
         $this->assertFalse($this->gate->isExpectedRefusal(409, $conflict));
 
-    }//end testRefusalsFromAPullRequestThatChangedAreExpected()
+    }//end testRefusalsOfAChangedPrAreExpected()
 
 
 }//end class
