@@ -424,12 +424,7 @@ class ProcessingManager
                     $traceId
                 );
             } else {
-                $this->logStream?->warning(
-                    'Item finalized by another process {item}',
-                    $context,
-                    $this->entity,
-                    $traceId
-                );
+                $this->reportFinalizeConflict($table, $item->Sequence, $context, $traceId);
             }
         } catch (\Throwable $e) {
             // Throwable, not Exception: a TypeError or Error thrown by a handler is a failed item too.
@@ -456,4 +451,32 @@ class ProcessingManager
             $this->currentItem = null;
         }
     }
+
+
+    /**
+     * Logs why an item wasn't finalized. A row handed back to the queue while
+     * it was processed (by a newer event, often one the bot caused itself, or
+     * by the handler re-queuing it) is expected and logged as info; anything
+     * else means two processes worked on the same item and stays a warning.
+     *
+     * @param string      $table    The queue table.
+     * @param int|string  $sequence The item's Sequence.
+     * @param array       $context  The item's log context.
+     * @param string|null $traceId  The delivery id used as trace id.
+     *
+     * @return void
+     */
+    private function reportFinalizeConflict(string $table, $sequence, array $context, ?string $traceId): void
+    {
+        $state = readProcessingState($table, $sequence);
+        $conflict = new FinalizeConflict($state);
+        $context['state'] = ($state ?? 'missing');
+        $context['conflict'] = $conflict->getKind();
+
+        $level = $conflict->getLogLevel();
+        $this->logStream?->{$level}($conflict->getMessageTemplate(), $context, $this->entity, $traceId);
+
+    }//end reportFinalizeConflict()
+
+
 }
