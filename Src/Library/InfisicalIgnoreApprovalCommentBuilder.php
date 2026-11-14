@@ -13,9 +13,14 @@ class InfisicalIgnoreApprovalCommentBuilder
         return self::MARKER_PREFIX . $originalCommentId . " -->";
     }
 
-    public function build(string $owner, string $repo, int $prNumber, int $originalCommentId): string
+    /**
+     * @param bool $isReview True when the suggestion was posted as a pull request review
+     *                       (how the Infisical action delivers it) rather than an issue comment.
+     */
+    public function build(string $owner, string $repo, int $prNumber, int $originalCommentId, bool $isReview = false): string
     {
-        $permalink = "https://github.com/{$owner}/{$repo}/pull/{$prNumber}#issuecomment-{$originalCommentId}";
+        $anchor = $isReview ? "pullrequestreview" : "issuecomment";
+        $permalink = "https://github.com/{$owner}/{$repo}/pull/{$prNumber}#{$anchor}-{$originalCommentId}";
 
         $body = $this->marker($originalCommentId) . "\n";
         $body .= "### Apply `.infisicalignore` update\n\n";

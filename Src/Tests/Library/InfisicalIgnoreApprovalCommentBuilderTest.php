@@ -31,6 +31,17 @@ class InfisicalIgnoreApprovalCommentBuilderTest extends TestCase
         );
     }
 
+    public function testBuildUsesReviewPermalinkWhenSuggestionIsAReview(): void
+    {
+        $body = $this->builder->build("guibranco", "gstraccini-bot-service", 1112, 987654321, true);
+
+        $this->assertStringContainsString(
+            "https://github.com/guibranco/gstraccini-bot-service/pull/1112#pullrequestreview-987654321",
+            $body
+        );
+        $this->assertStringContainsString("<!-- gstraccini-bot:infisicalignore:987654321 -->", $body);
+    }
+
     public function testBuildIncludesExactlyOneUncheckedCheckbox(): void
     {
         $body = $this->builder->build("guibranco", "gstraccini-bot-service", 1112, 987654321);
