@@ -23,6 +23,8 @@ use stdClass;
  */
 class CommentsHandler implements IHandler
 {
+    private const INFISICAL_APPLY_FAILURE_PREFIX = "\n\n❌ Failed to apply suggestion: ";
+
     /**
      * Converts a string to camel case format.
      *
@@ -1281,7 +1283,7 @@ class CommentsHandler implements IHandler
 
         $source = $this->fetchInfisicalIgnoreSuggestionSource($metadata, $originalCommentId);
         if ($source === null) {
-            $failureBody = $body . "\n\n❌ Failed to apply suggestion: " .
+            $failureBody = $body . self::INFISICAL_APPLY_FAILURE_PREFIX .
                 "could not load the original suggestion ({$originalCommentId}).\n";
             doRequestGitHub($metadata["token"], $approvalCommentUrl, array("body" => $failureBody), "PATCH");
             return;
@@ -1290,7 +1292,7 @@ class CommentsHandler implements IHandler
         $parser = new InfisicalIgnoreSuggestionParser();
         $entries = $parser->parse($source["body"]);
         if ($entries === null) {
-            $failureBody = $body . "\n\n❌ Failed to apply suggestion: " .
+            $failureBody = $body . self::INFISICAL_APPLY_FAILURE_PREFIX .
                 "no `.infisicalignore` entries found in the original suggestion.\n";
             doRequestGitHub($metadata["token"], $approvalCommentUrl, array("body" => $failureBody), "PATCH");
             return;
@@ -1309,7 +1311,7 @@ class CommentsHandler implements IHandler
         try {
             $result = $commitService->applyToPullRequest($metadata, $branch, $entries);
         } catch (RuntimeException $e) {
-            $failureBody = $body . "\n\n❌ Failed to apply suggestion: " . $e->getMessage() . "\n";
+            $failureBody = $body . self::INFISICAL_APPLY_FAILURE_PREFIX . $e->getMessage() . "\n";
             doRequestGitHub($metadata["token"], $approvalCommentUrl, array("body" => $failureBody), "PATCH");
             return;
         }
