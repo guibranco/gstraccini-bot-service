@@ -451,12 +451,11 @@ function getPullRequestDiff(array $metadata): Response
  * @return int The function `setCheckRunInProgress` is returning an integer value, which is the ID of
  * the check run created on GitHub.
  */
-function setCheckRunInProgress(array $metadata, string $commitId, string $type): int
+function setCheckRunInProgress(array $metadata, string $commitId, string $type, ?object $existingCheckRun = null): int
 {
     $checkRunBody = array(
         "name" => constant("BOT_CHECK_MESSAGE_PREFIX") . ucwords($type),
         "details_url" => $metadata["dashboardUrl"],
-        "head_sha" => $commitId,
         "status" => "in_progress",
         "output" => array(
             "title" => "Checks in progress ⏳",
@@ -465,8 +464,73 @@ function setCheckRunInProgress(array $metadata, string $commitId, string $type):
         )
     );
 
+    $existingCheckRun ??= findBotCheckRun($metadata, $commitId, $type);
+    if ($existingCheckRun !== null) {
+        $checkRunId = (int) $existingCheckRun->id;
+        $url = sprintf("%s/%d", $metadata["checkRunUrl"], $checkRunId);
+        $response = doRequestGitHub($metadata["token"], $url, $checkRunBody, "PATCH");
+        $statusCode = $response->getStatusCode();
+        if ($statusCode >= 200 && $statusCode < 300) {
+            return $checkRunId;
+        }
+
+        // The existing check run couldn't be reopened: fall back to creating a new one
+        // rather than leaving the commit without a check run for this run.
+        global $logStream;
+        $logStream?->warning(
+            'Could not reuse check run {checkRun} #{checkRunId} (HTTP {status}) — creating a new one',
+            ['checkRun' => $checkRunBody["name"], 'checkRunId' => $checkRunId, 'checkRunUrl' => $metadata["checkRunUrl"], 'status' => $statusCode, 'body' => mb_substr((string) $response->getBody(), 0, 2000)],
+            "check_runs"
+        );
+    }
+
+    $checkRunBody["head_sha"] = $commitId;
     $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"], $checkRunBody, "POST");
     return decodeGitHubResponse($response, "id");
+}
+
+/**
+ * The commit check runs endpoint for a sha (`GET /repos/{owner}/{repo}/commits/{ref}/check-runs`),
+ * filtered to the latest check run with the given name, derived from the metadata's `checkRunUrl`.
+ *
+ * @param array  $metadata     Metadata holding `checkRunUrl` (`repos/{owner}/{repo}/check-runs`).
+ * @param string $sha          The commit sha.
+ * @param string $checkRunName The check run name to filter by.
+ *
+ * @return string The endpoint, relative to the GitHub API root.
+ */
+function commitCheckRunsUrl(array $metadata, string $sha, string $checkRunName): string
+{
+    $repoPrefix = preg_replace('#/check-runs$#', '', $metadata["checkRunUrl"]);
+    return sprintf("%s/commits/%s/check-runs?check_name=%s&filter=latest", $repoPrefix, $sha, rawurlencode($checkRunName));
+}
+
+/**
+ * Finds the bot's latest check run of the given type for a commit sha, so a new run (a new
+ * event, a re-delivery, a re-request) updates it instead of piling up a new check run each time.
+ *
+ * @param array  $metadata Metadata for the GitHub API request (token, checkRunUrl).
+ * @param string $sha      The commit sha to look up check runs for.
+ * @param string $type     The check type (e.g. "pull request", "commit"), used to build the check run name.
+ *
+ * @return object|null The matching check run, or null if none exists yet (or the lookup failed).
+ */
+function findBotCheckRun(array $metadata, string $sha, string $type): ?object
+{
+    $checkRunName = constant("BOT_CHECK_MESSAGE_PREFIX") . ucwords($type);
+    $response = doRequestGitHub($metadata["token"], commitCheckRunsUrl($metadata, $sha, $checkRunName), null, "GET");
+    if ($response->getStatusCode() !== 200) {
+        return null;
+    }
+
+    $decoded = json_decode($response->getBody());
+    foreach (($decoded->check_runs ?? []) as $checkRun) {
+        if ($checkRun->name === $checkRunName) {
+            return $checkRun;
+        }
+    }
+
+    return null;
 }
 
 /**
