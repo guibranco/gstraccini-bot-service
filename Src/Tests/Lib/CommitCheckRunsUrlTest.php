@@ -20,7 +20,7 @@ class CommitCheckRunsUrlTest extends TestCase
      *
      * @return void
      */
-    public function testBuildsTheCommitCheckRunsLookupFromTheCheckRunUrl(): void
+    public function testBuildsCommitLookupUrl(): void
     {
         $metadata = ["checkRunUrl" => "repos/guibranco/gstraccini-bot-service/check-runs"];
 
@@ -31,7 +31,7 @@ class CommitCheckRunsUrlTest extends TestCase
             $url
         );
 
-    }//end testBuildsTheCommitCheckRunsLookupFromTheCheckRunUrl()
+    }//end testBuildsCommitLookupUrl()
 
 
 }//end class
