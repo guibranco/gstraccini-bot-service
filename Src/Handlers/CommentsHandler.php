@@ -1216,6 +1216,20 @@ class CommentsHandler implements IHandler
         }
 
         $source = $this->fetchInfisicalIgnoreSuggestionSource($metadata, (int) $comment->CommentId);
+        if ($source === null) {
+            global $logStream;
+            $logStream?->warning(
+                'Could not load Infisical suggestion {comment_id} on {repo}#{pr}; defaulting to issue comment',
+                (new LogContext(
+                    repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}",
+                    pr: $comment->PullRequestNumber,
+                    comment_id: $comment->CommentId
+                ))->toArray(),
+                "comments",
+                $comment->DeliveryIdText
+            );
+        }
+
         $isReview = $source !== null && $source["isReview"];
 
         if (!$isReview) {
@@ -1267,7 +1281,8 @@ class CommentsHandler implements IHandler
 
         $source = $this->fetchInfisicalIgnoreSuggestionSource($metadata, $originalCommentId);
         if ($source === null) {
-            $failureBody = $body . "\n\n❌ Failed to apply suggestion: could not load the original suggestion ({$originalCommentId}).\n";
+            $failureBody = $body . "\n\n❌ Failed to apply suggestion: " .
+                "could not load the original suggestion ({$originalCommentId}).\n";
             doRequestGitHub($metadata["token"], $approvalCommentUrl, array("body" => $failureBody), "PATCH");
             return;
         }
@@ -1275,7 +1290,8 @@ class CommentsHandler implements IHandler
         $parser = new InfisicalIgnoreSuggestionParser();
         $entries = $parser->parse($source["body"]);
         if ($entries === null) {
-            $failureBody = $body . "\n\n❌ Failed to apply suggestion: no `.infisicalignore` entries found in the original suggestion.\n";
+            $failureBody = $body . "\n\n❌ Failed to apply suggestion: " .
+                "no `.infisicalignore` entries found in the original suggestion.\n";
             doRequestGitHub($metadata["token"], $approvalCommentUrl, array("body" => $failureBody), "PATCH");
             return;
         }
