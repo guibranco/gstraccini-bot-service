@@ -105,19 +105,19 @@ function finalizeProcessing($tableName, $sequence): bool
 /**
  * Reads the ProcessingState of a queued row, to tell why finalizeProcessing() didn't update it.
  *
- * @param string $tableName The queue table.
- * @param int    $sequence  The row's Sequence.
+ * @param string  $tableName The queue table.
+ * @param integer $sequence  The row's Sequence.
  *
  * @return string|null The ProcessingState, or null when the row doesn't exist.
  */
 function readProcessingState($tableName, $sequence): ?string
 {
     $mysqli = connectToDatabase();
-    $stmt = $mysqli->prepare("SELECT ProcessingState FROM " . $tableName . " WHERE Sequence = ?");
+    $stmt = $mysqli->prepare("SELECT ProcessingState FROM {$tableName} WHERE Sequence = ?");
     $stmt->bind_param("i", $sequence);
     $state = null;
 
-    if ($stmt->execute()) {
+    if ($stmt->execute() === true) {
         $row = $stmt->get_result()->fetch_assoc();
         $state = ($row['ProcessingState'] ?? null);
     }
@@ -125,7 +125,9 @@ function readProcessingState($tableName, $sequence): ?string
     $stmt->close();
     $mysqli->close();
     return $state;
-}
+
+}//end readProcessingState()
+
 
 function updateStateToClosedInTable($table, $sequence): bool
 {

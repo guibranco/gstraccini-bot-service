@@ -452,6 +452,7 @@ class ProcessingManager
         }
     }
 
+
     /**
      * Logs why an item wasn't finalized. A row handed back to the queue while
      * it was processed (by a newer event, often one the bot caused itself, or
@@ -462,19 +463,20 @@ class ProcessingManager
      * @param int|string  $sequence The item's Sequence.
      * @param array       $context  The item's log context.
      * @param string|null $traceId  The delivery id used as trace id.
+     *
+     * @return void
      */
     private function reportFinalizeConflict(string $table, $sequence, array $context, ?string $traceId): void
     {
         $state = readProcessingState($table, $sequence);
-        $conflict = FinalizeConflict::fromState($state);
+        $conflict = new FinalizeConflict($state);
         $context['state'] = ($state ?? 'missing');
-        $context['conflict'] = $conflict->value;
+        $context['conflict'] = $conflict->getKind();
 
-        $level = 'warning';
-        if ($conflict->isExpected()) {
-            $level = 'info';
-        }
+        $level = $conflict->getLogLevel();
+        $this->logStream?->{$level}($conflict->getMessageTemplate(), $context, $this->entity, $traceId);
 
-        $this->logStream?->{$level}($conflict->messageTemplate(), $context, $this->entity, $traceId);
-    }
+    }//end reportFinalizeConflict()
+
+
 }

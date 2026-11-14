@@ -8,56 +8,53 @@ namespace GuiBranco\GStracciniBot\Library;
  * holds right after the failed update.
  *
  * Most of the time the row was handed back to the queue while it was being
- * processed: a webhook event for the same pull request / issue (often one
- * the bot itself caused — editing the description, approving, updating the
- * branch) or the handler re-queuing the item on purpose. That is the queue
- * working as designed — the item runs again with the newer state — and not
- * worth a warning. Only the other cases point at two processes working on
- * the same item.
+ * processed: a webhook event for the same pull request or issue (often one
+ * the bot itself caused, by editing the description, approving or updating
+ * the branch) or the handler re-queuing the item on purpose. That is the
+ * queue working as designed, the item runs again with the newer state, and
+ * not worth a warning. Only the other cases point at two processes working
+ * on the same item.
  */
-enum FinalizeConflict: string
+class FinalizeConflict
 {
-    /** A newer event (or the handler itself) re-queued the item; it will be processed again. */
-    case Requeued = 'requeued';
+    public const REQUEUED = 'requeued';
 
-    /** Another process already moved the item to PROCESSED. */
-    case FinalizedElsewhere = 'finalized_elsewhere';
+    public const FINALIZED_ELSEWHERE = 'finalized_elsewhere';
 
-    /** The item is PROCESSING again — another process claimed it after it went stale. */
-    case ClaimedElsewhere = 'claimed_elsewhere';
+    public const CLAIMED_ELSEWHERE = 'claimed_elsewhere';
 
-    /** The row no longer exists. */
-    case Missing = 'missing';
+    public const MISSING = 'missing';
 
-    /** States a row is in while it waits in the queue (see readTable()). */
-    private const QUEUED_STATES = ['NEW', 'RE_REQUESTED', 'UPDATED', 'IDLE'];
+    /**
+     * The conflict, one of the constants of this class.
+     *
+     * @var string
+     */
+    private string $kind;
 
 
     /**
      * Classifies the conflict from the row's current ProcessingState.
      *
      * @param string|null $state The ProcessingState read back, null when the row is gone.
-     *
-     * @return self The conflict.
      */
-    public static function fromState(?string $state): self
+    public function __construct(?string $state)
     {
-        if ($state === null) {
-            return self::Missing;
-        }
+        $this->kind = $this->classify($state);
 
-        $state = strtoupper($state);
-        if (in_array($state, self::QUEUED_STATES, true)) {
-            return self::Requeued;
-        }
+    }//end __construct()
 
-        if ($state === 'PROCESSING') {
-            return self::ClaimedElsewhere;
-        }
 
-        return self::FinalizedElsewhere;
+    /**
+     * The conflict, one of the constants of this class.
+     *
+     * @return string The conflict.
+     */
+    public function getKind(): string
+    {
+        return $this->kind;
 
-    }//end fromState()
+    }//end getKind()
 
 
     /**
@@ -67,24 +64,105 @@ enum FinalizeConflict: string
      */
     public function isExpected(): bool
     {
-        return $this === self::Requeued;
+        return $this->kind === self::REQUEUED;
 
     }//end isExpected()
 
 
     /**
+     * The LogStream level to report the conflict with: info when the item was
+     * simply re-queued, warning when two processes worked on the same item.
+     *
+     * @return string The level.
+     */
+    public function getLogLevel(): string
+    {
+        if ($this->isExpected() === true) {
+            return 'info';
+        }
+
+        return 'warning';
+
+    }//end getLogLevel()
+
+
+    /**
      * The LogStream message template describing the conflict.
      *
-     * @return string The template; {item} and {state} are context keys.
+     * @return string The template, {item} and {state} being context keys.
      */
-    public function messageTemplate(): string
+    public function getMessageTemplate(): string
     {
-        return match ($this) {
-            self::Requeued => 'Item re-queued while processing {item} (now {state}) — it will be processed again',
-            self::FinalizedElsewhere => 'Item finalized by another process {item}',
-            self::ClaimedElsewhere => 'Item claimed by another process while processing {item}',
-            self::Missing => 'Item no longer exists when finalizing {item}',
-        };
+        $templates = [];
+        $templates[self::REQUEUED] = 'Item re-queued while processing {item} (now {state}), it will be processed again';
+        $templates[self::FINALIZED_ELSEWHERE] = 'Item finalized by another process {item}';
+        $templates[self::CLAIMED_ELSEWHERE] = 'Item claimed by another process while processing {item}';
+        $templates[self::MISSING] = 'Item no longer exists when finalizing {item}';
 
-    }//end messageTemplate()
-}
+        return $templates[$this->kind];
+
+    }//end getMessageTemplate()
+
+
+    /**
+     * Works out the conflict from the ProcessingState.
+     *
+     * @param string|null $state The ProcessingState read back, null when the row is gone.
+     *
+     * @return string The conflict.
+     */
+    private function classify(?string $state): string
+    {
+        if ($state === null) {
+            return self::MISSING;
+        }
+
+        $normalized = strtoupper($state);
+        if ($this->isQueuedState($normalized) === true) {
+            return self::REQUEUED;
+        }
+
+        return $this->classifyNotQueued($normalized);
+
+    }//end classify()
+
+
+    /**
+     * Works out the conflict of a row that isn't waiting in the queue.
+     *
+     * @param string $state The upper-case ProcessingState.
+     *
+     * @return string The conflict.
+     */
+    private function classifyNotQueued(string $state): string
+    {
+        if ($state === 'PROCESSING') {
+            return self::CLAIMED_ELSEWHERE;
+        }
+
+        return self::FINALIZED_ELSEWHERE;
+
+    }//end classifyNotQueued()
+
+
+    /**
+     * Whether the state is one a row waits in the queue with (see readTable()).
+     *
+     * @param string $state The upper-case ProcessingState.
+     *
+     * @return boolean True when the row is queued.
+     */
+    private function isQueuedState(string $state): bool
+    {
+        $queued = [];
+        $queued[] = 'NEW';
+        $queued[] = 'RE_REQUESTED';
+        $queued[] = 'UPDATED';
+        $queued[] = 'IDLE';
+
+        return in_array($state, $queued, true);
+
+    }//end isQueuedState()
+
+
+}//end class

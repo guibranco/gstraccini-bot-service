@@ -16,17 +16,18 @@ class FinalizeConflictTest extends TestCase
     /**
      * The states a row waits in the queue with.
      *
-     * @return array<string, array{string}>
+     * @return array The ProcessingState of each case, by case name.
      */
     public static function queuedStates(): array
     {
-        return [
-            'new' => ['NEW'],
-            're-requested' => ['RE_REQUESTED'],
-            'updated' => ['UPDATED'],
-            'idle' => ['IDLE'],
-            'lower case' => ['re_requested'],
-        ];
+        $states = [];
+        $states['new'] = ['NEW'];
+        $states['re-requested'] = ['RE_REQUESTED'];
+        $states['updated'] = ['UPDATED'];
+        $states['idle'] = ['IDLE'];
+        $states['lower case'] = ['re_requested'];
+
+        return $states;
 
     }//end queuedStates()
 
@@ -41,26 +42,28 @@ class FinalizeConflictTest extends TestCase
     #[DataProvider('queuedStates')]
     public function testQueuedStateIsAnExpectedRequeue(string $state): void
     {
-        $conflict = FinalizeConflict::fromState($state);
+        $conflict = new FinalizeConflict($state);
 
-        $this->assertSame(FinalizeConflict::Requeued, $conflict);
+        $this->assertSame(FinalizeConflict::REQUEUED, $conflict->getKind());
         $this->assertTrue($conflict->isExpected());
+        $this->assertSame('info', $conflict->getLogLevel());
 
     }//end testQueuedStateIsAnExpectedRequeue()
 
 
     /**
-     * A row another process already finalized is a real conflict.
+     * A row another process already finalized is a real conflict, logged as before.
      *
      * @return void
      */
     public function testProcessedIsFinalizedElsewhere(): void
     {
-        $conflict = FinalizeConflict::fromState('PROCESSED');
+        $conflict = new FinalizeConflict('PROCESSED');
 
-        $this->assertSame(FinalizeConflict::FinalizedElsewhere, $conflict);
+        $this->assertSame(FinalizeConflict::FINALIZED_ELSEWHERE, $conflict->getKind());
         $this->assertFalse($conflict->isExpected());
-        $this->assertSame('Item finalized by another process {item}', $conflict->messageTemplate());
+        $this->assertSame('warning', $conflict->getLogLevel());
+        $this->assertSame('Item finalized by another process {item}', $conflict->getMessageTemplate());
 
     }//end testProcessedIsFinalizedElsewhere()
 
@@ -72,9 +75,9 @@ class FinalizeConflictTest extends TestCase
      */
     public function testProcessingIsClaimedElsewhere(): void
     {
-        $conflict = FinalizeConflict::fromState('PROCESSING');
+        $conflict = new FinalizeConflict('PROCESSING');
 
-        $this->assertSame(FinalizeConflict::ClaimedElsewhere, $conflict);
+        $this->assertSame(FinalizeConflict::CLAIMED_ELSEWHERE, $conflict->getKind());
         $this->assertFalse($conflict->isExpected());
 
     }//end testProcessingIsClaimedElsewhere()
@@ -87,10 +90,12 @@ class FinalizeConflictTest extends TestCase
      */
     public function testMissingRow(): void
     {
-        $conflict = FinalizeConflict::fromState(null);
+        $conflict = new FinalizeConflict(null);
 
-        $this->assertSame(FinalizeConflict::Missing, $conflict);
+        $this->assertSame(FinalizeConflict::MISSING, $conflict->getKind());
         $this->assertFalse($conflict->isExpected());
 
     }//end testMissingRow()
-}
+
+
+}//end class
