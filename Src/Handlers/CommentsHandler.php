@@ -23,6 +23,8 @@ use stdClass;
  */
 class CommentsHandler implements IHandler
 {
+    private const INFISICAL_APPLY_FAILURE_PREFIX = "\n\n❌ Failed to apply suggestion: ";
+
     /**
      * Converts a string to camel case format.
      *
@@ -1215,13 +1217,36 @@ class CommentsHandler implements IHandler
             return true;
         }
 
-        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
-        $body = $builder->build(
-            $comment->RepositoryOwner,
-            $comment->RepositoryName,
-            (int) $comment->PullRequestNumber,
-            (int) $comment->CommentId
-        );
+        $source = $this->fetchInfisicalIgnoreSuggestionSource($metadata, (int) $comment->CommentId);
+        if ($source === null) {
+            global $logStream;
+            $logStream?->warning(
+                'Could not load Infisical suggestion {comment_id} on {repo}#{pr}; defaulting to issue comment',
+                (new LogContext(
+                    repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}",
+                    pr: $comment->PullRequestNumber,
+                    comment_id: $comment->CommentId
+                ))->toArray(),
+                "comments",
+                $comment->DeliveryIdText
+            );
+        }
+
+        $isReview = $source !== null && $source["isReview"];
+
+        if (!$isReview) {
+            // Reviews don't support reactions; only react to plain issue comments.
+            doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
+        }
+        $owner = $comment->RepositoryOwner;
+        $repo = $comment->RepositoryName;
+        $prNumber = (int) $comment->PullRequestNumber;
+        $commentId = (int) $comment->CommentId;
+        $body = $builder->build($owner, $repo, $prNumber, $commentId);
+        if ($isReview === true) {
+            $body = $builder->buildForReview($owner, $repo, $prNumber, $commentId);
+        }
+
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
 
         return true;
@@ -1256,16 +1281,20 @@ class CommentsHandler implements IHandler
         }
         $originalCommentId = (int) $matches[1];
 
-        $originalCommentUrl = "{$metadata['repoPrefix']}/issues/comments/{$originalCommentId}";
-        $originalResponse = doRequestGitHub($metadata["token"], $originalCommentUrl, null, "GET");
-        if ($originalResponse->getStatusCode() !== 200) {
+        $source = $this->fetchInfisicalIgnoreSuggestionSource($metadata, $originalCommentId);
+        if ($source === null) {
+            $failureBody = $body . self::INFISICAL_APPLY_FAILURE_PREFIX .
+                "could not load the original suggestion ({$originalCommentId}).\n";
+            doRequestGitHub($metadata["token"], $approvalCommentUrl, array("body" => $failureBody), "PATCH");
             return;
         }
-        $originalComment = json_decode($originalResponse->getBody());
 
         $parser = new InfisicalIgnoreSuggestionParser();
-        $entries = $parser->parse($originalComment->body);
+        $entries = $parser->parse($source["body"]);
         if ($entries === null) {
+            $failureBody = $body . self::INFISICAL_APPLY_FAILURE_PREFIX .
+                "no `.infisicalignore` entries found in the original suggestion.\n";
+            doRequestGitHub($metadata["token"], $approvalCommentUrl, array("body" => $failureBody), "PATCH");
             return;
         }
 
@@ -1282,7 +1311,7 @@ class CommentsHandler implements IHandler
         try {
             $result = $commitService->applyToPullRequest($metadata, $branch, $entries);
         } catch (RuntimeException $e) {
-            $failureBody = $body . "\n\n❌ Failed to apply suggestion: " . $e->getMessage() . "\n";
+            $failureBody = $body . self::INFISICAL_APPLY_FAILURE_PREFIX . $e->getMessage() . "\n";
             doRequestGitHub($metadata["token"], $approvalCommentUrl, array("body" => $failureBody), "PATCH");
             return;
         }
@@ -1291,6 +1320,35 @@ class CommentsHandler implements IHandler
         doRequestGitHub($metadata["token"], $approvalCommentUrl, array("body" => $body . $completion), "PATCH");
 
         $this->queueChecksForBotCommit($metadata, $comment, $pullRequest, $result["sha"]);
+    }
+
+    /**
+     * Loads the body of an Infisical `.infisicalignore` suggestion by its id.
+     *
+     * The Infisical action posts the suggestion as a pull request *review*
+     * (pulls.createReview), which the webhooks receiver stores in github_comments
+     * with the review id as CommentId. Review ids are not valid for
+     * /issues/comments/{id}, so fall back to /pulls/{n}/reviews/{id}.
+     *
+     * @return array{body: string, isReview: bool}|null
+     */
+    private function fetchInfisicalIgnoreSuggestionSource(array $metadata, int $suggestionId): ?array
+    {
+        $commentUrl = "{$metadata['repoPrefix']}/issues/comments/{$suggestionId}";
+        $response = doRequestGitHub($metadata["token"], $commentUrl, null, "GET");
+        if ($response->getStatusCode() === 200) {
+            $comment = json_decode($response->getBody());
+            return ["body" => (string) ($comment->body ?? ""), "isReview" => false];
+        }
+
+        $reviewUrl = "{$metadata['pullRequestUrl']}/reviews/{$suggestionId}";
+        $response = doRequestGitHub($metadata["token"], $reviewUrl, null, "GET");
+        if ($response->getStatusCode() === 200) {
+            $review = json_decode($response->getBody());
+            return ["body" => (string) ($review->body ?? ""), "isReview" => true];
+        }
+
+        return null;
     }
 
     /**

@@ -31,6 +31,23 @@ class InfisicalIgnoreApprovalCommentBuilderTest extends TestCase
         );
     }
 
+    /**
+     * The Infisical action posts its suggestion as a pull request review, so the
+     * permalink must point at the review anchor rather than an issue comment.
+     *
+     * @return void
+     */
+    public function testBuildForReviewUsesReviewPermalink(): void
+    {
+        $body = $this->builder->buildForReview("guibranco", "gstraccini-bot-service", 1112, 987654321);
+
+        $this->assertStringContainsString(
+            "https://github.com/guibranco/gstraccini-bot-service/pull/1112#pullrequestreview-987654321",
+            $body
+        );
+        $this->assertStringContainsString("<!-- gstraccini-bot:infisicalignore:987654321 -->", $body);
+    }
+
     public function testBuildIncludesExactlyOneUncheckedCheckbox(): void
     {
         $body = $this->builder->build("guibranco", "gstraccini-bot-service", 1112, 987654321);
