@@ -16,14 +16,14 @@ class InfisicalIgnoreApprovalCommentBuilderTest extends TestCase
 
     public function testBuildIncludesMarkerWithOriginalCommentId(): void
     {
-        $body = $this->builder->build("guibranco", "gstraccini-bot-service", 1112, 987654321, false);
+        $body = $this->builder->build("guibranco", "gstraccini-bot-service", 1112, 987654321);
 
         $this->assertStringContainsString("<!-- gstraccini-bot:infisicalignore:987654321 -->", $body);
     }
 
     public function testBuildIncludesPermalinkToOriginalComment(): void
     {
-        $body = $this->builder->build("guibranco", "gstraccini-bot-service", 1112, 987654321, false);
+        $body = $this->builder->build("guibranco", "gstraccini-bot-service", 1112, 987654321);
 
         $this->assertStringContainsString(
             "https://github.com/guibranco/gstraccini-bot-service/pull/1112#issuecomment-987654321",
@@ -37,9 +37,9 @@ class InfisicalIgnoreApprovalCommentBuilderTest extends TestCase
      *
      * @return void
      */
-    public function testBuildUsesReviewPermalinkWhenSuggestionIsAReview(): void
+    public function testBuildForReviewUsesReviewPermalink(): void
     {
-        $body = $this->builder->build("guibranco", "gstraccini-bot-service", 1112, 987654321, true);
+        $body = $this->builder->buildForReview("guibranco", "gstraccini-bot-service", 1112, 987654321);
 
         $this->assertStringContainsString(
             "https://github.com/guibranco/gstraccini-bot-service/pull/1112#pullrequestreview-987654321",
@@ -50,7 +50,7 @@ class InfisicalIgnoreApprovalCommentBuilderTest extends TestCase
 
     public function testBuildIncludesExactlyOneUncheckedCheckbox(): void
     {
-        $body = $this->builder->build("guibranco", "gstraccini-bot-service", 1112, 987654321, false);
+        $body = $this->builder->build("guibranco", "gstraccini-bot-service", 1112, 987654321);
 
         $this->assertSame(1, preg_match_all("/- \[ \] Apply this suggestion/", $body));
         $this->assertSame(0, preg_match_all("/- \[x\] Apply this suggestion/i", $body));

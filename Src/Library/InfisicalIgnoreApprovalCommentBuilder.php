@@ -14,24 +14,50 @@ class InfisicalIgnoreApprovalCommentBuilder
     }
 
     /**
-     * Builds the approval comment for an Infisical `.infisicalignore` suggestion.
+     * Builds the approval comment for a suggestion posted as an issue comment.
      *
      * @param string $owner             Repository owner.
      * @param string $repo              Repository name.
      * @param int    $prNumber          Pull request number.
-     * @param int    $originalCommentId Id of the comment or review holding the suggestion.
-     * @param bool   $isReview          Whether the suggestion was posted as a pull request review.
+     * @param int    $originalCommentId Id of the issue comment holding the suggestion.
      *
      * @return string
      */
-    public function build(string $owner, string $repo, int $prNumber, int $originalCommentId, bool $isReview): string
+    public function build(string $owner, string $repo, int $prNumber, int $originalCommentId): string
     {
-        $anchor = "issuecomment";
-        if ($isReview === true) {
-            $anchor = "pullrequestreview";
-        }
-        $permalink = "https://github.com/{$owner}/{$repo}/pull/{$prNumber}#{$anchor}-{$originalCommentId}";
+        $permalink = "https://github.com/{$owner}/{$repo}/pull/{$prNumber}#issuecomment-{$originalCommentId}";
 
+        return $this->buildBody($originalCommentId, $permalink);
+    }
+
+    /**
+     * Builds the approval comment for a suggestion posted as a pull request review,
+     * which is how the Infisical secrets check action delivers it.
+     *
+     * @param string $owner            Repository owner.
+     * @param string $repo             Repository name.
+     * @param int    $prNumber         Pull request number.
+     * @param int    $originalReviewId Id of the pull request review holding the suggestion.
+     *
+     * @return string
+     */
+    public function buildForReview(string $owner, string $repo, int $prNumber, int $originalReviewId): string
+    {
+        $permalink = "https://github.com/{$owner}/{$repo}/pull/{$prNumber}#pullrequestreview-{$originalReviewId}";
+
+        return $this->buildBody($originalReviewId, $permalink);
+    }
+
+    /**
+     * Builds the approval comment body shared by issue-comment and review suggestions.
+     *
+     * @param int    $originalCommentId Id of the comment or review holding the suggestion.
+     * @param string $permalink         Link to the original suggestion.
+     *
+     * @return string
+     */
+    private function buildBody(int $originalCommentId, string $permalink): string
+    {
         $body = $this->marker($originalCommentId) . "\n";
         $body .= "### Apply `.infisicalignore` update\n\n";
         $body .= "> Suggested by @github-actions[bot]\n";

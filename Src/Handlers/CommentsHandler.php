@@ -1222,13 +1222,15 @@ class CommentsHandler implements IHandler
             // Reviews don't support reactions; only react to plain issue comments.
             doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "eyes"), "POST");
         }
-        $body = $builder->build(
-            $comment->RepositoryOwner,
-            $comment->RepositoryName,
-            (int) $comment->PullRequestNumber,
-            (int) $comment->CommentId,
-            $isReview
-        );
+        $owner = $comment->RepositoryOwner;
+        $repo = $comment->RepositoryName;
+        $prNumber = (int) $comment->PullRequestNumber;
+        $commentId = (int) $comment->CommentId;
+        $body = $builder->build($owner, $repo, $prNumber, $commentId);
+        if ($isReview === true) {
+            $body = $builder->buildForReview($owner, $repo, $prNumber, $commentId);
+        }
+
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
 
         return true;
@@ -1312,16 +1314,16 @@ class CommentsHandler implements IHandler
      *
      * @return array{body: string, isReview: bool}|null
      */
-    private function fetchInfisicalIgnoreSuggestionSource(array $metadata, int $id): ?array
+    private function fetchInfisicalIgnoreSuggestionSource(array $metadata, int $suggestionId): ?array
     {
-        $commentUrl = "{$metadata['repoPrefix']}/issues/comments/{$id}";
+        $commentUrl = "{$metadata['repoPrefix']}/issues/comments/{$suggestionId}";
         $response = doRequestGitHub($metadata["token"], $commentUrl, null, "GET");
         if ($response->getStatusCode() === 200) {
             $comment = json_decode($response->getBody());
             return ["body" => (string) ($comment->body ?? ""), "isReview" => false];
         }
 
-        $reviewUrl = "{$metadata['pullRequestUrl']}/reviews/{$id}";
+        $reviewUrl = "{$metadata['pullRequestUrl']}/reviews/{$suggestionId}";
         $response = doRequestGitHub($metadata["token"], $reviewUrl, null, "GET");
         if ($response->getStatusCode() === 200) {
             $review = json_decode($response->getBody());
