@@ -23,6 +23,7 @@ use GuiBranco\GStracciniBot\Library\VersionBumpCommentBuilder;
 use GuiBranco\Pancake\Response;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
+use stdClass;
 
 class PullRequestsHandlerTest extends TestCase
 {
@@ -173,7 +174,7 @@ class PullRequestsHandlerTest extends TestCase
      */
     private function buildPullRequestRepos(?string $headRepo, ?string $baseRepo): object
     {
-        $pullRequest = new \stdClass();
+        $pullRequest = new stdClass();
         $pullRequest->head = (object) ["repo" => $this->buildRepo($headRepo)];
         $pullRequest->base = (object) ["repo" => $this->buildRepo($baseRepo)];
 
