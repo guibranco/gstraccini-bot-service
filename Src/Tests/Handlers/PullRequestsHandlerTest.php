@@ -173,10 +173,11 @@ class PullRequestsHandlerTest extends TestCase
      */
     private function buildPullRequestRepos(?string $headRepo, ?string $baseRepo): object
     {
-        $head = (object) ["repo" => $this->buildRepo($headRepo)];
-        $base = (object) ["repo" => $this->buildRepo($baseRepo)];
+        $pullRequest = new \stdClass();
+        $pullRequest->head = (object) ["repo" => $this->buildRepo($headRepo)];
+        $pullRequest->base = (object) ["repo" => $this->buildRepo($baseRepo)];
 
-        return (object) ["head" => $head, "base" => $base];
+        return $pullRequest;
     }
 
     /**
