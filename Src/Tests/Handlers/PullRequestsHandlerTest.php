@@ -176,10 +176,7 @@ class PullRequestsHandlerTest extends TestCase
         $head = (object) ["repo" => $this->buildRepo($headRepo)];
         $base = (object) ["repo" => $this->buildRepo($baseRepo)];
 
-        return (object) [
-            "head" => $head,
-            "base" => $base,
-        ];
+        return (object) ["head" => $head, "base" => $base];
     }
 
     /**
