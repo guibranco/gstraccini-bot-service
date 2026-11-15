@@ -198,6 +198,8 @@ class PullRequestsHandler implements IHandler
             return;
         }
 
+        $this->ensureForkCommitCheckRun($metadata, $pullRequest, $pullRequestUpdated);
+
         $existingCheckRun = findBotCheckRun($metadata, $pullRequestUpdated->head->sha, "pull request");
         $alreadyActionRequired = $existingCheckRun !== null && $existingCheckRun->conclusion === "action_required";
         $checkRunId = null;
@@ -612,6 +614,81 @@ class PullRequestsHandler implements IHandler
 
         $lastCommit = end($commits);
         return $lastCommit->commit->committer->date;
+    }
+
+    /**
+     * Whether the pull request's head branch lives in another repository (a fork).
+     * A deleted fork leaves `head.repo` null, which still counts as a fork.
+     *
+     * @param object $pullRequestUpdated The pull request as returned by the GitHub API.
+     *
+     * @return bool True when the head commit was pushed to a repository other than the base one.
+     */
+    public static function isFromFork(object $pullRequestUpdated): bool
+    {
+        $baseRepo = $pullRequestUpdated->base->repo->full_name ?? null;
+        $headRepo = $pullRequestUpdated->head->repo->full_name ?? null;
+
+        if ($baseRepo === null) {
+            return false;
+        }
+
+        return $headRepo === null || strcasecmp($headRepo, $baseRepo) !== 0;
+    }
+
+    /**
+     * Creates the "Commit" check run for the head commit of a pull request opened from a fork.
+     *
+     * Commits pushed to a fork never raise a `push` webhook on the base repository (the app isn't
+     * installed on the fork), so the pushes worker never creates the "Commit" check run for them and
+     * a branch protection rule requiring it would block the pull request forever. GitHub copies the
+     * fork's head commit into the base repository (`refs/pull/{number}/head`), so the check run is
+     * created there, against the head SHA, exactly as the pushes worker does for local branches.
+     *
+     * Failures are logged and swallowed so they never abort the pull request processing.
+     *
+     * @param array  $metadata           Metadata for the GitHub API requests (base repository).
+     * @param object $pullRequest        The pull request item being processed.
+     * @param object $pullRequestUpdated The pull request as returned by the GitHub API.
+     *
+     * @return void
+     */
+    private function ensureForkCommitCheckRun(array $metadata, $pullRequest, $pullRequestUpdated): void
+    {
+        if (!self::isFromFork($pullRequestUpdated)) {
+            return;
+        }
+
+        $headSha = $pullRequestUpdated->head->sha;
+        $context = [
+            "head_repo" => ($pullRequestUpdated->head->repo->full_name ?? "(deleted fork)"),
+            "commit" => $headSha,
+        ];
+
+        if (findBotCheckRun($metadata, $headSha, "commit") !== null) {
+            $this->trace('debug', 'PR {repo}#{pr}: fork head commit {commit} already has a "commit" check run', $context);
+            return;
+        }
+
+        $config = loadConfig();
+        $commitMetadata = $metadata;
+        $commitMetadata["dashboardUrl"] = $config->dashboardUrl .
+            "commits/?owner=" . $pullRequest->RepositoryOwner .
+            "&repo=" . $pullRequest->RepositoryName .
+            "&ref=" . urlencode("refs/pull/{$pullRequestUpdated->number}/head");
+
+        $checkRunId = null;
+        try {
+            $checkRunId = setCheckRunInProgress($commitMetadata, $headSha, "commit");
+            setCheckRunSucceeded($commitMetadata, $checkRunId, "commit");
+            $this->trace('info', 'PR {repo}#{pr}: created "commit" check run for fork head commit {commit} from {head_repo}', $context);
+        } catch (\Throwable $e) {
+            $context["error"] = $e->getMessage();
+            $this->trace('warning', 'PR {repo}#{pr}: could not create "commit" check run for fork head commit {commit}: {error}', $context);
+            if ($checkRunId !== null) {
+                failCheckRunOnError($commitMetadata, $checkRunId, "commit", $e);
+            }
+        }
     }
 
     /**
