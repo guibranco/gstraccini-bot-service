@@ -23,6 +23,7 @@ use GuiBranco\GStracciniBot\Library\VersionBumpCommentBuilder;
 use GuiBranco\Pancake\Response;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
+use stdClass;
 
 class PullRequestsHandlerTest extends TestCase
 {
@@ -129,6 +130,95 @@ class PullRequestsHandlerTest extends TestCase
             }
         }
         $this->assertTrue($postedComment, "The actionable decision comment should be posted when nothing has been decided yet.");
+    }
+
+    /**
+     * Invokes the private PullRequestsHandler::isFromFork() method.
+     *
+     * @param object $pullRequestUpdated The pull request as returned by the GitHub API.
+     *
+     * @return bool Whether the pull request comes from a fork.
+     */
+    private function invokeIsFromFork(object $pullRequestUpdated): bool
+    {
+        $handler = new PullRequestsHandler();
+        $method = (new ReflectionClass($handler))->getMethod("isFromFork");
+        $method->setAccessible(true);
+
+        return $method->invoke($handler, $pullRequestUpdated);
+    }
+
+    /**
+     * Builds a repository object as returned by the GitHub API, or null when absent.
+     *
+     * @param string|null $fullName The repository full name (owner/name).
+     *
+     * @return object|null The repository object.
+     */
+    private function buildRepo(?string $fullName): ?object
+    {
+        if ($fullName === null) {
+            return null;
+        }
+
+        return (object) ["full_name" => $fullName];
+    }
+
+    /**
+     * Builds a pull request with the given head and base repositories.
+     *
+     * @param string|null $headRepo The head repository full name, null for a deleted fork.
+     * @param string|null $baseRepo The base repository full name.
+     *
+     * @return object The pull request object.
+     */
+    private function buildPullRequestRepos(?string $headRepo, ?string $baseRepo): object
+    {
+        $pullRequest = new stdClass();
+        $pullRequest->head = (object) ["repo" => $this->buildRepo($headRepo)];
+        $pullRequest->base = (object) ["repo" => $this->buildRepo($baseRepo)];
+
+        return $pullRequest;
+    }
+
+    /**
+     * A pull request whose head lives in another repository comes from a fork.
+     *
+     * @return void
+     */
+    public function testIsFromForkWhenHeadRepoDiffers(): void
+    {
+        $this->assertTrue($this->invokeIsFromFork($this->buildPullRequestRepos("contributor/repo", "owner/repo")));
+    }
+
+    /**
+     * A pull request whose fork was deleted (null head repository) still comes from a fork.
+     *
+     * @return void
+     */
+    public function testIsFromForkWhenForkWasDeleted(): void
+    {
+        $this->assertTrue($this->invokeIsFromFork($this->buildPullRequestRepos(null, "owner/repo")));
+    }
+
+    /**
+     * A pull request between branches of the same repository (case-insensitive) is not from a fork.
+     *
+     * @return void
+     */
+    public function testIsNotFromForkWhenSameRepo(): void
+    {
+        $this->assertFalse($this->invokeIsFromFork($this->buildPullRequestRepos("Owner/Repo", "owner/repo")));
+    }
+
+    /**
+     * Without a known base repository the pull request is not treated as coming from a fork.
+     *
+     * @return void
+     */
+    public function testIsNotFromForkWhenBaseRepoUnknown(): void
+    {
+        $this->assertFalse($this->invokeIsFromFork($this->buildPullRequestRepos("contributor/repo", null)));
     }
 
     public function testResolvedWhenSemverDirectiveAlreadyPresent(): void
