@@ -131,6 +131,15 @@ class PullRequestsHandlerTest extends TestCase
         $this->assertTrue($postedComment, "The actionable decision comment should be posted when nothing has been decided yet.");
     }
 
+    private function invokeIsFromFork(object $pullRequestUpdated): bool
+    {
+        $handler = new PullRequestsHandler();
+        $method = (new ReflectionClass($handler))->getMethod("isFromFork");
+        $method->setAccessible(true);
+
+        return $method->invoke($handler, $pullRequestUpdated);
+    }
+
     private function buildPullRequestRepos(?string $headRepo, ?string $baseRepo): object
     {
         return (object) [
@@ -141,22 +150,22 @@ class PullRequestsHandlerTest extends TestCase
 
     public function testIsFromForkWhenHeadRepoDiffers(): void
     {
-        $this->assertTrue(PullRequestsHandler::isFromFork($this->buildPullRequestRepos("contributor/repo", "owner/repo")));
+        $this->assertTrue($this->invokeIsFromFork($this->buildPullRequestRepos("contributor/repo", "owner/repo")));
     }
 
     public function testIsFromForkWhenForkWasDeleted(): void
     {
-        $this->assertTrue(PullRequestsHandler::isFromFork($this->buildPullRequestRepos(null, "owner/repo")));
+        $this->assertTrue($this->invokeIsFromFork($this->buildPullRequestRepos(null, "owner/repo")));
     }
 
     public function testIsNotFromForkWhenSameRepo(): void
     {
-        $this->assertFalse(PullRequestsHandler::isFromFork($this->buildPullRequestRepos("Owner/Repo", "owner/repo")));
+        $this->assertFalse($this->invokeIsFromFork($this->buildPullRequestRepos("Owner/Repo", "owner/repo")));
     }
 
     public function testIsNotFromForkWhenBaseRepoUnknown(): void
     {
-        $this->assertFalse(PullRequestsHandler::isFromFork($this->buildPullRequestRepos("contributor/repo", null)));
+        $this->assertFalse($this->invokeIsFromFork($this->buildPullRequestRepos("contributor/repo", null)));
     }
 
     public function testResolvedWhenSemverDirectiveAlreadyPresent(): void

@@ -624,7 +624,7 @@ class PullRequestsHandler implements IHandler
      *
      * @return bool True when the head commit was pushed to a repository other than the base one.
      */
-    public static function isFromFork(object $pullRequestUpdated): bool
+    private function isFromFork(object $pullRequestUpdated): bool
     {
         $baseRepo = $pullRequestUpdated->base->repo->full_name ?? null;
         $headRepo = $pullRequestUpdated->head->repo->full_name ?? null;
@@ -655,7 +655,7 @@ class PullRequestsHandler implements IHandler
      */
     private function ensureForkCommitCheckRun(array $metadata, $pullRequest, $pullRequestUpdated): void
     {
-        if (!self::isFromFork($pullRequestUpdated)) {
+        if (!$this->isFromFork($pullRequestUpdated)) {
             return;
         }
 
