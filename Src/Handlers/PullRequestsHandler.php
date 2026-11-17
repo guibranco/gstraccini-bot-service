@@ -1289,9 +1289,16 @@ class PullRequestsHandler implements IHandler
             $labels = array_merge($labels, $labelsIssue);
         }
 
-        $body = array("labels" => array_values($labels));
+        $labels = array_values(array_unique($labels));
+
+        if (count($labels) === 0) {
+            $this->trace('debug', 'PR {repo}#{pr}: linked issues have no labels to copy', []);
+            return;
+        }
+
+        $body = array("labels" => $labels);
         $response = doRequestGitHub($metadata["token"], $metadata["labelsUrl"], $body, "POST");
-        $this->trace('info', 'PR {repo}#{pr}: copied labels {labels} from linked issues (HTTP {status})', ["labels" => implode(", ", array_values($labels)), "status" => $response->getStatusCode()]);
+        $this->trace('info', 'PR {repo}#{pr}: copied labels {labels} from linked issues (HTTP {status})', ["labels" => implode(", ", $labels), "status" => $response->getStatusCode()]);
     }
 
     private function enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config)
