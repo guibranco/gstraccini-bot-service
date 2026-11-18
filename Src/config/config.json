@@ -5,6 +5,7 @@
   "botRepositoryInstallationId": "51682906",  
   "dashboardUrl": "https://bot.straccini.com/",
   "docsUrl": "https://docs.bot.straccini.com/",
+  "gitHubApiUrl": "https://github-proxy.gstraccini.dev/",
   "debug": {
     "all": false,
     "branches": false,

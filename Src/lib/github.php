@@ -9,6 +9,27 @@ use Lcobucci\JWT\Signer\Rsa\Sha256;
 use Lcobucci\JWT\Token\Builder;
 
 define("BOT_CHECK_MESSAGE_PREFIX", "GStraccini Checks: ");
+define("GITHUB_API_DEFAULT_BASE_URL", "https://api.github.com/");
+
+/**
+ * The root every GitHub API request is sent to: `gitHubApiUrl` from config.json (the
+ * github-api-proxy), falling back to api.github.com when it is not set.
+ *
+ * @return string The base URL, always ending with a slash.
+ */
+function getGitHubApiBaseUrl(): string
+{
+    static $baseUrl = null;
+
+    if ($baseUrl === null) {
+        $configured = loadConfig()->gitHubApiUrl ?? "";
+        $baseUrl = is_string($configured) && trim($configured) !== ""
+            ? rtrim(trim($configured), "/") . "/"
+            : GITHUB_API_DEFAULT_BASE_URL;
+    }
+
+    return $baseUrl;
+}
 
 
 /**
@@ -114,8 +135,7 @@ function requestGitHub(
         return Response::error("Invalid GitHub token", $url, -1);
     }
 
-    $baseUrl = "https://api.github.com/";
-    $url = $baseUrl . $url;
+    $url = getGitHubApiBaseUrl() . $url;
 
     if ($data !== null) {
         $data = json_encode($data);
