@@ -11,6 +11,7 @@ use Lcobucci\JWT\Token\Builder;
 define("BOT_CHECK_MESSAGE_PREFIX", "GStraccini Checks: ");
 define("GITHUB_API_DEFAULT_BASE_URL", "https://api.github.com/");
 
+
 /**
  * The root every GitHub API request is sent to: `gitHubApiUrl` from config.json (the
  * github-api-proxy), falling back to api.github.com when it is not set.
