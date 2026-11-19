@@ -421,9 +421,13 @@ function mintInstallationToken(string $installationId, ?\stdClass $data): Instal
     $response = doRequestGitHub(generateAppToken(), installationAccessTokensUrl($installationId), $data, "POST");
 
     $token = decodeGitHubResponse($response, "token");
-    $expiresAt = strtotime((string) decodeGitHubResponse($response, "expires_at"));
+
+    // The body now holds a token, so it must never reach an exception message or a log.
+    $decoded = json_decode($response->getBody());
+    $expiresAt = strtotime((string) ($decoded->expires_at ?? ""));
     if ($expiresAt === false) {
-        throw new InstallationTokenException("Unexpected GitHub API response: invalid 'expires_at' for installation #{$installationId}.");
+        $status = $response->getStatusCode();
+        throw new InstallationTokenException("Unexpected GitHub API response: missing or invalid 'expires_at' for installation #{$installationId} (HTTP {$status}).");
     }
 
     return new InstallationToken((string) $token, (int) $installationId, $expiresAt);

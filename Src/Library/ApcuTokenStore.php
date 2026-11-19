@@ -54,12 +54,18 @@ class ApcuTokenStore
      * @param int               $now   The current Unix time.
      *
      * @return void
+     *
+     * @throws InstallationTokenException When APCu refuses the token (full or disabled).
      */
     public function write(string $key, InstallationToken $token, int $now): void
     {
         $ttl = $token->getUsableSeconds($now);
-        if ($ttl > 0) {
-            apcu_store($this->buildApcuKey($key), $token, $ttl);
+        if ($ttl <= 0) {
+            return;
+        }
+
+        if (apcu_store($this->buildApcuKey($key), $token, $ttl) === false) {
+            throw new InstallationTokenException("APCu refused the installation token of installation #{$token->installationId}.");
         }
 
     }//end write()
