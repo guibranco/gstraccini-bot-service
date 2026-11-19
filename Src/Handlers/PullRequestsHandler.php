@@ -57,16 +57,6 @@ class PullRequestsHandler implements IHandler
      */
     private float $startedAt = 0.0;
 
-    /**
-     * Finds the owner's token for the actions that must come from a person.
-     */
-    private OwnerTokenResolver $ownerTokenResolver;
-
-    public function __construct(?OwnerTokenResolver $ownerTokenResolver = null)
-    {
-        $this->ownerTokenResolver = $ownerTokenResolver ?? new OwnerTokenResolver(null, null, null);
-    }
-
 
     /**
      * Sends a step of the processing to LogStream, with the repository, the
@@ -300,7 +290,7 @@ class PullRequestsHandler implements IHandler
         }
 
         if ($iAmTheOwner === false) {
-            $this->trace('debug', 'PR {repo}#{pr}: owner {owner} is not a collaborator — skipping conflicts and merge comment', ["owner" => $metadata["ownerLogin"] ?? "(no owner token)"]);
+            $this->trace('debug', 'PR {repo}#{pr}: owner {owner} is not a collaborator — skipping conflicts and merge comment', ["owner" => ($metadata["ownerLogin"] ?? "(no owner token)")]);
         }
 
         $this->trace('debug', 'PR {repo}#{pr}: step version bump', []);
@@ -713,8 +703,8 @@ class PullRequestsHandler implements IHandler
      */
     private function createMetadata($token, $pullRequest, $config)
     {
-        $owner = $this->ownerTokenResolver->resolve((int) $pullRequest->InstallationId, (string) $pullRequest->RepositoryOwner);
-        $this->trace('debug', 'PR {repo}#{pr}: owner token {source}', ["source" => $owner?->source ?? "not available", "owner" => $owner?->login]);
+        $owner = (new OwnerTokenResolver(null, null, null))->resolve((int) $pullRequest->InstallationId, (string) $pullRequest->RepositoryOwner);
+        $this->trace('debug', 'PR {repo}#{pr}: owner token {source}', ["source" => ($owner?->source ?? "not available"), "owner" => $owner?->login]);
 
         $prQueryString =
             "pull-requests/?owner=" . $pullRequest->RepositoryOwner .
