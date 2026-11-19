@@ -7,6 +7,7 @@ use GuiBranco\GStracciniBot\Library\BranchUpdateGate;
 use GuiBranco\GStracciniBot\Library\DependencyFileLabelService;
 use GuiBranco\GStracciniBot\Library\LogContext;
 use GuiBranco\GStracciniBot\Library\MarkdownGroupCheckboxValidator;
+use GuiBranco\GStracciniBot\Library\OwnerTokenResolver;
 use GuiBranco\GStracciniBot\Library\PullRequestCodeScanner;
 use GuiBranco\GStracciniBot\Library\PullRequestHeadWatcher;
 use GuiBranco\GStracciniBot\Library\RecreateRequester;
@@ -265,7 +266,7 @@ class PullRequestsHandler implements IHandler
         $collaboratorsLogins = array_column(json_decode($collaboratorsResponse->getBody()), "login");
 
         $reviewsLogins = $this->getReviewsLogins($metadata);
-        $iAmTheOwner = in_array($config->ownerHandler, $collaboratorsLogins);
+        $iAmTheOwner = $metadata["ownerLogin"] !== null && in_array($metadata["ownerLogin"], $collaboratorsLogins, true);
         $this->trace('debug', 'PR {repo}#{pr}: step review and assign', ["collaborators_status" => $collaboratorsResponse->getStatusCode(), "owner_is_collaborator" => $iAmTheOwner]);
         $labelsToAdd = array_merge(
             $labelsToAdd,
@@ -289,7 +290,7 @@ class PullRequestsHandler implements IHandler
         }
 
         if ($iAmTheOwner === false) {
-            $this->trace('debug', 'PR {repo}#{pr}: owner {owner} is not a collaborator — skipping conflicts and merge comment', ["owner" => $config->ownerHandler]);
+            $this->trace('debug', 'PR {repo}#{pr}: owner {owner} is not a collaborator — skipping conflicts and merge comment', ["owner" => ($metadata["ownerLogin"] ?? "(no owner token)")]);
         }
 
         $this->trace('debug', 'PR {repo}#{pr}: step version bump', []);
@@ -702,7 +703,8 @@ class PullRequestsHandler implements IHandler
      */
     private function createMetadata($token, $pullRequest, $config)
     {
-        global $gitHubUserToken;
+        $owner = (new OwnerTokenResolver(null, null, null))->resolve((int) $pullRequest->InstallationId, (string) $pullRequest->RepositoryOwner);
+        $this->trace('debug', 'PR {repo}#{pr}: owner token {source}', ["source" => ($owner?->source ?? "not available"), "owner" => $owner?->login]);
 
         $prQueryString =
             "pull-requests/?owner=" . $pullRequest->RepositoryOwner .
@@ -711,7 +713,8 @@ class PullRequestsHandler implements IHandler
         $repoPrefix = "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName;
         return array(
             "token" => $token,
-            "userToken" => $gitHubUserToken,
+            "userToken" => $owner?->token,
+            "ownerLogin" => $owner?->login,
             "mergeComment" => "@depfu merge",
             "commentsUrl" => $repoPrefix . ISSUES . $pullRequest->Number . "/comments",
             "pullRequestUrl" => $repoPrefix . PULLS . $pullRequest->Number,
@@ -1324,14 +1327,23 @@ class PullRequestsHandler implements IHandler
                      }
             }"
             );
-            $autoMergeResponse = doRequestGitHub($metadata["userToken"], "graphql", $body, "POST");
-            if ($autoMergeResponse->getStatusCode() < 300) {
+            $autoMergeResponse = doRequestGitHub($metadata["token"], "graphql", $body, "POST");
+            // GraphQL reports a failed mutation (e.g. a missing permission) with HTTP 200 and an `errors` array.
+            $autoMergeBody = json_decode((string) $autoMergeResponse->getBody(), true);
+            $autoMergeErrors = (is_array($autoMergeBody) && empty($autoMergeBody["errors"]) === false);
+            $autoMergeFailed = ($autoMergeResponse->getStatusCode() >= 300 || $autoMergeErrors);
+            if ($autoMergeFailed === false) {
                 markPullRequestAutoMergeEnabled($pullRequest->Sequence);
                 $this->trace('info', 'PR {repo}#{pr}: auto-merge (squash) enabled for submitter {sender}', ["sender" => $pullRequest->Sender]);
             }
 
-            if ($autoMergeResponse->getStatusCode() >= 300) {
-                $this->trace('warning', 'PR {repo}#{pr}: failed to enable auto-merge (HTTP {status})', ["status" => $autoMergeResponse->getStatusCode(), "sender" => $pullRequest->Sender]);
+            $errorMessages = "";
+            if ($autoMergeErrors === true) {
+                $errorMessages = implode("; ", array_column($autoMergeBody["errors"], "message"));
+            }
+
+            if ($autoMergeFailed === true) {
+                $this->trace('warning', 'PR {repo}#{pr}: failed to enable auto-merge (HTTP {status}) {errors}', ["status" => $autoMergeResponse->getStatusCode(), "errors" => $errorMessages, "sender" => $pullRequest->Sender]);
             }
 
             $label = array("labels" => array("☑️ auto-merge"));
