@@ -64,7 +64,7 @@ class PullRequestsHandler implements IHandler
 
     public function __construct(?OwnerTokenResolver $ownerTokenResolver = null)
     {
-        $this->ownerTokenResolver = $ownerTokenResolver ?? new OwnerTokenResolver();
+        $this->ownerTokenResolver = $ownerTokenResolver ?? new OwnerTokenResolver(null, null, null);
     }
 
 

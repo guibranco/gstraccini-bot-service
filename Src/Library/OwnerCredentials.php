@@ -11,16 +11,33 @@ namespace GuiBranco\GStracciniBot\Library;
  */
 final class OwnerCredentials
 {
-    /** The token was read from the user's `GitHub` integration in `user_integrations`. */
+    /**
+     * The token was read from the user's `GitHub` integration in `user_integrations`.
+     */
     public const SOURCE_DATABASE = "database";
 
-    /** The token is the service-wide `$gitHubUserToken` secret, used while no integration is stored. */
+    /**
+     * The token is the service-wide `$gitHubUserToken` secret, used while no integration is stored.
+     */
     public const SOURCE_FALLBACK = "fallback";
 
+
+    /**
+     * Holds the credentials.
+     *
+     * @param string $token  The user's GitHub token.
+     * @param string $login  The login of the user the token belongs to.
+     * @param string $source Where the token came from: SOURCE_DATABASE or SOURCE_FALLBACK.
+     *
+     * @return void
+     */
     public function __construct(
         public readonly string $token,
         public readonly string $login,
         public readonly string $source
     ) {
-    }
-}
+
+    }//end __construct()
+
+
+}//end class
