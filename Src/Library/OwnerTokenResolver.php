@@ -2,6 +2,7 @@
 
 namespace GuiBranco\GStracciniBot\Library;
 
+use Exception;
 use RuntimeException;
 use stdClass;
 
@@ -84,7 +85,19 @@ class OwnerTokenResolver
      */
     public function resolve(int $installationId, string $repositoryOwner): ?OwnerCredentials
     {
-        $stored = $this->fromDatabase($installationId, $repositoryOwner);
+        global $logStream;
+
+        $stored = null;
+        try {
+            $stored = $this->fromDatabase($installationId, $repositoryOwner);
+        } catch (Exception $exception) {
+            // A database failure must not stop the pull request: the fallback is tried instead.
+            $context = [];
+            $context["installationId"] = $installationId;
+            $context["error"] = $exception->getMessage();
+            $logStream?->error("Unable to read the stored GitHub integration for installation #{installationId}: {error}", $context, "owner_token");
+        }
+
         if ($stored !== null) {
             return $stored;
         }
@@ -146,7 +159,7 @@ class OwnerTokenResolver
             return $crypto->decrypt((string) $candidate->encryptedToken);
         } catch (RuntimeException $exception) {
             $context["error"] = $exception->getMessage();
-            $this->recordError((int) $candidate->userId, "Unable to decrypt the stored token");
+            $this->recordError((int) $candidate->userId, (string) $candidate->encryptedToken, "Unable to decrypt the stored token");
             $logStream?->error("GitHub integration of {login} not used for installation #{installationId}: {error}", $context, "owner_token");
         }
 
@@ -270,19 +283,21 @@ class OwnerTokenResolver
 
 
     /**
-     * Marks a user's stored token as unusable, with the reason.
+     * Marks a user's stored token as unusable, with the reason. Only the token
+     * that failed is marked: one replaced in the meantime is left as it is.
      *
-     * @param int    $userId The user whose integration failed.
-     * @param string $error  Why the token can't be used.
+     * @param int    $userId         The user whose integration failed.
+     * @param string $encryptedToken The stored value that failed to decrypt.
+     * @param string $error          Why the token can't be used.
      *
      * @return void
      */
-    protected function recordError(int $userId, string $error): void
+    protected function recordError(int $userId, string $encryptedToken, string $error): void
     {
         $provider = self::PROVIDER;
         $mysqli = connectToDatabase();
-        $stmt = $mysqli->prepare("UPDATE user_integrations SET Status = 'Error', LastError = ? WHERE UserId = ? AND Provider = ?");
-        $stmt->bind_param("sis", $error, $userId, $provider);
+        $stmt = $mysqli->prepare("UPDATE user_integrations SET Status = 'Error', LastError = ? WHERE UserId = ? AND Provider = ? AND EncryptedApiKey = ?");
+        $stmt->bind_param("siss", $error, $userId, $provider, $encryptedToken);
         $stmt->execute();
         $stmt->close();
         $mysqli->close();

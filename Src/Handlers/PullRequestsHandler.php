@@ -1328,13 +1328,22 @@ class PullRequestsHandler implements IHandler
             }"
             );
             $autoMergeResponse = doRequestGitHub($metadata["token"], "graphql", $body, "POST");
-            if ($autoMergeResponse->getStatusCode() < 300) {
+            // GraphQL reports a failed mutation (e.g. a missing permission) with HTTP 200 and an `errors` array.
+            $autoMergeBody = json_decode((string) $autoMergeResponse->getBody(), true);
+            $autoMergeErrors = (is_array($autoMergeBody) && empty($autoMergeBody["errors"]) === false);
+            $autoMergeFailed = ($autoMergeResponse->getStatusCode() >= 300 || $autoMergeErrors);
+            if ($autoMergeFailed === false) {
                 markPullRequestAutoMergeEnabled($pullRequest->Sequence);
                 $this->trace('info', 'PR {repo}#{pr}: auto-merge (squash) enabled for submitter {sender}', ["sender" => $pullRequest->Sender]);
             }
 
-            if ($autoMergeResponse->getStatusCode() >= 300) {
-                $this->trace('warning', 'PR {repo}#{pr}: failed to enable auto-merge (HTTP {status})', ["status" => $autoMergeResponse->getStatusCode(), "sender" => $pullRequest->Sender]);
+            $errorMessages = "";
+            if ($autoMergeErrors === true) {
+                $errorMessages = implode("; ", array_column($autoMergeBody["errors"], "message"));
+            }
+
+            if ($autoMergeFailed === true) {
+                $this->trace('warning', 'PR {repo}#{pr}: failed to enable auto-merge (HTTP {status}) {errors}', ["status" => $autoMergeResponse->getStatusCode(), "errors" => $errorMessages, "sender" => $pullRequest->Sender]);
             }
 
             $label = array("labels" => array("☑️ auto-merge"));

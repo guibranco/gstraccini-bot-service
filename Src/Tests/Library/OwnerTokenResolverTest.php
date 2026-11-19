@@ -3,6 +3,7 @@
 namespace GuiBranco\GStracciniBot\Tests\Library;
 
 use GuiBranco\GStracciniBot\Library\CryptoHelper;
+use GuiBranco\GStracciniBot\Library\DatabaseException;
 use GuiBranco\GStracciniBot\Library\OwnerCredentials;
 use GuiBranco\GStracciniBot\Library\OwnerTokenResolver;
 use PHPUnit\Framework\TestCase;
@@ -46,6 +47,13 @@ class InMemoryOwnerTokenResolver extends OwnerTokenResolver
      */
     public array $errors = [];
 
+    /**
+     * Whether findCandidate() fails as the database would.
+     *
+     * @var boolean
+     */
+    public bool $databaseDown = false;
+
 
     /**
      * Returns the in-memory candidate.
@@ -58,6 +66,10 @@ class InMemoryOwnerTokenResolver extends OwnerTokenResolver
     protected function findCandidate(int $installationId, string $repositoryOwner): ?stdClass
     {
         $this->lookups[] = "{$installationId}:{$repositoryOwner}";
+        if ($this->databaseDown === true) {
+            throw new DatabaseException("Failed to connect to MySQL");
+        }
+
         return $this->candidate;
 
     }//end findCandidate()
@@ -80,14 +92,15 @@ class InMemoryOwnerTokenResolver extends OwnerTokenResolver
     /**
      * Keeps the error instead of writing it to the database.
      *
-     * @param int    $userId The user whose integration failed.
-     * @param string $error  Why the token can't be used.
+     * @param int    $userId         The user whose integration failed.
+     * @param string $encryptedToken The stored value that failed to decrypt.
+     * @param string $error          Why the token can't be used.
      *
      * @return void
      */
-    protected function recordError(int $userId, string $error): void
+    protected function recordError(int $userId, string $encryptedToken, string $error): void
     {
-        $this->errors[$userId] = $error;
+        $this->errors[$userId] = "{$error} ({$encryptedToken})";
 
     }//end recordError()
 
@@ -216,10 +229,28 @@ class OwnerTokenResolverTest extends TestCase
         $owner = $resolver->resolve(123, "octo-org");
 
         $this->assertSame(OwnerCredentials::SOURCE_FALLBACK, $owner?->source);
-        $this->assertArrayHasKey(InMemoryOwnerTokenResolver::USER_ID, $resolver->errors);
+        $this->assertStringContainsString($resolver->candidate->encryptedToken, $resolver->errors[InMemoryOwnerTokenResolver::USER_ID]);
         $this->assertSame([], $resolver->used);
 
     }//end testRecordsUndecryptableToken()
+
+
+    /**
+     * A database failure falls back to the service-wide token instead of failing.
+     *
+     * @return void
+     */
+    public function testFallsBackWhenDatabaseFails(): void
+    {
+        $resolver = $this->createResolver(self::FALLBACK_TOKEN);
+        $resolver->databaseDown = true;
+
+        $owner = $resolver->resolve(123, "octo-org");
+
+        $this->assertSame(OwnerCredentials::SOURCE_FALLBACK, $owner?->source);
+        $this->assertSame(self::FALLBACK_TOKEN, $owner?->token);
+
+    }//end testFallsBackWhenDatabaseFails()
 
 
     /**
