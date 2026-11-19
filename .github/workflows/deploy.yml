@@ -168,8 +168,8 @@ jobs:
           # AES-256-GCM master key of CryptoHelper: installation token cache, owner tokens,
           # integration API keys and TOTP secrets. The API reads the same file through $workerDir.
           if [ -z "$ENCRYPTION_KEY" ]; then
-            echo "::warning::ENCRYPTION_KEY is not set: secrets are not encrypted at rest and the installation token cache skips the database."
-            exit 0
+            echo "::error::ENCRYPTION_KEY is not set: create the repository secret (openssl rand -base64 32)."
+            exit 1
           fi
           # A 32-byte key is exactly 43 base64 characters and one '=' pad; nothing else may reach the PHP literal.
           if ! printf '%s' "$ENCRYPTION_KEY" | grep -Eq '^[A-Za-z0-9+/]{43}=$'; then
