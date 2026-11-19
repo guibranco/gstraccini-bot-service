@@ -40,7 +40,7 @@ jobs:
       - name: 📚 Install PHP Dependencies
         uses: "php-actions/composer@8a65f0d3c6a1d17ca4800491a40b5756a4c164f3" # v6
         with:
-          php_extensions: sockets
+          php_extensions: sockets mbstring
           dev: no
           progress: yes
           working_dir: "./Src/"
@@ -160,6 +160,29 @@ jobs:
 
       - name: 📝 Create Version File
         run: echo "${{ steps.gitversion.outputs.fullSemVer }}" > Src/version.txt
+
+      - name: 🔑 Generate Encryption Configuration
+        env:
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+        run: |
+          # AES-256-GCM master key of CryptoHelper: installation token cache, owner tokens,
+          # integration API keys and TOTP secrets. The API reads the same file through $workerDir.
+          if [ -z "$ENCRYPTION_KEY" ]; then
+            echo "::warning::ENCRYPTION_KEY is not set: secrets are not encrypted at rest and the installation token cache skips the database."
+            exit 0
+          fi
+          # A 32-byte key is exactly 43 base64 characters and one '=' pad; nothing else may reach the PHP literal.
+          if ! printf '%s' "$ENCRYPTION_KEY" | grep -Eq '^[A-Za-z0-9+/]{43}=$'; then
+            echo "::error::ENCRYPTION_KEY must be a base64-encoded 32-byte key (openssl rand -base64 32)."
+            exit 1
+          fi
+          cd Src
+          mkdir -p secrets
+          cd secrets
+          {
+            echo "<?php"
+            printf "\$encryptionKey = '%s';\n" "$ENCRYPTION_KEY"
+          } > encryption.secrets.php
 
       - name: 📦 Create Service Package
         run: |
