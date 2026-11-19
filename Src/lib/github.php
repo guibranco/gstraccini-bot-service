@@ -1,5 +1,6 @@
 <?php
 
+use GuiBranco\GStracciniBot\Library\InstallationTokenCache;
 use GuiBranco\Pancake\Request;
 use GuiBranco\Pancake\Response;
 use Lcobucci\JWT\Encoding\ChainedFormatter;
@@ -172,6 +173,11 @@ function requestGitHub(
             break;
     }
 
+    if ($response->getStatusCode() === 401) {
+        // A cached installation token GitHub revoked early: the next operation mints a new one.
+        InstallationTokenCache::shared()->invalidateToken($token);
+    }
+
     return handleGitHubResponse($response, $method, $accept, $expectedStatusCodes);
 }
 
@@ -331,61 +337,58 @@ function generateAppToken(): string
 }
 
 /**
- * The function generates an installation token for a GitHub repository with optional permissions.
- *
- * @param string installationId The `installationId` parameter in the `generateInstallationToken`
- * function is the unique identifier for the GitHub App installation. This ID is used to specify which
- * installation of the GitHub App you want to generate an access token for.
- * @param string repositoryName The `repositoryName` parameter in the `generateInstallationToken`
- * function is a string that represents the name of the repository for which you want to generate an
- * installation token. This token can be used to authenticate and authorize access to the specified
- * repository on GitHub.
- * @param array permissions The `permissions` parameter in the `generateInstallationToken` function is
- * an optional array that allows you to specify the permissions you want to grant to the installation
- * token. These permissions determine what actions the token can perform on the repository.
- *
- * @return string The function `generateInstallationToken` returns a string, which is the access token
- * generated for the specified installation ID and repository name with optional permissions.
- */
-function generateInstallationToken(string $installationId, string $repositoryName, array $permissions = null): string
-{
-    $gitHubAppToken = generateAppToken();
-
-    $data = new \stdClass();
-    $data->repository = $repositoryName;
-    if (!is_null($permissions) && !empty($permissions)) {
-        $data->permissions = $permissions;
-    }
-
-    $response = doRequestGitHub($gitHubAppToken, installationAccessTokensUrl($installationId), $data, "POST");
-    return decodeGitHubResponse($response, "token");
-}
-
-/**
- * Generates an installation access token scoped to every repository the
- * installation can access (no `repository`/`repositories` restriction),
- * unlike `generateInstallationToken()` which scopes the token to a single
- * repository. Used when an operation needs to walk all repositories of an
- * installation (e.g. `GET /installation/repositories`) without minting a
- * new token per repository.
+ * Returns an installation access token covering every repository the
+ * installation can access. One token per installation (and permission set)
+ * is shared by all its repositories and reused until it expires, through
+ * InstallationTokenCache (process memory, APCu, then the database), so
+ * GitHub is asked for a new one at most about once an hour.
  *
  * @param string $installationId The GitHub App installation ID.
  * @param array|null $permissions Optional permissions to request for the token.
  *
- * @return string The generated installation access token.
+ * @return string The installation access token.
  */
 function generateInstallationAccessToken(string $installationId, array $permissions = null): string
 {
-    $gitHubAppToken = generateAppToken();
+    $key = InstallationTokenCache::buildKey($installationId, $permissions);
 
-    $data = null;
-    if (!is_null($permissions) && !empty($permissions)) {
-        $data = new \stdClass();
-        $data->permissions = $permissions;
+    return InstallationTokenCache::shared()->getOrMint(
+        $key,
+        (int) $installationId,
+        function () use ($installationId, $permissions): array {
+            $data = null;
+            if (!is_null($permissions) && !empty($permissions)) {
+                $data = new \stdClass();
+                $data->permissions = $permissions;
+            }
+
+            return mintInstallationToken($installationId, $data);
+        }
+    );
+}
+
+/**
+ * Mints an installation access token (`POST /app/installations/{id}/access_tokens`).
+ * Called by InstallationTokenCache only when no cached token is still valid.
+ *
+ * @param string         $installationId The GitHub App installation ID.
+ * @param \stdClass|null $data           The request body (repository scope, permissions), or null.
+ *
+ * @return array{token: string, expiresAt: int} The token and the Unix time it expires at.
+ *
+ * @throws RuntimeException When GitHub doesn't answer with a token and its expiry.
+ */
+function mintInstallationToken(string $installationId, ?\stdClass $data): array
+{
+    $response = doRequestGitHub(generateAppToken(), installationAccessTokensUrl($installationId), $data, "POST");
+
+    $token = decodeGitHubResponse($response, "token");
+    $expiresAt = strtotime((string) decodeGitHubResponse($response, "expires_at"));
+    if ($expiresAt === false) {
+        throw new RuntimeException("Unexpected GitHub API response: invalid 'expires_at' for installation #{$installationId}.");
     }
 
-    $response = doRequestGitHub($gitHubAppToken, installationAccessTokensUrl($installationId), $data, "POST");
-    return decodeGitHubResponse($response, "token");
+    return ["token" => (string) $token, "expiresAt" => $expiresAt];
 }
 
 /**
@@ -396,7 +399,7 @@ function generateInstallationAccessToken(string $installationId, array $permissi
  * installation any more (the repository was removed from it or deleted).
  * The sync workers turn both into "this is gone" instead of an error.
  *
- * Scoping by repository id (not name, as `generateInstallationToken()` does)
+ * Scoping by repository id (not name)
  * keeps the request valid after the repository was renamed or transferred.
  *
  * @param string $installationId The GitHub App installation ID.

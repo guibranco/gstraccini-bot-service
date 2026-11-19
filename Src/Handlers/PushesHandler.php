@@ -23,7 +23,7 @@ class PushesHandler implements IHandler
         );
 
         $config = loadConfig();
-        $token = generateInstallationToken($push->InstallationId, $push->RepositoryName);
+        $token = generateInstallationAccessToken((string) $push->InstallationId);
 
         $commitQueryString =
             "commits/?owner=" . $push->RepositoryOwner .

@@ -210,7 +210,7 @@ class CommentsHandler implements IHandler
     {
         $repoPrefix = "repos/{$comment->RepositoryOwner}/{$comment->RepositoryName}";
         $reactionUrl = "{$repoPrefix}/issues/comments/{$comment->CommentId}/reactions";
-        $token = generateInstallationToken($comment->InstallationId, $comment->RepositoryName);
+        $token = generateInstallationAccessToken((string) $comment->InstallationId);
     
         doRequestGitHub($token, $reactionUrl, ["content" => $reaction], "POST");
     }
@@ -271,7 +271,7 @@ class CommentsHandler implements IHandler
             'repo' => $comment->RepositoryName,
             'pullRequest' => $comment->PullRequestNumber
         ]);
-        $token = generateInstallationToken($comment->InstallationId, $comment->RepositoryName);
+        $token = generateInstallationAccessToken((string) $comment->InstallationId);
     
         $prefix = "I'm sorry @" . $comment->CommentSender;
         $suffix = ", I can't do that.";
@@ -1509,7 +1509,7 @@ class CommentsHandler implements IHandler
         $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
         $pullRequest = json_decode($pullRequestResponse->getBody());
     
-        $tokenBot = generateInstallationToken($config->botRepositoryInstallationId, $config->botRepository);
+        $tokenBot = generateInstallationAccessToken((string) $config->botRepositoryInstallationId);
         $url = "repos/" . $config->botWorkflowsRepository . "/actions/workflows/" . $workflow . "/dispatches";
     
         $checkRunId = setCheckRunQueued($metadata, $pullRequest->head->sha, $workflow);
