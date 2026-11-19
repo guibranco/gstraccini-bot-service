@@ -144,6 +144,28 @@ jobs:
           echo "\$mySqlPassword = \"${{ secrets.MYSQL_PASSWORD }}\";" >> mySql.secrets.php
           echo "\$mySqlDatabase = \"${{ secrets.MYSQL_DATABASE }}\";" >> mySql.secrets.php
 
+      - name: 🔑 Generate Encryption Configuration
+        env:
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+        run: |
+          # AES-256-GCM master key of CryptoHelper: installation token cache, owner tokens,
+          # integration API keys and TOTP secrets. The API reads the same file through $workerDir.
+          if [ -z "$ENCRYPTION_KEY" ]; then
+            echo "::warning::ENCRYPTION_KEY is not set: secrets are not encrypted at rest and the installation token cache skips the database."
+            exit 0
+          fi
+          if [ "$(printf '%s' "$ENCRYPTION_KEY" | base64 -d 2>/dev/null | wc -c)" -ne 32 ]; then
+            echo "::error::ENCRYPTION_KEY must be a base64-encoded 32-byte key (openssl rand -base64 32)."
+            exit 1
+          fi
+          cd Src
+          mkdir -p secrets
+          cd secrets
+          {
+            echo "<?php"
+            printf "\$encryptionKey = '%s';\n" "$ENCRYPTION_KEY"
+          } > encryption.secrets.php
+
       - name: 🔑 Generate RabbitMQ Configuration
         run: |
           SECRETS_CONTEXT='${{ toJson(secrets) }}'
