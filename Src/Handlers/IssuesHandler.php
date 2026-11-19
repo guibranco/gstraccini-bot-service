@@ -22,7 +22,7 @@ class IssuesHandler implements IHandler
             $issue->DeliveryIdText
         );
 
-        $token = generateInstallationToken($issue->InstallationId, $issue->RepositoryName);
+        $token = generateInstallationAccessToken((string) $issue->InstallationId);
 
         $repoPrefix = "repos/" . $issue->RepositoryOwner . "/" . $issue->RepositoryName;
         $metadata = array(

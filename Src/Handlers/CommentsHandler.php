@@ -11,6 +11,7 @@ use GuiBranco\GStracciniBot\Library\LabelHelper;
 use GuiBranco\GStracciniBot\Library\LabelService;
 use GuiBranco\GStracciniBot\Library\LogContext;
 use GuiBranco\GStracciniBot\Library\PullRequestHeadWatcher;
+use GuiBranco\GStracciniBot\Library\RepositoryAccessChecker;
 use GuiBranco\GStracciniBot\Library\RepositoryManager;
 use GuiBranco\GStracciniBot\Library\VersionBumpCommentBuilder;
 use GuiBranco\GStracciniBot\Library\VersionBumpCommitService;
@@ -210,7 +211,7 @@ class CommentsHandler implements IHandler
     {
         $repoPrefix = "repos/{$comment->RepositoryOwner}/{$comment->RepositoryName}";
         $reactionUrl = "{$repoPrefix}/issues/comments/{$comment->CommentId}/reactions";
-        $token = generateInstallationToken($comment->InstallationId, $comment->RepositoryName);
+        $token = generateInstallationAccessToken((string) $comment->InstallationId);
     
         doRequestGitHub($token, $reactionUrl, ["content" => $reaction], "POST");
     }
@@ -226,6 +227,22 @@ class CommentsHandler implements IHandler
     private function postComment(array $metadata, string $body): void
     {
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], ["body" => $body], "POST");
+    }
+
+    /**
+     * Refuses a command that targets another repository the sender can't access.
+     *
+     * @param array  $metadata   Metadata array including 'token', 'reactionUrl' and 'commentUrl'.
+     * @param object $comment    The comment that triggered the command.
+     * @param string $repository The other repository, as `owner/name`.
+     *
+     * @return void
+     */
+    private function denyOtherRepository(array $metadata, $comment, string $repository): void
+    {
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], ["content" => "-1"], "POST");
+        $body = "I'm sorry @{$comment->CommentSender}, I can't do that. You don't have access to `{$repository}`. :pleading_face:";
+        $this->postComment($metadata, $body);
     }
     
     /**
@@ -271,7 +288,7 @@ class CommentsHandler implements IHandler
             'repo' => $comment->RepositoryName,
             'pullRequest' => $comment->PullRequestNumber
         ]);
-        $token = generateInstallationToken($comment->InstallationId, $comment->RepositoryName);
+        $token = generateInstallationAccessToken((string) $comment->InstallationId);
     
         $prefix = "I'm sorry @" . $comment->CommentSender;
         $suffix = ", I can't do that.";
@@ -585,6 +602,14 @@ class CommentsHandler implements IHandler
     
         $owner = $matches[1];
         $repository = $matches[2];
+
+        // The installation token can read every repository of the installation: the sender must be able to as well.
+        $accessChecker = new RepositoryAccessChecker($metadata["token"]);
+        if ($accessChecker->canReadLabels("{$owner}/{$repository}", $comment->CommentSender) === false) {
+            $this->denyOtherRepository($metadata, $comment, "{$owner}/{$repository}");
+            return;
+        }
+
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"), "POST");
         $body = array("body" => "Copying labels from [{$owner}/{$repository}](https://github.com/{$owner}/{$repository})! :label:");
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], $body, "POST");
@@ -680,12 +705,20 @@ class CommentsHandler implements IHandler
             return;
         }
     
+        $targetRepository = $matches[1] . "/" . $matches[2];
+
+        // The installation token can write to every repository of the installation: the sender must be able to as well.
+        $accessChecker = new RepositoryAccessChecker($metadata["token"]);
+        if ($accessChecker->isCollaborator($targetRepository, $comment->CommentSender) === false) {
+            $this->denyOtherRepository($metadata, $comment, $targetRepository);
+            return;
+        }
+
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "+1"), "POST");
     
         $issueUpdatedResponse = doRequestGitHub($metadata["token"], $metadata["issueUrl"], null, "GET");
         $issueUpdated = json_decode($issueUpdatedResponse->getBody());
-    
-        $targetRepository = $matches[1] . "/" . $matches[2];
+
         $newIssueUrl = "repos/" . $targetRepository . "/issues";
         $newIssue = array("title" => $issueUpdated->title, "body" => $issueUpdated->body, "labels" => $issueUpdated->labels);
     
@@ -1509,7 +1542,7 @@ class CommentsHandler implements IHandler
         $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
         $pullRequest = json_decode($pullRequestResponse->getBody());
     
-        $tokenBot = generateInstallationToken($config->botRepositoryInstallationId, $config->botRepository);
+        $tokenBot = generateInstallationAccessToken((string) $config->botRepositoryInstallationId);
         $url = "repos/" . $config->botWorkflowsRepository . "/actions/workflows/" . $workflow . "/dispatches";
     
         $checkRunId = setCheckRunQueued($metadata, $pullRequest->head->sha, $workflow);

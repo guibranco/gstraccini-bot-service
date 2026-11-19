@@ -22,7 +22,7 @@ class BranchesHandler implements IHandler
             $branch->DeliveryIdText
         );
 
-        $token = generateInstallationToken($branch->InstallationId, $branch->RepositoryName);
+        $token = generateInstallationAccessToken((string) $branch->InstallationId);
 
         $metadata = array(
             "token" => $token,

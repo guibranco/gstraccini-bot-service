@@ -119,7 +119,7 @@ class PullRequestsHandler implements IHandler
 
         $config = loadConfig();
         $this->trace('debug', 'PR {repo}#{pr}: generating installation token', ["installation_id" => $pullRequest->InstallationId, "retry" => $isRetry]);
-        $token = generateInstallationToken($pullRequest->InstallationId, $pullRequest->RepositoryName);
+        $token = generateInstallationAccessToken((string) $pullRequest->InstallationId);
         $metadata = $this->createMetadata($token, $pullRequest, $config);
         $this->trace('debug', 'PR {repo}#{pr}: fetching pull request from GitHub', []);
         $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
