@@ -379,8 +379,9 @@ function installationTokenCache(): InstallationTokenCache
  * Returns an installation access token covering every repository the
  * installation can access. One token per installation (and permission set)
  * is shared by all its repositories and reused until it expires, through
- * installationTokenCache(), so GitHub is asked for a new one at most about
- * once an hour.
+ * installationTokenCache(). With a warm shared cache GitHub is asked for a new
+ * one about once an hour; a process without a shared store mints on its first
+ * use, and concurrent cache misses can each mint one.
  *
  * @param string     $installationId The GitHub App installation ID.
  * @param array|null $permissions    Optional permissions to request for the token.
