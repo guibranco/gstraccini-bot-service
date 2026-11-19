@@ -1,6 +1,11 @@
 <?php
 
+use GuiBranco\GStracciniBot\Library\ApcuTokenStore;
+use GuiBranco\GStracciniBot\Library\CryptoHelper;
+use GuiBranco\GStracciniBot\Library\DatabaseTokenStore;
+use GuiBranco\GStracciniBot\Library\InstallationToken;
 use GuiBranco\GStracciniBot\Library\InstallationTokenCache;
+use GuiBranco\GStracciniBot\Library\InstallationTokenException;
 use GuiBranco\Pancake\Request;
 use GuiBranco\Pancake\Response;
 use Lcobucci\JWT\Encoding\ChainedFormatter;
@@ -175,7 +180,7 @@ function requestGitHub(
 
     if ($response->getStatusCode() === 401) {
         // A cached installation token GitHub revoked early: the next operation mints a new one.
-        InstallationTokenCache::shared()->invalidateToken($token);
+        installationTokenCache()->invalidateToken($token);
     }
 
     return handleGitHubResponse($response, $method, $accept, $expectedStatusCodes);
@@ -337,25 +342,58 @@ function generateAppToken(): string
 }
 
 /**
+ * The process-wide installation token cache: process memory, then APCu when the
+ * extension is enabled, then the database when an encryption key is configured
+ * (tokens are never stored there in plain text).
+ *
+ * @return InstallationTokenCache The cache.
+ */
+function installationTokenCache(): InstallationTokenCache
+{
+    global $logStream;
+
+    static $cache = null;
+    if ($cache !== null) {
+        return $cache;
+    }
+
+    $stores = [];
+    $apcu = new ApcuTokenStore();
+    if ($apcu->isAvailable() === true) {
+        $stores[] = $apcu;
+    }
+
+    try {
+        $stores[] = new DatabaseTokenStore(new CryptoHelper());
+    } catch (RuntimeException $exception) {
+        $context = [];
+        $context["error"] = $exception->getMessage();
+        $logStream?->warning("Installation tokens are not stored in the database: {error}", $context, "installation_token");
+    }
+
+    $cache = new InstallationTokenCache($stores, "time");
+    return $cache;
+}
+
+/**
  * Returns an installation access token covering every repository the
  * installation can access. One token per installation (and permission set)
  * is shared by all its repositories and reused until it expires, through
- * InstallationTokenCache (process memory, APCu, then the database), so
- * GitHub is asked for a new one at most about once an hour.
+ * installationTokenCache(), so GitHub is asked for a new one at most about
+ * once an hour.
  *
- * @param string $installationId The GitHub App installation ID.
- * @param array|null $permissions Optional permissions to request for the token.
+ * @param string     $installationId The GitHub App installation ID.
+ * @param array|null $permissions    Optional permissions to request for the token.
  *
  * @return string The installation access token.
  */
 function generateInstallationAccessToken(string $installationId, array $permissions = null): string
 {
-    $key = InstallationTokenCache::buildKey($installationId, $permissions);
+    $cache = installationTokenCache();
 
-    return InstallationTokenCache::shared()->getOrMint(
-        $key,
-        (int) $installationId,
-        function () use ($installationId, $permissions): array {
+    return $cache->getOrMint(
+        $cache->buildKey($installationId, $permissions),
+        function () use ($installationId, $permissions): InstallationToken {
             $data = null;
             if (!is_null($permissions) && !empty($permissions)) {
                 $data = new \stdClass();
@@ -369,26 +407,26 @@ function generateInstallationAccessToken(string $installationId, array $permissi
 
 /**
  * Mints an installation access token (`POST /app/installations/{id}/access_tokens`).
- * Called by InstallationTokenCache only when no cached token is still valid.
+ * Called by the installation token cache only when no cached token is still usable.
  *
  * @param string         $installationId The GitHub App installation ID.
- * @param \stdClass|null $data           The request body (repository scope, permissions), or null.
+ * @param \stdClass|null $data           The request body (permissions), or null.
  *
- * @return array{token: string, expiresAt: int} The token and the Unix time it expires at.
+ * @return InstallationToken The token and the time it expires at.
  *
- * @throws RuntimeException When GitHub doesn't answer with a token and its expiry.
+ * @throws InstallationTokenException When GitHub doesn't answer with an expiry.
  */
-function mintInstallationToken(string $installationId, ?\stdClass $data): array
+function mintInstallationToken(string $installationId, ?\stdClass $data): InstallationToken
 {
     $response = doRequestGitHub(generateAppToken(), installationAccessTokensUrl($installationId), $data, "POST");
 
     $token = decodeGitHubResponse($response, "token");
     $expiresAt = strtotime((string) decodeGitHubResponse($response, "expires_at"));
     if ($expiresAt === false) {
-        throw new RuntimeException("Unexpected GitHub API response: invalid 'expires_at' for installation #{$installationId}.");
+        throw new InstallationTokenException("Unexpected GitHub API response: invalid 'expires_at' for installation #{$installationId}.");
     }
 
-    return ["token" => (string) $token, "expiresAt" => $expiresAt];
+    return new InstallationToken((string) $token, (int) $installationId, $expiresAt);
 }
 
 /**

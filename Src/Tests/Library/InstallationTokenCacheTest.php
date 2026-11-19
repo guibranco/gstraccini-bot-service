@@ -3,300 +3,294 @@
 namespace GuiBranco\GStracciniBot\Tests\Library;
 
 use GuiBranco\GStracciniBot\Library\CryptoHelper;
-use GuiBranco\GStracciniBot\Library\DatabaseException;
+use GuiBranco\GStracciniBot\Library\InstallationToken;
 use GuiBranco\GStracciniBot\Library\InstallationTokenCache;
+use GuiBranco\GStracciniBot\Library\InstallationTokenException;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
-use stdClass;
-
-/**
- * Cache whose database layer is an in-memory table.
- */
-class InMemoryInstallationTokenCache extends InstallationTokenCache
-{
-    /**
-     * The stored rows, keyed by cache key.
-     *
-     * @var array<string, array{installationId: int, encryptedToken: string, expiresAt: int}>
-     */
-    public array $rows = [];
-
-    /**
-     * Whether the database calls fail as an unreachable database would.
-     *
-     * @var boolean
-     */
-    public bool $databaseDown = false;
-
-
-    /**
-     * Reads the in-memory row.
-     *
-     * @param string $key The cache key.
-     *
-     * @return stdClass|null The row.
-     */
-    protected function readStored(string $key): ?stdClass
-    {
-        $this->failIfDown();
-        if (isset($this->rows[$key]) === false) {
-            return null;
-        }
-
-        $row = new stdClass();
-        $row->encryptedToken = $this->rows[$key]["encryptedToken"];
-        $row->expiresAt = $this->rows[$key]["expiresAt"];
-        return $row;
-
-    }//end readStored()
-
-
-    /**
-     * Writes the in-memory row.
-     *
-     * @param string $key            The cache key.
-     * @param int    $installationId The installation.
-     * @param string $encryptedToken The encrypted token.
-     * @param int    $expiresAt      The expiry.
-     *
-     * @return void
-     */
-    protected function writeStored(string $key, int $installationId, string $encryptedToken, int $expiresAt): void
-    {
-        $this->failIfDown();
-        $this->rows[$key] = ["installationId" => $installationId, "encryptedToken" => $encryptedToken, "expiresAt" => $expiresAt];
-
-    }//end writeStored()
-
-
-    /**
-     * Deletes the in-memory row.
-     *
-     * @param string $key The cache key.
-     *
-     * @return void
-     */
-    protected function deleteStored(string $key): void
-    {
-        $this->failIfDown();
-        unset($this->rows[$key]);
-
-    }//end deleteStored()
-
-
-    /**
-     * Throws when the database is down.
-     *
-     * @return void
-     */
-    private function failIfDown(): void
-    {
-        if ($this->databaseDown === true) {
-            throw new DatabaseException("Failed to connect to MySQL");
-        }
-
-    }//end failIfDown()
-
-
-}//end class
 
 class InstallationTokenCacheTest extends TestCase
 {
-    private const NOW = 1_800_000_000;
+    /**
+     * The Unix time the tests start at.
+     */
+    private const START = 1800000000;
 
-    private const ONE_HOUR = 3600;
+    /**
+     * How long a minted token lives, as GitHub's do.
+     */
+    private const LIFETIME = 3600;
 
+    /**
+     * Encrypts the stored tokens.
+     *
+     * @var CryptoHelper
+     */
     private CryptoHelper $crypto;
 
+    /**
+     * The database store shared by the caches of a test.
+     *
+     * @var InMemoryTokenStore
+     */
+    private InMemoryTokenStore $store;
+
+    /**
+     * The current Unix time.
+     *
+     * @var integer
+     */
     private int $now;
 
+    /**
+     * How many tokens were minted.
+     *
+     * @var integer
+     */
     private int $mints;
 
 
+    /**
+     * Starts each test with an empty store and no token minted.
+     *
+     * @return void
+     */
     protected function setUp(): void
     {
         $this->crypto = new CryptoHelper(base64_encode(random_bytes(32)));
-        $this->now = self::NOW;
+        $this->store = new InMemoryTokenStore($this->crypto);
+        $this->now = self::START;
         $this->mints = 0;
 
     }//end setUp()
 
 
-    private function buildCache(?CryptoHelper $crypto = null, bool $withCrypto = true): InMemoryInstallationTokenCache
+    /**
+     * The clock of the caches.
+     *
+     * @return int The current Unix time of the test.
+     */
+    public function getNow(): int
     {
-        $crypto = $withCrypto === true ? ($crypto ?? $this->crypto) : null;
-        return new InMemoryInstallationTokenCache($crypto, false, fn (): int => $this->now);
+        return $this->now;
 
-    }//end buildCache()
+    }//end getNow()
 
 
-    private function mint(int $lifetime = self::ONE_HOUR): callable
+    /**
+     * Mints a new token, as GitHub would.
+     *
+     * @return InstallationToken The token, numbered by mint.
+     */
+    public function getMintedToken(): InstallationToken
     {
-        return function () use ($lifetime): array {
-            $this->mints++;
-            return ["token" => "ghs_token_" . $this->mints, "expiresAt" => $this->now + $lifetime];
-        };
+        $this->mints++;
+        $expiresAt = ($this->now + self::LIFETIME);
+        return new InstallationToken("ghs_token_{$this->mints}", 7, $expiresAt);
 
-    }//end mint()
+    }//end getMintedToken()
 
 
-    public function testKeyDependsOnInstallationAndPermissions(): void
+    /**
+     * A cache over the test's database store, as a new process would build it.
+     *
+     * @return InstallationTokenCache The cache.
+     */
+    public function getCache(): InstallationTokenCache
     {
-        $key = InstallationTokenCache::buildKey("1", ["issues" => "write", "contents" => "read"]);
+        return new InstallationTokenCache([$this->store], [$this, "getNow"]);
+
+    }//end getCache()
+
+
+    /**
+     * The key depends on the installation and the permissions, not their order.
+     *
+     * @return void
+     */
+    public function testKeyDependsOnPermissions(): void
+    {
+        $cache = $this->getCache();
+        $key = $cache->buildKey("1", ["issues" => "write", "contents" => "read"]);
 
         $this->assertSame(64, strlen($key));
-        $this->assertSame($key, InstallationTokenCache::buildKey("1", ["contents" => "read", "issues" => "write"]), "Permission order doesn't matter");
-        $this->assertNotSame($key, InstallationTokenCache::buildKey("2", ["issues" => "write", "contents" => "read"]));
-        $this->assertNotSame($key, InstallationTokenCache::buildKey("1", ["issues" => "read", "contents" => "read"]));
-        $this->assertNotSame($key, InstallationTokenCache::buildKey("1", null));
-        $this->assertSame(InstallationTokenCache::buildKey("1", null), InstallationTokenCache::buildKey("1", []));
+        $this->assertSame($key, $cache->buildKey("1", ["contents" => "read", "issues" => "write"]));
+        $this->assertNotSame($key, $cache->buildKey("2", ["issues" => "write", "contents" => "read"]));
+        $this->assertNotSame($key, $cache->buildKey("1", ["issues" => "read", "contents" => "read"]));
+        $this->assertNotSame($key, $cache->buildKey("1", null));
+        $this->assertSame($cache->buildKey("1", null), $cache->buildKey("1", []));
 
-    }//end testKeyDependsOnInstallationAndPermissions()
+    }//end testKeyDependsOnPermissions()
 
 
-    public function testReusesTheTokenUntilTheSafetyMargin(): void
+    /**
+     * A token is reused until its safety margin, then a new one is minted.
+     *
+     * @return void
+     */
+    public function testReusesTokenUntilSafetyMargin(): void
     {
-        $cache = $this->buildCache();
+        $cache = $this->getCache();
 
-        $this->assertSame("ghs_token_1", $cache->getOrMint("k", 1, $this->mint()));
-        $this->now += (self::ONE_HOUR - InstallationTokenCache::SAFETY_MARGIN_SECONDS - 1);
-        $this->assertSame("ghs_token_1", $cache->getOrMint("k", 1, $this->mint()));
+        $this->assertSame("ghs_token_1", $cache->getOrMint("key", [$this, "getMintedToken"]));
+        $this->now += (self::LIFETIME - InstallationToken::SAFETY_MARGIN_SECONDS - 1);
+        $this->assertSame("ghs_token_1", $cache->getOrMint("key", [$this, "getMintedToken"]));
         $this->assertSame(1, $this->mints);
 
         $this->now += 1;
-        $this->assertSame("ghs_token_2", $cache->getOrMint("k", 1, $this->mint()), "Within the safety margin a new token is minted");
+        $this->assertSame("ghs_token_2", $cache->getOrMint("key", [$this, "getMintedToken"]));
         $this->assertSame(2, $this->mints);
 
-    }//end testReusesTheTokenUntilTheSafetyMargin()
+    }//end testReusesTokenUntilSafetyMargin()
 
 
-    public function testAnotherProcessReusesTheStoredToken(): void
+    /**
+     * A new process (a new request on cPanel) reuses the token stored by another.
+     *
+     * @return void
+     */
+    public function testAnotherProcessReusesToken(): void
     {
-        $first = $this->buildCache();
-        $first->getOrMint("k", 7, $this->mint());
+        $this->getCache()->getOrMint("key", [$this, "getMintedToken"]);
 
-        // A new request on cPanel: empty process memory, same database.
-        $second = $this->buildCache();
-        $second->rows = $first->rows;
-
-        $this->assertSame("ghs_token_1", $second->getOrMint("k", 7, $this->mint()));
+        $this->assertSame("ghs_token_1", $this->getCache()->getOrMint("key", [$this, "getMintedToken"]));
         $this->assertSame(1, $this->mints);
+        $this->assertSame(7, $this->store->rows["key"]->installationId);
 
-    }//end testAnotherProcessReusesTheStoredToken()
-
-
-    public function testStoresTheTokenEncrypted(): void
-    {
-        $cache = $this->buildCache();
-        $cache->getOrMint("k", 7, $this->mint());
-
-        $row = $cache->rows["k"];
-        $this->assertSame(7, $row["installationId"]);
-        $this->assertSame(self::NOW + self::ONE_HOUR, $row["expiresAt"]);
-        $this->assertStringNotContainsString("ghs_token_1", $row["encryptedToken"]);
-        $this->assertSame("ghs_token_1", $this->crypto->decrypt($row["encryptedToken"]));
-
-    }//end testStoresTheTokenEncrypted()
+    }//end testAnotherProcessReusesToken()
 
 
+    /**
+     * A stored token within its safety margin is replaced by a new one.
+     *
+     * @return void
+     */
     public function testExpiredStoredTokenIsReplaced(): void
     {
-        $cache = $this->buildCache();
-        $cache->rows["k"] = ["installationId" => 1, "encryptedToken" => $this->crypto->encrypt("old"), "expiresAt" => self::NOW + 60];
+        $this->store->write("key", new InstallationToken("ghs_old", 7, (self::START + 60)), self::START);
 
-        $this->assertSame("ghs_token_1", $cache->getOrMint("k", 1, $this->mint()));
-        $this->assertSame("ghs_token_1", $this->crypto->decrypt($cache->rows["k"]["encryptedToken"]));
+        $this->assertSame("ghs_token_1", $this->getCache()->getOrMint("key", [$this, "getMintedToken"]));
+        $this->assertSame("ghs_token_1", $this->store->read("key")->token);
 
     }//end testExpiredStoredTokenIsReplaced()
 
 
-    public function testUndecryptableStoredTokenIsReplaced(): void
+    /**
+     * A stored token that can't be decrypted (rotated key) is replaced by a new one.
+     *
+     * @return void
+     */
+    public function testUndecryptableTokenIsReplaced(): void
     {
-        $cache = $this->buildCache();
-        $otherKey = new CryptoHelper(base64_encode(random_bytes(32)));
-        $cache->rows["k"] = ["installationId" => 1, "encryptedToken" => $otherKey->encrypt("rotated"), "expiresAt" => self::NOW + self::ONE_HOUR];
+        $other = new InMemoryTokenStore(new CryptoHelper(base64_encode(random_bytes(32))));
+        $other->write("key", new InstallationToken("ghs_rotated", 7, (self::START + self::LIFETIME)), self::START);
+        $this->store->rows = $other->rows;
 
-        $this->assertSame("ghs_token_1", $cache->getOrMint("k", 1, $this->mint()));
+        $this->assertSame("ghs_token_1", $this->getCache()->getOrMint("key", [$this, "getMintedToken"]));
+        $this->assertSame("ghs_token_1", $this->store->read("key")->token);
 
-    }//end testUndecryptableStoredTokenIsReplaced()
+    }//end testUndecryptableTokenIsReplaced()
 
 
-    public function testDatabaseDownStillMintsAndCachesInMemory(): void
+    /**
+     * With the database down a token is still minted, and reused by the process.
+     *
+     * @return void
+     */
+    public function testDatabaseDownStillCaches(): void
     {
-        $cache = $this->buildCache();
-        $cache->databaseDown = true;
+        $this->store->databaseDown = true;
+        $cache = $this->getCache();
 
-        $this->assertSame("ghs_token_1", $cache->getOrMint("k", 1, $this->mint()));
-        $this->assertSame("ghs_token_1", $cache->getOrMint("k", 1, $this->mint()));
+        $this->assertSame("ghs_token_1", $cache->getOrMint("key", [$this, "getMintedToken"]));
+        $this->assertSame("ghs_token_1", $cache->getOrMint("key", [$this, "getMintedToken"]));
         $this->assertSame(1, $this->mints);
 
-    }//end testDatabaseDownStillMintsAndCachesInMemory()
+    }//end testDatabaseDownStillCaches()
 
 
-    public function testWithoutEncryptionTheDatabaseIsNotUsed(): void
+    /**
+     * Without any store (no encryption key, no APCu) the process still caches.
+     *
+     * @return void
+     */
+    public function testProcessCachesWithoutStores(): void
     {
-        $cache = $this->buildCache(null, false);
+        $cache = new InstallationTokenCache([], [$this, "getNow"]);
 
-        $this->assertSame("ghs_token_1", $cache->getOrMint("k", 1, $this->mint()));
-        $this->assertSame([], $cache->rows, "Tokens are never stored in plain text");
-        $this->assertSame("ghs_token_1", $cache->getOrMint("k", 1, $this->mint()), "The process layer still works");
+        $this->assertSame("ghs_token_1", $cache->getOrMint("key", [$this, "getMintedToken"]));
+        $this->assertSame("ghs_token_1", $cache->getOrMint("key", [$this, "getMintedToken"]));
+        $this->assertSame(1, $this->mints);
 
-    }//end testWithoutEncryptionTheDatabaseIsNotUsed()
+    }//end testProcessCachesWithoutStores()
 
 
-    public function testInvalidatedTokenIsEvictedFromEveryLayer(): void
+    /**
+     * A token GitHub rejected is evicted everywhere; other tokens are ignored.
+     *
+     * @return void
+     */
+    public function testRejectedTokenIsEvicted(): void
     {
-        $cache = $this->buildCache();
-        $cache->getOrMint("k", 1, $this->mint());
-
-        $cache->invalidateToken("ghs_token_1");
-
-        $this->assertArrayNotHasKey("k", $cache->rows);
-        $this->assertSame("ghs_token_2", $cache->getOrMint("k", 1, $this->mint()));
-
-    }//end testInvalidatedTokenIsEvictedFromEveryLayer()
-
-
-    public function testUnknownTokenInvalidationIsIgnored(): void
-    {
-        $cache = $this->buildCache();
-        $cache->getOrMint("k", 1, $this->mint());
+        $cache = $this->getCache();
+        $cache->getOrMint("key", [$this, "getMintedToken"]);
 
         $cache->invalidateToken("a-jwt-or-a-user-token");
+        $this->assertArrayHasKey("key", $this->store->rows);
 
-        $this->assertSame("ghs_token_1", $cache->getOrMint("k", 1, $this->mint()));
-        $this->assertSame(1, $this->mints);
+        $cache->invalidateToken("ghs_token_1");
+        $this->assertArrayNotHasKey("key", $this->store->rows);
+        $this->assertSame("ghs_token_2", $cache->getOrMint("key", [$this, "getMintedToken"]));
 
-    }//end testUnknownTokenInvalidationIsIgnored()
+    }//end testRejectedTokenIsEvicted()
 
 
+    /**
+     * A failed mint propagates and caches nothing.
+     *
+     * @return void
+     */
     public function testMintFailureIsNotCached(): void
     {
-        $cache = $this->buildCache();
-
+        $cache = $this->getCache();
+        $failure = null;
         try {
-            $cache->getOrMint("k", 1, function (): array {
-                throw new RuntimeException("GitHub is down");
-            });
-            $this->fail("The mint failure must propagate");
-        } catch (RuntimeException $exception) {
-            $this->assertSame("GitHub is down", $exception->getMessage());
+            $cache->getOrMint("key", [$this, "getFailedMint"]);
+        } catch (InstallationTokenException $exception) {
+            $failure = $exception->getMessage();
         }
 
-        $this->assertSame([], $cache->rows);
-        $this->assertSame("ghs_token_1", $cache->getOrMint("k", 1, $this->mint()));
+        $this->assertSame("GitHub is down", $failure);
+        $this->assertSame([], $this->store->rows);
+        $this->assertSame("ghs_token_1", $cache->getOrMint("key", [$this, "getMintedToken"]));
 
     }//end testMintFailureIsNotCached()
 
 
+    /**
+     * A mint that returns something other than a token is rejected.
+     *
+     * @return void
+     */
     public function testMalformedMintIsRejected(): void
     {
-        $cache = $this->buildCache();
-
-        $this->expectException(RuntimeException::class);
-        $cache->getOrMint("k", 1, fn (): array => ["token" => "", "expiresAt" => self::NOW]);
+        $this->expectException(InstallationTokenException::class);
+        $this->getCache()->getOrMint("key", "time");
 
     }//end testMalformedMintIsRejected()
+
+
+    /**
+     * A mint that fails, as GitHub being down would.
+     *
+     * @return InstallationToken Never returned.
+     *
+     * @throws InstallationTokenException Always.
+     */
+    public function getFailedMint(): InstallationToken
+    {
+        throw new InstallationTokenException("GitHub is down");
+
+    }//end getFailedMint()
 
 
 }//end class

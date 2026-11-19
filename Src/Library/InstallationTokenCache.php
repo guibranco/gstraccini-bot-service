@@ -3,57 +3,30 @@
 namespace GuiBranco\GStracciniBot\Library;
 
 use Exception;
-use RuntimeException;
-use stdClass;
 
 /**
  * Reuses GitHub App installation access tokens until they expire, instead of
  * minting a new one (`POST /app/installations/{id}/access_tokens`) per operation.
  *
- * GitHub tokens live for one hour. A token is served from, in order:
- *  1. the current PHP process (a run handles many items in a loop);
- *  2. APCu, when the extension is loaded and enabled (shared between the
- *     requests served by the same PHP pool on the cPanel host);
- *  3. the `github_installation_tokens` table, encrypted with CryptoHelper
- *     (shared by every process and host using the same database);
- * and only then minted, the new token being written back to every layer.
+ * A token is served from the current process first, then from each store in
+ * order (APCu, then the database), and only minted when none has a token
+ * outside its safety margin. A token found in a store is copied to the stores
+ * before it; a minted one is written to all of them.
  *
- * A token is considered expired SAFETY_MARGIN_SECONDS before GitHub's
- * `expires_at`, so an operation never starts with a token about to lapse.
- *
- * Every layer is best effort: an APCu or database failure is logged and the
- * next layer (eventually minting) is used, so caching never stops an item.
- * Without an encryption key the database layer is skipped: tokens are never
- * stored in plain text in the database.
+ * Every store is best effort: a failure is logged and the next store, and
+ * eventually GitHub, is used, so caching never stops an item.
  */
 class InstallationTokenCache
 {
-    /**
-     * Seconds before GitHub's expiry at which a cached token stops being served.
-     */
-    public const SAFETY_MARGIN_SECONDS = 300;
-
-    /**
-     * Prefix of the APCu keys, so they can't clash with other apps in the pool.
-     */
-    private const APCU_PREFIX = "gstraccini:installation-token:";
-
     /**
      * The log category.
      */
     private const LOG_CATEGORY = "installation_token";
 
     /**
-     * The instance used by the global token functions in lib/github.php.
-     *
-     * @var InstallationTokenCache|null
-     */
-    private static ?InstallationTokenCache $shared = null;
-
-    /**
      * Tokens held by this process, keyed by cache key.
      *
-     * @var array<string, array{token: string, expiresAt: int}>
+     * @var array<string, InstallationToken>
      */
     private array $memory = [];
 
@@ -66,21 +39,14 @@ class InstallationTokenCache
     private array $keysByToken = [];
 
     /**
-     * Encrypts the tokens stored in the database; null skips the database layer.
+     * The shared stores, fastest first.
      *
-     * @var CryptoHelper|null
+     * @var array<int, ApcuTokenStore|DatabaseTokenStore>
      */
-    private ?CryptoHelper $crypto;
+    private array $stores;
 
     /**
-     * Whether the APCu layer is used.
-     *
-     * @var boolean
-     */
-    private bool $apcuEnabled;
-
-    /**
-     * Returns the current Unix time; replaceable in tests.
+     * Returns the current Unix time.
      *
      * @var callable
      */
@@ -90,114 +56,78 @@ class InstallationTokenCache
     /**
      * Sets up the cache.
      *
-     * @param CryptoHelper|null $crypto      Encrypts stored tokens; null skips the database layer.
-     * @param bool|null         $apcuEnabled Whether to use APCu; null detects the extension.
-     * @param callable|null     $clock       Returns the current Unix time; null uses time().
+     * @param array<int, ApcuTokenStore|DatabaseTokenStore> $stores The shared stores, fastest first.
+     * @param callable                                      $clock  Returns the current Unix time.
      *
      * @return void
      */
-    public function __construct(?CryptoHelper $crypto, ?bool $apcuEnabled = null, ?callable $clock = null)
+    public function __construct(array $stores, callable $clock)
     {
-        $this->crypto = $crypto;
-        $this->apcuEnabled = ($apcuEnabled ?? self::isApcuAvailable());
-        $this->clock = ($clock ?? "time");
+        $this->stores = array_values($stores);
+        $this->clock = $clock;
 
     }//end __construct()
 
 
     /**
-     * The instance shared by the whole process, built from the configured encryption key.
-     *
-     * @return InstallationTokenCache The shared cache.
-     */
-    public static function shared(): InstallationTokenCache
-    {
-        if (self::$shared === null) {
-            self::$shared = new InstallationTokenCache(self::buildCrypto());
-        }
-
-        return self::$shared;
-
-    }//end shared()
-
-
-    /**
-     * Replaces (or, with null, resets) the shared instance; used by tests.
-     *
-     * @param InstallationTokenCache|null $cache The instance to share.
-     *
-     * @return void
-     */
-    public static function setShared(?InstallationTokenCache $cache): void
-    {
-        self::$shared = $cache;
-
-    }//end setShared()
-
-
-    /**
-     * The cache key of a token request: the installation and the permissions
-     * asked. Tokens cover every repository of the installation, so one token
-     * per installation (and permission set) is shared by all its repositories.
+     * The cache key of a token request: the installation and the permissions asked.
+     * Tokens cover every repository of the installation, so one token per
+     * installation (and permission set) is shared by all its repositories.
      *
      * @param string     $installationId The installation.
      * @param array|null $permissions    The permissions asked, or null for the app's.
      *
      * @return string A 64-character hex key.
      */
-    public static function buildKey(string $installationId, ?array $permissions): string
+    public function buildKey(string $installationId, ?array $permissions): string
     {
-        $normalizedPermissions = ($permissions ?? []);
-        ksort($normalizedPermissions);
+        $sorted = ($permissions ?? []);
+        ksort($sorted);
+        $encoded = json_encode($sorted);
 
-        $parts = [];
-        $parts[] = $installationId;
-        $parts[] = json_encode($normalizedPermissions);
-
-        return hash("sha256", implode("|", $parts));
+        return hash("sha256", "{$installationId}|{$encoded}");
 
     }//end buildKey()
 
 
     /**
-     * Returns a cached, still-valid token for the key, or mints one.
+     * Returns a cached, still-usable token for the key, or mints one.
      *
-     * @param string   $key            The key from buildKey().
-     * @param int      $installationId The installation, stored for housekeeping.
-     * @param callable $mint           Mints a token; returns array{token: string, expiresAt: int}.
+     * @param string   $key  The key from buildKey().
+     * @param callable $mint Mints a token; returns an InstallationToken.
      *
      * @return string The token.
+     *
+     * @throws InstallationTokenException When the mint callable doesn't return an InstallationToken.
      */
-    public function getOrMint(string $key, int $installationId, callable $mint): string
+    public function getOrMint(string $key, callable $mint): string
     {
-        $cached = $this->fromMemory($key);
-        if ($cached === null) {
-            $cached = $this->fromApcu($key);
+        $token = $this->fromMemory($key);
+        if ($token === null) {
+            $token = $this->fromStores($key);
         }
 
-        if ($cached === null) {
-            $cached = $this->fromDatabase($key);
+        if ($token === null) {
+            $token = $mint();
+            if (($token instanceof InstallationToken) === false) {
+                throw new InstallationTokenException("The mint callable must return an InstallationToken.");
+            }
+
+            $this->toStores($key, $token, count($this->stores));
         }
 
-        if ($cached === null) {
-            $cached = $mint();
-            $this->validateMinted($cached);
-            $this->toApcu($key, $cached);
-            $this->toDatabase($key, $installationId, $cached);
-        }
+        $this->memory[$key] = $token;
+        $this->keysByToken[$token->token] = $key;
 
-        $this->memory[$key] = $cached;
-        $this->keysByToken[$cached["token"]] = $key;
-
-        return $cached["token"];
+        return $token->token;
 
     }//end getOrMint()
 
 
     /**
      * Evicts a token GitHub rejected (revoked early: app uninstalled, permissions
-     * changed, repository removed), so the next operation mints a new one.
-     * Tokens this process didn't hand out are ignored.
+     * changed), so the next operation mints a new one. Tokens this process didn't
+     * hand out are ignored.
      *
      * @param string $token The rejected token.
      *
@@ -217,7 +147,7 @@ class InstallationTokenCache
 
 
     /**
-     * Evicts a key from every layer.
+     * Evicts a key from the process and every store.
      *
      * @param string $key The key from buildKey().
      *
@@ -227,35 +157,15 @@ class InstallationTokenCache
     {
         unset($this->memory[$key]);
 
-        if ($this->apcuEnabled === true) {
-            apcu_delete(self::APCU_PREFIX . $key);
-        }
-
-        if ($this->crypto === null) {
-            return;
-        }
-
-        try {
-            $this->deleteStored($key);
-        } catch (Exception $exception) {
-            $this->logFailure("Unable to delete a cached installation token: {error}", $exception);
+        foreach ($this->stores as $store) {
+            try {
+                $store->delete($key);
+            } catch (Exception $exception) {
+                $this->logFailure("Unable to delete a cached installation token: {error}", $exception);
+            }
         }
 
     }//end forget()
-
-
-    /**
-     * Whether a token expiring at the given time can still be served.
-     *
-     * @param int $expiresAt The Unix time GitHub said the token expires at.
-     *
-     * @return bool True while outside the safety margin.
-     */
-    private function isUsable(int $expiresAt): bool
-    {
-        return ($expiresAt - self::SAFETY_MARGIN_SECONDS) > ($this->clock)();
-
-    }//end isUsable()
 
 
     /**
@@ -263,163 +173,94 @@ class InstallationTokenCache
      *
      * @param string $key The cache key.
      *
-     * @return array{token: string, expiresAt: int}|null Null when missing or expired.
+     * @return InstallationToken|null Null when missing or within its safety margin.
      */
-    private function fromMemory(string $key): ?array
+    private function fromMemory(string $key): ?InstallationToken
     {
-        $entry = ($this->memory[$key] ?? null);
-        if ($entry === null) {
+        $token = ($this->memory[$key] ?? null);
+        if ($token === null) {
             return null;
         }
 
-        if ($this->isUsable($entry["expiresAt"]) === false) {
-            unset($this->memory[$key], $this->keysByToken[$entry["token"]]);
+        if ($token->isUsableAt(($this->clock)()) === false) {
+            unset($this->memory[$key], $this->keysByToken[$token->token]);
             return null;
         }
 
-        return $entry;
+        return $token;
 
     }//end fromMemory()
 
 
     /**
-     * Reads the APCu layer.
+     * Reads the stores in order, copying a token found to the stores before it.
      *
      * @param string $key The cache key.
      *
-     * @return array{token: string, expiresAt: int}|null Null when disabled, missing or expired.
+     * @return InstallationToken|null Null when no store has a usable token.
      */
-    private function fromApcu(string $key): ?array
+    private function fromStores(string $key): ?InstallationToken
     {
-        if ($this->apcuEnabled === false) {
-            return null;
+        $now = ($this->clock)();
+        foreach ($this->stores as $index => $store) {
+            $token = $this->readStore($store, $key);
+            if ($token !== null && $token->isUsableAt($now) === true) {
+                $this->toStores($key, $token, $index);
+                return $token;
+            }
         }
 
-        $success = false;
-        $entry = apcu_fetch(self::APCU_PREFIX . $key, $success);
-        if ($success === false || is_array($entry) === false || isset($entry["token"], $entry["expiresAt"]) === false) {
-            return null;
-        }
+        return null;
 
-        if ($this->isUsable((int) $entry["expiresAt"]) === false) {
-            return null;
-        }
-
-        return ["token" => (string) $entry["token"], "expiresAt" => (int) $entry["expiresAt"]];
-
-    }//end fromApcu()
+    }//end fromStores()
 
 
     /**
-     * Writes to the APCu layer, expiring with the token's safety margin.
+     * Reads one store, logging a failure instead of throwing it.
      *
-     * @param string                                $key   The cache key.
-     * @param array{token: string, expiresAt: int} $entry The token.
+     * @param ApcuTokenStore|DatabaseTokenStore $store The store.
+     * @param string                            $key   The cache key.
      *
-     * @return void
+     * @return InstallationToken|null Null when missing or unreadable.
      */
-    private function toApcu(string $key, array $entry): void
+    private function readStore(ApcuTokenStore|DatabaseTokenStore $store, string $key): ?InstallationToken
     {
-        if ($this->apcuEnabled === false) {
-            return;
-        }
-
-        $ttl = ($entry["expiresAt"] - self::SAFETY_MARGIN_SECONDS - ($this->clock)());
-        if ($ttl > 0) {
-            apcu_store(self::APCU_PREFIX . $key, $entry, $ttl);
-        }
-
-    }//end toApcu()
-
-
-    /**
-     * Reads and decrypts the database layer, filling APCu on a hit.
-     *
-     * @param string $key The cache key.
-     *
-     * @return array{token: string, expiresAt: int}|null Null when disabled, missing, expired or unreadable.
-     */
-    private function fromDatabase(string $key): ?array
-    {
-        if ($this->crypto === null) {
-            return null;
-        }
-
         try {
-            $row = $this->readStored($key);
+            return $store->read($key);
         } catch (Exception $exception) {
             $this->logFailure("Unable to read a cached installation token: {error}", $exception);
-            return null;
         }
 
-        if ($row === null || $this->isUsable((int) $row->expiresAt) === false) {
-            return null;
-        }
+        return null;
 
-        try {
-            $token = $this->crypto->decrypt((string) $row->encryptedToken);
-        } catch (RuntimeException $exception) {
-            // Encrypted with another key (rotated) or corrupted: mint a new one, which overwrites it.
-            $this->logFailure("Unable to decrypt a cached installation token: {error}", $exception);
-            return null;
-        }
-
-        $entry = ["token" => $token, "expiresAt" => (int) $row->expiresAt];
-        $this->toApcu($key, $entry);
-
-        return $entry;
-
-    }//end fromDatabase()
+    }//end readStore()
 
 
     /**
-     * Encrypts and writes to the database layer.
+     * Writes a token to the first stores, logging failures instead of throwing them.
      *
-     * @param string                                $key            The cache key.
-     * @param int                                   $installationId The installation.
-     * @param array{token: string, expiresAt: int} $entry          The token.
+     * @param string            $key   The cache key.
+     * @param InstallationToken $token The token.
+     * @param int               $count How many stores, from the first, to write to.
      *
      * @return void
      */
-    private function toDatabase(string $key, int $installationId, array $entry): void
+    private function toStores(string $key, InstallationToken $token, int $count): void
     {
-        if ($this->crypto === null) {
-            return;
+        $now = ($this->clock)();
+        foreach (array_slice($this->stores, 0, $count) as $store) {
+            try {
+                $store->write($key, $token, $now);
+            } catch (Exception $exception) {
+                $this->logFailure("Unable to store an installation token: {error}", $exception);
+            }
         }
 
-        try {
-            $this->writeStored($key, $installationId, $this->crypto->encrypt($entry["token"]), $entry["expiresAt"]);
-        } catch (Exception $exception) {
-            $this->logFailure("Unable to store an installation token: {error}", $exception);
-        }
-
-    }//end toDatabase()
+    }//end toStores()
 
 
     /**
-     * Checks a minted token has the shape getOrMint() caches.
-     *
-     * @param mixed $entry What the mint callable returned.
-     *
-     * @return void
-     *
-     * @throws RuntimeException When the token or its expiry is missing.
-     */
-    private function validateMinted(mixed $entry): void
-    {
-        if (is_array($entry) === false
-            || is_string($entry["token"] ?? null) === false
-            || $entry["token"] === ""
-            || is_int($entry["expiresAt"] ?? null) === false
-        ) {
-            throw new RuntimeException("The minted installation token must be an array{token: string, expiresAt: int}.");
-        }
-
-    }//end validateMinted()
-
-
-    /**
-     * Logs a layer failure; the caller goes on with the next layer.
+     * Logs a store failure; the caller goes on without that store.
      *
      * @param string    $message   The message, with an {error} placeholder.
      * @param Exception $exception The failure.
@@ -435,132 +276,6 @@ class InstallationTokenCache
         $logStream?->warning($message, $context, self::LOG_CATEGORY);
 
     }//end logFailure()
-
-
-    /**
-     * Reads the stored row of a key.
-     *
-     * @param string $key The cache key.
-     *
-     * @return stdClass|null The row (encryptedToken, expiresAt), or null when none is stored.
-     */
-    protected function readStored(string $key): ?stdClass
-    {
-        $mysqli = connectToDatabase();
-        $stmt = $mysqli->prepare("SELECT EncryptedToken AS encryptedToken, ExpiresAt AS expiresAt FROM github_installation_tokens WHERE CacheKey = ?");
-        $stmt->bind_param("s", $key);
-        if ($stmt->execute() === false) {
-            $failure = statementFailed($stmt);
-            $stmt->close();
-            $mysqli->close();
-            throw $failure;
-        }
-
-        $result = $stmt->get_result();
-        $row = $result->fetch_object();
-        $result->close();
-        $stmt->close();
-        $mysqli->close();
-
-        if ($row instanceof stdClass) {
-            return $row;
-        }
-
-        return null;
-
-    }//end readStored()
-
-
-    /**
-     * Upserts the stored row of a key, and clears the rows already expired.
-     *
-     * @param string $key            The cache key.
-     * @param int    $installationId The installation.
-     * @param string $encryptedToken The token, encrypted.
-     * @param int    $expiresAt      The Unix time the token expires at.
-     *
-     * @return void
-     */
-    protected function writeStored(string $key, int $installationId, string $encryptedToken, int $expiresAt): void
-    {
-        $mysqli = connectToDatabase();
-
-        $sql = "INSERT INTO github_installation_tokens (CacheKey, InstallationId, EncryptedToken, ExpiresAt)
-                VALUES (?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE EncryptedToken = VALUES(EncryptedToken), ExpiresAt = VALUES(ExpiresAt), UpdatedAt = CURRENT_TIMESTAMP";
-        $stmt = $mysqli->prepare($sql);
-        $stmt->bind_param("sisi", $key, $installationId, $encryptedToken, $expiresAt);
-        if ($stmt->execute() === false) {
-            $failure = statementFailed($stmt);
-            $stmt->close();
-            $mysqli->close();
-            throw $failure;
-        }
-
-        $stmt->close();
-
-        // Housekeeping: a row is only ever rewritten by its own key, so expired ones would pile up.
-        $now = ($this->clock)();
-        $cleanup = $mysqli->prepare("DELETE FROM github_installation_tokens WHERE ExpiresAt < ?");
-        $cleanup->bind_param("i", $now);
-        $cleanup->execute();
-        $cleanup->close();
-        $mysqli->close();
-
-    }//end writeStored()
-
-
-    /**
-     * Deletes the stored row of a key.
-     *
-     * @param string $key The cache key.
-     *
-     * @return void
-     */
-    protected function deleteStored(string $key): void
-    {
-        $mysqli = connectToDatabase();
-        $stmt = $mysqli->prepare("DELETE FROM github_installation_tokens WHERE CacheKey = ?");
-        $stmt->bind_param("s", $key);
-        $stmt->execute();
-        $stmt->close();
-        $mysqli->close();
-
-    }//end deleteStored()
-
-
-    /**
-     * Whether the APCu extension is loaded and enabled for this SAPI.
-     *
-     * @return bool True when APCu can be used.
-     */
-    private static function isApcuAvailable(): bool
-    {
-        return function_exists("apcu_enabled") && apcu_enabled();
-
-    }//end isApcuAvailable()
-
-
-    /**
-     * Builds the CryptoHelper from the configured key.
-     *
-     * @return CryptoHelper|null Null when encryption isn't configured.
-     */
-    private static function buildCrypto(): ?CryptoHelper
-    {
-        global $logStream;
-
-        try {
-            return new CryptoHelper();
-        } catch (RuntimeException $exception) {
-            $context = [];
-            $context["error"] = $exception->getMessage();
-            $logStream?->warning("Installation tokens are not stored in the database: {error}", $context, self::LOG_CATEGORY);
-        }
-
-        return null;
-
-    }//end buildCrypto()
 
 
 }//end class
