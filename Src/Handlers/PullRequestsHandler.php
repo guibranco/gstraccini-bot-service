@@ -7,6 +7,7 @@ use GuiBranco\GStracciniBot\Library\BranchUpdateGate;
 use GuiBranco\GStracciniBot\Library\DependencyFileLabelService;
 use GuiBranco\GStracciniBot\Library\LogContext;
 use GuiBranco\GStracciniBot\Library\MarkdownGroupCheckboxValidator;
+use GuiBranco\GStracciniBot\Library\OwnerTokenResolver;
 use GuiBranco\GStracciniBot\Library\PullRequestCodeScanner;
 use GuiBranco\GStracciniBot\Library\PullRequestHeadWatcher;
 use GuiBranco\GStracciniBot\Library\RecreateRequester;
@@ -55,6 +56,16 @@ class PullRequestsHandler implements IHandler
      * @var float
      */
     private float $startedAt = 0.0;
+
+    /**
+     * Finds the owner's token for the actions that must come from a person.
+     */
+    private OwnerTokenResolver $ownerTokenResolver;
+
+    public function __construct(?OwnerTokenResolver $ownerTokenResolver = null)
+    {
+        $this->ownerTokenResolver = $ownerTokenResolver ?? new OwnerTokenResolver();
+    }
 
 
     /**
@@ -265,7 +276,7 @@ class PullRequestsHandler implements IHandler
         $collaboratorsLogins = array_column(json_decode($collaboratorsResponse->getBody()), "login");
 
         $reviewsLogins = $this->getReviewsLogins($metadata);
-        $iAmTheOwner = in_array($config->ownerHandler, $collaboratorsLogins);
+        $iAmTheOwner = $metadata["ownerLogin"] !== null && in_array($metadata["ownerLogin"], $collaboratorsLogins, true);
         $this->trace('debug', 'PR {repo}#{pr}: step review and assign', ["collaborators_status" => $collaboratorsResponse->getStatusCode(), "owner_is_collaborator" => $iAmTheOwner]);
         $labelsToAdd = array_merge(
             $labelsToAdd,
@@ -289,7 +300,7 @@ class PullRequestsHandler implements IHandler
         }
 
         if ($iAmTheOwner === false) {
-            $this->trace('debug', 'PR {repo}#{pr}: owner {owner} is not a collaborator — skipping conflicts and merge comment', ["owner" => $config->ownerHandler]);
+            $this->trace('debug', 'PR {repo}#{pr}: owner {owner} is not a collaborator — skipping conflicts and merge comment', ["owner" => $metadata["ownerLogin"] ?? "(no owner token)"]);
         }
 
         $this->trace('debug', 'PR {repo}#{pr}: step version bump', []);
@@ -702,7 +713,8 @@ class PullRequestsHandler implements IHandler
      */
     private function createMetadata($token, $pullRequest, $config)
     {
-        global $gitHubUserToken;
+        $owner = $this->ownerTokenResolver->resolve((int) $pullRequest->InstallationId, (string) $pullRequest->RepositoryOwner);
+        $this->trace('debug', 'PR {repo}#{pr}: owner token {source}', ["source" => $owner?->source ?? "not available", "owner" => $owner?->login]);
 
         $prQueryString =
             "pull-requests/?owner=" . $pullRequest->RepositoryOwner .
@@ -711,7 +723,8 @@ class PullRequestsHandler implements IHandler
         $repoPrefix = "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName;
         return array(
             "token" => $token,
-            "userToken" => $gitHubUserToken,
+            "userToken" => $owner?->token,
+            "ownerLogin" => $owner?->login,
             "mergeComment" => "@depfu merge",
             "commentsUrl" => $repoPrefix . ISSUES . $pullRequest->Number . "/comments",
             "pullRequestUrl" => $repoPrefix . PULLS . $pullRequest->Number,
@@ -1324,7 +1337,7 @@ class PullRequestsHandler implements IHandler
                      }
             }"
             );
-            $autoMergeResponse = doRequestGitHub($metadata["userToken"], "graphql", $body, "POST");
+            $autoMergeResponse = doRequestGitHub($metadata["token"], "graphql", $body, "POST");
             if ($autoMergeResponse->getStatusCode() < 300) {
                 markPullRequestAutoMergeEnabled($pullRequest->Sequence);
                 $this->trace('info', 'PR {repo}#{pr}: auto-merge (squash) enabled for submitter {sender}', ["sender" => $pullRequest->Sender]);

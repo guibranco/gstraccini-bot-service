@@ -40,7 +40,7 @@ class RepositoriesHandler implements IHandler
 
     public function handleItem($repository)
     {
-        global $logStream, $gitHubUserToken;
+        global $logStream;
 
         $logStream?->info(
             'Processing repository event for {repo}',
@@ -83,7 +83,6 @@ class RepositoriesHandler implements IHandler
             "token" => $token,
             "repoUrl" => $repoPrefix,
             "labelsUrl" => $repoPrefix . "/labels",
-            "userToken" => $gitHubUserToken,
             "botNameMarkdown" => "[" . $config->botName . "\[bot\]](https://github.com/apps/" . $config->botName . ")",
             "dashboardUrl" => $config->dashboardUrl . $repoQueryString,
             "repositoryOwner" => $repositoryOwner,
