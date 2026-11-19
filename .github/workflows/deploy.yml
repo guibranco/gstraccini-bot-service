@@ -171,7 +171,8 @@ jobs:
             echo "::warning::ENCRYPTION_KEY is not set: secrets are not encrypted at rest and the installation token cache skips the database."
             exit 0
           fi
-          if [ "$(printf '%s' "$ENCRYPTION_KEY" | base64 -d 2>/dev/null | wc -c)" -ne 32 ]; then
+          # A 32-byte key is exactly 43 base64 characters and one '=' pad; nothing else may reach the PHP literal.
+          if ! printf '%s' "$ENCRYPTION_KEY" | grep -Eq '^[A-Za-z0-9+/]{43}=$'; then
             echo "::error::ENCRYPTION_KEY must be a base64-encoded 32-byte key (openssl rand -base64 32)."
             exit 1
           fi
