@@ -19,6 +19,7 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
 namespace GuiBranco\GStracciniBot\Tests\Handlers;
 
 use GuiBranco\GStracciniBot\Handlers\PullRequestsHandler;
+use GuiBranco\GStracciniBot\Library\FeatureSettings;
 use GuiBranco\GStracciniBot\Library\VersionBumpCommentBuilder;
 use GuiBranco\Pancake\Response;
 use PHPUnit\Framework\TestCase;
@@ -52,9 +53,18 @@ class PullRequestsHandlerTest extends TestCase
         return Response::success("[]", $url, [], 200);
     }
 
-    private function invokeCheckVersionBump(array $metadata, object $pullRequestUpdated): bool
+    /**
+     * Invokes the private PullRequestsHandler::checkVersionBump() method.
+     *
+     * @param array           $metadata           Metadata for the GitHub API requests.
+     * @param object          $pullRequestUpdated The pull request as returned by the GitHub API.
+     * @param FeatureSettings $settings           The feature settings.
+     *
+     * @return bool Whether the version bump decision is resolved.
+     */
+    private function invokeCheckVersionBump(array $metadata, object $pullRequestUpdated, FeatureSettings $settings): bool
     {
-        $handler = new PullRequestsHandler();
+        $handler = new PullRequestsHandler($settings);
         $method = (new ReflectionClass($handler))->getMethod("checkVersionBump");
         $method->setAccessible(true);
 
@@ -97,7 +107,7 @@ class PullRequestsHandlerTest extends TestCase
             200
         );
 
-        $result = $this->invokeCheckVersionBump($this->buildMetadata(), $this->buildFeaturePullRequest());
+        $result = $this->invokeCheckVersionBump($this->buildMetadata(), $this->buildFeaturePullRequest(), new FixedFeatureSettings(true));
 
         $this->assertTrue($result, "A pull request whose comment already carries the completion marker must be treated as resolved.");
 
@@ -118,7 +128,7 @@ class PullRequestsHandlerTest extends TestCase
         );
         self::$responses["/issues/1/comments"] = Response::success(json_encode([]), "", [], 200);
 
-        $result = $this->invokeCheckVersionBump($this->buildMetadata(), $this->buildFeaturePullRequest());
+        $result = $this->invokeCheckVersionBump($this->buildMetadata(), $this->buildFeaturePullRequest(), new FixedFeatureSettings(true));
 
         $this->assertFalse($result, "Without a semver directive or a prior decision, the version bump must remain pending.");
 
@@ -221,6 +231,46 @@ class PullRequestsHandlerTest extends TestCase
         $this->assertFalse($this->invokeIsFromFork($this->buildPullRequestRepos("contributor/repo", null)));
     }
 
+    /**
+     * Requesting a version bump is opt-in: with the setting off for the repository and its
+     * account, the decision is resolved without reading commits or posting a comment.
+     *
+     * @return void
+     */
+    public function testSkipsWhenVersionBumpDisabled(): void
+    {
+        $result = $this->invokeCheckVersionBump($this->buildMetadata(), $this->buildFeaturePullRequest(), new FixedFeatureSettings(false));
+
+        $this->assertTrue($result, "A pull request of a repository that did not opt in must be treated as resolved.");
+        $this->assertSame([], self::$requestLog, "No GitHub request should be made when the feature is disabled.");
+
+    }//end testSkipsWhenVersionBumpDisabled()
+
+
+    /**
+     * The repository and account ids of the base repository are the ones the settings are looked up with.
+     *
+     * @return void
+     */
+    public function testLooksUpBaseRepositoryAndOwner(): void
+    {
+        $settings = new FixedFeatureSettings(false);
+        $handler = new PullRequestsHandler($settings);
+        $method = (new ReflectionClass($handler))->getMethod("checkVersionBump");
+        $method->setAccessible(true);
+
+        $pullRequest = $this->buildFeaturePullRequest();
+        $repo = new stdClass();
+        $repo->id = 123;
+        $repo->owner = (object) ["id" => 456];
+        $pullRequest->base = (object) ["repo" => $repo];
+        $method->invoke($handler, $this->buildMetadata(), $pullRequest);
+
+        $this->assertSame(["456:123"], $settings->lookups);
+
+    }//end testLooksUpBaseRepositoryAndOwner()
+
+
     public function testResolvedWhenSemverDirectiveAlreadyPresent(): void
     {
         self::$responses["/commits"] = Response::success(
@@ -230,7 +280,7 @@ class PullRequestsHandlerTest extends TestCase
             200
         );
 
-        $result = $this->invokeCheckVersionBump($this->buildMetadata(), $this->buildFeaturePullRequest());
+        $result = $this->invokeCheckVersionBump($this->buildMetadata(), $this->buildFeaturePullRequest(), new FixedFeatureSettings(true));
 
         $this->assertTrue($result, "A commit carrying a +semver directive must resolve the decision without consulting comments.");
 
@@ -239,3 +289,58 @@ class PullRequestsHandlerTest extends TestCase
         }
     }
 }
+
+/**
+ * Feature settings with a fixed answer instead of the database.
+ */
+class FixedFeatureSettings extends FeatureSettings
+{
+    /**
+     * How a lookup is recorded: the account id, then the repository id.
+     */
+    public const LOOKUP_FORMAT = '%d:%d';
+
+    /**
+     * The lookups made, as "accountId:repositoryId".
+     *
+     * @var string[]
+     */
+    public array $lookups = [];
+
+    /**
+     * The answer of every lookup.
+     *
+     * @var boolean
+     */
+    private bool $enabled;
+
+
+    /**
+     * Sets the answer of every lookup.
+     *
+     * @param bool $enabled Whether the version bump decision is requested.
+     */
+    public function __construct(bool $enabled)
+    {
+        $this->enabled = $enabled;
+
+    }//end __construct()
+
+
+    /**
+     * Returns the fixed answer.
+     *
+     * @param int $accountId    The account looked up.
+     * @param int $repositoryId The repository looked up.
+     *
+     * @return bool The fixed answer.
+     */
+    public function isRequestVersionBumpEnabled(int $accountId, int $repositoryId): bool
+    {
+        $this->lookups[] = sprintf(self::LOOKUP_FORMAT, $accountId, $repositoryId);
+        return $this->enabled;
+
+    }//end isRequestVersionBumpEnabled()
+
+
+}//end class

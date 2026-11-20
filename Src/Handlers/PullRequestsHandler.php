@@ -5,6 +5,7 @@ namespace GuiBranco\GStracciniBot\Handlers;
 use DateTimeImmutable;
 use GuiBranco\GStracciniBot\Library\BranchUpdateGate;
 use GuiBranco\GStracciniBot\Library\DependencyFileLabelService;
+use GuiBranco\GStracciniBot\Library\FeatureSettings;
 use GuiBranco\GStracciniBot\Library\LogContext;
 use GuiBranco\GStracciniBot\Library\MarkdownGroupCheckboxValidator;
 use GuiBranco\GStracciniBot\Library\OwnerTokenResolver;
@@ -56,6 +57,27 @@ class PullRequestsHandler implements IHandler
      * @var float
      */
     private float $startedAt = 0.0;
+
+    /**
+     * Resolves the opt-in features (account and repository settings) of the repository.
+     *
+     * @var FeatureSettings
+     */
+    private FeatureSettings $featureSettings;
+
+
+    /**
+     * Sets up the handler.
+     *
+     * @param FeatureSettings|null $featureSettings Resolves the opt-in features; read from the database when null.
+     *
+     * @return void
+     */
+    public function __construct(?FeatureSettings $featureSettings = null)
+    {
+        $this->featureSettings = ($featureSettings ?? new FeatureSettings());
+
+    }//end __construct()
 
 
     /**
@@ -429,6 +451,11 @@ class PullRequestsHandler implements IHandler
      * already present in its title or commits, an actionable comment is posted asking
      * the user to choose a minor bump, a major bump, or no bump at all.
      *
+     * Opt-in: only runs when the "request version bump" setting is enabled for the
+     * repository (repository_settings) or, when the repository doesn't set it, for the
+     * account owning it (account_settings). Otherwise the decision counts as resolved,
+     * which also releases a check run left action_required before the feature was turned off.
+     *
      * @param array $metadata Metadata for the GitHub API request
      * @param object $pullRequestUpdated The updated pull request data
      * @return bool True if the decision is resolved (no action needed, or already handled),
@@ -436,6 +463,13 @@ class PullRequestsHandler implements IHandler
      */
     private function checkVersionBump(array $metadata, object $pullRequestUpdated): bool
     {
+        $repositoryId = (int) ($pullRequestUpdated->base->repo->id ?? 0);
+        $accountId = (int) ($pullRequestUpdated->base->repo->owner->id ?? 0);
+        if ($this->featureSettings->isRequestVersionBumpEnabled($accountId, $repositoryId) === false) {
+            $this->trace('debug', 'PR {repo}#{pr}: version bump resolved — request version bump is not enabled for the repository or its account', ["repository_id" => $repositoryId, "account_id" => $accountId]);
+            return true;
+        }
+
         $analyzer = new VersionBumpAnalyzer();
 
         $messages = [$pullRequestUpdated->title];
