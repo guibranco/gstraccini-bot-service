@@ -1,5 +1,6 @@
 <?php
 
+use GuiBranco\GStracciniBot\Library\AppVeyorCredentials;
 use GuiBranco\GStracciniBot\Library\IntegrationKeyResolver;
 use GuiBranco\Pancake\Request;
 use GuiBranco\Pancake\Response;
@@ -13,41 +14,46 @@ const APPVEYOR_PROVIDER = "AppVeyor";
 /**
  * Finds the AppVeyor API key stored by a user of the installation (the
  * repository owner first), in the `AppVeyor` integration of `user_integrations`.
+ * A user-level (`v2.`) key works with the AppVeyor account named after the
+ * GitHub login of the user who stored it.
  *
  * @param int    $installationId  The installation the repository belongs to.
  * @param string $repositoryOwner The login owning the repository.
  *
- * @return string|null Null when no user of the installation has stored a usable key.
+ * @return AppVeyorCredentials|null Null when no user of the installation has stored a usable key.
  */
-function findAppVeyorKey(int $installationId, string $repositoryOwner): ?string
+function findAppVeyorKey(int $installationId, string $repositoryOwner): ?AppVeyorCredentials
 {
     $integration = (new IntegrationKeyResolver(APPVEYOR_PROVIDER, null, "appveyor"))->find($installationId, $repositoryOwner);
-    return $integration?->key;
+    if ($integration === null) {
+        return null;
+    }
+
+    return new AppVeyorCredentials(trim($integration->key), $integration->login);
 }
 
 
 /**
  * Sends a request to the AppVeyor API.
  *
- * @param string     $appVeyorKey The AppVeyor API key to authenticate with.
- * @param string     $method      The HTTP method: GET, POST or PUT.
- * @param string     $url         The endpoint, relative to the API base URL.
- * @param array|null $data        The JSON payload of a POST or PUT, null for a GET.
+ * @param AppVeyorCredentials $appVeyorKey The AppVeyor API key and account to call with.
+ * @param string              $method      The HTTP method: GET, POST or PUT.
+ * @param string              $url         The endpoint, relative to the API base URL.
+ * @param array|null          $data        The JSON payload of a POST or PUT, null for a GET.
  *
  * @return Response The AppVeyor response.
  */
-function requestAppVeyor(string $appVeyorKey, string $method, string $url, ?array $data): Response
+function requestAppVeyor(AppVeyorCredentials $appVeyorKey, string $method, string $url, ?array $data): Response
 {
     global $logger;
 
-    $baseUrl = "https://ci.appveyor.com/api/";
+    $baseUrl = $appVeyorKey->apiBaseUrl();
     $url = $baseUrl . $url;
 
-    $headers = array(
-        constant("USER_AGENT"),
-        "Authorization: Bearer " . $appVeyorKey,
-        "Content-Type: application/json"
-    );
+    $headers = [];
+    $headers[] = constant("USER_AGENT");
+    $headers[] = "Authorization: Bearer {$appVeyorKey->key}";
+    $headers[] = "Content-Type: application/json";
 
     $request = new Request();
 
@@ -77,12 +83,12 @@ function requestAppVeyor(string $appVeyorKey, string $method, string $url, ?arra
 /**
  * Finds the AppVeyor project built from a GitHub repository.
  *
- * @param string $appVeyorKey    The AppVeyor API key to authenticate with.
- * @param string $repositorySlug The repository, as "owner/name".
+ * @param AppVeyorCredentials $appVeyorKey    The AppVeyor API key and account to call with.
+ * @param string              $repositorySlug The repository, as "owner/name".
  *
  * @return object The project, or an object whose `error` is true and `message` explains why.
  */
-function findProjectByRepositorySlug(string $appVeyorKey, string $repositorySlug): object
+function findProjectByRepositorySlug(AppVeyorCredentials $appVeyorKey, string $repositorySlug): object
 {
     $searchSlug = strtolower($repositorySlug);
 
