@@ -79,11 +79,11 @@ if (is_file($workerDir.'/secrets/mySql.secrets.php') === true) {
 $userIdInt = filter_var(($_GET['userId'] ?? null), FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
 
 $userApiRequest = [];
-$userApiRequest['apiKey']             = ($apiKey ?? '');
-$userApiRequest['providedKey']        = ($_SERVER['HTTP_X_API_KEY'] ?? '');
-$userApiRequest['workerDir']          = $workerDir;
+$userApiRequest['apiKey'] = ($apiKey ?? '');
+$userApiRequest['providedKey'] = ($_SERVER['HTTP_X_API_KEY'] ?? '');
+$userApiRequest['workerDir'] = $workerDir;
 $userApiRequest['databaseConfigured'] = isset($mySqlHost, $mySqlUser, $mySqlPassword, $mySqlDatabase);
-$userApiRequest['userId']             = $userIdInt;
+$userApiRequest['userId'] = $userIdInt;
 
 $userApiError = findUserApiRequestError($userApiRequest);
 if ($userApiError !== null) {

@@ -56,15 +56,15 @@ class PullRequestsHandlerTest extends TestCase
     /**
      * Invokes the private PullRequestsHandler::checkVersionBump() method.
      *
-     * @param array                $metadata           Metadata for the GitHub API requests.
-     * @param object               $pullRequestUpdated The pull request as returned by the GitHub API.
-     * @param FeatureSettings|null $settings           The feature settings; the request is enabled when null.
+     * @param array           $metadata           Metadata for the GitHub API requests.
+     * @param object          $pullRequestUpdated The pull request as returned by the GitHub API.
+     * @param FeatureSettings $settings           The feature settings.
      *
      * @return bool Whether the version bump decision is resolved.
      */
-    private function invokeCheckVersionBump(array $metadata, object $pullRequestUpdated, ?FeatureSettings $settings=null): bool
+    private function invokeCheckVersionBump(array $metadata, object $pullRequestUpdated, FeatureSettings $settings): bool
     {
-        $handler = new PullRequestsHandler(($settings ?? new FixedFeatureSettings(true)));
+        $handler = new PullRequestsHandler($settings);
         $method = (new ReflectionClass($handler))->getMethod("checkVersionBump");
         $method->setAccessible(true);
 
@@ -107,7 +107,7 @@ class PullRequestsHandlerTest extends TestCase
             200
         );
 
-        $result = $this->invokeCheckVersionBump($this->buildMetadata(), $this->buildFeaturePullRequest());
+        $result = $this->invokeCheckVersionBump($this->buildMetadata(), $this->buildFeaturePullRequest(), new FixedFeatureSettings(true));
 
         $this->assertTrue($result, "A pull request whose comment already carries the completion marker must be treated as resolved.");
 
@@ -128,7 +128,7 @@ class PullRequestsHandlerTest extends TestCase
         );
         self::$responses["/issues/1/comments"] = Response::success(json_encode([]), "", [], 200);
 
-        $result = $this->invokeCheckVersionBump($this->buildMetadata(), $this->buildFeaturePullRequest());
+        $result = $this->invokeCheckVersionBump($this->buildMetadata(), $this->buildFeaturePullRequest(), new FixedFeatureSettings(true));
 
         $this->assertFalse($result, "Without a semver directive or a prior decision, the version bump must remain pending.");
 
@@ -280,7 +280,7 @@ class PullRequestsHandlerTest extends TestCase
             200
         );
 
-        $result = $this->invokeCheckVersionBump($this->buildMetadata(), $this->buildFeaturePullRequest());
+        $result = $this->invokeCheckVersionBump($this->buildMetadata(), $this->buildFeaturePullRequest(), new FixedFeatureSettings(true));
 
         $this->assertTrue($result, "A commit carrying a +semver directive must resolve the decision without consulting comments.");
 
@@ -295,6 +295,10 @@ class PullRequestsHandlerTest extends TestCase
  */
 class FixedFeatureSettings extends FeatureSettings
 {
+    /**
+     * How a lookup is recorded: the account id, then the repository id.
+     */
+    public const LOOKUP_FORMAT = '%d:%d';
 
     /**
      * The lookups made, as "accountId:repositoryId".
@@ -333,7 +337,7 @@ class FixedFeatureSettings extends FeatureSettings
      */
     public function isRequestVersionBumpEnabled(int $accountId, int $repositoryId): bool
     {
-        $this->lookups[] = "{$accountId}:{$repositoryId}";
+        $this->lookups[] = sprintf(self::LOOKUP_FORMAT, $accountId, $repositoryId);
         return $this->enabled;
 
     }//end isRequestVersionBumpEnabled()

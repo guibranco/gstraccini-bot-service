@@ -13,6 +13,10 @@ use stdClass;
  */
 class InMemoryFeatureSettings extends FeatureSettings
 {
+    /**
+     * The error readSettings() throws when the database is down.
+     */
+    public const DATABASE_ERROR = 'Failed to connect to MySQL';
 
     /**
      * The repository's value; null inherits the account's.
@@ -56,12 +60,12 @@ class InMemoryFeatureSettings extends FeatureSettings
     {
         $this->lookups[] = "{$feature}:{$accountId}:{$repositoryId}";
         if ($this->databaseDown === true) {
-            throw new DatabaseException('Failed to connect to MySQL');
+            throw new DatabaseException(self::DATABASE_ERROR);
         }
 
-        $row                  = new stdClass();
+        $row = new stdClass();
         $row->repositoryValue = $this->repositoryValue;
-        $row->accountValue    = $this->accountValue;
+        $row->accountValue = $this->accountValue;
         return $row;
 
     }//end readSettings()
@@ -71,6 +75,15 @@ class InMemoryFeatureSettings extends FeatureSettings
 
 class FeatureSettingsTest extends TestCase
 {
+    /**
+     * The account the lookups are made for.
+     */
+    private const ACCOUNT_ID = 1;
+
+    /**
+     * The repository the lookups are made for.
+     */
+    private const REPOSITORY_ID = 2;
 
 
     /**
@@ -82,7 +95,7 @@ class FeatureSettingsTest extends TestCase
     {
         $settings = new InMemoryFeatureSettings();
 
-        $this->assertFalse($settings->isRequestVersionBumpEnabled(1, 2));
+        $this->assertFalse($settings->isRequestVersionBumpEnabled(self::ACCOUNT_ID, self::REPOSITORY_ID));
         $this->assertSame(['RequestVersionBump:1:2'], $settings->lookups);
 
     }//end testDisabledByDefault()
@@ -95,12 +108,12 @@ class FeatureSettingsTest extends TestCase
      */
     public function testRepositoryInheritsAccount(): void
     {
-        $settings               = new InMemoryFeatureSettings();
+        $settings = new InMemoryFeatureSettings();
         $settings->accountValue = 1;
-        $this->assertTrue($settings->isRequestVersionBumpEnabled(1, 2));
+        $this->assertTrue($settings->isRequestVersionBumpEnabled(self::ACCOUNT_ID, self::REPOSITORY_ID));
 
         $settings->accountValue = 0;
-        $this->assertFalse($settings->isRequestVersionBumpEnabled(1, 2));
+        $this->assertFalse($settings->isRequestVersionBumpEnabled(self::ACCOUNT_ID, self::REPOSITORY_ID));
 
     }//end testRepositoryInheritsAccount()
 
@@ -112,18 +125,18 @@ class FeatureSettingsTest extends TestCase
      */
     public function testRepositoryOverridesAccount(): void
     {
-        $settings                  = new InMemoryFeatureSettings();
-        $settings->accountValue    = 0;
+        $settings = new InMemoryFeatureSettings();
+        $settings->accountValue = 0;
         $settings->repositoryValue = 1;
-        $this->assertTrue($settings->isRequestVersionBumpEnabled(1, 2));
+        $this->assertTrue($settings->isRequestVersionBumpEnabled(self::ACCOUNT_ID, self::REPOSITORY_ID));
 
-        $settings->accountValue    = 1;
+        $settings->accountValue = 1;
         $settings->repositoryValue = 0;
-        $this->assertFalse($settings->isRequestVersionBumpEnabled(1, 2));
+        $this->assertFalse($settings->isRequestVersionBumpEnabled(self::ACCOUNT_ID, self::REPOSITORY_ID));
 
-        $settings->accountValue    = null;
+        $settings->accountValue = null;
         $settings->repositoryValue = 1;
-        $this->assertTrue($settings->isRequestVersionBumpEnabled(1, 2));
+        $this->assertTrue($settings->isRequestVersionBumpEnabled(self::ACCOUNT_ID, self::REPOSITORY_ID));
 
     }//end testRepositoryOverridesAccount()
 
@@ -135,11 +148,11 @@ class FeatureSettingsTest extends TestCase
      */
     public function testDisabledWhenDatabaseIsDown(): void
     {
-        $settings               = new InMemoryFeatureSettings();
+        $settings = new InMemoryFeatureSettings();
         $settings->accountValue = 1;
         $settings->databaseDown = true;
 
-        $this->assertFalse($settings->isRequestVersionBumpEnabled(1, 2));
+        $this->assertFalse($settings->isRequestVersionBumpEnabled(self::ACCOUNT_ID, self::REPOSITORY_ID));
 
     }//end testDisabledWhenDatabaseIsDown()
 
@@ -152,7 +165,7 @@ class FeatureSettingsTest extends TestCase
     public function testRejectsUnknownFeature(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        (new InMemoryFeatureSettings())->isEnabled('Unknown`; DROP TABLE x; --', 1, 2);
+        (new InMemoryFeatureSettings())->isEnabled('Unknown`; DROP TABLE x; --', self::ACCOUNT_ID, self::REPOSITORY_ID);
 
     }//end testRejectsUnknownFeature()
 

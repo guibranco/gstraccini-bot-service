@@ -21,19 +21,21 @@ require_once __DIR__.'/includes/userApiBootstrap.php';
 require_once $workerDir.'/Library/FeatureSettings.php';
 
 $path = (parse_url(($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?? '');
-if (preg_match('#/account-settings(?:/(\d+))?/?$#', $path, $matches) === 1) {
-    $resource = 'account';
-} else if (preg_match('#/repository-settings(?:/(\d+))?/?$#', $path, $matches) === 1) {
-    $resource = 'repository';
-} else {
+$resource = null;
+$matches = [];
+if (preg_match('#/(account|repository)-settings(?:/(\d+))?/?$#', $path, $matches) === 1) {
+    $resource = $matches[1];
+}
+
+if ($resource === null) {
     http_response_code(404);
     echo json_encode(['error' => 'Not Found']);
     exit;
 }
 
 $resourceId = null;
-if (isset($matches[1]) === true) {
-    $resourceId = (int) $matches[1];
+if (isset($matches[2]) === true) {
+    $resourceId = (int) $matches[2];
 }
 
 
@@ -53,7 +55,7 @@ function fetchFeatureSettingsRows(mysqli $mysqli, string $sql, string $types, mi
     $stmt->bind_param($types, ...$params);
     $stmt->execute();
     $result = $stmt->get_result();
-    $rows   = [];
+    $rows = [];
     if ($result !== false) {
         $rows = $result->fetch_all(MYSQLI_ASSOC);
     }
@@ -77,17 +79,17 @@ function fetchFeatureSettingsRows(mysqli $mysqli, string $sql, string $types, mi
  */
 function fetchAccounts(mysqli $mysqli, int $userId, ?int $accountId): array
 {
-    $sql    = 'SELECT DISTINCT gi.AccountId, gi.AccountLogin, gi.AccountType, acs.RequestVersionBump
+    $sql = 'SELECT DISTINCT gi.AccountId, gi.AccountLogin, gi.AccountType, acs.RequestVersionBump
             FROM user_installations uins
             INNER JOIN github_installations gi
                 ON gi.Sequence = (SELECT MAX(Sequence) FROM github_installations WHERE InstallationId = uins.InstallationId)
             LEFT JOIN account_settings acs ON acs.AccountId = gi.AccountId
             WHERE uins.UserId = ? AND uins.RemovedAt IS NULL';
-    $types  = 'i';
+    $types = 'i';
     $params = [$userId];
     if ($accountId !== null) {
-        $sql     .= ' AND gi.AccountId = ?';
-        $types   .= 'i';
+        $sql .= ' AND gi.AccountId = ?';
+        $types .= 'i';
         $params[] = $accountId;
     }
 
@@ -122,7 +124,7 @@ function fetchAccounts(mysqli $mysqli, int $userId, ?int $accountId): array
  */
 function fetchRepositories(mysqli $mysqli, int $userId, ?int $accountId, ?int $repositoryId): array
 {
-    $sql    = "SELECT DISTINCT gr.Id, gr.FullName, gr.Private, gr.OwnerId, gr.OwnerLogin,
+    $sql = "SELECT DISTINCT gr.Id, gr.FullName, gr.Private, gr.OwnerId, gr.OwnerLogin,
                    rs.RequestVersionBump AS RepositoryValue, acs.RequestVersionBump AS AccountValue
             FROM user_installations uins
             INNER JOIN github_repositories gr
@@ -133,24 +135,24 @@ function fetchRepositories(mysqli $mysqli, int $userId, ?int $accountId, ?int $r
             WHERE uins.UserId = ? AND uins.RemovedAt IS NULL
               AND (gr.InstallationAction IS NULL OR gr.InstallationAction <> 'removed')
               AND gr.LastAction <> 'deleted'";
-    $types  = 'i';
+    $types = 'i';
     $params = [$userId];
     if ($accountId !== null) {
-        $sql     .= ' AND gr.OwnerId = ?';
-        $types   .= 'i';
+        $sql .= ' AND gr.OwnerId = ?';
+        $types .= 'i';
         $params[] = $accountId;
     }
 
     if ($repositoryId !== null) {
-        $sql     .= ' AND gr.Id = ?';
-        $types   .= 'i';
+        $sql .= ' AND gr.Id = ?';
+        $types .= 'i';
         $params[] = $repositoryId;
     }
 
     $sql .= ' ORDER BY gr.FullName';
 
     $featureSettings = new FeatureSettings();
-    $repositories    = [];
+    $repositories = [];
     foreach (fetchFeatureSettingsRows($mysqli, $sql, $types, ...$params) as $row) {
         $repositoryValue = null;
         if ($row['RepositoryValue'] !== null) {
@@ -219,7 +221,7 @@ function saveAccountSetting(mysqli $mysqli, int $userId, int $accountId, ?int $v
     }
 
     $accountLogin = $accounts[0]['accountLogin'];
-    $stmt         = $mysqli->prepare(
+    $stmt = $mysqli->prepare(
         'INSERT INTO account_settings (AccountId, AccountLogin, RequestVersionBump, UpdatedByUserId)
          VALUES (?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE AccountLogin = VALUES(AccountLogin),
@@ -252,8 +254,8 @@ function saveRepositorySetting(mysqli $mysqli, int $userId, int $repositoryId, ?
     }
 
     $accountId = $repositories[0]['accountId'];
-    $fullName  = $repositories[0]['fullName'];
-    $stmt      = $mysqli->prepare(
+    $fullName = $repositories[0]['fullName'];
+    $stmt = $mysqli->prepare(
         'INSERT INTO repository_settings (RepositoryId, AccountId, FullName, RequestVersionBump, UpdatedByUserId)
          VALUES (?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE AccountId = VALUES(AccountId), FullName = VALUES(FullName),
