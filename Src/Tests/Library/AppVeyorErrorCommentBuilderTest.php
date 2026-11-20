@@ -16,6 +16,9 @@ class AppVeyorErrorCommentBuilderTest extends TestCase
     /** AppVeyor's answer when GitHub refuses its request, with a link that isn't safe to render. */
     private const GITHUB_FORBIDDEN = '{"message":"Error reading PR #1 details from GitHub: HTTP GET to https://api.github.com/repos/o/r/pulls/1 returned status code 403: Forbidden\nFull response body:\n{\"message\": \"Resource not accessible\", \"documentation_url\": \"javascript:alert(1)\", \"status\": \"403\"}"}';
 
+    /** AppVeyor's answer when GitHub rate-limits its request. */
+    private const GITHUB_RATE_LIMITED = '{"message":"Error reading PR #1 details from GitHub: HTTP GET to https://api.github.com/repos/o/r/pulls/1 returned status code 403: Forbidden\nFull response body:\n{\"message\": \"API rate limit exceeded for installation ID 1.\", \"documentation_url\": \"https://docs.github.com/rest/overview/resources-in-the-rest-api#rate-limiting\", \"status\": \"403\"}"}';
+
     /** AppVeyor's message, without the upstream response. */
     private const GITHUB_SUMMARY = "> Error reading PR #344 details from GitHub: HTTP GET to https://api.github.com/repos/GuilhermeStracini/POC-dotnet-Asterisk/pulls/344 returned status code 401: Unauthorized";
 
@@ -139,16 +142,20 @@ class AppVeyorErrorCommentBuilderTest extends TestCase
 
 
     /**
-     * A 403 from GitHub is a refusal, not expired credentials, and an unsafe link isn't rendered.
+     * A 403 from GitHub (no access or rate limit) is not expired credentials, and an unsafe link
+     * isn't rendered.
      *
      * @return void
      */
     public function testGitHubForbiddenIsNotExpiredAuth(): void
     {
-        $comment = $this->builder->build("build", 500, self::GITHUB_FORBIDDEN);
+        $comment   = $this->builder->build("build", 500, self::GITHUB_FORBIDDEN);
+        $rateLimit = $this->builder->build("build", 500, self::GITHUB_RATE_LIMITED);
 
         $this->assertStringContainsString(":bulb: GitHub refused AppVeyor's request.", $comment);
         $this->assertStringNotContainsString("could not authenticate", $comment);
+        $this->assertStringContainsString("rate-limiting", $rateLimit);
+        $this->assertStringNotContainsString("reconnect", $rateLimit);
         $this->assertStringContainsString("**Upstream response:** HTTP 403 - Resource not accessible\r\n", $comment);
         $this->assertStringNotContainsString("[docs](javascript", $comment);
 
