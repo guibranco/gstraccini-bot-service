@@ -154,7 +154,7 @@ class PendingConfirmationStore
 
     /**
      * The pending confirmations due for a reminder: created, and last reminded, at
-     * least `$intervalSeconds` ago, with fewer than `$maxReminders` reminders, oldest first.
+     * least `$intervalSeconds` ago, with fewer than `$maxReminders` reminders, least recently attempted first.
      *
      * @param integer $intervalSeconds How long to wait before (another) reminder.
      * @param integer $maxReminders    How many reminders at most.
@@ -174,7 +174,7 @@ class PendingConfirmationStore
                 AND CreatedAt <= NOW() - INTERVAL ? SECOND
                 AND (LastReminderAt IS NULL OR LastReminderAt <= NOW() - INTERVAL ? SECOND)
                 AND ReminderCount < ?
-            ORDER BY CreatedAt
+            ORDER BY COALESCE(LastReminderAt, CreatedAt)
             LIMIT ?";
 
         $status = PendingConfirmation::STATUS_PENDING;
