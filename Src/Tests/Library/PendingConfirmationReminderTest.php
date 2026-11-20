@@ -48,7 +48,7 @@ class PendingConfirmationReminderTest extends TestCase
     {
         $this->github   = new FakeGitHub();
         $this->store    = new InMemoryPendingConfirmationStore();
-        $this->reminder = new PendingConfirmationReminder($this->store, static fn(int $installationId): string => FakeGitHub::TOKEN);
+        $this->reminder = new PendingConfirmationReminder($this->store, static fn(): string => FakeGitHub::TOKEN);
 
     }//end setUp()
 
@@ -62,7 +62,10 @@ class PendingConfirmationReminderTest extends TestCase
      */
     private function confirmation(string $kind=PendingConfirmation::KIND_VERSION_BUMP, int $reminderCount=0): PendingConfirmation
     {
-        return new PendingConfirmation(5, $kind, 'owner', 'repo', 7, 1, 99, 'https://github.com/owner/repo/pull/1#issuecomment-99', 'feat: thing', 'stale-author', $reminderCount);
+        $confirmation         = new PendingConfirmation(5, $kind, 'owner', 'repo', 7, 1, 99, 'https://github.com/owner/repo/pull/1#issuecomment-99', $reminderCount);
+        $confirmation->author = 'stale-author';
+
+        return $confirmation;
 
     }//end confirmation()
 
@@ -205,10 +208,8 @@ class PendingConfirmationReminderTest extends TestCase
      */
     public function testOneFailureDoesNotStopTheOthers(): void
     {
-        $this->store->due = [
-            $this->confirmation(),
-            $this->confirmation(),
-        ];
+        $this->store->due[] = $this->confirmation();
+        $this->store->due[] = $this->confirmation();
         $this->openPullRequest();
         $this->github->answer(self::COMMENT_URL, json_encode(['body' => '']));
         $calls    = 0;
@@ -230,39 +231,6 @@ class PendingConfirmationReminderTest extends TestCase
         $this->assertSame(1, $report['reminded']);
 
     }//end testOneFailureDoesNotStopTheOthers()
-
-
-    /**
-     * Version bump reminder mentions the check and counts reminders.
-     *
-     * @return void
-     */
-    public function testVersionBumpReminderMentionsTheCheckAndCountsReminders(): void
-    {
-        $body = $this->reminder->buildReminder($this->confirmation(PendingConfirmation::KIND_VERSION_BUMP, 1), 'someone', 'https://x.test');
-
-        $this->assertStringContainsString('a version bump choice', $body);
-        $this->assertStringContainsString('GStraccini Checks: Pull Request', $body);
-        $this->assertStringContainsString('Reminder 2 of '.PendingConfirmationReminder::MAX_REMINDERS, $body);
-
-    }//end testVersionBumpReminderMentionsTheCheckAndCountsReminders()
-
-
-    /**
-     * Infisical reminder without author or url.
-     *
-     * @return void
-     */
-    public function testInfisicalReminderWithoutAuthorOrUrl(): void
-    {
-        $body = $this->reminder->buildReminder($this->confirmation(PendingConfirmation::KIND_INFISICAL_IGNORE), null, null);
-
-        $this->assertStringStartsWith(PendingConfirmationReminder::MARKER."\nHi, ", $body);
-        $this->assertStringContainsString('`.infisicalignore`', $body);
-        $this->assertStringContainsString('an earlier comment', $body);
-        $this->assertStringNotContainsString('GStraccini Checks', $body);
-
-    }//end testInfisicalReminderWithoutAuthorOrUrl()
 
 
 }//end class

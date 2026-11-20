@@ -79,7 +79,7 @@ class PendingConfirmationReminder
     public function __construct(PendingConfirmationStore $store, callable $tokenProvider)
     {
         $this->store         = $store;
-        $this->tokenProvider = Closure::fromCallable($tokenProvider);
+        $this->tokenProvider = $tokenProvider(...);
 
     }//end __construct()
 
@@ -131,12 +131,11 @@ class PendingConfirmationReminder
      */
     public function run(): array
     {
-        $report = [
-            'reminded'  => 0,
-            'resolved'  => 0,
-            'cancelled' => 0,
-            'skipped'   => 0,
-        ];
+        $report              = [];
+        $report['reminded']  = 0;
+        $report['resolved']  = 0;
+        $report['cancelled'] = 0;
+        $report['skipped']   = 0;
 
         $due = $this->store->findDueForReminder(self::REMINDER_INTERVAL_SECONDS, self::MAX_REMINDERS, self::BATCH_SIZE);
         foreach ($due as $confirmation) {
@@ -233,17 +232,11 @@ class PendingConfirmationReminder
      */
     private function isApplied(string $body): bool
     {
-        $markers = [
-            VersionBumpCommentBuilder::COMPLETION_MARKER,
-            InfisicalIgnoreApprovalCommentBuilder::COMPLETION_MARKER,
-        ];
-        foreach ($markers as $marker) {
-            if (str_contains($body, $marker) === true) {
-                return true;
-            }
+        if (str_contains($body, VersionBumpCommentBuilder::COMPLETION_MARKER) === true) {
+            return true;
         }
 
-        return false;
+        return str_contains($body, InfisicalIgnoreApprovalCommentBuilder::COMPLETION_MARKER);
 
     }//end isApplied()
 
@@ -295,15 +288,13 @@ class PendingConfirmationReminder
      */
     private function context(PendingConfirmation $confirmation, array $extra=[]): array
     {
-        return array_merge(
-            [
-                'sequence' => $confirmation->sequence,
-                'repo'     => "{$confirmation->owner}/{$confirmation->repo}",
-                'pr'       => $confirmation->pullRequestNumber,
-                'kind'     => $confirmation->kind,
-            ],
-            $extra
-        );
+        $context             = [];
+        $context['sequence'] = $confirmation->sequence;
+        $context['repo']     = "{$confirmation->owner}/{$confirmation->repo}";
+        $context['pr']       = $confirmation->pullRequestNumber;
+        $context['kind']     = $confirmation->kind;
+
+        return array_merge($context, $extra);
 
     }//end context()
 

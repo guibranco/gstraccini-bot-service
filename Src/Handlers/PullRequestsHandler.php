@@ -811,6 +811,7 @@ class PullRequestsHandler implements IHandler
             "&repo=" . $pullRequest->RepositoryName .
             "&pullRequest=" . $pullRequest->Number;
         $repoPrefix = "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName;
+
         $metadata = array(
             "token" => $token,
             "userToken" => $owner?->token,
@@ -832,6 +833,7 @@ class PullRequestsHandler implements IHandler
             "owner" => $pullRequest->RepositoryOwner,
             "repo" => $pullRequest->RepositoryName,
         );
+
         $metadata["installationId"] = (int) $pullRequest->InstallationId;
 
         return $metadata;

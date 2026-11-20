@@ -33,12 +33,7 @@ if ($userId === null || ctype_digit((string) $userId) === false) {
 
 $userIdInt = (int) $userId;
 
-$allowedStatuses = [
-    'pending',
-    'resolved',
-    'cancelled',
-    'all',
-];
+$allowedStatuses = explode(',', 'pending,resolved,cancelled,all');
 
 $status = ($_GET['status'] ?? 'pending');
 if (in_array($status, $allowedStatuses, true) === false) {
@@ -109,24 +104,24 @@ $confirmations = [];
 if ($result !== false) {
     $row = $result->fetch_assoc();
     while ($row !== null) {
-        $confirmations[] = [
-            'sequence'          => (int) $row['Sequence'],
-            'kind'              => $row['Kind'],
-            'repositoryOwner'   => $row['RepositoryOwner'],
-            'repositoryName'    => $row['RepositoryName'],
-            'installationId'    => (int) $row['InstallationId'],
-            'pullRequestNumber' => (int) $row['PullRequestNumber'],
-            'pullRequestTitle'  => $row['PullRequestTitle'],
-            'pullRequestAuthor' => $row['PullRequestAuthor'],
-            'commentId'         => (int) $row['CommentId'],
-            'url'               => $row['Url'],
-            'status'            => $row['Status'],
-            'resolution'        => $row['Resolution'],
-            'resolvedAt'        => $row['ResolvedAt'],
-            'reminderCount'     => (int) $row['ReminderCount'],
-            'lastReminderAt'    => $row['LastReminderAt'],
-            'createdAt'         => $row['CreatedAt'],
-        ];
+        $item                    = [];
+        $item['sequence']        = (int) $row['Sequence'];
+        $item['kind']            = $row['Kind'];
+        $item['repositoryOwner'] = $row['RepositoryOwner'];
+        $item['repositoryName']  = $row['RepositoryName'];
+        $item['installationId']  = (int) $row['InstallationId'];
+        $item['pullRequestNumber'] = (int) $row['PullRequestNumber'];
+        $item['pullRequestTitle']  = $row['PullRequestTitle'];
+        $item['pullRequestAuthor'] = $row['PullRequestAuthor'];
+        $item['commentId']         = (int) $row['CommentId'];
+        $item['url']               = $row['Url'];
+        $item['status']            = $row['Status'];
+        $item['resolution']        = $row['Resolution'];
+        $item['resolvedAt']        = $row['ResolvedAt'];
+        $item['reminderCount']     = (int) $row['ReminderCount'];
+        $item['lastReminderAt']    = $row['LastReminderAt'];
+        $item['createdAt']         = $row['CreatedAt'];
+        $confirmations[]           = $item;
 
         $row = $result->fetch_assoc();
     }

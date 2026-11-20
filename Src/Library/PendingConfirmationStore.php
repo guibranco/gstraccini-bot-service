@@ -181,31 +181,49 @@ class PendingConfirmationStore
             $this->run($stmt);
             $result        = $stmt->get_result();
             $confirmations = [];
-            while (($row = $result->fetch_assoc()) !== null) {
-                $confirmations[] = new PendingConfirmation(
-                    (int) $row['Sequence'],
-                    (string) $row['Kind'],
-                    (string) $row['RepositoryOwner'],
-                    (string) $row['RepositoryName'],
-                    (int) $row['InstallationId'],
-                    (int) $row['PullRequestNumber'],
-                    (int) $row['CommentId'],
-                    $row['Url'],
-                    $row['PullRequestTitle'],
-                    $row['PullRequestAuthor'],
-                    (int) $row['ReminderCount']
-                );
+            $row           = $result->fetch_assoc();
+            while ($row !== null) {
+                $confirmations[] = $this->toConfirmation($row);
+                $row             = $result->fetch_assoc();
             }
 
             $result->close();
         } finally {
             $stmt->close();
             $mysqli->close();
-        }//end try
+        }
 
         return $confirmations;
 
     }//end findDueForReminder()
+
+
+    /**
+     * Builds a confirmation from a row of the table.
+     *
+     * @param array $row The row.
+     *
+     * @return PendingConfirmation
+     */
+    private function toConfirmation(array $row): PendingConfirmation
+    {
+        $confirmation         = new PendingConfirmation(
+            (int) $row['Sequence'],
+            (string) $row['Kind'],
+            (string) $row['RepositoryOwner'],
+            (string) $row['RepositoryName'],
+            (int) $row['InstallationId'],
+            (int) $row['PullRequestNumber'],
+            (int) $row['CommentId'],
+            $row['Url'],
+            (int) $row['ReminderCount']
+        );
+        $confirmation->title  = $row['PullRequestTitle'];
+        $confirmation->author = $row['PullRequestAuthor'];
+
+        return $confirmation;
+
+    }//end toConfirmation()
 
 
     /**

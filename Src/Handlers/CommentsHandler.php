@@ -1341,7 +1341,7 @@ class CommentsHandler implements IHandler
         }
 
         $response = doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
-        $created = json_decode((string) $response->getBody());
+        $created  = json_decode((string) $response->getBody());
         if ($response->getStatusCode() < 300 && is_object($created) === true) {
             $this->pendingConfirmations()->record(
                 PendingConfirmation::KIND_INFISICAL_IGNORE,

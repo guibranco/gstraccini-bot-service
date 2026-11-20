@@ -5,6 +5,7 @@ namespace GuiBranco\GStracciniBot\Tests\Library;
 use GuiBranco\GStracciniBot\Library\PendingConfirmation;
 use GuiBranco\GStracciniBot\Library\PendingConfirmationTracker;
 use PHPUnit\Framework\TestCase;
+use stdClass;
 
 /**
  * How PendingConfirmationTracker records and closes out confirmations.
@@ -47,10 +48,9 @@ class PendingConfirmationTrackerTest extends TestCase
      */
     public function testRecordsTheCommentGitHubReturned(): void
     {
-        $comment = (object) [
-            'id'       => 42,
-            'html_url' => 'https://github.com/o/r/pull/3#issuecomment-42',
-        ];
+        $comment           = new stdClass();
+        $comment->id       = 42;
+        $comment->html_url = 'https://github.com/o/r/pull/3#issuecomment-42';
 
         $this->tracker->record(PendingConfirmation::KIND_VERSION_BUMP, 'o', 'r', 7, 3, $comment, 'feat: x', 'dev');
 
@@ -105,13 +105,9 @@ class PendingConfirmationTrackerTest extends TestCase
         $this->tracker->supersede('o', 'r', 3, PendingConfirmation::KIND_VERSION_BUMP);
         $this->tracker->resolveByComment('o', 'r', 3, 42, 'minor');
 
-        $this->assertSame(
-            [
-                'resolveForPullRequest o/r#3 version_bump superseded',
-                'resolveByComment 42 minor',
-            ],
-            $this->store->calls
-        );
+        $this->assertCount(2, $this->store->calls);
+        $this->assertSame('resolveForPullRequest o/r#3 version_bump superseded', $this->store->calls[0]);
+        $this->assertSame('resolveByComment 42 minor', $this->store->calls[1]);
 
     }//end testSupersedeAndResolve()
 

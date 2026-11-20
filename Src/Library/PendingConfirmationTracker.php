@@ -67,7 +67,7 @@ class PendingConfirmationTracker
             return;
         }
 
-        $confirmation = new PendingConfirmation(
+        $confirmation         = new PendingConfirmation(
             0,
             $kind,
             $owner,
@@ -75,10 +75,10 @@ class PendingConfirmationTracker
             $installationId,
             $pullRequestNumber,
             $commentId,
-            ($comment->html_url ?? null),
-            $title,
-            $author
+            ($comment->html_url ?? null)
         );
+        $confirmation->title  = $title;
+        $confirmation->author = $author;
 
         $this->attempt(
             'record',
@@ -185,16 +185,12 @@ class PendingConfirmationTracker
         try {
             $call();
         } catch (Throwable $e) {
-            $this->logToStream(
-                'warning',
-                'Could not {operation} the pending confirmation of {repo}#{pr}: {error}',
-                [
-                    'operation' => $operation,
-                    'repo'      => $repository,
-                    'pr'        => $pullRequestNumber,
-                    'error'     => $e->getMessage(),
-                ]
-            );
+            $context              = [];
+            $context['operation'] = $operation;
+            $context['repo']      = $repository;
+            $context['pr']        = $pullRequestNumber;
+            $context['error']     = $e->getMessage();
+            $this->logToStream('warning', 'Could not {operation} the pending confirmation of {repo}#{pr}: {error}', $context);
         }
 
     }//end attempt()

@@ -36,8 +36,24 @@ final class PendingConfirmation
     public const RESOLUTION_CLOSED          = 'closed';
     public const RESOLUTION_COMMENT_DELETED = 'comment_deleted';
 
+    /**
+     * The pull request title, when known.
+     *
+     * @var string|null
+     */
+    public ?string $title = null;
 
     /**
+     * The login of the pull request author, when known.
+     *
+     * @var string|null
+     */
+    public ?string $author = null;
+
+
+    /**
+     * Builds a confirmation.
+     *
      * @param integer     $sequence          The row id (0 before it is stored).
      * @param string      $kind              One of the KIND_* constants.
      * @param string      $owner             Repository owner.
@@ -46,9 +62,9 @@ final class PendingConfirmation
      * @param integer     $pullRequestNumber The pull request.
      * @param integer     $commentId         The bot's comment holding the checkboxes.
      * @param string|null $url               Link to the comment.
-     * @param string|null $title             The pull request title.
-     * @param string|null $author            The pull request author's login.
      * @param integer     $reminderCount     How many reminders were posted.
+     *
+     * @return void
      */
     public function __construct(
         public readonly int $sequence,
@@ -59,8 +75,6 @@ final class PendingConfirmation
         public readonly int $pullRequestNumber,
         public readonly int $commentId,
         public readonly ?string $url=null,
-        public readonly ?string $title=null,
-        public readonly ?string $author=null,
         public readonly int $reminderCount=0
     ) {
 

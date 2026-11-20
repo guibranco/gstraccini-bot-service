@@ -79,13 +79,13 @@ class PullRequestsHandlerTest extends TestCase
 
     private function buildMetadata(): array
     {
-        $metadata = [
+        $metadata                   = [
             "token" => "fake-token",
             "pullRequestUrl" => "repos/owner/repo/pulls/1",
             "commentsUrl" => "repos/owner/repo/issues/1/comments",
         ];
-        $metadata['owner'] = 'owner';
-        $metadata['repo'] = 'repo';
+        $metadata['owner']          = 'owner';
+        $metadata['repo']           = 'repo';
         $metadata['installationId'] = 7;
 
         return $metadata;
@@ -93,13 +93,13 @@ class PullRequestsHandlerTest extends TestCase
 
     private function buildFeaturePullRequest(): object
     {
-        $pullRequest = (object) [
+        $pullRequest              = (object) [
             "title" => "feat: add cool feature",
             "head" => (object) ["ref" => "feature/cool-thing"],
             "labels" => [],
         ];
-        $pullRequest->number = 1;
-        $pullRequest->user = new stdClass();
+        $pullRequest->number      = 1;
+        $pullRequest->user        = new stdClass();
         $pullRequest->user->login = 'author';
 
         return $pullRequest;
@@ -165,12 +165,12 @@ class PullRequestsHandlerTest extends TestCase
      */
     public function testPostedDecisionIsRecordedAsPendingConfirmation(): void
     {
-        $created = new stdClass();
-        $created->id = 555;
+        $created           = new stdClass();
+        $created->id       = 555;
         $created->html_url = 'https://github.com/owner/repo/pull/1#issuecomment-555';
-        $created->body = '';
-        self::$responses['/commits'] = Response::success(json_encode([]), '', [], 200);
-        self::$responses['POST /issues/1/comments'] = Response::success(json_encode($created), '', [], 201);
+        $created->body     = '';
+        self::$responses['/commits']                = new Response(true, json_encode([]), '', 200, '', []);
+        self::$responses['POST /issues/1/comments'] = new Response(true, json_encode($created), '', 201, '', []);
 
         $this->invokeCheckVersionBump($this->buildMetadata(), $this->buildFeaturePullRequest());
 
@@ -191,12 +191,12 @@ class PullRequestsHandlerTest extends TestCase
      */
     public function testExistingDecisionCommentIsBackfilled(): void
     {
-        $existing = new stdClass();
-        $existing->id = 321;
-        $existing->html_url = 'u';
-        $existing->body = VersionBumpCommentBuilder::MARKER.PHP_EOL.'### Version bump needed';
-        self::$responses['/commits'] = Response::success(json_encode([]), '', [], 200);
-        self::$responses['/issues/1/comments'] = Response::success(json_encode([$existing]), '', [], 200);
+        $existing                    = new stdClass();
+        $existing->id                = 321;
+        $existing->html_url          = 'u';
+        $existing->body              = VersionBumpCommentBuilder::MARKER.PHP_EOL.'### Version bump needed';
+        self::$responses['/commits'] = new Response(true, json_encode([]), '', 200, '', []);
+        self::$responses['/issues/1/comments'] = new Response(true, json_encode([$existing]), '', 200, '', []);
 
         $result = $this->invokeCheckVersionBump($this->buildMetadata(), $this->buildFeaturePullRequest());
 
@@ -213,10 +213,10 @@ class PullRequestsHandlerTest extends TestCase
      */
     public function testSemverDirectiveSupersedesAPendingDecision(): void
     {
-        $commit = new stdClass();
-        $commit->commit = new stdClass();
+        $commit                  = new stdClass();
+        $commit->commit          = new stdClass();
         $commit->commit->message = 'bump'.PHP_EOL.PHP_EOL.'+semver: minor';
-        self::$responses['/commits'] = Response::success(json_encode([$commit]), '', [], 200);
+        self::$responses['/commits'] = new Response(true, json_encode([$commit]), '', 200, '', []);
 
         $result = $this->invokeCheckVersionBump($this->buildMetadata(), $this->buildFeaturePullRequest());
 
