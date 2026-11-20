@@ -15,47 +15,8 @@
 
 use GuiBranco\GStracciniBot\Library\FeatureSettings;
 
-header('Content-Type: application/json');
-
-$apiSecretsFile = __DIR__ . '/secrets/api.secrets.php';
-if (file_exists($apiSecretsFile)) {
-    require_once $apiSecretsFile;
-}
-
-$providedKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
-if (empty($providedKey) || !isset($apiKey) || !hash_equals($apiKey, $providedKey)) {
-    http_response_code(401);
-    echo json_encode(['error' => 'Unauthorized']);
-    exit;
-}
-
-if (!isset($workerDir) || !is_dir($workerDir)) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Worker directory not configured']);
-    exit;
-}
-
-require_once $workerDir . '/Library/DatabaseHandler.php';
+require_once __DIR__ . '/includes/userApiBootstrap.php';
 require_once $workerDir . '/Library/FeatureSettings.php';
-
-$mySqlSecretsFile = $workerDir . '/secrets/mySql.secrets.php';
-if (file_exists($mySqlSecretsFile)) {
-    require_once $mySqlSecretsFile;
-}
-
-if (!isset($mySqlHost, $mySqlUser, $mySqlPassword, $mySqlDatabase)) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Database not configured']);
-    exit;
-}
-
-$userId = $_GET['userId'] ?? null;
-if ($userId === null || !ctype_digit((string) $userId)) {
-    http_response_code(400);
-    echo json_encode(['error' => 'Missing or invalid userId']);
-    exit;
-}
-$userIdInt = (int) $userId;
 
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '';
 if (preg_match('#/account-settings/(?:(\d+)/)?$#', $path, $matches) === 1) {
@@ -68,16 +29,6 @@ if (preg_match('#/account-settings/(?:(\d+)/)?$#', $path, $matches) === 1) {
     exit;
 }
 $resourceId = isset($matches[1]) ? (int) $matches[1] : null;
-
-$dbHandler = new DatabaseHandler($mySqlHost, $mySqlUser, $mySqlPassword, $mySqlDatabase);
-
-try {
-    $mysqli = $dbHandler->connect();
-} catch (\Exception $e) {
-    http_response_code(503);
-    echo json_encode(['error' => 'Database unavailable']);
-    exit;
-}
 
 /**
  * Runs a SELECT with bound parameters and returns every row.
