@@ -8,51 +8,56 @@
 //
 // Sets: $workerDir, $userIdInt (the signed-in user's GitHub id), $mysqli.
 
+/**
+ * Responds with a JSON error and ends the request.
+ *
+ * @param int    $statusCode The HTTP status code.
+ * @param string $message    The error message.
+ *
+ * @return never
+ */
+function failUserApiRequest(int $statusCode, string $message): never
+{
+    http_response_code($statusCode);
+    echo json_encode(['error' => $message]);
+    exit;
+}
+
 header('Content-Type: application/json');
 
-$apiSecretsFile = __DIR__ . '/../secrets/api.secrets.php';
-if (file_exists($apiSecretsFile)) {
-    require_once $apiSecretsFile;
+foreach ([__DIR__ . '/../secrets/api.secrets.php'] as $secretsFile) {
+    if (is_file($secretsFile) === true) {
+        require_once $secretsFile;
+    }
 }
 
-$providedKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
-if (empty($providedKey) || !isset($apiKey) || !hash_equals($apiKey, $providedKey)) {
-    http_response_code(401);
-    echo json_encode(['error' => 'Unauthorized']);
-    exit;
+$apiKeyHeader = (string) ($_SERVER['HTTP_X_API_KEY'] ?? '');
+if ($apiKeyHeader === '' || isset($apiKey) === false || hash_equals($apiKey, $apiKeyHeader) === false) {
+    failUserApiRequest(401, 'Unauthorized');
 }
 
-if (!isset($workerDir) || !is_dir($workerDir)) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Worker directory not configured']);
-    exit;
+if (isset($workerDir) === false || is_dir($workerDir) === false) {
+    failUserApiRequest(500, 'Worker directory not configured');
 }
 
 require_once $workerDir . '/Library/DatabaseHandler.php';
-
-$mySqlSecretsFile = $workerDir . '/secrets/mySql.secrets.php';
-if (file_exists($mySqlSecretsFile)) {
-    require_once $mySqlSecretsFile;
+foreach ([$workerDir . '/secrets/mySql.secrets.php'] as $secretsFile) {
+    if (is_file($secretsFile) === true) {
+        require_once $secretsFile;
+    }
 }
 
-if (!isset($mySqlHost, $mySqlUser, $mySqlPassword, $mySqlDatabase)) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Database not configured']);
-    exit;
+if (isset($mySqlHost, $mySqlUser, $mySqlPassword, $mySqlDatabase) === false) {
+    failUserApiRequest(500, 'Database not configured');
 }
 
-$userIdParam = $_GET['userId'] ?? null;
-if ($userIdParam === null || !ctype_digit((string) $userIdParam)) {
-    http_response_code(400);
-    echo json_encode(['error' => 'Missing or invalid userId']);
-    exit;
+$userIdInt = filter_var($_GET['userId'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
+if ($userIdInt === false) {
+    failUserApiRequest(400, 'Missing or invalid userId');
 }
-$userIdInt = (int) $userIdParam;
 
 try {
     $mysqli = (new DatabaseHandler($mySqlHost, $mySqlUser, $mySqlPassword, $mySqlDatabase))->connect();
 } catch (\Exception $e) {
-    http_response_code(503);
-    echo json_encode(['error' => 'Database unavailable']);
-    exit;
+    failUserApiRequest(503, 'Database unavailable');
 }
