@@ -53,9 +53,18 @@ class PullRequestsHandlerTest extends TestCase
         return Response::success("[]", $url, [], 200);
     }
 
-    private function invokeCheckVersionBump(array $metadata, object $pullRequestUpdated, ?FeatureSettings $settings = null): bool
+    /**
+     * Invokes the private PullRequestsHandler::checkVersionBump() method.
+     *
+     * @param array                $metadata           Metadata for the GitHub API requests.
+     * @param object               $pullRequestUpdated The pull request as returned by the GitHub API.
+     * @param FeatureSettings|null $settings           The feature settings; the request is enabled when null.
+     *
+     * @return bool Whether the version bump decision is resolved.
+     */
+    private function invokeCheckVersionBump(array $metadata, object $pullRequestUpdated, ?FeatureSettings $settings=null): bool
     {
-        $handler = new PullRequestsHandler($settings ?? new FixedFeatureSettings(true));
+        $handler = new PullRequestsHandler(($settings ?? new FixedFeatureSettings(true)));
         $method = (new ReflectionClass($handler))->getMethod("checkVersionBump");
         $method->setAccessible(true);
 
@@ -234,7 +243,9 @@ class PullRequestsHandlerTest extends TestCase
 
         $this->assertTrue($result, "A pull request of a repository that did not opt in must be treated as resolved.");
         $this->assertSame([], self::$requestLog, "No GitHub request should be made when the feature is disabled.");
-    }
+
+    }//end testSkipsWhenVersionBumpDisabled()
+
 
     /**
      * The repository and account ids of the base repository are the ones the settings are looked up with.
@@ -249,11 +260,16 @@ class PullRequestsHandlerTest extends TestCase
         $method->setAccessible(true);
 
         $pullRequest = $this->buildFeaturePullRequest();
-        $pullRequest->base = (object) ["repo" => (object) ["id" => 123, "owner" => (object) ["id" => 456]]];
+        $repo = new stdClass();
+        $repo->id = 123;
+        $repo->owner = (object) ["id" => 456];
+        $pullRequest->base = (object) ["repo" => $repo];
         $method->invoke($handler, $this->buildMetadata(), $pullRequest);
 
         $this->assertSame(["456:123"], $settings->lookups);
-    }
+
+    }//end testLooksUpBaseRepositoryAndOwner()
+
 
     public function testResolvedWhenSemverDirectiveAlreadyPresent(): void
     {
@@ -279,6 +295,7 @@ class PullRequestsHandlerTest extends TestCase
  */
 class FixedFeatureSettings extends FeatureSettings
 {
+
     /**
      * The lookups made, as "accountId:repositoryId".
      *
@@ -287,13 +304,24 @@ class FixedFeatureSettings extends FeatureSettings
     public array $lookups = [];
 
     /**
+     * The answer of every lookup.
+     *
+     * @var boolean
+     */
+    private bool $enabled;
+
+
+    /**
      * Sets the answer of every lookup.
      *
      * @param bool $enabled Whether the version bump decision is requested.
      */
-    public function __construct(private bool $enabled)
+    public function __construct(bool $enabled)
     {
-    }
+        $this->enabled = $enabled;
+
+    }//end __construct()
+
 
     /**
      * Returns the fixed answer.
@@ -307,5 +335,8 @@ class FixedFeatureSettings extends FeatureSettings
     {
         $this->lookups[] = "{$accountId}:{$repositoryId}";
         return $this->enabled;
-    }
-}
+
+    }//end isRequestVersionBumpEnabled()
+
+
+}//end class

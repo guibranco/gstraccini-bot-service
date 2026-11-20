@@ -605,7 +605,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StatusResponse'
-  /account-settings/:
+  /account-settings:
     get:
       summary: List account feature settings
       description: Returns the GitHub accounts (users and organizations) of the signed-in user's installations, with their opt-in feature settings
@@ -629,7 +629,7 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/AccountSettings'
-  /account-settings/{accountId}/:
+  /account-settings/{accountId}:
     put:
       summary: Update an account's feature settings
       description: Applies to every repository of the account that does not override the setting
@@ -670,7 +670,7 @@ paths:
           description: Invalid body
         '404':
           description: The account is not one of the user's installations
-  /repository-settings/:
+  /repository-settings:
     get:
       summary: List repository feature settings
       description: Returns the repositories of the signed-in user's installations, with their opt-in feature settings and the effective value after inheriting the account
@@ -700,7 +700,7 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/RepositorySettings'
-  /repository-settings/{repositoryId}/:
+  /repository-settings/{repositoryId}:
     put:
       summary: Update a repository's feature settings
       description: null inherits the account setting

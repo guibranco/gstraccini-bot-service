@@ -13,6 +13,7 @@ use stdClass;
  */
 class InMemoryFeatureSettings extends FeatureSettings
 {
+
     /**
      * The repository's value; null inherits the account's.
      *
@@ -45,9 +46,9 @@ class InMemoryFeatureSettings extends FeatureSettings
     /**
      * Returns the in-memory values.
      *
-     * @param string $feature      The feature looked up.
-     * @param int    $accountId    The account looked up.
-     * @param int    $repositoryId The repository looked up.
+     * @param string  $feature      The feature looked up.
+     * @param integer $accountId    The account looked up.
+     * @param integer $repositoryId The repository looked up.
      *
      * @return stdClass|null The values.
      */
@@ -55,19 +56,18 @@ class InMemoryFeatureSettings extends FeatureSettings
     {
         $this->lookups[] = "{$feature}:{$accountId}:{$repositoryId}";
         if ($this->databaseDown === true) {
-            throw new DatabaseException("Failed to connect to MySQL");
+            throw new DatabaseException('Failed to connect to MySQL');
         }
 
-        $row = new stdClass();
+        $row                  = new stdClass();
         $row->repositoryValue = $this->repositoryValue;
-        $row->accountValue = $this->accountValue;
+        $row->accountValue    = $this->accountValue;
         return $row;
 
     }//end readSettings()
 
 
 }//end class
-
 
 class FeatureSettingsTest extends TestCase
 {
@@ -83,7 +83,7 @@ class FeatureSettingsTest extends TestCase
         $settings = new InMemoryFeatureSettings();
 
         $this->assertFalse($settings->isRequestVersionBumpEnabled(1, 2));
-        $this->assertSame(["RequestVersionBump:1:2"], $settings->lookups);
+        $this->assertSame(['RequestVersionBump:1:2'], $settings->lookups);
 
     }//end testDisabledByDefault()
 
@@ -95,7 +95,7 @@ class FeatureSettingsTest extends TestCase
      */
     public function testRepositoryInheritsAccount(): void
     {
-        $settings = new InMemoryFeatureSettings();
+        $settings               = new InMemoryFeatureSettings();
         $settings->accountValue = 1;
         $this->assertTrue($settings->isRequestVersionBumpEnabled(1, 2));
 
@@ -112,16 +112,16 @@ class FeatureSettingsTest extends TestCase
      */
     public function testRepositoryOverridesAccount(): void
     {
-        $settings = new InMemoryFeatureSettings();
-        $settings->accountValue = 0;
+        $settings                  = new InMemoryFeatureSettings();
+        $settings->accountValue    = 0;
         $settings->repositoryValue = 1;
         $this->assertTrue($settings->isRequestVersionBumpEnabled(1, 2));
 
-        $settings->accountValue = 1;
+        $settings->accountValue    = 1;
         $settings->repositoryValue = 0;
         $this->assertFalse($settings->isRequestVersionBumpEnabled(1, 2));
 
-        $settings->accountValue = null;
+        $settings->accountValue    = null;
         $settings->repositoryValue = 1;
         $this->assertTrue($settings->isRequestVersionBumpEnabled(1, 2));
 
@@ -135,7 +135,7 @@ class FeatureSettingsTest extends TestCase
      */
     public function testDisabledWhenDatabaseIsDown(): void
     {
-        $settings = new InMemoryFeatureSettings();
+        $settings               = new InMemoryFeatureSettings();
         $settings->accountValue = 1;
         $settings->databaseDown = true;
 
@@ -152,7 +152,7 @@ class FeatureSettingsTest extends TestCase
     public function testRejectsUnknownFeature(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        (new InMemoryFeatureSettings())->isEnabled("Unknown`; DROP TABLE x; --", 1, 2);
+        (new InMemoryFeatureSettings())->isEnabled('Unknown`; DROP TABLE x; --', 1, 2);
 
     }//end testRejectsUnknownFeature()
 
@@ -165,9 +165,9 @@ class FeatureSettingsTest extends TestCase
     public function testResolveAcceptsStringValues(): void
     {
         $settings = new FeatureSettings();
-        $this->assertTrue($settings->resolve("1", "0"));
-        $this->assertFalse($settings->resolve("0", "1"));
-        $this->assertTrue($settings->resolve(null, "1"));
+        $this->assertTrue($settings->resolve('1', '0'));
+        $this->assertFalse($settings->resolve('0', '1'));
+        $this->assertTrue($settings->resolve(null, '1'));
         $this->assertFalse($settings->resolve(null, null));
 
     }//end testResolveAcceptsStringValues()

@@ -74,7 +74,7 @@ class FeatureSettings
             return false;
         }
 
-        return $this->resolve($row?->repositoryValue ?? null, $row?->accountValue ?? null);
+        return $this->resolve(($row?->repositoryValue ?? null), ($row?->accountValue ?? null));
 
     }//end isEnabled()
 
