@@ -8,6 +8,8 @@ use GuiBranco\GStracciniBot\Library\DependencyFileLabelService;
 use GuiBranco\GStracciniBot\Library\LogContext;
 use GuiBranco\GStracciniBot\Library\MarkdownGroupCheckboxValidator;
 use GuiBranco\GStracciniBot\Library\OwnerTokenResolver;
+use GuiBranco\GStracciniBot\Library\PendingConfirmation;
+use GuiBranco\GStracciniBot\Library\PendingConfirmationTracker;
 use GuiBranco\GStracciniBot\Library\PullRequestCodeScanner;
 use GuiBranco\GStracciniBot\Library\PullRequestHeadWatcher;
 use GuiBranco\GStracciniBot\Library\RecreateRequester;
@@ -56,6 +58,37 @@ class PullRequestsHandler implements IHandler
      * @var float
      */
     private float $startedAt = 0.0;
+
+    /**
+     * Records the comments waiting for the user's confirmation (version bump decision).
+     *
+     * @var PendingConfirmationTracker|null
+     */
+    private ?PendingConfirmationTracker $pendingConfirmations;
+
+
+    /**
+     * @param PendingConfirmationTracker|null $pendingConfirmations Tracks the pending confirmations (default: the database).
+     */
+    public function __construct(?PendingConfirmationTracker $pendingConfirmations = null)
+    {
+        $this->pendingConfirmations = $pendingConfirmations;
+
+    }//end __construct()
+
+
+    /**
+     * The tracker of pending confirmations, created on first use.
+     *
+     * @return PendingConfirmationTracker
+     */
+    private function pendingConfirmations(): PendingConfirmationTracker
+    {
+        $this->pendingConfirmations ??= new PendingConfirmationTracker();
+
+        return $this->pendingConfirmations;
+
+    }//end pendingConfirmations()
 
 
     /**
@@ -158,6 +191,12 @@ class PullRequestsHandler implements IHandler
             $this->checkForOtherPullRequests($metadata, $pullRequest);
             removeUnreadActionsForPullRequest($pullRequestUpdated->node_id);
             $this->trace('debug', 'PR {repo}#{pr}: removed unread actions of the closed pull request', []);
+            $this->pendingConfirmations()->cancelForClosedPullRequest(
+                (string) $pullRequest->RepositoryOwner,
+                (string) $pullRequest->RepositoryName,
+                (int) $pullRequest->Number,
+                (bool) ($pullRequestUpdated->merged ?? false)
+            );
 
             if ($pullRequestUpdated->merged) {
                 $this->trace('info', 'PR {repo}#{pr} was merged — recording recent activity', []);
@@ -448,12 +487,14 @@ class PullRequestsHandler implements IHandler
 
         if ($analyzer->hasSemverDirective($messages)) {
             $this->trace('debug', 'PR {repo}#{pr}: version bump resolved — +semver directive found in {messages} title/commit messages', ["messages" => count($messages)]);
+            $this->supersedeVersionBumpDecision($metadata, $pullRequestUpdated);
             return true;
         }
 
         $labels = array_column($pullRequestUpdated->labels ?? [], "name");
         if (!$analyzer->looksLikeFeature($pullRequestUpdated->title, $pullRequestUpdated->head->ref, $labels)) {
             $this->trace('debug', 'PR {repo}#{pr}: version bump resolved — does not look like a feature', ["title" => $pullRequestUpdated->title, "head_ref" => $pullRequestUpdated->head->ref]);
+            $this->supersedeVersionBumpDecision($metadata, $pullRequestUpdated);
             return true;
         }
 
@@ -466,8 +507,11 @@ class PullRequestsHandler implements IHandler
             return true;
         }
 
-        if ($this->findCommentByContent($metadata, $pullRequestUpdated, VersionBumpCommentBuilder::MARKER) === true) {
+        $decisionComment = $this->findComment($metadata, VersionBumpCommentBuilder::MARKER);
+        if ($decisionComment !== null) {
             $this->trace('debug', 'PR {repo}#{pr}: version bump decision comment already posted — waiting on the user', []);
+            // Also records the decisions posted before pending confirmations were tracked.
+            $this->recordVersionBumpDecision($metadata, $pullRequestUpdated, $decisionComment);
             return false;
         }
 
@@ -480,8 +524,52 @@ class PullRequestsHandler implements IHandler
         }
 
         $this->trace('info', 'PR {repo}#{pr}: posted version bump decision comment (HTTP {status})', ["status" => $response->getStatusCode()]);
+        $created = json_decode((string) $response->getBody());
+        $this->recordVersionBumpDecision($metadata, $pullRequestUpdated, is_object($created) ? $created : null);
 
         return false;
+    }
+
+    /**
+     * Records the version bump decision comment as a pending confirmation.
+     *
+     * @param array       $metadata           Metadata for the GitHub API request.
+     * @param object      $pullRequestUpdated The pull request.
+     * @param object|null $comment            The decision comment, as GitHub returns it.
+     *
+     * @return void
+     */
+    private function recordVersionBumpDecision(array $metadata, object $pullRequestUpdated, ?object $comment): void
+    {
+        $this->pendingConfirmations()->record(
+            PendingConfirmation::KIND_VERSION_BUMP,
+            (string) ($metadata["owner"] ?? ""),
+            (string) ($metadata["repo"] ?? ""),
+            (int) ($metadata["installationId"] ?? 0),
+            (int) ($pullRequestUpdated->number ?? $this->prNumber),
+            $comment,
+            $pullRequestUpdated->title ?? null,
+            $pullRequestUpdated->user->login ?? null
+        );
+    }
+
+    /**
+     * Resolves a pending version bump decision that no longer needs an answer
+     * (a `+semver` directive was pushed, or the pull request no longer looks like a feature).
+     *
+     * @param array  $metadata           Metadata for the GitHub API request.
+     * @param object $pullRequestUpdated The pull request.
+     *
+     * @return void
+     */
+    private function supersedeVersionBumpDecision(array $metadata, object $pullRequestUpdated): void
+    {
+        $this->pendingConfirmations()->supersede(
+            (string) ($metadata["owner"] ?? ""),
+            (string) ($metadata["repo"] ?? ""),
+            (int) ($pullRequestUpdated->number ?? $this->prNumber),
+            PendingConfirmation::KIND_VERSION_BUMP
+        );
     }
 
     /**
@@ -731,6 +819,7 @@ class PullRequestsHandler implements IHandler
             "dashboardUrl" => $config->dashboardUrl . $prQueryString,
             "owner" => $pullRequest->RepositoryOwner,
             "repo" => $pullRequest->RepositoryName,
+            "installationId" => (int) $pullRequest->InstallationId,
         );
     }
 
@@ -1439,6 +1528,19 @@ class PullRequestsHandler implements IHandler
      */
     private function findCommentByContent($metadata, $pullRequestUpdated, $prefix): bool
     {
+        return $this->findComment($metadata, $prefix) !== null;
+    }
+
+    /**
+     * Returns the first of the pull request's first 100 comments whose body contains a given text.
+     *
+     * @param array  $metadata Metadata for the GitHub API request ('commentsUrl', 'token').
+     * @param string $prefix   The text to look for.
+     *
+     * @return object|null The comment, as GitHub returns it, or null when none has it.
+     */
+    private function findComment(array $metadata, string $prefix): ?object
+    {
         $url = "{$metadata["commentsUrl"]}?per_page=100&page=1";
         $commentsResponse = doRequestGitHub($metadata["token"], $url, null, "GET");
         $commentsResponse->ensureSuccessStatus();
@@ -1446,11 +1548,11 @@ class PullRequestsHandler implements IHandler
 
         foreach ($comments as $comment) {
             if (strpos($comment->body, $prefix) !== false) {
-                return true;
+                return $comment;
             }
         }
 
-        return false;
+        return null;
     }
 
     /**

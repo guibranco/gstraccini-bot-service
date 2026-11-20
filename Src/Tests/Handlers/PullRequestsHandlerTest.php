@@ -19,7 +19,10 @@ function doRequestGitHub(string $token, string $url, mixed $data, string $method
 namespace GuiBranco\GStracciniBot\Tests\Handlers;
 
 use GuiBranco\GStracciniBot\Handlers\PullRequestsHandler;
+use GuiBranco\GStracciniBot\Library\PendingConfirmation;
+use GuiBranco\GStracciniBot\Library\PendingConfirmationTracker;
 use GuiBranco\GStracciniBot\Library\VersionBumpCommentBuilder;
+use GuiBranco\GStracciniBot\Tests\Library\InMemoryPendingConfirmationStore;
 use GuiBranco\Pancake\Response;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -33,18 +36,27 @@ class PullRequestsHandlerTest extends TestCase
     /** @var array<int, array{url: string, data: mixed, method: string}> */
     private static array $requestLog = [];
 
+    /** Where the handler records the pending confirmations. */
+    private InMemoryPendingConfirmationStore $pendingConfirmations;
+
     protected function setUp(): void
     {
         self::$responses = [];
         self::$requestLog = [];
+        $this->pendingConfirmations = new InMemoryPendingConfirmationStore();
     }
 
     public static function handleFakeRequest(string $url, mixed $data, string $method): Response
     {
         self::$requestLog[] = ["url" => $url, "data" => $data, "method" => $method];
 
+        // A key may be prefixed with "METHOD " to answer that method only.
         foreach (self::$responses as $urlSubstring => $response) {
-            if (strpos($url, $urlSubstring) !== false) {
+            $parts = explode(" ", $urlSubstring, 2);
+            if (count($parts) === 2 && $parts[0] !== $method) {
+                continue;
+            }
+            if (strpos($url, end($parts)) !== false) {
                 return $response;
             }
         }
@@ -54,7 +66,7 @@ class PullRequestsHandlerTest extends TestCase
 
     private function invokeCheckVersionBump(array $metadata, object $pullRequestUpdated): bool
     {
-        $handler = new PullRequestsHandler();
+        $handler = new PullRequestsHandler(new PendingConfirmationTracker($this->pendingConfirmations));
         $method = (new ReflectionClass($handler))->getMethod("checkVersionBump");
         $method->setAccessible(true);
 
@@ -67,12 +79,17 @@ class PullRequestsHandlerTest extends TestCase
             "token" => "fake-token",
             "pullRequestUrl" => "repos/owner/repo/pulls/1",
             "commentsUrl" => "repos/owner/repo/issues/1/comments",
+            "owner" => "owner",
+            "repo" => "repo",
+            "installationId" => 7,
         ];
     }
 
     private function buildFeaturePullRequest(): object
     {
         return (object) [
+            "number" => 1,
+            "user" => (object) ["login" => "author"],
             "title" => "feat: add cool feature",
             "head" => (object) ["ref" => "feature/cool-thing"],
             "labels" => [],
@@ -130,6 +147,57 @@ class PullRequestsHandlerTest extends TestCase
             }
         }
         $this->assertTrue($postedComment, "The actionable decision comment should be posted when nothing has been decided yet.");
+    }
+
+    public function testPostedDecisionIsRecordedAsPendingConfirmation(): void
+    {
+        self::$responses["/commits"] = Response::success(json_encode([]), "", [], 200);
+        self::$responses["POST /issues/1/comments"] = Response::success(
+            json_encode((object) ["id" => 555, "html_url" => "https://github.com/owner/repo/pull/1#issuecomment-555", "body" => ""]),
+            "",
+            [],
+            201
+        );
+
+        $this->invokeCheckVersionBump($this->buildMetadata(), $this->buildFeaturePullRequest());
+
+        $this->assertCount(1, $this->pendingConfirmations->recorded);
+        $recorded = $this->pendingConfirmations->recorded[0];
+        $this->assertSame(PendingConfirmation::KIND_VERSION_BUMP, $recorded->kind);
+        $this->assertSame(555, $recorded->commentId);
+        $this->assertSame(7, $recorded->installationId);
+        $this->assertSame("author", $recorded->author);
+    }
+
+    public function testExistingDecisionCommentIsBackfilled(): void
+    {
+        self::$responses["/commits"] = Response::success(json_encode([]), "", [], 200);
+        self::$responses["/issues/1/comments"] = Response::success(
+            json_encode([(object) ["id" => 321, "html_url" => "u", "body" => VersionBumpCommentBuilder::MARKER . "\n### Version bump needed"]]),
+            "",
+            [],
+            200
+        );
+
+        $result = $this->invokeCheckVersionBump($this->buildMetadata(), $this->buildFeaturePullRequest());
+
+        $this->assertFalse($result);
+        $this->assertSame(["record version_bump 321"], $this->pendingConfirmations->calls);
+    }
+
+    public function testSemverDirectiveSupersedesAPendingDecision(): void
+    {
+        self::$responses["/commits"] = Response::success(
+            json_encode([(object) ["commit" => (object) ["message" => "bump\n\n+semver: minor"]]]),
+            "",
+            [],
+            200
+        );
+
+        $result = $this->invokeCheckVersionBump($this->buildMetadata(), $this->buildFeaturePullRequest());
+
+        $this->assertTrue($result);
+        $this->assertSame(["resolveForPullRequest owner/repo#1 version_bump superseded"], $this->pendingConfirmations->calls);
     }
 
     /**
