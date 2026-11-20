@@ -21,6 +21,12 @@ class AppVeyorErrorCommentBuilder
     /** Line break used in GitHub comments. */
     private const EOL = "\r\n";
 
+    /** Longest AppVeyor message quoted in the comment. */
+    private const SUMMARY_LIMIT = 2000;
+
+    /** Longest raw body kept in the comment, well under GitHub's 65,536 characters. */
+    private const RAW_LIMIT = 10000;
+
 
     /**
      * Builds the comment for a failed AppVeyor request.
@@ -41,7 +47,8 @@ class AppVeyorErrorCommentBuilder
         $comment = "AppVeyor {$action} failed: :x:{$eol}{$eol}**AppVeyor response:** HTTP {$statusCode}{$eol}{$eol}";
 
         if ($parts->summary !== "") {
-            $quoted   = $this->quote($this->escapeFence($parts->summary));
+            $summary  = $this->truncate($parts->summary, self::SUMMARY_LIMIT);
+            $quoted   = $this->quote($this->escapeFence($summary));
             $comment .= "{$quoted}{$eol}{$eol}";
         }
 
@@ -54,7 +61,7 @@ class AppVeyorErrorCommentBuilder
             $comment .= ":bulb: {$hint}{$eol}{$eol}";
         }
 
-        $raw = $this->escapeFence($body);
+        $raw = $this->escapeFence($this->truncate($body, self::RAW_LIMIT));
         if ($body === "") {
             $raw = "(empty response body)";
         }
@@ -185,10 +192,12 @@ class AppVeyorErrorCommentBuilder
         }
 
         if ($inner->message !== null) {
-            $line .= " - {$inner->message}";
+            $message = addcslashes($this->truncate($inner->message, self::SUMMARY_LIMIT), "\\`*_[]<>|");
+            $line   .= " - {$message}";
         }
 
-        if ($inner->docs !== null) {
+        $isSafeLink = preg_match("#^https://[^\\s()<>\\[\\]]+$#", ($inner->docs ?? ""));
+        if ($isSafeLink === 1) {
             $line .= " ([docs]({$inner->docs}))";
         }
 
@@ -198,7 +207,8 @@ class AppVeyorErrorCommentBuilder
 
 
     /**
-     * Explains the failures whose cause is known.
+     * Explains the failures whose cause is known: GitHub refusing AppVeyor first, then AppVeyor
+     * refusing the bot.
      *
      * @param integer       $statusCode HTTP status code AppVeyor answered with.
      * @param string        $summary    AppVeyor's message, without the upstream response.
@@ -209,24 +219,23 @@ class AppVeyorErrorCommentBuilder
     private function hint(int $statusCode, string $summary, ?stdClass $inner): ?string
     {
         $hints = new stdClass();
-        $hints->github   = "AppVeyor could not authenticate to GitHub. Its GitHub authorization for this account has probably expired or been revoked - reconnect GitHub in the AppVeyor account settings and run the command again.";
-        $hints->apiKey   = "AppVeyor rejected the bot's API key. Check the AppVeyor API key configured for the bot.";
-        $hints->notFound = "AppVeyor could not find the project. Make sure the repository is registered in AppVeyor (`appveyor register`).";
+        $hints->{"github-401"} = "AppVeyor could not authenticate to GitHub. Its GitHub authorization for this account has probably expired or been revoked - reconnect GitHub in the AppVeyor account settings and run the command again.";
+        $hints->{"github-403"} = "GitHub refused AppVeyor's request. AppVeyor's GitHub account may not have access to this repository, or GitHub is rate-limiting it - check the upstream message above.";
+        $hints->{"401"}        = "AppVeyor rejected the bot's API key. Check the AppVeyor API key configured for the bot.";
+        $hints->{"403"}        = "AppVeyor denied the request. The bot's API key may not have access to this project or account.";
+        $hints->{"404"}        = "AppVeyor could not find the project, or the bot's API key cannot see it. Make sure the repository is registered in AppVeyor (`appveyor register`) under the bot's account.";
 
-        $upstreamStatus = $this->getUpstreamStatus($summary, $inner);
-        $isAuthStatus   = in_array($upstreamStatus, [401, 403], true);
-        if (stripos($summary, "GitHub") !== false && $isAuthStatus === true) {
-            return $hints->github;
+        $hint = null;
+        if (stripos($summary, "GitHub") !== false) {
+            $upstreamStatus = $this->getUpstreamStatus($summary, $inner);
+            $hint           = ($hints->{"github-{$upstreamStatus}"} ?? null);
         }
 
-        $byStatus = new stdClass();
-        $byStatus->{"401"} = $hints->apiKey;
-        $byStatus->{"403"} = $hints->apiKey;
-        $byStatus->{"404"} = $hints->notFound;
+        if ($hint === null) {
+            $hint = ($hints->{(string) $statusCode} ?? null);
+        }
 
-        $statusHint = ($byStatus->{(string) $statusCode} ?? null);
-
-        return $statusHint;
+        return $hint;
 
     }//end hint()
 
@@ -286,7 +295,8 @@ class AppVeyorErrorCommentBuilder
 
 
     /**
-     * Keeps a text from closing the surrounding code fence early.
+     * Keeps a text from opening or closing a code fence: a zero-width space goes between every
+     * two adjacent backticks, so no run of three or more is left.
      *
      * @param string $text The text to escape.
      *
@@ -294,9 +304,32 @@ class AppVeyorErrorCommentBuilder
      */
     private function escapeFence(string $text): string
     {
-        return str_replace("```", "`\u{200B}``", $text);
+        return preg_replace("/(?<=`)(?=`)/u", "\u{200B}", $text);
 
     }//end escapeFence()
+
+
+    /**
+     * Shortens a text to a number of characters, saying how much was left out.
+     *
+     * @param string  $text  The text to shorten.
+     * @param integer $limit The most characters to keep.
+     *
+     * @return string
+     */
+    private function truncate(string $text, int $limit): string
+    {
+        $length = mb_strlen($text);
+        if ($length <= $limit) {
+            return $text;
+        }
+
+        $omitted = ($length - $limit);
+        $kept    = mb_substr($text, 0, $limit);
+
+        return "{$kept}... ({$omitted} more characters)";
+
+    }//end truncate()
 
 
 }//end class

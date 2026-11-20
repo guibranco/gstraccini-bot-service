@@ -13,6 +13,9 @@ class AppVeyorErrorCommentBuilderTest extends TestCase
     /** AppVeyor's answer when its own GitHub credentials are rejected (from a real PR comment). */
     private const GITHUB_UNAUTHORIZED = '{"message":"Error reading PR #344 details from GitHub: HTTP GET to https://api.github.com/repos/GuilhermeStracini/POC-dotnet-Asterisk/pulls/344 returned status code 401: Unauthorized\nFull response body:\n{\r\n  \"message\": \"Bad credentials\",\r\n  \"documentation_url\": \"https://docs.github.com/rest\",\r\n  \"status\": \"401\"\r\n}"}';
 
+    /** AppVeyor's answer when GitHub refuses its request, with a link that isn't safe to render. */
+    private const GITHUB_FORBIDDEN = '{"message":"Error reading PR #1 details from GitHub: HTTP GET to https://api.github.com/repos/o/r/pulls/1 returned status code 403: Forbidden\nFull response body:\n{\"message\": \"Resource not accessible\", \"documentation_url\": \"javascript:alert(1)\", \"status\": \"403\"}"}';
+
     /** AppVeyor's message, without the upstream response. */
     private const GITHUB_SUMMARY = "> Error reading PR #344 details from GitHub: HTTP GET to https://api.github.com/repos/GuilhermeStracini/POC-dotnet-Asterisk/pulls/344 returned status code 401: Unauthorized";
 
@@ -114,21 +117,42 @@ class AppVeyorErrorCommentBuilderTest extends TestCase
 
 
     /**
-     * A body that isn't JSON is quoted as it is, and an empty one is labelled.
+     * A body that isn't JSON is quoted as it is, an empty one is labelled and a huge one is cut
+     * well under GitHub's comment limit.
      *
      * @return void
      */
-    public function testNonJsonAndEmptyBodies(): void
+    public function testNonJsonEmptyAndHugeBodies(): void
     {
         $nonJson = $this->builder->build("bump version", 502, "Bad Gateway");
         $empty   = $this->builder->build("update next build number", 500, "");
+        $huge    = $this->builder->build("build", 502, str_repeat("x", 100000));
 
         $this->assertStringContainsString("**AppVeyor response:** HTTP 502", $nonJson);
         $this->assertStringContainsString("> Bad Gateway", $nonJson);
         $this->assertStringNotContainsString("> ", $empty);
         $this->assertStringContainsString("(empty response body)", $empty);
+        $this->assertLessThan(15000, mb_strlen($huge));
+        $this->assertStringContainsString("... (90000 more characters)", $huge);
 
-    }//end testNonJsonAndEmptyBodies()
+    }//end testNonJsonEmptyAndHugeBodies()
+
+
+    /**
+     * A 403 from GitHub is a refusal, not expired credentials, and an unsafe link isn't rendered.
+     *
+     * @return void
+     */
+    public function testGitHubForbiddenIsNotExpiredAuth(): void
+    {
+        $comment = $this->builder->build("build", 500, self::GITHUB_FORBIDDEN);
+
+        $this->assertStringContainsString(":bulb: GitHub refused AppVeyor's request.", $comment);
+        $this->assertStringNotContainsString("could not authenticate", $comment);
+        $this->assertStringContainsString("**Upstream response:** HTTP 403 - Resource not accessible\r\n", $comment);
+        $this->assertStringNotContainsString("[docs](javascript", $comment);
+
+    }//end testGitHubForbiddenIsNotExpiredAuth()
 
 
     /**
@@ -154,7 +178,7 @@ class AppVeyorErrorCommentBuilderTest extends TestCase
     {
         $comment = $this->builder->build("bump version", 404, '{"message":"Project not found or access denied."}');
 
-        $this->assertStringContainsString(":bulb: AppVeyor could not find the project.", $comment);
+        $this->assertStringContainsString(":bulb: AppVeyor could not find the project, or the bot's API key cannot see it.", $comment);
 
     }//end testHintsRegistrationWhenNotFound()
 
@@ -166,9 +190,11 @@ class AppVeyorErrorCommentBuilderTest extends TestCase
      */
     public function testRawBodyCannotCloseTheCodeFence(): void
     {
-        $comment = $this->builder->build("build", 500, "oops ``` injected");
+        $three = $this->builder->build("build", 500, "oops ``` injected");
+        $five  = $this->builder->build("build", 500, "oops ````` injected");
 
-        $this->assertSame(2, substr_count($comment, "```"));
+        $this->assertSame(2, substr_count($three, "```"));
+        $this->assertSame(2, substr_count($five, "```"));
 
     }//end testRawBodyCannotCloseTheCodeFence()
 

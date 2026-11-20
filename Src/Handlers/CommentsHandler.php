@@ -1609,6 +1609,10 @@ class CommentsHandler implements IHandler
         if ($project->error) {
             doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
             $body = $project->message;
+            if (isset($project->statusCode) === true) {
+                $body = (new AppVeyorErrorCommentBuilder())->build("project lookup", $project->statusCode, $project->body);
+            }
+
             doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
             return null;
         }
