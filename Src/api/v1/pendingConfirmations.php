@@ -83,6 +83,7 @@ if ($status !== 'all') {
 
 $sql .= ' ORDER BY CreatedAt DESC LIMIT 100';
 
+
 /**
  * Maps a row of the table to the JSON shape of the API.
  *
@@ -132,11 +133,14 @@ function fetchPendingConfirmations(mysqli $mysqli, string $sql, int $userId, str
         return null;
     }
 
-    if ($status === 'all') {
-        $stmt->bind_param('i', $userId);
-    } else {
-        $stmt->bind_param('is', $userId, $status);
+    $types  = 'i';
+    $params = [$userId];
+    if ($status !== 'all') {
+        $types   .= 's';
+        $params[] = $status;
     }
+
+    $stmt->bind_param($types, ...$params);
 
     $confirmations = null;
     $result        = false;

@@ -139,29 +139,40 @@ class PendingConfirmationReminder
 
         $due = $this->store->findDueForReminder(self::REMINDER_INTERVAL_SECONDS, self::MAX_REMINDERS, self::BATCH_SIZE);
         foreach ($due as $confirmation) {
-            try {
-                $outcome = $this->handle($confirmation);
-            } catch (Throwable $e) {
-                $outcome = 'skipped';
-                $this->logToStream(
-                    'warning',
-                    'Pending confirmation {sequence} of {repo}#{pr} failed: {error}',
-                    $this->context($confirmation, ['error' => $e->getMessage()])
-                );
-            }
-
-            if ($outcome === 'skipped') {
-                $this->defer($confirmation);
-            }
-
+            $outcome = $this->attempt($confirmation);
             $report[$outcome]++;
-        }//end foreach
+        }
 
         $this->logToStream('info', 'Pending confirmation reminders: {reminded} reminded, {resolved} resolved, {cancelled} cancelled, {skipped} skipped', $report);
 
         return $report;
 
     }//end run()
+
+
+    /**
+     * Handles one confirmation, deferring it when that fails.
+     *
+     * @param PendingConfirmation $confirmation The confirmation.
+     *
+     * @return string What happened: reminded, resolved, cancelled or skipped.
+     */
+    private function attempt(PendingConfirmation $confirmation): string
+    {
+        try {
+            $outcome = $this->handle($confirmation);
+        } catch (Throwable $e) {
+            $outcome = 'skipped';
+            $this->logToStream('warning', 'Pending confirmation {sequence} of {repo}#{pr} failed: {error}', $this->context($confirmation, ['error' => $e->getMessage()]));
+        }
+
+        if ($outcome === 'skipped') {
+            $this->defer($confirmation);
+        }
+
+        return $outcome;
+
+    }//end attempt()
 
 
     /**
