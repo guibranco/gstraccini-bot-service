@@ -68,9 +68,13 @@ class PullRequestsHandler implements IHandler
 
 
     /**
+     * Sets up the handler.
+     *
      * @param PendingConfirmationTracker|null $pendingConfirmations Tracks the pending confirmations (default: the database).
+     *
+     * @return void
      */
-    public function __construct(?PendingConfirmationTracker $pendingConfirmations = null)
+    public function __construct(?PendingConfirmationTracker $pendingConfirmations=null)
     {
         $this->pendingConfirmations = $pendingConfirmations;
 
@@ -525,7 +529,11 @@ class PullRequestsHandler implements IHandler
 
         $this->trace('info', 'PR {repo}#{pr}: posted version bump decision comment (HTTP {status})', ["status" => $response->getStatusCode()]);
         $created = json_decode((string) $response->getBody());
-        $this->recordVersionBumpDecision($metadata, $pullRequestUpdated, is_object($created) ? $created : null);
+        if (is_object($created) === false) {
+            $created = null;
+        }
+
+        $this->recordVersionBumpDecision($metadata, $pullRequestUpdated, $created);
 
         return false;
     }
@@ -548,10 +556,12 @@ class PullRequestsHandler implements IHandler
             (int) ($metadata["installationId"] ?? 0),
             (int) ($pullRequestUpdated->number ?? $this->prNumber),
             $comment,
-            $pullRequestUpdated->title ?? null,
-            $pullRequestUpdated->user->login ?? null
+            ($pullRequestUpdated->title ?? null),
+            ($pullRequestUpdated->user->login ?? null)
         );
-    }
+
+    }//end recordVersionBumpDecision()
+
 
     /**
      * Resolves a pending version bump decision that no longer needs an answer
@@ -570,7 +580,9 @@ class PullRequestsHandler implements IHandler
             (int) ($pullRequestUpdated->number ?? $this->prNumber),
             PendingConfirmation::KIND_VERSION_BUMP
         );
-    }
+
+    }//end supersedeVersionBumpDecision()
+
 
     /**
      * Removes the 'awaiting triage' label if the PR has been reviewed by all required reviewers
@@ -799,7 +811,7 @@ class PullRequestsHandler implements IHandler
             "&repo=" . $pullRequest->RepositoryName .
             "&pullRequest=" . $pullRequest->Number;
         $repoPrefix = "repos/" . $pullRequest->RepositoryOwner . "/" . $pullRequest->RepositoryName;
-        return array(
+        $metadata = array(
             "token" => $token,
             "userToken" => $owner?->token,
             "ownerLogin" => $owner?->login,
@@ -819,8 +831,10 @@ class PullRequestsHandler implements IHandler
             "dashboardUrl" => $config->dashboardUrl . $prQueryString,
             "owner" => $pullRequest->RepositoryOwner,
             "repo" => $pullRequest->RepositoryName,
-            "installationId" => (int) $pullRequest->InstallationId,
         );
+        $metadata["installationId"] = (int) $pullRequest->InstallationId;
+
+        return $metadata;
     }
 
     /**
@@ -1529,7 +1543,9 @@ class PullRequestsHandler implements IHandler
     private function findCommentByContent($metadata, $pullRequestUpdated, $prefix): bool
     {
         return $this->findComment($metadata, $prefix) !== null;
-    }
+
+    }//end findCommentByContent()
+
 
     /**
      * Returns the first of the pull request's first 100 comments whose body contains a given text.

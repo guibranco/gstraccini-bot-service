@@ -36,7 +36,11 @@ class PullRequestsHandlerTest extends TestCase
     /** @var array<int, array{url: string, data: mixed, method: string}> */
     private static array $requestLog = [];
 
-    /** Where the handler records the pending confirmations. */
+    /**
+     * Where the handler records the pending confirmations.
+     *
+     * @var InMemoryPendingConfirmationStore
+     */
     private InMemoryPendingConfirmationStore $pendingConfirmations;
 
     protected function setUp(): void
@@ -75,25 +79,30 @@ class PullRequestsHandlerTest extends TestCase
 
     private function buildMetadata(): array
     {
-        return [
+        $metadata = [
             "token" => "fake-token",
             "pullRequestUrl" => "repos/owner/repo/pulls/1",
             "commentsUrl" => "repos/owner/repo/issues/1/comments",
-            "owner" => "owner",
-            "repo" => "repo",
-            "installationId" => 7,
         ];
+        $metadata['owner'] = 'owner';
+        $metadata['repo'] = 'repo';
+        $metadata['installationId'] = 7;
+
+        return $metadata;
     }
 
     private function buildFeaturePullRequest(): object
     {
-        return (object) [
-            "number" => 1,
-            "user" => (object) ["login" => "author"],
+        $pullRequest = (object) [
             "title" => "feat: add cool feature",
             "head" => (object) ["ref" => "feature/cool-thing"],
             "labels" => [],
         ];
+        $pullRequest->number = 1;
+        $pullRequest->user = new stdClass();
+        $pullRequest->user->login = 'author';
+
+        return $pullRequest;
     }
 
     public function testResolvedWhenNoneWasAlreadyDecided(): void
@@ -149,15 +158,19 @@ class PullRequestsHandlerTest extends TestCase
         $this->assertTrue($postedComment, "The actionable decision comment should be posted when nothing has been decided yet.");
     }
 
+    /**
+     * A posted version bump decision comment is recorded as a pending confirmation.
+     *
+     * @return void
+     */
     public function testPostedDecisionIsRecordedAsPendingConfirmation(): void
     {
-        self::$responses["/commits"] = Response::success(json_encode([]), "", [], 200);
-        self::$responses["POST /issues/1/comments"] = Response::success(
-            json_encode((object) ["id" => 555, "html_url" => "https://github.com/owner/repo/pull/1#issuecomment-555", "body" => ""]),
-            "",
-            [],
-            201
-        );
+        $created = new stdClass();
+        $created->id = 555;
+        $created->html_url = 'https://github.com/owner/repo/pull/1#issuecomment-555';
+        $created->body = '';
+        self::$responses['/commits'] = Response::success(json_encode([]), '', [], 200);
+        self::$responses['POST /issues/1/comments'] = Response::success(json_encode($created), '', [], 201);
 
         $this->invokeCheckVersionBump($this->buildMetadata(), $this->buildFeaturePullRequest());
 
@@ -166,39 +179,52 @@ class PullRequestsHandlerTest extends TestCase
         $this->assertSame(PendingConfirmation::KIND_VERSION_BUMP, $recorded->kind);
         $this->assertSame(555, $recorded->commentId);
         $this->assertSame(7, $recorded->installationId);
-        $this->assertSame("author", $recorded->author);
-    }
+        $this->assertSame('author', $recorded->author);
 
+    }//end testPostedDecisionIsRecordedAsPendingConfirmation()
+
+
+    /**
+     * A decision comment posted before the tracking existed is recorded when found.
+     *
+     * @return void
+     */
     public function testExistingDecisionCommentIsBackfilled(): void
     {
-        self::$responses["/commits"] = Response::success(json_encode([]), "", [], 200);
-        self::$responses["/issues/1/comments"] = Response::success(
-            json_encode([(object) ["id" => 321, "html_url" => "u", "body" => VersionBumpCommentBuilder::MARKER . "\n### Version bump needed"]]),
-            "",
-            [],
-            200
-        );
+        $existing = new stdClass();
+        $existing->id = 321;
+        $existing->html_url = 'u';
+        $existing->body = VersionBumpCommentBuilder::MARKER.PHP_EOL.'### Version bump needed';
+        self::$responses['/commits'] = Response::success(json_encode([]), '', [], 200);
+        self::$responses['/issues/1/comments'] = Response::success(json_encode([$existing]), '', [], 200);
 
         $result = $this->invokeCheckVersionBump($this->buildMetadata(), $this->buildFeaturePullRequest());
 
         $this->assertFalse($result);
-        $this->assertSame(["record version_bump 321"], $this->pendingConfirmations->calls);
-    }
+        $this->assertSame(['record version_bump 321'], $this->pendingConfirmations->calls);
 
+    }//end testExistingDecisionCommentIsBackfilled()
+
+
+    /**
+     * A pushed `+semver` directive supersedes the pending decision.
+     *
+     * @return void
+     */
     public function testSemverDirectiveSupersedesAPendingDecision(): void
     {
-        self::$responses["/commits"] = Response::success(
-            json_encode([(object) ["commit" => (object) ["message" => "bump\n\n+semver: minor"]]]),
-            "",
-            [],
-            200
-        );
+        $commit = new stdClass();
+        $commit->commit = new stdClass();
+        $commit->commit->message = 'bump'.PHP_EOL.PHP_EOL.'+semver: minor';
+        self::$responses['/commits'] = Response::success(json_encode([$commit]), '', [], 200);
 
         $result = $this->invokeCheckVersionBump($this->buildMetadata(), $this->buildFeaturePullRequest());
 
         $this->assertTrue($result);
-        $this->assertSame(["resolveForPullRequest owner/repo#1 version_bump superseded"], $this->pendingConfirmations->calls);
-    }
+        $this->assertSame(['resolveForPullRequest owner/repo#1 version_bump superseded'], $this->pendingConfirmations->calls);
+
+    }//end testSemverDirectiveSupersedesAPendingDecision()
+
 
     /**
      * Invokes the private PullRequestsHandler::isFromFork() method.

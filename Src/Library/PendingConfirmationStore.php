@@ -15,7 +15,8 @@ use mysqli_stmt;
  */
 class PendingConfirmationStore
 {
-    private const TABLE = "pending_confirmations";
+    private const TABLE = 'pending_confirmations';
+
 
     /**
      * Records a pending confirmation; does nothing when its comment is already recorded.
@@ -29,7 +30,11 @@ class PendingConfirmationStore
     public function record(PendingConfirmation $confirmation): void
     {
         $table = self::TABLE;
-        $title = $confirmation->title === null ? null : mb_substr($confirmation->title, 0, 255);
+        $title = $confirmation->title;
+        if ($title !== null) {
+            $title = mb_substr($title, 0, 255);
+        }
+
         $sql = "INSERT IGNORE INTO {$table}
             (Kind, RepositoryOwner, RepositoryName, InstallationId, PullRequestNumber, PullRequestTitle,
              PullRequestAuthor, CommentId, Url)
@@ -37,7 +42,7 @@ class PendingConfirmationStore
 
         $this->execute(
             $sql,
-            "sssiissis",
+            'sssiissis',
             $confirmation->kind,
             $confirmation->owner,
             $confirmation->repo,
@@ -48,97 +53,107 @@ class PendingConfirmationStore
             $confirmation->commentId,
             $confirmation->url
         );
-    }
+
+    }//end record()
+
 
     /**
      * Resolves the pending confirmation of a comment.
      *
-     * @param int    $commentId  The bot's comment.
-     * @param string $resolution What was decided (e.g. `minor`, `none`, `applied`).
+     * @param integer $commentId  The bot's comment.
+     * @param string  $resolution What was decided (e.g. `minor`, `none`, `applied`).
      *
-     * @return int How many rows changed (0 or 1).
+     * @return integer How many rows changed (0 or 1).
      *
      * @throws DatabaseException When the database can't be written.
      */
     public function resolveByComment(int $commentId, string $resolution): int
     {
-        return $this->close("CommentId = ?", PendingConfirmation::STATUS_RESOLVED, $resolution, "i", $commentId);
-    }
+        return $this->close('CommentId = ?', PendingConfirmation::STATUS_RESOLVED, $resolution, 'i', $commentId);
+
+    }//end resolveByComment()
+
 
     /**
      * Resolves the pending confirmations of one kind on a pull request.
      *
-     * @param string $owner      Repository owner.
-     * @param string $repo       Repository name.
-     * @param int    $number     Pull request number.
-     * @param string $kind       One of the PendingConfirmation::KIND_* constants.
-     * @param string $resolution Why.
+     * @param string  $owner      Repository owner.
+     * @param string  $repo       Repository name.
+     * @param integer $number     Pull request number.
+     * @param string  $kind       One of the PendingConfirmation::KIND_* constants.
+     * @param string  $resolution Why.
      *
-     * @return int How many rows changed.
+     * @return integer How many rows changed.
      *
      * @throws DatabaseException When the database can't be written.
      */
     public function resolveForPullRequest(string $owner, string $repo, int $number, string $kind, string $resolution): int
     {
         return $this->close(
-            "RepositoryOwner = ? AND RepositoryName = ? AND PullRequestNumber = ? AND Kind = ?",
+            'RepositoryOwner = ? AND RepositoryName = ? AND PullRequestNumber = ? AND Kind = ?',
             PendingConfirmation::STATUS_RESOLVED,
             $resolution,
-            "ssis",
+            'ssis',
             $owner,
             $repo,
             $number,
             $kind
         );
-    }
+
+    }//end resolveForPullRequest()
+
 
     /**
      * Cancels every pending confirmation of a pull request.
      *
-     * @param string $owner      Repository owner.
-     * @param string $repo       Repository name.
-     * @param int    $number     Pull request number.
-     * @param string $resolution Why (merged, closed).
+     * @param string  $owner      Repository owner.
+     * @param string  $repo       Repository name.
+     * @param integer $number     Pull request number.
+     * @param string  $resolution Why (merged, closed).
      *
-     * @return int How many rows changed.
+     * @return integer How many rows changed.
      *
      * @throws DatabaseException When the database can't be written.
      */
     public function cancelForPullRequest(string $owner, string $repo, int $number, string $resolution): int
     {
         return $this->close(
-            "RepositoryOwner = ? AND RepositoryName = ? AND PullRequestNumber = ?",
+            'RepositoryOwner = ? AND RepositoryName = ? AND PullRequestNumber = ?',
             PendingConfirmation::STATUS_CANCELLED,
             $resolution,
-            "ssi",
+            'ssi',
             $owner,
             $repo,
             $number
         );
-    }
+
+    }//end cancelForPullRequest()
+
 
     /**
      * Cancels the pending confirmation of a comment.
      *
-     * @param int    $commentId  The bot's comment.
-     * @param string $resolution Why.
+     * @param integer $commentId  The bot's comment.
+     * @param string  $resolution Why.
      *
-     * @return int How many rows changed (0 or 1).
+     * @return integer How many rows changed (0 or 1).
      *
      * @throws DatabaseException When the database can't be written.
      */
     public function cancelByComment(int $commentId, string $resolution): int
     {
-        return $this->close("CommentId = ?", PendingConfirmation::STATUS_CANCELLED, $resolution, "i", $commentId);
-    }
+        return $this->close('CommentId = ?', PendingConfirmation::STATUS_CANCELLED, $resolution, 'i', $commentId);
+
+    }//end cancelByComment()
+
 
     /**
      * The pending confirmations due for a reminder: created, and last reminded, at
      * least `$intervalSeconds` ago, with fewer than `$maxReminders` reminders, oldest first.
      *
-     * @param int $intervalSeconds How long to wait before (another) reminder.
-     * @param int $maxReminders    How many reminders at most.
-     * @param int $limit           How many rows at most.
+     * @param integer $intervalSeconds How long to wait before (another) reminder.
+     * @param integer $maxReminders    How many reminders at most.
+     * @param integer $limit           How many rows at most.
      *
      * @return PendingConfirmation[]
      *
@@ -147,7 +162,7 @@ class PendingConfirmationStore
     public function findDueForReminder(int $intervalSeconds, int $maxReminders, int $limit): array
     {
         $table = self::TABLE;
-        $sql = "SELECT Sequence, Kind, RepositoryOwner, RepositoryName, InstallationId, PullRequestNumber,
+        $sql   = "SELECT Sequence, Kind, RepositoryOwner, RepositoryName, InstallationId, PullRequestNumber,
                 PullRequestTitle, PullRequestAuthor, CommentId, Url, ReminderCount
             FROM {$table}
             WHERE Status = ?
@@ -159,41 +174,44 @@ class PendingConfirmationStore
 
         $status = PendingConfirmation::STATUS_PENDING;
         $mysqli = connectToDatabase();
-        $stmt = $mysqli->prepare($sql);
-        $stmt->bind_param("siiii", $status, $intervalSeconds, $intervalSeconds, $maxReminders, $limit);
+        $stmt   = $mysqli->prepare($sql);
+        $stmt->bind_param('siiii', $status, $intervalSeconds, $intervalSeconds, $maxReminders, $limit);
 
         try {
             $this->run($stmt);
-            $result = $stmt->get_result();
+            $result        = $stmt->get_result();
             $confirmations = [];
             while (($row = $result->fetch_assoc()) !== null) {
                 $confirmations[] = new PendingConfirmation(
-                    (int) $row["Sequence"],
-                    (string) $row["Kind"],
-                    (string) $row["RepositoryOwner"],
-                    (string) $row["RepositoryName"],
-                    (int) $row["InstallationId"],
-                    (int) $row["PullRequestNumber"],
-                    (int) $row["CommentId"],
-                    $row["Url"],
-                    $row["PullRequestTitle"],
-                    $row["PullRequestAuthor"],
-                    (int) $row["ReminderCount"]
+                    (int) $row['Sequence'],
+                    (string) $row['Kind'],
+                    (string) $row['RepositoryOwner'],
+                    (string) $row['RepositoryName'],
+                    (int) $row['InstallationId'],
+                    (int) $row['PullRequestNumber'],
+                    (int) $row['CommentId'],
+                    $row['Url'],
+                    $row['PullRequestTitle'],
+                    $row['PullRequestAuthor'],
+                    (int) $row['ReminderCount']
                 );
             }
+
             $result->close();
         } finally {
             $stmt->close();
             $mysqli->close();
-        }
+        }//end try
 
         return $confirmations;
-    }
+
+    }//end findDueForReminder()
+
 
     /**
      * Counts a reminder posted for a pending confirmation.
      *
-     * @param int $sequence The row.
+     * @param integer $sequence The row.
      *
      * @return void
      *
@@ -204,10 +222,12 @@ class PendingConfirmationStore
         $table = self::TABLE;
         $this->execute(
             "UPDATE {$table} SET ReminderCount = ReminderCount + 1, LastReminderAt = NOW() WHERE Sequence = ?",
-            "i",
+            'i',
             $sequence
         );
-    }
+
+    }//end markReminded()
+
 
     /**
      * Moves the pending rows matching a condition to a final status.
@@ -215,31 +235,37 @@ class PendingConfirmationStore
      * @param string $where      The condition, with placeholders.
      * @param string $status     The new status.
      * @param string $resolution Why.
-     * @param string $types      bind_param types of the condition's values.
+     * @param string $types      The bind_param types of the condition's values.
      * @param mixed  ...$values  The condition's values.
      *
-     * @return int How many rows changed.
+     * @return integer How many rows changed.
      */
     private function close(string $where, string $status, string $resolution, string $types, mixed ...$values): int
     {
-        $table = self::TABLE;
+        $table   = self::TABLE;
         $pending = PendingConfirmation::STATUS_PENDING;
-        $sql = "UPDATE {$table} SET Status = ?, Resolution = ?, ResolvedAt = NOW() WHERE Status = ? AND {$where}";
+        $sql     = "UPDATE {$table} SET Status = ?, Resolution = ?, ResolvedAt = NOW() WHERE Status = ? AND {$where}";
 
-        return $this->execute($sql, "sss" . $types, $status, $resolution, $pending, ...$values);
-    }
+        return $this->execute($sql, 'sss'.$types, $status, $resolution, $pending, ...$values);
+
+    }//end close()
+
 
     /**
      * Runs a write statement.
      *
-     * @return int The affected rows.
+     * @param string $sql       The statement, with placeholders.
+     * @param string $types     The bind_param types of the values.
+     * @param mixed  ...$values The values.
+     *
+     * @return integer The affected rows.
      *
      * @throws DatabaseException When it fails.
      */
     private function execute(string $sql, string $types, mixed ...$values): int
     {
         $mysqli = connectToDatabase();
-        $stmt = $mysqli->prepare($sql);
+        $stmt   = $mysqli->prepare($sql);
         $stmt->bind_param($types, ...$values);
 
         try {
@@ -249,15 +275,27 @@ class PendingConfirmationStore
             $stmt->close();
             $mysqli->close();
         }
-    }
+
+    }//end execute()
+
 
     /**
+     * Executes a prepared statement.
+     *
+     * @param mysqli_stmt $stmt The statement.
+     *
+     * @return void
+     *
      * @throws DatabaseException When the statement fails.
      */
     private function run(mysqli_stmt $stmt): void
     {
         if ($stmt->execute() === false) {
-            throw statementFailed($stmt);
+            $failure = statementFailed($stmt);
+            throw $failure;
         }
-    }
-}
+
+    }//end run()
+
+
+}//end class

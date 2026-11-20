@@ -36,31 +36,44 @@ class CommentsHandler implements IHandler
      */
     private ?PendingConfirmationTracker $pendingConfirmations;
 
+
     /**
+     * Sets up the handler.
+     *
      * @param PendingConfirmationTracker|null $pendingConfirmations Tracks the pending confirmations (default: the database).
+     *
+     * @return void
      */
-    public function __construct(?PendingConfirmationTracker $pendingConfirmations = null)
+    public function __construct(?PendingConfirmationTracker $pendingConfirmations=null)
     {
         $this->pendingConfirmations = $pendingConfirmations;
-    }
+
+    }//end __construct()
+
 
     /**
      * The tracker of pending confirmations, created on first use.
+     *
+     * @return PendingConfirmationTracker
      */
     private function pendingConfirmations(): PendingConfirmationTracker
     {
         $this->pendingConfirmations ??= new PendingConfirmationTracker();
 
         return $this->pendingConfirmations;
-    }
+
+    }//end pendingConfirmations()
+
 
     /**
      * Resolves the pending confirmation of the bot's comment that was just applied.
      *
      * @param object $comment    The queued comment event.
      * @param string $resolution What was decided.
+     *
+     * @return void
      */
-    private function resolvePendingConfirmation($comment, string $resolution): void
+    private function resolvePendingConfirmation(object $comment, string $resolution): void
     {
         $this->pendingConfirmations()->resolveByComment(
             (string) $comment->RepositoryOwner,
@@ -69,7 +82,9 @@ class CommentsHandler implements IHandler
             (int) $comment->CommentId,
             $resolution
         );
-    }
+
+    }//end resolvePendingConfirmation()
+
 
     /**
      * Converts a string to camel case format.
@@ -1327,7 +1342,7 @@ class CommentsHandler implements IHandler
 
         $response = doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
         $created = json_decode((string) $response->getBody());
-        if ($response->getStatusCode() < 300 && is_object($created)) {
+        if ($response->getStatusCode() < 300 && is_object($created) === true) {
             $this->pendingConfirmations()->record(
                 PendingConfirmation::KIND_INFISICAL_IGNORE,
                 $owner,
@@ -1335,7 +1350,7 @@ class CommentsHandler implements IHandler
                 (int) $comment->InstallationId,
                 $prNumber,
                 $created,
-                $comment->PullRequestTitle ?? null
+                ($comment->PullRequestTitle ?? null)
             );
         }
 
