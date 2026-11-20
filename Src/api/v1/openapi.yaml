@@ -673,6 +673,143 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StatusResponse'
+  /account-settings:
+    get:
+      summary: List account feature settings
+      description: Returns the GitHub accounts (users and organizations) of the signed-in user's installations, with their opt-in feature settings
+      operationId: getAccountSettings
+      tags:
+        - Account
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Accounts and their settings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccountSettings'
+  /account-settings/{accountId}:
+    put:
+      summary: Update an account's feature settings
+      description: Applies to every repository of the account that does not override the setting
+      operationId: updateAccountSettings
+      tags:
+        - Account
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [requestVersionBump]
+              properties:
+                requestVersionBump:
+                  type: boolean
+      responses:
+        '200':
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '400':
+          description: Invalid body
+        '404':
+          description: The account is not one of the user's installations
+  /repository-settings:
+    get:
+      summary: List repository feature settings
+      description: Returns the repositories of the signed-in user's installations, with their opt-in feature settings and the effective value after inheriting the account
+      operationId: getRepositorySettings
+      tags:
+        - Account
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: accountId
+          in: query
+          required: false
+          description: Only the repositories of this account
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Repositories and their settings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RepositorySettings'
+  /repository-settings/{repositoryId}:
+    put:
+      summary: Update a repository's feature settings
+      description: null inherits the account setting
+      operationId: updateRepositorySettings
+      tags:
+        - Account
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: repositoryId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [requestVersionBump]
+              properties:
+                requestVersionBump:
+                  type: boolean
+                  nullable: true
+      responses:
+        '200':
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '400':
+          description: Invalid body
+        '404':
+          description: The repository is not one of the user's installations
   /integrations/:
     get:
       summary: List integrations
@@ -1470,6 +1607,38 @@ components:
           type: boolean
         notifyPullRequests:
           type: boolean
+    AccountSettings:
+      type: object
+      properties:
+        accountId:
+          type: integer
+        accountLogin:
+          type: string
+        accountType:
+          type: string
+        requestVersionBump:
+          type: boolean
+          description: Ask for a version bump decision on feature pull requests without a +semver directive (opt-in, default false)
+    RepositorySettings:
+      type: object
+      properties:
+        repositoryId:
+          type: integer
+        fullName:
+          type: string
+        private:
+          type: boolean
+        accountId:
+          type: integer
+        accountLogin:
+          type: string
+        requestVersionBump:
+          type: boolean
+          nullable: true
+          description: null inherits the account setting
+        effectiveRequestVersionBump:
+          type: boolean
+          description: The repository value when set, else the account value, else false
     Integration:
       type: object
       properties:

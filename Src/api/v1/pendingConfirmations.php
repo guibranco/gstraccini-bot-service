@@ -3,71 +3,27 @@
 // Pending confirmations endpoint - lists the bot comments waiting for a user
 // confirmation (version bump decision, .infisicalignore approval) for the UI,
 // scoped to the installations of a user.
-header('Content-Type: application/json');
+//
+// The bootstrap checks the API key, the configuration and the userId, and
+// opens $mysqli; $userIdInt holds the user.
+require_once __DIR__.'/includes/userApiBootstrap.php';
 
-$apiSecretsFile = __DIR__.'/secrets/api.secrets.php';
-if (file_exists($apiSecretsFile) === true) {
-    include_once $apiSecretsFile;
-}
-
-$providedKey = ($_SERVER['HTTP_X_API_KEY'] ?? '');
-if ($providedKey === '' || isset($apiKey) === false || hash_equals($apiKey, $providedKey) === false) {
-    http_response_code(401);
-    echo json_encode(['error' => 'Unauthorized']);
-    exit;
-}
-
+$requestError = null;
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-    http_response_code(405);
     header('Allow: GET');
-    echo json_encode(['error' => 'Method Not Allowed']);
-    exit;
+    $requestError = [405, 'Method Not Allowed'];
 }
-
-$userId = ($_GET['userId'] ?? null);
-if ($userId === null || ctype_digit((string) $userId) === false) {
-    http_response_code(400);
-    echo json_encode(['error' => 'Missing or invalid userId']);
-    exit;
-}
-
-$userIdInt = (int) $userId;
 
 $allowedStatuses = explode(',', 'pending,resolved,cancelled,all');
-
-$status = ($_GET['status'] ?? 'pending');
-if (in_array($status, $allowedStatuses, true) === false) {
-    http_response_code(400);
-    echo json_encode(['error' => 'Invalid status, expected one of: '.implode(', ', $allowedStatuses)]);
-    exit;
+$status          = ($_GET['status'] ?? 'pending');
+if ($requestError === null && in_array($status, $allowedStatuses, true) === false) {
+    $requestError = [400, 'Invalid status, expected one of: '.implode(', ', $allowedStatuses)];
 }
 
-if (isset($workerDir) === false || is_dir($workerDir) === false) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Worker directory not configured']);
-    exit;
-}
-
-require_once $workerDir.'/Library/DatabaseHandler.php';
-
-$mySqlSecretsFile = $workerDir.'/secrets/mySql.secrets.php';
-if (file_exists($mySqlSecretsFile) === true) {
-    include_once $mySqlSecretsFile;
-}
-
-if (isset($mySqlHost, $mySqlUser, $mySqlPassword, $mySqlDatabase) === false) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Database not configured']);
-    exit;
-}
-
-$dbHandler = new DatabaseHandler($mySqlHost, $mySqlUser, $mySqlPassword, $mySqlDatabase);
-
-try {
-    $mysqli = $dbHandler->connect();
-} catch (\Exception $e) {
-    http_response_code(503);
-    echo json_encode(['error' => 'Database unavailable']);
+if ($requestError !== null) {
+    $mysqli->close();
+    http_response_code($requestError[0]);
+    echo json_encode(['error' => $requestError[1]]);
     exit;
 }
 
@@ -161,7 +117,7 @@ function fetchPendingConfirmations(mysqli $mysqli, string $sql, int $userId, str
 
 
 try {
-    $confirmations = fetchPendingConfirmations($mysqli, $sql, $userIdInt, $status);
+    $confirmations = fetchPendingConfirmations($mysqli, $sql, (int) $userIdInt, $status);
 } catch (Throwable $e) {
     $confirmations = null;
 } finally {
@@ -169,8 +125,7 @@ try {
 }
 
 if ($confirmations === null) {
-    http_response_code(503);
-    echo json_encode(['error' => 'Database unavailable']);
+    sendUserApiError('Database unavailable');
     exit;
 }
 
