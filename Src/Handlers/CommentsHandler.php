@@ -2,6 +2,7 @@
 
 namespace GuiBranco\GStracciniBot\Handlers;
 
+use GuiBranco\GStracciniBot\Library\AppVeyorCredentials;
 use GuiBranco\GStracciniBot\Library\AppVeyorErrorCommentBuilder;
 use GuiBranco\GStracciniBot\Library\Codacy;
 use GuiBranco\GStracciniBot\Library\CommandHelper;
@@ -1698,9 +1699,9 @@ class CommentsHandler implements IHandler
      * @param array  $metadata The comment metadata.
      * @param object $comment  The comment being handled.
      *
-     * @return string|null The key, or null when none is available (already answered).
+     * @return AppVeyorCredentials|null The key, or null when none is available (already answered).
      */
-    private function getAppVeyorKey($metadata, $comment): ?string
+    private function getAppVeyorKey($metadata, $comment): ?AppVeyorCredentials
     {
         $appVeyorKey = findAppVeyorKey((int) $comment->InstallationId, (string) $comment->RepositoryOwner);
         if ($appVeyorKey !== null) {
@@ -1716,7 +1717,7 @@ class CommentsHandler implements IHandler
         return null;
     }
 
-    private function getAppVeyorProject(string $appVeyorKey, $metadata, $comment)
+    private function getAppVeyorProject(AppVeyorCredentials $appVeyorKey, $metadata, $comment)
     {
         $project = findProjectByRepositorySlug($appVeyorKey, $comment->RepositoryOwner . "/" . $comment->RepositoryName);
     
@@ -1740,7 +1741,7 @@ class CommentsHandler implements IHandler
         return $project;
     }
     
-    private function updateNextBuildNumber(string $appVeyorKey, $metadata, $project, $nextBuildNumber): void
+    private function updateNextBuildNumber(AppVeyorCredentials $appVeyorKey, $metadata, $project, $nextBuildNumber): void
     {
         $data = array("nextBuildNumber" => $nextBuildNumber);
         $url = "projects/" . $project->accountName . "/" . $project->slug . "/settings/build-number";
