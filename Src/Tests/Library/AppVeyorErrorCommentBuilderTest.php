@@ -45,7 +45,7 @@ class AppVeyorErrorCommentBuilderTest extends TestCase
         );
     }
 
-    public function testHintsAtExpiredGitHubAuthorizationForUpstream401(): void
+    public function testHintsGitHubAuthExpiredOnUpstream401(): void
     {
         $comment = $this->builder->build("build", 500, self::GITHUB_UNAUTHORIZED_BODY);
 
@@ -86,14 +86,14 @@ class AppVeyorErrorCommentBuilderTest extends TestCase
         $this->assertStringContainsString("(empty response body)", $comment);
     }
 
-    public function testHintsAtApiKeyWhenAppVeyorItselfRejectsTheBot(): void
+    public function testHintsApiKeyWhenAppVeyorRejectsBot(): void
     {
         $comment = $this->builder->build("build", 401, '{"message":"Authorization required."}');
 
         $this->assertStringContainsString(":bulb: AppVeyor rejected the bot's API key.", $comment);
     }
 
-    public function testHintsAtRegistrationWhenProjectNotFound(): void
+    public function testHintsRegistrationWhenNotFound(): void
     {
         $comment = $this->builder->build("bump version", 404, '{"message":"Project not found or access denied."}');
 
