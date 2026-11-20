@@ -445,7 +445,12 @@ class CommentsHandler implements IHandler
             $matches
         );
     
-        $project = $this->getAppVeyorProject($metadata, $comment);
+        $appVeyorKey = $this->getAppVeyorKey($metadata, $comment);
+        if ($appVeyorKey === null) {
+            return;
+        }
+
+        $project = $this->getAppVeyorProject($appVeyorKey, $metadata, $comment);
     
         if ($project == null) {
             return;
@@ -470,7 +475,7 @@ class CommentsHandler implements IHandler
             return;
         }
     
-        $buildResponse = requestAppVeyor("builds", $data);
+        $buildResponse = requestAppVeyor($appVeyorKey, "builds", $data);
         if ($buildResponse->getStatusCode() !== 200) {
             $commentBody = (new AppVeyorErrorCommentBuilder())->build("build", $buildResponse->getStatusCode(), (string) $buildResponse->getBody());
             doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
@@ -494,14 +499,19 @@ class CommentsHandler implements IHandler
             $matches
         );
     
-        $project = $this->getAppVeyorProject($metadata, $comment);
+        $appVeyorKey = $this->getAppVeyorKey($metadata, $comment);
+        if ($appVeyorKey === null) {
+            return;
+        }
+
+        $project = $this->getAppVeyorProject($appVeyorKey, $metadata, $comment);
     
         if ($project == null) {
             return;
         }
     
         $url = "projects/" . $project->accountName . "/" . $project->slug . "/settings";
-        $settingsResponse = requestAppVeyor($url);
+        $settingsResponse = requestAppVeyor($appVeyorKey, $url);
         if ($settingsResponse->getStatusCode() !== 200) {
             doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
             $commentBody = (new AppVeyorErrorCommentBuilder())->build("bump version", $settingsResponse->getStatusCode(), (string) $settingsResponse->getBody());
@@ -513,7 +523,7 @@ class CommentsHandler implements IHandler
     
         if (count($matches) === 2 && $matches[1] === "build") {
             doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
-            $this->updateNextBuildNumber($metadata, $project, $settings->settings->nextBuildNumber + 1);
+            $this->updateNextBuildNumber($appVeyorKey, $metadata, $project, $settings->settings->nextBuildNumber + 1);
         } elseif (count($matches) === 2 && ($matches[1] === "minor" || $matches[1] === "major")) {
             doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
             $body = $metadata["errorMessages"]["notImplemented"];
@@ -527,11 +537,16 @@ class CommentsHandler implements IHandler
     
     private function execute_appveyorRegister($config, $metadata, $comment): void
     {
+        $appVeyorKey = $this->getAppVeyorKey($metadata, $comment);
+        if ($appVeyorKey === null) {
+            return;
+        }
+
         $data = array(
             "repositoryProvider" => "gitHub",
             "repositoryName" => $comment->RepositoryOwner . "/" . $comment->RepositoryName,
         );
-        $registerResponse = requestAppVeyor("projects", $data);
+        $registerResponse = requestAppVeyor($appVeyorKey, "projects", $data);
         if ($registerResponse->getStatusCode() !== 200) {
             $commentBody = (new AppVeyorErrorCommentBuilder())->build("registration", $registerResponse->getStatusCode(), (string) $registerResponse->getBody());
             doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
@@ -549,13 +564,18 @@ class CommentsHandler implements IHandler
     
     private function execute_appveyorReset($config, $metadata, $comment): void
     {
-        $project = $this->getAppVeyorProject($metadata, $comment);
+        $appVeyorKey = $this->getAppVeyorKey($metadata, $comment);
+        if ($appVeyorKey === null) {
+            return;
+        }
+
+        $project = $this->getAppVeyorProject($appVeyorKey, $metadata, $comment);
     
         if ($project == null) {
             return;
         }
     
-        $this->updateNextBuildNumber($metadata, $project, 0);
+        $this->updateNextBuildNumber($appVeyorKey, $metadata, $project, 0);
     }
     
     private function execute_bumpVersion($config, $metadata, $comment): void
@@ -1670,9 +1690,35 @@ class CommentsHandler implements IHandler
         return $pullRequest->state === "open";
     }
     
-    private function getAppVeyorProject($metadata, $comment)
+    /**
+     * Reads the AppVeyor API key stored by a user of the comment's installation
+     * (the repository owner first). When none is stored, reacts and explains
+     * on the pull request how to add one.
+     *
+     * @param array  $metadata The comment metadata.
+     * @param object $comment  The comment being handled.
+     *
+     * @return string|null The key, or null when none is available (already answered).
+     */
+    private function getAppVeyorKey($metadata, $comment): ?string
     {
-        $project = findProjectByRepositorySlug($comment->RepositoryOwner . "/" . $comment->RepositoryName);
+        $appVeyorKey = findAppVeyorKey((int) $comment->InstallationId, (string) $comment->RepositoryOwner);
+        if ($appVeyorKey !== null) {
+            return $appVeyorKey;
+        }
+
+        doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
+        $body = "I'm sorry @" . $comment->CommentSender . ", I can't run AppVeyor commands on this repository yet. :pleading_face:\r\n\r\n" .
+            "No AppVeyor API key is stored for this installation. " .
+            "The owner of `" . $comment->RepositoryOwner . "` (or another user of this installation) needs to add their " .
+            "[AppVeyor API key](https://ci.appveyor.com/api-keys) in the **Integrations** page of the GStraccini dashboard.";
+        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+        return null;
+    }
+
+    private function getAppVeyorProject(string $appVeyorKey, $metadata, $comment)
+    {
+        $project = findProjectByRepositorySlug($appVeyorKey, $comment->RepositoryOwner . "/" . $comment->RepositoryName);
     
         if ($project == null) {
             doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
@@ -1694,11 +1740,11 @@ class CommentsHandler implements IHandler
         return $project;
     }
     
-    private function updateNextBuildNumber($metadata, $project, $nextBuildNumber): void
+    private function updateNextBuildNumber(string $appVeyorKey, $metadata, $project, $nextBuildNumber): void
     {
         $data = array("nextBuildNumber" => $nextBuildNumber);
         $url = "projects/" . $project->accountName . "/" . $project->slug . "/settings/build-number";
-        $updateResponse = requestAppVeyor($url, $data, true);
+        $updateResponse = requestAppVeyor($appVeyorKey, $url, $data, true);
     
         if ($updateResponse->getStatusCode() !== 204) {
             $commentBody = (new AppVeyorErrorCommentBuilder())->build("update next build number", $updateResponse->getStatusCode(), (string) $updateResponse->getBody());
