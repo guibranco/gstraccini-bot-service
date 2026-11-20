@@ -83,54 +83,92 @@ if ($status !== 'all') {
 
 $sql .= ' ORDER BY CreatedAt DESC LIMIT 100';
 
-$stmt = $mysqli->prepare($sql);
-if ($status === 'all') {
-    $stmt->bind_param('i', $userIdInt);
-} else {
-    $stmt->bind_param('is', $userIdInt, $status);
+/**
+ * Maps a row of the table to the JSON shape of the API.
+ *
+ * @param array $row The row.
+ *
+ * @return array
+ */
+function pendingConfirmationToJson(array $row): array
+{
+    $item                    = [];
+    $item['sequence']        = (int) $row['Sequence'];
+    $item['kind']            = $row['Kind'];
+    $item['repositoryOwner'] = $row['RepositoryOwner'];
+    $item['repositoryName']  = $row['RepositoryName'];
+    $item['installationId']  = (int) $row['InstallationId'];
+    $item['pullRequestNumber'] = (int) $row['PullRequestNumber'];
+    $item['pullRequestTitle']  = $row['PullRequestTitle'];
+    $item['pullRequestAuthor'] = $row['PullRequestAuthor'];
+    $item['commentId']         = (int) $row['CommentId'];
+    $item['url']               = $row['Url'];
+    $item['status']            = $row['Status'];
+    $item['resolution']        = $row['Resolution'];
+    $item['resolvedAt']        = $row['ResolvedAt'];
+    $item['reminderCount']     = (int) $row['ReminderCount'];
+    $item['lastReminderAt']    = $row['LastReminderAt'];
+    $item['createdAt']         = $row['CreatedAt'];
+
+    return $item;
+
+}//end pendingConfirmationToJson()
+
+
+/**
+ * Lists the confirmations of a user.
+ *
+ * @param mysqli  $mysqli The connection.
+ * @param string  $sql    The query.
+ * @param integer $userId The user.
+ * @param string  $status The status to list, or `all`.
+ *
+ * @return array|null The confirmations, or null when the query failed.
+ */
+function fetchPendingConfirmations(mysqli $mysqli, string $sql, int $userId, string $status): ?array
+{
+    $stmt = $mysqli->prepare($sql);
+    if ($stmt === false) {
+        return null;
+    }
+
+    if ($status === 'all') {
+        $stmt->bind_param('i', $userId);
+    } else {
+        $stmt->bind_param('is', $userId, $status);
+    }
+
+    $confirmations = null;
+    $result        = false;
+    if ($stmt->execute() === true) {
+        $result = $stmt->get_result();
+    }
+
+    if ($result !== false) {
+        $confirmations = array_map('pendingConfirmationToJson', $result->fetch_all(MYSQLI_ASSOC));
+        $result->close();
+    }
+
+    $stmt->close();
+
+    return $confirmations;
+
+}//end fetchPendingConfirmations()
+
+
+try {
+    $confirmations = fetchPendingConfirmations($mysqli, $sql, $userIdInt, $status);
+} catch (Throwable $e) {
+    $confirmations = null;
+} finally {
+    $mysqli->close();
 }
 
-if ($stmt->execute() === false) {
-    $stmt->close();
-    $mysqli->close();
+if ($confirmations === null) {
     http_response_code(503);
     echo json_encode(['error' => 'Database unavailable']);
     exit;
 }
-
-$result = $stmt->get_result();
-
-$confirmations = [];
-if ($result !== false) {
-    $row = $result->fetch_assoc();
-    while ($row !== null) {
-        $item                    = [];
-        $item['sequence']        = (int) $row['Sequence'];
-        $item['kind']            = $row['Kind'];
-        $item['repositoryOwner'] = $row['RepositoryOwner'];
-        $item['repositoryName']  = $row['RepositoryName'];
-        $item['installationId']  = (int) $row['InstallationId'];
-        $item['pullRequestNumber'] = (int) $row['PullRequestNumber'];
-        $item['pullRequestTitle']  = $row['PullRequestTitle'];
-        $item['pullRequestAuthor'] = $row['PullRequestAuthor'];
-        $item['commentId']         = (int) $row['CommentId'];
-        $item['url']               = $row['Url'];
-        $item['status']            = $row['Status'];
-        $item['resolution']        = $row['Resolution'];
-        $item['resolvedAt']        = $row['ResolvedAt'];
-        $item['reminderCount']     = (int) $row['ReminderCount'];
-        $item['lastReminderAt']    = $row['LastReminderAt'];
-        $item['createdAt']         = $row['CreatedAt'];
-        $confirmations[]           = $item;
-
-        $row = $result->fetch_assoc();
-    }
-
-    $result->close();
-}//end if
-
-$stmt->close();
-$mysqli->close();
 
 http_response_code(200);
 echo json_encode($confirmations);

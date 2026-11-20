@@ -197,6 +197,7 @@ class PendingConfirmationReminderTest extends TestCase
 
         $this->assertSame(1, $report['skipped']);
         $this->assertNotContains('markReminded 5', $this->store->calls);
+        $this->assertContains('deferReminder 5', $this->store->calls, 'A skipped confirmation is retried an interval later, not at the head of every batch.');
 
     }//end testSkipsWhenThePullRequestCantBeLoaded()
 

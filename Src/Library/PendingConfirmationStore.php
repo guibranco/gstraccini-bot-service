@@ -2,7 +2,6 @@
 
 namespace GuiBranco\GStracciniBot\Library;
 
-use mysqli_stmt;
 
 /**
  * Keeps track of the bot comments waiting for a user confirmation in the
@@ -35,10 +34,16 @@ class PendingConfirmationStore
             $title = mb_substr($title, 0, 255);
         }
 
-        $sql = "INSERT IGNORE INTO {$table}
+        // A comment already recorded keeps its row (and reminder count), but one resolved as superseded
+        // is waiting again (e.g. the `+semver` commit was force-pushed away), so it is reopened.
+        $sql = "INSERT INTO {$table}
             (Kind, RepositoryOwner, RepositoryName, InstallationId, PullRequestNumber, PullRequestTitle,
              PullRequestAuthor, CommentId, Url)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                ResolvedAt = IF(Status = 'resolved' AND Resolution = 'superseded', NULL, ResolvedAt),
+                Status = IF(Status = 'resolved' AND Resolution = 'superseded', 'pending', Status),
+                Resolution = IF(Status = 'pending' AND Resolution = 'superseded', NULL, Resolution)";
 
         $this->execute(
             $sql,
@@ -178,7 +183,11 @@ class PendingConfirmationStore
         $stmt->bind_param('siiii', $status, $intervalSeconds, $intervalSeconds, $maxReminders, $limit);
 
         try {
-            $this->run($stmt);
+            if ($stmt->execute() === false) {
+                $failure = statementFailed($stmt);
+                throw $failure;
+            }
+
             $result        = $stmt->get_result();
             $confirmations = [];
             $row           = $result->fetch_assoc();
@@ -227,20 +236,28 @@ class PendingConfirmationStore
 
 
     /**
-     * Counts a reminder posted for a pending confirmation.
+     * Counts a reminder posted for a pending confirmation or, when none could be posted,
+     * only moves its next attempt one interval later, so it doesn't hold the head of the batch.
      *
      * @param integer $sequence The row.
+     * @param boolean $posted   Whether a reminder was posted.
      *
      * @return void
      *
      * @throws DatabaseException When the database can't be written.
      */
-    public function markReminded(int $sequence): void
+    public function markReminded(int $sequence, bool $posted=true): void
     {
-        $table = self::TABLE;
+        $table     = self::TABLE;
+        $increment = 0;
+        if ($posted === true) {
+            $increment = 1;
+        }
+
         $this->execute(
-            "UPDATE {$table} SET ReminderCount = ReminderCount + 1, LastReminderAt = NOW() WHERE Sequence = ?",
-            'i',
+            "UPDATE {$table} SET ReminderCount = ReminderCount + ?, LastReminderAt = NOW() WHERE Sequence = ?",
+            'ii',
+            $increment,
             $sequence
         );
 
@@ -287,7 +304,11 @@ class PendingConfirmationStore
         $stmt->bind_param($types, ...$values);
 
         try {
-            $this->run($stmt);
+            if ($stmt->execute() === false) {
+                $failure = statementFailed($stmt);
+                throw $failure;
+            }
+
             return $stmt->affected_rows;
         } finally {
             $stmt->close();
@@ -295,25 +316,6 @@ class PendingConfirmationStore
         }
 
     }//end execute()
-
-
-    /**
-     * Executes a prepared statement.
-     *
-     * @param mysqli_stmt $stmt The statement.
-     *
-     * @return void
-     *
-     * @throws DatabaseException When the statement fails.
-     */
-    private function run(mysqli_stmt $stmt): void
-    {
-        if ($stmt->execute() === false) {
-            $failure = statementFailed($stmt);
-            throw $failure;
-        }
-
-    }//end run()
 
 
 }//end class

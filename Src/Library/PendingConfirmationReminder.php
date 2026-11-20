@@ -150,14 +150,37 @@ class PendingConfirmationReminder
                 );
             }
 
+            if ($outcome === 'skipped') {
+                $this->defer($confirmation);
+            }
+
             $report[$outcome]++;
-        }
+        }//end foreach
 
         $this->logToStream('info', 'Pending confirmation reminders: {reminded} reminded, {resolved} resolved, {cancelled} cancelled, {skipped} skipped', $report);
 
         return $report;
 
     }//end run()
+
+
+    /**
+     * Moves the next attempt of a confirmation that couldn't be handled one interval later,
+     * without counting a reminder, so the ones that keep failing don't hold the head of every batch.
+     *
+     * @param PendingConfirmation $confirmation The confirmation.
+     *
+     * @return void
+     */
+    private function defer(PendingConfirmation $confirmation): void
+    {
+        try {
+            $this->store->markReminded($confirmation->sequence, false);
+        } catch (Throwable $e) {
+            $this->logToStream('warning', 'Could not defer pending confirmation {sequence} of {repo}#{pr}: {error}', $this->context($confirmation, ['error' => $e->getMessage()]));
+        }
+
+    }//end defer()
 
 
     /**

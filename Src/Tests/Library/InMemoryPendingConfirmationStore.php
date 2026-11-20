@@ -146,12 +146,18 @@ class InMemoryPendingConfirmationStore extends PendingConfirmationStore
      * Logs the call.
      *
      * @param integer $sequence The row.
+     * @param boolean $posted   Whether a reminder was posted.
      *
      * @return void
      */
-    public function markReminded(int $sequence): void
+    public function markReminded(int $sequence, bool $posted=true): void
     {
-        $this->log('markReminded', $sequence);
+        $method = 'deferReminder';
+        if ($posted === true) {
+            $method = 'markReminded';
+        }
+
+        $this->log($method, $sequence);
 
     }//end markReminded()
 
