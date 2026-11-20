@@ -23,6 +23,8 @@ tags:
     description: Aggregate usage statistics
   - name: Pending Actions
     description: Actions awaiting attention in the UI (e.g. pull requests ready to merge)
+  - name: Pending Confirmations
+    description: Bot comments waiting for a user confirmation (version bump, .infisicalignore approval)
   - name: Notifications
     description: Notifications surfaced to the UI
   - name: Recent Activities
@@ -298,6 +300,72 @@ paths:
                 $ref: '#/components/schemas/Error'
         '405':
           description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /pending-confirmations/:
+    get:
+      summary: List pending confirmations
+      description: >-
+        Returns the bot comments waiting for a user confirmation (version bump decision,
+        `.infisicalignore` approval), scoped to the installations the given user has access to.
+        Newest first, at most 100.
+      operationId: getPendingConfirmations
+      tags:
+        - Pending Confirmations
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          description: GitHub user ID to scope the confirmations to (via the user's assigned installations)
+          schema:
+            type: integer
+        - name: status
+          in: query
+          required: false
+          description: Which confirmations to list
+          schema:
+            type: string
+            enum: [pending, resolved, cancelled, all]
+            default: pending
+      responses:
+        '200':
+          description: List of confirmations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PendingConfirmation'
+        '400':
+          description: Missing or invalid userId or status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '405':
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Database not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Database unavailable
           content:
             application/json:
               schema:
@@ -1340,6 +1408,60 @@ components:
         isRead:
           type: boolean
           example: false
+        createdAt:
+          type: string
+          format: date-time
+    PendingConfirmation:
+      type: object
+      properties:
+        sequence:
+          type: integer
+          example: 7
+        kind:
+          type: string
+          enum: [version_bump, infisical_ignore]
+        repositoryOwner:
+          type: string
+          example: guibranco
+        repositoryName:
+          type: string
+          example: gstraccini-bot-service
+        installationId:
+          type: integer
+          example: 12345678
+        pullRequestNumber:
+          type: integer
+          example: 1210
+        pullRequestTitle:
+          type: string
+          nullable: true
+        pullRequestAuthor:
+          type: string
+          nullable: true
+        commentId:
+          type: integer
+          description: The bot comment holding the checkboxes
+        url:
+          type: string
+          nullable: true
+          example: https://github.com/guibranco/gstraccini-bot-service/pull/1210#issuecomment-1
+        status:
+          type: string
+          enum: [pending, resolved, cancelled]
+        resolution:
+          type: string
+          nullable: true
+          description: "major, minor, none, applied, superseded, merged, closed or comment_deleted"
+        resolvedAt:
+          type: string
+          format: date-time
+          nullable: true
+        reminderCount:
+          type: integer
+        lastReminderAt:
+          type: string
+          format: date-time
+          nullable: true
         createdAt:
           type: string
           format: date-time

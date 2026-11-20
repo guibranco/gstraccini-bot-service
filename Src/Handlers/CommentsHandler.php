@@ -11,6 +11,8 @@ use GuiBranco\GStracciniBot\Library\InfisicalIgnoreSuggestionParser;
 use GuiBranco\GStracciniBot\Library\LabelHelper;
 use GuiBranco\GStracciniBot\Library\LabelService;
 use GuiBranco\GStracciniBot\Library\LogContext;
+use GuiBranco\GStracciniBot\Library\PendingConfirmation;
+use GuiBranco\GStracciniBot\Library\PendingConfirmationTracker;
 use GuiBranco\GStracciniBot\Library\PullRequestHeadWatcher;
 use GuiBranco\GStracciniBot\Library\RepositoryAccessChecker;
 use GuiBranco\GStracciniBot\Library\RepositoryManager;
@@ -26,6 +28,63 @@ use stdClass;
 class CommentsHandler implements IHandler
 {
     private const INFISICAL_APPLY_FAILURE_PREFIX = "\n\n❌ Failed to apply suggestion: ";
+
+    /**
+     * Records the comments waiting for the user's confirmation.
+     *
+     * @var PendingConfirmationTracker|null
+     */
+    private ?PendingConfirmationTracker $pendingConfirmations;
+
+
+    /**
+     * Sets up the handler.
+     *
+     * @param PendingConfirmationTracker|null $pendingConfirmations Tracks the pending confirmations (default: the database).
+     *
+     * @return void
+     */
+    public function __construct(?PendingConfirmationTracker $pendingConfirmations=null)
+    {
+        $this->pendingConfirmations = $pendingConfirmations;
+
+    }//end __construct()
+
+
+    /**
+     * The tracker of pending confirmations, created on first use.
+     *
+     * @return PendingConfirmationTracker
+     */
+    private function pendingConfirmations(): PendingConfirmationTracker
+    {
+        $this->pendingConfirmations ??= new PendingConfirmationTracker();
+
+        return $this->pendingConfirmations;
+
+    }//end pendingConfirmations()
+
+
+    /**
+     * Resolves the pending confirmation of the bot's comment that was just applied.
+     *
+     * @param object $comment    The queued comment event.
+     * @param string $resolution What was decided.
+     *
+     * @return void
+     */
+    private function resolvePendingConfirmation(object $comment, string $resolution): void
+    {
+        $this->pendingConfirmations()->resolveByComment(
+            (string) $comment->RepositoryOwner,
+            (string) $comment->RepositoryName,
+            (int) $comment->PullRequestNumber,
+            (int) $comment->CommentId,
+            $resolution
+        );
+
+    }//end resolvePendingConfirmation()
+
 
     /**
      * Converts a string to camel case format.
@@ -1281,7 +1340,19 @@ class CommentsHandler implements IHandler
             $body = $builder->buildForReview($owner, $repo, $prNumber, $commentId);
         }
 
-        doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+        $response = doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
+        $created  = json_decode((string) $response->getBody());
+        if ($response->getStatusCode() < 300 && is_object($created) === true) {
+            $this->pendingConfirmations()->record(
+                PendingConfirmation::KIND_INFISICAL_IGNORE,
+                $owner,
+                $repo,
+                (int) $comment->InstallationId,
+                $prNumber,
+                $created,
+                ($comment->PullRequestTitle ?? null)
+            );
+        }
 
         return true;
     }
@@ -1352,6 +1423,7 @@ class CommentsHandler implements IHandler
 
         $completion = $builder->buildCompletion($result["sha"] ?? "n/a", $result["message"]);
         doRequestGitHub($metadata["token"], $approvalCommentUrl, array("body" => $body . $completion), "PATCH");
+        $this->resolvePendingConfirmation($comment, PendingConfirmation::RESOLUTION_APPLIED);
 
         $this->queueChecksForBotCommit($metadata, $comment, $pullRequest, $result["sha"]);
     }
@@ -1428,6 +1500,7 @@ class CommentsHandler implements IHandler
             $this->resolveVersionBumpCheckRun($metadata, $pullRequest->head->sha, "No version bump requested by the user.");
             $completion = $builder->buildCompletion("No version bump");
             doRequestGitHub($metadata["token"], $commentUrl, array("body" => $body . $completion), "PATCH");
+            $this->resolvePendingConfirmation($comment, $choice);
             return;
         }
 
@@ -1444,6 +1517,7 @@ class CommentsHandler implements IHandler
 
         $completion = $builder->buildCompletion(ucfirst($choice) . " version bump", $result["sha"]);
         doRequestGitHub($metadata["token"], $commentUrl, array("body" => $body . $completion), "PATCH");
+        $this->resolvePendingConfirmation($comment, $choice);
 
         $this->queueChecksForBotCommit($metadata, $comment, $pullRequest, $result["sha"]);
     }
