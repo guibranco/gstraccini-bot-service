@@ -2,6 +2,7 @@
 
 namespace GuiBranco\GStracciniBot\Handlers;
 
+use GuiBranco\GStracciniBot\Library\AppVeyorErrorCommentBuilder;
 use GuiBranco\GStracciniBot\Library\Codacy;
 use GuiBranco\GStracciniBot\Library\CommandHelper;
 use GuiBranco\GStracciniBot\Library\InfisicalIgnoreApprovalCommentBuilder;
@@ -412,7 +413,7 @@ class CommentsHandler implements IHandler
     
         $buildResponse = requestAppVeyor("builds", $data);
         if ($buildResponse->getStatusCode() !== 200) {
-            $commentBody = "AppVeyor build failed: :x:\r\n\r\n```\r\n" . $buildResponse->getBody() . "\r\n```\r\n";
+            $commentBody = (new AppVeyorErrorCommentBuilder())->build("build", $buildResponse->getStatusCode(), (string) $buildResponse->getBody());
             doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
             return;
         }
@@ -444,7 +445,7 @@ class CommentsHandler implements IHandler
         $settingsResponse = requestAppVeyor($url);
         if ($settingsResponse->getStatusCode() !== 200) {
             doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
-            $commentBody = "AppVeyor bump version failed: :x:\r\n\r\n```\r\n" . $settingsResponse->getBody() . "\r\n```\r\n";
+            $commentBody = (new AppVeyorErrorCommentBuilder())->build("bump version", $settingsResponse->getStatusCode(), (string) $settingsResponse->getBody());
             doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
             return;
         }
@@ -473,7 +474,7 @@ class CommentsHandler implements IHandler
         );
         $registerResponse = requestAppVeyor("projects", $data);
         if ($registerResponse->getStatusCode() !== 200) {
-            $commentBody = "AppVeyor registration failed: :x:\r\n\r\n```\r\n" . $registerResponse->getBody() . "\r\n```\r\n";
+            $commentBody = (new AppVeyorErrorCommentBuilder())->build("registration", $registerResponse->getStatusCode(), (string) $registerResponse->getBody());
             doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
             return;
         }
@@ -1608,6 +1609,10 @@ class CommentsHandler implements IHandler
         if ($project->error) {
             doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
             $body = $project->message;
+            if (isset($project->statusCode) === true) {
+                $body = (new AppVeyorErrorCommentBuilder())->build("project lookup", $project->statusCode, $project->body);
+            }
+
             doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $body), "POST");
             return null;
         }
@@ -1622,7 +1627,7 @@ class CommentsHandler implements IHandler
         $updateResponse = requestAppVeyor($url, $data, true);
     
         if ($updateResponse->getStatusCode() !== 204) {
-            $commentBody = "AppVeyor update next build number failed: :x:\r\n\r\n```\r\n" . $updateResponse->getBody() . "\r\n```\r\n";
+            $commentBody = (new AppVeyorErrorCommentBuilder())->build("update next build number", $updateResponse->getStatusCode(), (string) $updateResponse->getBody());
             doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
             return;
         }

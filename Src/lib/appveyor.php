@@ -46,10 +46,13 @@ function findProjectByRepositorySlug($repositorySlug): Object
     }
 
     $projects = json_decode($projectsResponse->getBody());
-    if (isset($projects->message) && !empty($projects->message)) {
+    $isFailure = ($projectsResponse->getStatusCode() >= 300 || is_array($projects) === false);
+    if ($isFailure === true) {
         $error = new \stdClass();
         $error->error = true;
-        $error->message = $projects->message;
+        $error->message = ($projects->message ?? "AppVeyor projects lookup failed.");
+        $error->statusCode = $projectsResponse->getStatusCode();
+        $error->body = (string) $projectsResponse->getBody();
         return $error;
     }
 
