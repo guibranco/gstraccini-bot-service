@@ -475,7 +475,7 @@ class CommentsHandler implements IHandler
             return;
         }
     
-        $buildResponse = requestAppVeyor($appVeyorKey, "builds", $data);
+        $buildResponse = requestAppVeyor($appVeyorKey, "POST", "builds", $data);
         if ($buildResponse->getStatusCode() !== 200) {
             $commentBody = (new AppVeyorErrorCommentBuilder())->build("build", $buildResponse->getStatusCode(), (string) $buildResponse->getBody());
             doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
@@ -511,7 +511,7 @@ class CommentsHandler implements IHandler
         }
     
         $url = "projects/" . $project->accountName . "/" . $project->slug . "/settings";
-        $settingsResponse = requestAppVeyor($appVeyorKey, $url);
+        $settingsResponse = requestAppVeyor($appVeyorKey, "GET", $url, null);
         if ($settingsResponse->getStatusCode() !== 200) {
             doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "-1"), "POST");
             $commentBody = (new AppVeyorErrorCommentBuilder())->build("bump version", $settingsResponse->getStatusCode(), (string) $settingsResponse->getBody());
@@ -546,7 +546,7 @@ class CommentsHandler implements IHandler
             "repositoryProvider" => "gitHub",
             "repositoryName" => $comment->RepositoryOwner . "/" . $comment->RepositoryName,
         );
-        $registerResponse = requestAppVeyor($appVeyorKey, "projects", $data);
+        $registerResponse = requestAppVeyor($appVeyorKey, "POST", "projects", $data);
         if ($registerResponse->getStatusCode() !== 200) {
             $commentBody = (new AppVeyorErrorCommentBuilder())->build("registration", $registerResponse->getStatusCode(), (string) $registerResponse->getBody());
             doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $commentBody), "POST");
@@ -1744,7 +1744,7 @@ class CommentsHandler implements IHandler
     {
         $data = array("nextBuildNumber" => $nextBuildNumber);
         $url = "projects/" . $project->accountName . "/" . $project->slug . "/settings/build-number";
-        $updateResponse = requestAppVeyor($appVeyorKey, $url, $data, true);
+        $updateResponse = requestAppVeyor($appVeyorKey, "PUT", $url, $data);
     
         if ($updateResponse->getStatusCode() !== 204) {
             $commentBody = (new AppVeyorErrorCommentBuilder())->build("update next build number", $updateResponse->getStatusCode(), (string) $updateResponse->getBody());

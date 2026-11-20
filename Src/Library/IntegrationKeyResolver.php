@@ -57,7 +57,7 @@ class IntegrationKeyResolver
      *
      * @return void
      */
-    public function __construct(string $provider, ?CryptoHelper $crypto, string $logCategory = "integration_key")
+    public function __construct(string $provider, ?CryptoHelper $crypto, string $logCategory)
     {
         $this->provider = $provider;
         $this->crypto = $crypto;

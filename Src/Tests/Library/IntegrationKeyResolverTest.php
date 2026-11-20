@@ -113,6 +113,16 @@ class InMemoryIntegrationKeyResolver extends IntegrationKeyResolver
 class IntegrationKeyResolverTest extends TestCase
 {
     /**
+     * The provider looked up by the tests.
+     */
+    private const PROVIDER = "AppVeyor";
+
+    /**
+     * The LogStream category given to the resolver.
+     */
+    private const LOG_CATEGORY = "appveyor";
+
+    /**
      * Encrypts the stored keys of the tests.
      *
      * @var CryptoHelper
@@ -157,7 +167,7 @@ class IntegrationKeyResolverTest extends TestCase
      */
     public function testFindsStoredKey(): void
     {
-        $resolver = new InMemoryIntegrationKeyResolver("AppVeyor", $this->crypto);
+        $resolver = new InMemoryIntegrationKeyResolver(self::PROVIDER, $this->crypto, self::LOG_CATEGORY);
         $resolver->candidate = $this->createCandidate($this->crypto);
 
         $integration = $resolver->find(123, "octo-org");
@@ -179,7 +189,7 @@ class IntegrationKeyResolverTest extends TestCase
      */
     public function testReturnsNullWithoutIntegration(): void
     {
-        $resolver = new InMemoryIntegrationKeyResolver("AppVeyor", $this->crypto);
+        $resolver = new InMemoryIntegrationKeyResolver(self::PROVIDER, $this->crypto, self::LOG_CATEGORY);
 
         $this->assertNull($resolver->find(123, "octo-org"));
         $this->assertSame([], $resolver->used);
@@ -194,7 +204,7 @@ class IntegrationKeyResolverTest extends TestCase
      */
     public function testRecordsUndecryptableKey(): void
     {
-        $resolver = new InMemoryIntegrationKeyResolver("AppVeyor", $this->crypto);
+        $resolver = new InMemoryIntegrationKeyResolver(self::PROVIDER, $this->crypto, self::LOG_CATEGORY);
         $resolver->candidate = $this->createCandidate(new CryptoHelper(base64_encode(str_repeat("x", 32))));
 
         $this->assertNull($resolver->find(123, "octo-org"));
@@ -211,7 +221,7 @@ class IntegrationKeyResolverTest extends TestCase
      */
     public function testReturnsNullWhenDatabaseFails(): void
     {
-        $resolver = new InMemoryIntegrationKeyResolver("AppVeyor", $this->crypto);
+        $resolver = new InMemoryIntegrationKeyResolver(self::PROVIDER, $this->crypto, self::LOG_CATEGORY);
         $resolver->databaseDown = true;
 
         $this->assertNull($resolver->find(123, "octo-org"));

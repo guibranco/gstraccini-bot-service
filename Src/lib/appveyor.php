@@ -9,6 +9,7 @@ use GuiBranco\Pancake\Response;
  */
 const APPVEYOR_PROVIDER = "AppVeyor";
 
+
 /**
  * Finds the AppVeyor API key stored by a user of the installation (the
  * repository owner first), in the `AppVeyor` integration of `user_integrations`.
@@ -24,7 +25,18 @@ function findAppVeyorKey(int $installationId, string $repositoryOwner): ?string
     return $integration?->key;
 }
 
-function requestAppVeyor(string $appVeyorKey, $url, $data = null, $isPut = false): Response
+
+/**
+ * Sends a request to the AppVeyor API.
+ *
+ * @param string     $appVeyorKey The AppVeyor API key to authenticate with.
+ * @param string     $method      The HTTP method: GET, POST or PUT.
+ * @param string     $url         The endpoint, relative to the API base URL.
+ * @param array|null $data        The JSON payload of a POST or PUT, null for a GET.
+ *
+ * @return Response The AppVeyor response.
+ */
+function requestAppVeyor(string $appVeyorKey, string $method, string $url, ?array $data): Response
 {
     global $logger;
 
@@ -41,12 +53,16 @@ function requestAppVeyor(string $appVeyorKey, $url, $data = null, $isPut = false
 
     $response = null;
 
-    if ($data != null) {
-        $response = $isPut
-            ? $request->put($url, $headers, json_encode($data))
-            : $request->post($url, $headers, json_encode($data));
-    } else {
+    if ($method === "GET") {
         $response = $request->get($url, $headers);
+    }
+
+    if ($method === "POST") {
+        $response = $request->post($url, $headers, json_encode($data));
+    }
+
+    if ($method === "PUT") {
+        $response = $request->put($url, $headers, json_encode($data));
     }
 
     if ($response->getStatusCode() >= 300) {
@@ -57,11 +73,20 @@ function requestAppVeyor(string $appVeyorKey, $url, $data = null, $isPut = false
     return $response;
 }
 
-function findProjectByRepositorySlug(string $appVeyorKey, $repositorySlug): Object
+
+/**
+ * Finds the AppVeyor project built from a GitHub repository.
+ *
+ * @param string $appVeyorKey    The AppVeyor API key to authenticate with.
+ * @param string $repositorySlug The repository, as "owner/name".
+ *
+ * @return object The project, or an object whose `error` is true and `message` explains why.
+ */
+function findProjectByRepositorySlug(string $appVeyorKey, string $repositorySlug): object
 {
     $searchSlug = strtolower($repositorySlug);
 
-    $projectsResponse = requestAppVeyor($appVeyorKey, "projects");
+    $projectsResponse = requestAppVeyor($appVeyorKey, "GET", "projects", null);
     if ($projectsResponse == null) {
         return null;
     }
