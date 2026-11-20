@@ -164,10 +164,11 @@ class FeatureSettingsTest extends TestCase
      */
     public function testResolveAcceptsStringValues(): void
     {
-        $this->assertTrue(FeatureSettings::resolve("1", "0"));
-        $this->assertFalse(FeatureSettings::resolve("0", "1"));
-        $this->assertTrue(FeatureSettings::resolve(null, "1"));
-        $this->assertFalse(FeatureSettings::resolve(null, null));
+        $settings = new FeatureSettings();
+        $this->assertTrue($settings->resolve("1", "0"));
+        $this->assertFalse($settings->resolve("0", "1"));
+        $this->assertTrue($settings->resolve(null, "1"));
+        $this->assertFalse($settings->resolve(null, null));
 
     }//end testResolveAcceptsStringValues()
 

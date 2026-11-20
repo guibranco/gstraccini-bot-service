@@ -53,9 +53,9 @@ class PullRequestsHandlerTest extends TestCase
         return Response::success("[]", $url, [], 200);
     }
 
-    private function invokeCheckVersionBump(array $metadata, object $pullRequestUpdated, bool $requestVersionBump = true): bool
+    private function invokeCheckVersionBump(array $metadata, object $pullRequestUpdated, ?FeatureSettings $settings = null): bool
     {
-        $handler = new PullRequestsHandler(new FixedFeatureSettings($requestVersionBump));
+        $handler = new PullRequestsHandler($settings ?? new FixedFeatureSettings(true));
         $method = (new ReflectionClass($handler))->getMethod("checkVersionBump");
         $method->setAccessible(true);
 
@@ -228,9 +228,9 @@ class PullRequestsHandlerTest extends TestCase
      *
      * @return void
      */
-    public function testResolvedWithoutAnyRequestWhenRequestVersionBumpIsDisabled(): void
+    public function testSkipsWhenVersionBumpDisabled(): void
     {
-        $result = $this->invokeCheckVersionBump($this->buildMetadata(), $this->buildFeaturePullRequest(), false);
+        $result = $this->invokeCheckVersionBump($this->buildMetadata(), $this->buildFeaturePullRequest(), new FixedFeatureSettings(false));
 
         $this->assertTrue($result, "A pull request of a repository that did not opt in must be treated as resolved.");
         $this->assertSame([], self::$requestLog, "No GitHub request should be made when the feature is disabled.");
@@ -241,7 +241,7 @@ class PullRequestsHandlerTest extends TestCase
      *
      * @return void
      */
-    public function testLooksUpSettingsWithBaseRepositoryAndOwnerIds(): void
+    public function testLooksUpBaseRepositoryAndOwner(): void
     {
         $settings = new FixedFeatureSettings(false);
         $handler = new PullRequestsHandler($settings);

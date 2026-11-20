@@ -74,7 +74,7 @@ class FeatureSettings
             return false;
         }
 
-        return self::resolve($row?->repositoryValue ?? null, $row?->accountValue ?? null);
+        return $this->resolve($row?->repositoryValue ?? null, $row?->accountValue ?? null);
 
     }//end isEnabled()
 
@@ -87,7 +87,7 @@ class FeatureSettings
      *
      * @return boolean Whether the feature is enabled.
      */
-    public static function resolve(mixed $repositoryValue, mixed $accountValue): bool
+    public function resolve(mixed $repositoryValue, mixed $accountValue): bool
     {
         if ($repositoryValue !== null) {
             return (int) $repositoryValue === 1;

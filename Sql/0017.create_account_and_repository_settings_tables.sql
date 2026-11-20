@@ -19,7 +19,7 @@
 -- UpdatedByUserId is the GitHub user id of whoever last changed the row through the website / portal
 -- (the same id as user_settings.UserId). Read and written only by gstraccini-bot-service.
 --
--- The live copy of this migration is webhooks Sql/0047. This one belongs to the dormant history kept for
+-- The live copy of this migration is webhooks Sql/0048. This one belongs to the dormant history kept for
 -- the future dedicated database and must not be run against the shared webhooks database.
 
 CREATE TABLE IF NOT EXISTS

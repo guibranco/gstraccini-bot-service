@@ -85,7 +85,7 @@ function fetchAccounts(mysqli $mysqli, int $userId, ?int $accountId): array
             'accountId' => (int) $row['AccountId'],
             'accountLogin' => $row['AccountLogin'],
             'accountType' => $row['AccountType'],
-            'requestVersionBump' => FeatureSettings::resolve(null, $row['RequestVersionBump']),
+            'requestVersionBump' => (int) ($row['RequestVersionBump'] ?? 0) === 1,
         ];
     }
 
@@ -131,6 +131,7 @@ function fetchRepositories(mysqli $mysqli, int $userId, ?int $accountId, ?int $r
     }
     $sql .= " ORDER BY gr.FullName";
 
+    $featureSettings = new FeatureSettings();
     $repositories = [];
     foreach (fetchFeatureSettingsRows($mysqli, $sql, $types, ...$params) as $row) {
         $repositoryValue = $row['RepositoryValue'] === null ? null : ((int) $row['RepositoryValue'] === 1);
@@ -141,7 +142,7 @@ function fetchRepositories(mysqli $mysqli, int $userId, ?int $accountId, ?int $r
             'accountId' => (int) $row['OwnerId'],
             'accountLogin' => $row['OwnerLogin'],
             'requestVersionBump' => $repositoryValue,
-            'effectiveRequestVersionBump' => FeatureSettings::resolve($row['RepositoryValue'], $row['AccountValue']),
+            'effectiveRequestVersionBump' => $featureSettings->resolve($row['RepositoryValue'], $row['AccountValue']),
         ];
     }
 
