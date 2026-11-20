@@ -173,126 +173,228 @@ function fetchRepositories(mysqli $mysqli, int $userId, ?int $accountId, ?int $r
 }//end fetchRepositories()
 
 
+/**
+ * Validates the body of a PUT request.
+ *
+ * @param mixed $body     The decoded JSON body.
+ * @param bool  $nullable Whether null (inherit the account) is accepted.
+ *
+ * @return string|null The error message, or null when the body is valid.
+ */
+function validateFeatureSettingsBody(mixed $body, bool $nullable): ?string
+{
+    if (is_array($body) === false || array_key_exists('requestVersionBump', $body) === false) {
+        return 'Missing requestVersionBump';
+    }
+
+    $value = $body['requestVersionBump'];
+    if (is_bool($value) === true || ($nullable === true && $value === null)) {
+        return null;
+    }
+
+    if ($nullable === true) {
+        return 'requestVersionBump must be true, false or null';
+    }
+
+    return 'requestVersionBump must be true or false';
+
+}//end validateFeatureSettingsBody()
+
+
+/**
+ * Stores an account's setting, when the account is one of the user's.
+ *
+ * @param mysqli   $mysqli    The connection.
+ * @param int      $userId    The signed-in user.
+ * @param int      $accountId The account.
+ * @param int|null $value     1 or 0.
+ *
+ * @return boolean False when the account is not one of the user's installations.
+ */
+function saveAccountSetting(mysqli $mysqli, int $userId, int $accountId, ?int $value): bool
+{
+    $accounts = fetchAccounts($mysqli, $userId, $accountId);
+    if (count($accounts) === 0) {
+        return false;
+    }
+
+    $accountLogin = $accounts[0]['accountLogin'];
+    $stmt         = $mysqli->prepare(
+        'INSERT INTO account_settings (AccountId, AccountLogin, RequestVersionBump, UpdatedByUserId)
+         VALUES (?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE AccountLogin = VALUES(AccountLogin),
+            RequestVersionBump = VALUES(RequestVersionBump), UpdatedByUserId = VALUES(UpdatedByUserId)'
+    );
+    $stmt->bind_param('isii', $accountId, $accountLogin, $value, $userId);
+    $stmt->execute();
+    $stmt->close();
+
+    return true;
+
+}//end saveAccountSetting()
+
+
+/**
+ * Stores a repository's setting, when the repository is one of the user's.
+ *
+ * @param mysqli   $mysqli       The connection.
+ * @param int      $userId       The signed-in user.
+ * @param int      $repositoryId The repository.
+ * @param int|null $value        1, 0, or null to inherit the account.
+ *
+ * @return boolean False when the repository is not one of the user's installations.
+ */
+function saveRepositorySetting(mysqli $mysqli, int $userId, int $repositoryId, ?int $value): bool
+{
+    $repositories = fetchRepositories($mysqli, $userId, null, $repositoryId);
+    if (count($repositories) === 0) {
+        return false;
+    }
+
+    $accountId = $repositories[0]['accountId'];
+    $fullName  = $repositories[0]['fullName'];
+    $stmt      = $mysqli->prepare(
+        'INSERT INTO repository_settings (RepositoryId, AccountId, FullName, RequestVersionBump, UpdatedByUserId)
+         VALUES (?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE AccountId = VALUES(AccountId), FullName = VALUES(FullName),
+            RequestVersionBump = VALUES(RequestVersionBump), UpdatedByUserId = VALUES(UpdatedByUserId)'
+    );
+    $stmt->bind_param('iisii', $repositoryId, $accountId, $fullName, $value, $userId);
+    $stmt->execute();
+    $stmt->close();
+
+    return true;
+
+}//end saveRepositorySetting()
+
+
+/**
+ * Closes the connection and sends the JSON response.
+ *
+ * @param mysqli $mysqli     The connection.
+ * @param int    $statusCode The HTTP status code.
+ * @param mixed  $payload    The response body.
+ *
+ * @return void
+ */
+function respondFeatureSettings(mysqli $mysqli, int $statusCode, mixed $payload): void
+{
+    $mysqli->close();
+    http_response_code($statusCode);
+    echo json_encode($payload);
+
+}//end respondFeatureSettings()
+
+
 $method = ($_SERVER['REQUEST_METHOD'] ?? 'GET');
+
+$accountFilter = null;
+if (isset($_GET['accountId']) === true && ctype_digit((string) $_GET['accountId']) === true) {
+    $accountFilter = (int) $_GET['accountId'];
+}
 
 if ($method === 'GET' && $resourceId === null) {
     try {
         if ($resource === 'account') {
             $data = fetchAccounts($mysqli, $userIdInt, null);
-        } else {
-            $accountFilter = null;
-            if (isset($_GET['accountId']) === true && ctype_digit((string) $_GET['accountId']) === true) {
-                $accountFilter = (int) $_GET['accountId'];
-            }
+        }
 
+        if ($resource === 'repository') {
             $data = fetchRepositories($mysqli, $userIdInt, $accountFilter, null);
         }
     } catch (\Exception $e) {
-        $mysqli->close();
-        http_response_code(503);
-        echo json_encode(['error' => 'Database unavailable']);
+        respondFeatureSettings($mysqli, 503, ['error' => 'Database unavailable']);
         exit;
     }
 
-    $mysqli->close();
-    http_response_code(200);
-    echo json_encode($data);
+    respondFeatureSettings($mysqli, 200, $data);
     exit;
-}//end if
+}
+
+
+/**
+ * Validates and stores a PUT request.
+ *
+ * @param mysqli $mysqli     The connection.
+ * @param int    $userId     The signed-in user.
+ * @param string $resource   "account" or "repository".
+ * @param int    $resourceId The account or repository id.
+ * @param mixed  $body       The decoded JSON body.
+ *
+ * @return string|null The error message (an invalid body, or "... not found"), or null when stored.
+ */
+function updateFeatureSetting(mysqli $mysqli, int $userId, string $resource, int $resourceId, mixed $body): ?string
+{
+    $isAccount = ($resource === 'account');
+    $bodyError = validateFeatureSettingsBody($body, ($isAccount === false));
+    if ($bodyError !== null) {
+        return $bodyError;
+    }
+
+    $value = null;
+    if ($body['requestVersionBump'] !== null) {
+        $value = (int) $body['requestVersionBump'];
+    }
+
+    if ($isAccount === true) {
+        $saved = saveAccountSetting($mysqli, $userId, $resourceId, $value);
+    }
+
+    if ($isAccount === false) {
+        $saved = saveRepositorySetting($mysqli, $userId, $resourceId, $value);
+    }
+
+    if ($saved === false) {
+        return ucfirst($resource).' not found';
+    }
+
+    return null;
+
+}//end updateFeatureSetting()
+
+
+/**
+ * Sends the response of a PUT request.
+ *
+ * @param mysqli      $mysqli      The connection.
+ * @param string|null $updateError The error returned by updateFeatureSetting().
+ *
+ * @return void
+ */
+function respondFeatureSettingsUpdate(mysqli $mysqli, ?string $updateError): void
+{
+    if ($updateError === null) {
+        respondFeatureSettings($mysqli, 200, ['status' => 'updated']);
+        return;
+    }
+
+    $statusCode = 400;
+    if (str_ends_with($updateError, 'not found') === true) {
+        $statusCode = 404;
+    }
+
+    respondFeatureSettings($mysqli, $statusCode, ['error' => $updateError]);
+
+}//end respondFeatureSettingsUpdate()
+
 
 if ($method === 'PUT' && $resourceId !== null) {
     $body = json_decode(file_get_contents('php://input'), true);
-    if (is_array($body) === false || array_key_exists('requestVersionBump', $body) === false) {
-        $mysqli->close();
-        http_response_code(400);
-        echo json_encode(['error' => 'Missing requestVersionBump']);
-        exit;
-    }
-
-    $value       = $body['requestVersionBump'];
-    $nullable    = $resource === 'repository';
-    $nullAllowed = ($nullable === true && $value === null);
-    if (is_bool($value) === false && $nullAllowed === false) {
-        $mysqli->close();
-        http_response_code(400);
-        $error = 'requestVersionBump must be true or false';
-        if ($nullable === true) {
-            $error = 'requestVersionBump must be true, false or null';
-        }
-
-        echo json_encode(['error' => $error]);
-        exit;
-    }
-
-    $valueInt = null;
-    if ($value !== null) {
-        $valueInt = (int) $value;
-    }
-
     try {
-        if ($resource === 'account') {
-            $accounts = fetchAccounts($mysqli, $userIdInt, $resourceId);
-            if (count($accounts) === 0) {
-                $mysqli->close();
-                http_response_code(404);
-                echo json_encode(['error' => 'Account not found']);
-                exit;
-            }
-
-            $accountLogin = $accounts[0]['accountLogin'];
-            $stmt         = $mysqli->prepare(
-                'INSERT INTO account_settings (AccountId, AccountLogin, RequestVersionBump, UpdatedByUserId)
-                 VALUES (?, ?, ?, ?)
-                 ON DUPLICATE KEY UPDATE
-                    AccountLogin = VALUES(AccountLogin),
-                    RequestVersionBump = VALUES(RequestVersionBump),
-                    UpdatedByUserId = VALUES(UpdatedByUserId)'
-            );
-            $stmt->bind_param('isii', $resourceId, $accountLogin, $valueInt, $userIdInt);
-        } else {
-            $repositories = fetchRepositories($mysqli, $userIdInt, null, $resourceId);
-            if (count($repositories) === 0) {
-                $mysqli->close();
-                http_response_code(404);
-                echo json_encode(['error' => 'Repository not found']);
-                exit;
-            }
-
-            $accountId = $repositories[0]['accountId'];
-            $fullName  = $repositories[0]['fullName'];
-            $stmt      = $mysqli->prepare(
-                'INSERT INTO repository_settings (RepositoryId, AccountId, FullName, RequestVersionBump, UpdatedByUserId)
-                 VALUES (?, ?, ?, ?, ?)
-                 ON DUPLICATE KEY UPDATE
-                    AccountId = VALUES(AccountId),
-                    FullName = VALUES(FullName),
-                    RequestVersionBump = VALUES(RequestVersionBump),
-                    UpdatedByUserId = VALUES(UpdatedByUserId)'
-            );
-            $stmt->bind_param('iisii', $resourceId, $accountId, $fullName, $valueInt, $userIdInt);
-        }//end if
-
-        $stmt->execute();
-        $stmt->close();
+        $updateError = updateFeatureSetting($mysqli, $userIdInt, $resource, $resourceId, $body);
     } catch (\Exception $e) {
-        $mysqli->close();
-        http_response_code(503);
-        echo json_encode(['error' => 'Database unavailable']);
+        respondFeatureSettings($mysqli, 503, ['error' => 'Database unavailable']);
         exit;
-    }//end try
+    }
 
-    $mysqli->close();
-    http_response_code(200);
-    echo json_encode(['status' => 'updated']);
+    respondFeatureSettingsUpdate($mysqli, $updateError);
     exit;
-}//end if
+}
 
-$mysqli->close();
-http_response_code(405);
 $allowedMethod = 'PUT';
 if ($resourceId === null) {
     $allowedMethod = 'GET';
 }
 
 header('Allow: '.$allowedMethod);
-echo json_encode(['error' => 'Method Not Allowed']);
+respondFeatureSettings($mysqli, 405, ['error' => 'Method Not Allowed']);

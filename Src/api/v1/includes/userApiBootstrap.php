@@ -16,25 +16,25 @@
  *
  * @param array $request The request: apiKey (configured), providedKey, workerDir, databaseConfigured, userId.
  *
- * @return array|null The HTTP status code and error message, or null when the request can go on.
+ * @return string|null The error message, or null when the request can go on.
  */
-function findUserApiRequestError(array $request): ?array
+function findUserApiRequestError(array $request): ?string
 {
     $apiKey = (string) ($request['apiKey'] ?? '');
     if ($apiKey === '' || hash_equals($apiKey, (string) $request['providedKey']) === false) {
-        return [401, 'Unauthorized'];
+        return 'Unauthorized';
     }
 
     if (is_dir((string) $request['workerDir']) === false) {
-        return [500, 'Worker directory not configured'];
+        return 'Worker directory not configured';
     }
 
     if ($request['databaseConfigured'] === false) {
-        return [500, 'Database not configured'];
+        return 'Database not configured';
     }
 
     if ($request['userId'] === false) {
-        return [400, 'Missing or invalid userId'];
+        return 'Missing or invalid userId';
     }
 
     return null;
@@ -43,16 +43,23 @@ function findUserApiRequestError(array $request): ?array
 
 
 /**
- * Sends a JSON error response.
+ * Sends a JSON error response, with the HTTP status code of the error.
  *
- * @param array $error The HTTP status code and error message.
+ * @param string $error The error message returned by findUserApiRequestError(), or "Database unavailable".
  *
  * @return void
  */
-function sendUserApiError(array $error): void
+function sendUserApiError(string $error): void
 {
-    http_response_code($error[0]);
-    echo json_encode(['error' => $error[1]]);
+    $statusCode = match ($error) {
+        'Unauthorized' => 401,
+        'Missing or invalid userId' => 400,
+        'Database unavailable' => 503,
+        default => 500,
+    };
+
+    http_response_code($statusCode);
+    echo json_encode(['error' => $error]);
 
 }//end sendUserApiError()
 
@@ -89,6 +96,6 @@ require_once $workerDir.'/Library/DatabaseHandler.php';
 try {
     $mysqli = (new DatabaseHandler($mySqlHost, $mySqlUser, $mySqlPassword, $mySqlDatabase))->connect();
 } catch (\Exception $e) {
-    sendUserApiError([503, 'Database unavailable']);
+    sendUserApiError('Database unavailable');
     exit;
 }
