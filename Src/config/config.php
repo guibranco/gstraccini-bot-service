@@ -53,11 +53,6 @@ use GuiBranco\GStracciniBot\Library\TimeBoxedRequest;
 use GuiBranco\Pancake\Logger;
 use GuiBranco\Pancake\LogStream;
 
-$appVeyorSecretsFile = "secrets/appVeyor.secrets.php";
-if (file_exists($appVeyorSecretsFile)) {
-    require_once $appVeyorSecretsFile;
-}
-
 $codacySecretsFile = "secrets/codacy.secrets.php";
 if (file_exists($codacySecretsFile)) {
     require_once $codacySecretsFile;

@@ -52,14 +52,6 @@ jobs:
           cd secrets
           echo "Deny from all" >> .htaccess
 
-      - name: 🔑 Generate AppVeyor Configuration
-        run: |
-          cd Src
-          mkdir -p secrets
-          cd secrets
-          echo "<?php" >> appVeyor.secrets.php
-          echo "\$appVeyorKey = \"${{ secrets.APPVEYOR_KEY }}\";" >> appVeyor.secrets.php
-
       - name: 🔑 Generate Codacy Configuration
         run: |
           cd Src
