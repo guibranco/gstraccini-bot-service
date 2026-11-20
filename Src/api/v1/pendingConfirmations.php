@@ -8,22 +8,25 @@
 // opens $mysqli; $userIdInt holds the user.
 require_once __DIR__.'/includes/userApiBootstrap.php';
 
-$requestError = null;
+$errorStatus  = 0;
+$errorMessage = '';
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     header('Allow: GET');
-    $requestError = [405, 'Method Not Allowed'];
+    $errorStatus  = 405;
+    $errorMessage = 'Method Not Allowed';
 }
 
 $allowedStatuses = explode(',', 'pending,resolved,cancelled,all');
 $status          = ($_GET['status'] ?? 'pending');
-if ($requestError === null && in_array($status, $allowedStatuses, true) === false) {
-    $requestError = [400, 'Invalid status, expected one of: '.implode(', ', $allowedStatuses)];
+if ($errorStatus === 0 && in_array($status, $allowedStatuses, true) === false) {
+    $errorStatus  = 400;
+    $errorMessage = 'Invalid status, expected one of: '.implode(', ', $allowedStatuses);
 }
 
-if ($requestError !== null) {
+if ($errorStatus !== 0) {
     $mysqli->close();
-    http_response_code($requestError[0]);
-    echo json_encode(['error' => $requestError[1]]);
+    http_response_code($errorStatus);
+    echo json_encode(['error' => $errorMessage]);
     exit;
 }
 
