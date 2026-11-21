@@ -384,11 +384,16 @@ class PullRequestsHandlerTest extends TestCase
         }
     }
 
+    /**
+     * The bot's approval on a later page of reviews must still be found.
+     *
+     * @return void
+     */
     public function testGetReviewsLoginsReadsAllPages(): void
     {
         $otherReviews = array_fill(0, 100, ["user" => ["login" => "some-review-bot[bot]"]]);
-        self::$responses["/reviews?per_page=100&page=1"] = Response::success(json_encode($otherReviews), "", [], 200);
-        self::$responses["/reviews?per_page=100&page=2"] = Response::success(json_encode([["user" => ["login" => "gstraccini[bot]"]]]), "", [], 200);
+        self::$responses["/reviews?per_page=100&page=1"] = new Response(true, json_encode($otherReviews), "", 200, "", []);
+        self::$responses["/reviews?per_page=100&page=2"] = new Response(true, json_encode([["user" => ["login" => "gstraccini[bot]"]]]), "", 200, "", []);
 
         $handler = new PullRequestsHandler(null, new PendingConfirmationTracker($this->pendingConfirmations));
         $method = (new ReflectionClass($handler))->getMethod("getReviewsLogins");
@@ -400,9 +405,14 @@ class PullRequestsHandlerTest extends TestCase
         $this->assertContains("gstraccini[bot]", $logins);
     }
 
+    /**
+     * A page of reviews that can't be read must throw, not return a partial list.
+     *
+     * @return void
+     */
     public function testGetReviewsLoginsThrowsOnError(): void
     {
-        self::$responses["/reviews"] = Response::error("boom", "", 500);
+        self::$responses["/reviews"] = new Response(false, null, "boom", 500, "", null);
 
         $handler = new PullRequestsHandler(null, new PendingConfirmationTracker($this->pendingConfirmations));
         $method = (new ReflectionClass($handler))->getMethod("getReviewsLogins");
