@@ -16,6 +16,7 @@ use GuiBranco\GStracciniBot\Library\PullRequestHeadWatcher;
 use GuiBranco\GStracciniBot\Library\RecreateRequester;
 use GuiBranco\GStracciniBot\Library\VersionBumpAnalyzer;
 use GuiBranco\GStracciniBot\Library\VersionBumpCommentBuilder;
+use RuntimeException;
 
 define("ISSUES", "/issues/");
 define("PULLS", "/pulls/");
@@ -1346,13 +1347,43 @@ class PullRequestsHandler implements IHandler
         }
     }
 
+    /**
+     * The logins of every user who reviewed the pull request, across all pages.
+     *
+     * Reading only the first page (30 reviews by default) made the bot miss its own
+     * approval on pull requests flooded by other review bots, so it approved again on
+     * every run. A failed page throws instead of returning a partial list, so the bot
+     * never approves because it could not see the existing reviews.
+     *
+     * @param array $metadata Metadata for the GitHub API requests.
+     *
+     * @return string[] The reviewers' logins.
+     */
     private function getReviewsLogins($metadata)
     {
-        $reviewsResponse = doRequestGitHub($metadata["token"], $metadata["reviewsUrl"], null, "GET");
-        $reviews = json_decode($reviewsResponse->getBody());
-        return array_map(function ($review) {
-            return $review->user->login;
-        }, $reviews);
+        $logins = [];
+        $page = 1;
+        do {
+            $url = "{$metadata["reviewsUrl"]}?per_page=100&page={$page}";
+            $response = doRequestGitHub($metadata["token"], $url, null, "GET");
+            if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 300) {
+                throw new RuntimeException("Could not list the reviews at '{$url}': HTTP status {$response->getStatusCode()}");
+            }
+
+            $reviews = json_decode($response->getBody());
+            if (!is_array($reviews)) {
+                throw new RuntimeException("Could not list the reviews at '{$url}': unexpected body");
+            }
+
+            foreach ($reviews as $review) {
+                $logins[] = ($review->user->login ?? "");
+            }
+
+            $page++;
+            $hasMorePages = count($reviews) === 100;
+        } while ($hasMorePages);
+
+        return $logins;
     }
 
     private function getReferencedIssue($metadata, $pullRequest)

@@ -383,6 +383,44 @@ class PullRequestsHandlerTest extends TestCase
             $this->assertStringNotContainsString("comments", $request["url"], "Comments should not be looked up once a +semver directive is found.");
         }
     }
+
+    /**
+     * The bot's approval on a later page of reviews must still be found.
+     *
+     * @return void
+     */
+    public function testGetReviewsLoginsReadsAllPages(): void
+    {
+        $otherReviews = array_fill(0, 100, ["user" => ["login" => "some-review-bot[bot]"]]);
+        self::$responses["/reviews?per_page=100&page=1"] = new Response(true, json_encode($otherReviews), "", 200, "", []);
+        self::$responses["/reviews?per_page=100&page=2"] = new Response(true, json_encode([["user" => ["login" => "gstraccini[bot]"]]]), "", 200, "", []);
+
+        $handler = new PullRequestsHandler(null, new PendingConfirmationTracker($this->pendingConfirmations));
+        $method = (new ReflectionClass($handler))->getMethod("getReviewsLogins");
+        $method->setAccessible(true);
+
+        $logins = $method->invoke($handler, ["token" => "fake-token", "reviewsUrl" => "repos/owner/repo/pulls/1/reviews"]);
+
+        $this->assertCount(101, $logins);
+        $this->assertContains("gstraccini[bot]", $logins);
+    }
+
+    /**
+     * A page of reviews that can't be read must throw, not return a partial list.
+     *
+     * @return void
+     */
+    public function testGetReviewsLoginsThrowsOnError(): void
+    {
+        self::$responses["/reviews"] = new Response(false, null, "boom", 500, "", null);
+
+        $handler = new PullRequestsHandler(null, new PendingConfirmationTracker($this->pendingConfirmations));
+        $method = (new ReflectionClass($handler))->getMethod("getReviewsLogins");
+        $method->setAccessible(true);
+
+        $this->expectException(\RuntimeException::class);
+        $method->invoke($handler, ["token" => "fake-token", "reviewsUrl" => "repos/owner/repo/pulls/1/reviews"]);
+    }
 }
 
 /**
@@ -437,5 +475,4 @@ class FixedFeatureSettings extends FeatureSettings
 
     }//end isRequestVersionBumpEnabled()
 
-
-}//end class
+}
