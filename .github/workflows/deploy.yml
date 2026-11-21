@@ -114,12 +114,11 @@ jobs:
           LOGSTREAM_UDP_HOST: ${{ vars.LOGSTREAM_UDP_HOST }}
           LOGSTREAM_UDP_PORT: ${{ vars.LOGSTREAM_UDP_PORT }}
         run: |
-          if [ -n "$LOGSTREAM_UDP_PORT" ]; then
-            # Whole-value match (no embedded newline), then the numeric range.
-            if [[ ! "$LOGSTREAM_UDP_PORT" =~ ^[0-9]{1,5}$ ]] || (( 10#$LOGSTREAM_UDP_PORT < 1 || 10#$LOGSTREAM_UDP_PORT > 65535 )); then
-              echo "::error::LOGSTREAM_UDP_PORT must be a port number (1-65535) or empty."
-              exit 1
-            fi
+          # Empty means 8082; otherwise a whole 1-5 digit value (no embedded newline) within 1-65535.
+          PORT="$LOGSTREAM_UDP_PORT"
+          if [ -n "$PORT" ] && { [[ ! "$PORT" =~ ^[0-9]{1,5}$ ]] || (( 10#$PORT < 1 || 10#$PORT > 65535 )); }; then
+            echo "::error::LOGSTREAM_UDP_PORT must be a port number (1-65535) or empty."
+            exit 1
           fi
           cd Src
           mkdir -p secrets
