@@ -16,6 +16,7 @@ use GuiBranco\GStracciniBot\Library\PullRequestHeadWatcher;
 use GuiBranco\GStracciniBot\Library\RecreateRequester;
 use GuiBranco\GStracciniBot\Library\VersionBumpAnalyzer;
 use GuiBranco\GStracciniBot\Library\VersionBumpCommentBuilder;
+use RuntimeException;
 
 define("ISSUES", "/issues/");
 define("PULLS", "/pulls/");
@@ -1366,12 +1367,12 @@ class PullRequestsHandler implements IHandler
             $url = "{$metadata["reviewsUrl"]}?per_page=100&page={$page}";
             $response = doRequestGitHub($metadata["token"], $url, null, "GET");
             if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 300) {
-                throw new \RuntimeException("Could not list the reviews at '{$url}': HTTP status {$response->getStatusCode()}");
+                throw new RuntimeException("Could not list the reviews at '{$url}': HTTP status {$response->getStatusCode()}");
             }
 
             $reviews = json_decode($response->getBody());
             if (!is_array($reviews)) {
-                throw new \RuntimeException("Could not list the reviews at '{$url}': unexpected body");
+                throw new RuntimeException("Could not list the reviews at '{$url}': unexpected body");
             }
 
             foreach ($reviews as $review) {
@@ -1379,7 +1380,8 @@ class PullRequestsHandler implements IHandler
             }
 
             $page++;
-        } while (count($reviews) === 100);
+            $hasMorePages = count($reviews) === 100;
+        } while ($hasMorePages);
 
         return $logins;
     }

@@ -384,7 +384,7 @@ class PullRequestsHandlerTest extends TestCase
         }
     }
 
-    public function testGetReviewsLoginsReadsEveryPage(): void
+    public function testGetReviewsLoginsReadsAllPages(): void
     {
         $otherReviews = array_fill(0, 100, ["user" => ["login" => "some-review-bot[bot]"]]);
         self::$responses["/reviews?per_page=100&page=1"] = Response::success(json_encode($otherReviews), "", [], 200);
@@ -400,7 +400,7 @@ class PullRequestsHandlerTest extends TestCase
         $this->assertContains("gstraccini[bot]", $logins);
     }
 
-    public function testGetReviewsLoginsThrowsWhenTheListCannotBeRead(): void
+    public function testGetReviewsLoginsThrowsOnError(): void
     {
         self::$responses["/reviews"] = Response::error("boom", "", 500);
 
