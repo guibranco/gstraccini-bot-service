@@ -87,17 +87,47 @@ $logStream = null;
 $logStreamConfig = loadConfig();
 $logStreamEnabled = !isset($logStreamConfig->logStream->enabled) || $logStreamConfig->logStream->enabled === true;
 $hasLogStreamCreds = (empty($logStreamApiKey) === false && empty($logStreamApiToken) === false);
+
+/*
+ * Transport (config.json "logStream.transport"): "udp" (default) sends each
+ * entry as one fire-and-forget, HMAC-signed datagram to the server's UDP
+ * port, so a slow or down logstream-server can never hold up a worker;
+ * "http" keeps the POST /api/logs path. Entries too large for one datagram
+ * still go over HTTP, through TimeBoxedRequest. The UDP host defaults to
+ * $logStreamServer's host and the port to 8082; $logStreamUdpHost and
+ * $logStreamUdpPort (LOGSTREAM_UDP_HOST / LOGSTREAM_UDP_PORT repository
+ * variables) override them, e.g. 127.0.0.1 on the same VM as logstream-server.
+ */
+
+$logStreamTransport = LogStream::TRANSPORT_UDP;
+$configuredTransport = strtolower((string) ($logStreamConfig->logStream->transport ?? LogStream::TRANSPORT_UDP));
+if ($configuredTransport === LogStream::TRANSPORT_HTTP) {
+    $logStreamTransport = LogStream::TRANSPORT_HTTP;
+}
+
+$logStreamUdpHost = trim((string) ($logStreamUdpHost ?? ""));
+if ($logStreamUdpHost === "") {
+    $logStreamUdpHost = null;
+}
+
+$logStreamUdpPort = (int) ($logStreamUdpPort ?? 0);
+if ($logStreamUdpPort === 0) {
+    $logStreamUdpPort = LogStream::DEFAULT_UDP_PORT;
+}
+
 if ($logStreamEnabled === true && empty($logStreamServer) === false && $hasLogStreamCreds === true) {
-    $logStream = new LogStream(
-        baseUrl: $logStreamServer,
-        appKey: $logStreamApiKey,
-        appId: $version,
-        authMode: LogStream::AUTH_API_KEY,
-        apiKey: $logStreamApiKey,
-        apiToken: $logStreamApiToken,
-        request: new TimeBoxedRequest($logStreamServer),
-        userAgent: constant("USER_AGENT_VENDOR")
-    );
+    try {
+        $logStream = new LogStream(
+            baseUrl: $logStreamServer, appKey: $logStreamApiKey, appId: $version,
+            authMode: LogStream::AUTH_API_KEY, apiKey: $logStreamApiKey, apiToken: $logStreamApiToken,
+            request: new TimeBoxedRequest($logStreamServer), userAgent: constant("USER_AGENT_VENDOR"),
+            transport: $logStreamTransport, udpHost: $logStreamUdpHost, udpPort: $logStreamUdpPort
+        );
+    } catch (\Throwable $e) {
+        // A bad UDP host or port must not take the workers down: they run without LogStream.
+        $logStream = null;
+        error_log("LogStream init failed: {$e->getMessage()}");
+    }
 }
 
 $mySqlSecretsFile = "secrets/mySql.secrets.php";

@@ -16,7 +16,8 @@
     "repositories": true
   },
   "logStream": {
-    "enabled": true
+    "enabled": true,
+    "transport": "udp"
   },
   "ownerHandler": "guibranco",
   "pullRequests": {

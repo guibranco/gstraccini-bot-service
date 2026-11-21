@@ -110,7 +110,16 @@ jobs:
           LOGSTREAM_SERVER: ${{ secrets.LOGSTREAM_SERVER }}
           LOGSTREAM_API_KEY: ${{ secrets.LOGSTREAM_API_KEY }}
           LOGSTREAM_API_TOKEN: ${{ secrets.LOGSTREAM_API_TOKEN }}
+          # Optional: empty means the LogStream server's host and port 8082.
+          LOGSTREAM_UDP_HOST: ${{ vars.LOGSTREAM_UDP_HOST }}
+          LOGSTREAM_UDP_PORT: ${{ vars.LOGSTREAM_UDP_PORT }}
         run: |
+          # Empty means 8082; otherwise a whole 1-5 digit value (no embedded newline) within 1-65535.
+          PORT="$LOGSTREAM_UDP_PORT"
+          if [ -n "$PORT" ] && { [[ ! "$PORT" =~ ^[0-9]{1,5}$ ]] || (( 10#$PORT < 1 || 10#$PORT > 65535 )); }; then
+            echo "::error::LOGSTREAM_UDP_PORT must be a port number (1-65535) or empty."
+            exit 1
+          fi
           cd Src
           mkdir -p secrets
           cd secrets
@@ -123,6 +132,8 @@ jobs:
             echo "\$logStreamServer = $(php_literal "$LOGSTREAM_SERVER");"
             echo "\$logStreamApiKey = $(php_literal "$LOGSTREAM_API_KEY");"
             echo "\$logStreamApiToken = $(php_literal "$LOGSTREAM_API_TOKEN");"
+            echo "\$logStreamUdpHost = $(php_literal "$LOGSTREAM_UDP_HOST");"
+            echo "\$logStreamUdpPort = $(php_literal "$LOGSTREAM_UDP_PORT");"
           } >> logStream.secrets.php
 
       - name: 🔑 Generate MySQL Configuration
