@@ -641,7 +641,7 @@ class PullRequestsHandler implements IHandler
         }
 
         $labelToRemove = str_replace(" ", "%20", self::AWAITING_TRIAGE_LABEL);
-        $url = $metadata["labelsUrl"] . "/{$labelToRemove}";
+        $url = "{$metadata["labelsUrl"]}/{$labelToRemove}";
         $response = doRequestGitHub($metadata["token"], $url, null, "DELETE");
 
         if ($response->getStatusCode() < 300) {
