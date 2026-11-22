@@ -526,7 +526,8 @@ class PullRequestsHandlerTest extends TestCase
 
         $metadata                   = [];
         $metadata["token"]          = "fake-token";
-        $metadata["pullRequestUrl"] = "repos/owner/repo/issues/1";
+        $metadata["pullRequestUrl"] = "repos/owner/repo/pulls/1";
+        $metadata["labelsUrl"]      = "repos/owner/repo/issues/1/labels";
         $metadata["owner"]          = "owner";
         $metadata["repo"]           = "repo";
         $pullRequest = json_decode(json_encode(["number" => 1, "labels" => [["name" => "🚦 awaiting triage"]]]));
@@ -537,7 +538,7 @@ class PullRequestsHandlerTest extends TestCase
         $method->invoke($handler, $metadata, $pullRequest, true);
         $this->assertCount(1, self::$requestLog);
         $this->assertSame("DELETE", self::$requestLog[0]["method"]);
-        $this->assertStringContainsString("/labels/🚦%20awaiting%20triage", self::$requestLog[0]["url"]);
+        $this->assertSame("repos/owner/repo/issues/1/labels/🚦%20awaiting%20triage", self::$requestLog[0]["url"]);
     }
 }
 

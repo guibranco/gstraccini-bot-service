@@ -316,14 +316,14 @@ class PullRequestsHandler implements IHandler
             $labelsToAdd[] = "🤖 bot";
         }
 
-        $collaboratorsResponse = doRequestGitHub($metadata["token"], "{$metadata["collaboratorsUrl"]}?per_page=100", null, "GET");
-        $collaboratorsLogins = array_column(json_decode($collaboratorsResponse->getBody()), "login");
+        $collabResponse = doRequestGitHub($metadata["token"], "{$metadata["collaboratorsUrl"]}?per_page=100", null, "GET");
+        $collaboratorsLogins = array_column(json_decode($collabResponse->getBody()), "login");
 
         $reviews = $this->getReviews($metadata);
         $reviewsLogins = array_map(static fn ($review) => ($review->user->login ?? ""), $reviews);
         $approvedOnHead = $this->isApprovedOnHead($reviews, $collaboratorsLogins, $pullRequestUpdated->head->sha, $pullRequest->Sender);
         $iAmTheOwner = $metadata["ownerLogin"] !== null && in_array($metadata["ownerLogin"], $collaboratorsLogins, true);
-        $this->trace('debug', 'PR {repo}#{pr}: step review and assign', ["collaborators_status" => $collaboratorsResponse->getStatusCode(), "owner_is_collaborator" => $iAmTheOwner]);
+        $this->trace('debug', 'PR {repo}#{pr}: step review and assign', ["collaborators_status" => $collabResponse->getStatusCode(), "owner_is_collaborator" => $iAmTheOwner]);
         $labelsToAdd = array_merge(
             $labelsToAdd,
             $this->reviewAndAssign($metadata, $pullRequest, $pullRequestUpdated, $config, $collaboratorsLogins, $reviewsLogins, $iAmTheOwner)
@@ -641,7 +641,7 @@ class PullRequestsHandler implements IHandler
         }
 
         $labelToRemove = str_replace(" ", "%20", self::AWAITING_TRIAGE_LABEL);
-        $url = $metadata["pullRequestUrl"] . "/labels/{$labelToRemove}";
+        $url = $metadata["labelsUrl"] . "/{$labelToRemove}";
         $response = doRequestGitHub($metadata["token"], $url, null, "DELETE");
 
         if ($response->getStatusCode() < 300) {
@@ -1180,7 +1180,7 @@ class PullRequestsHandler implements IHandler
 
         foreach ($intersect as $label) {
             $encoded = str_replace(" ", "%20", $label);
-            $url = "{$metadata["pullRequestUrl"]}/labels/{$encoded}";
+            $url = "{$metadata["labelsUrl"]}/{$encoded}";
             $response = doRequestGitHub($metadata["token"], $url, null, "DELETE");
             $this->trace('info', 'PR {repo}#{pr}: removed label {label} from closed pull request (HTTP {status})', ["label" => $label, "status" => $response->getStatusCode()]);
         }
@@ -1422,6 +1422,12 @@ class PullRequestsHandler implements IHandler
                 $body = array("labels" => array("🛠 WIP"));
                 $response = doRequestGitHub($metadata["token"], "{$metadata["issuesUrl"]}/{$issueNumber}/labels", $body, "POST");
                 $this->trace('info', 'PR {repo}#{pr}: added WIP label to linked issue #{issue} (HTTP {status})', ["issue" => $issueNumber, "status" => $response->getStatusCode()]);
+            }
+
+            // The triage state belongs to each item: a linked issue awaiting triage doesn't make the pull request await it.
+            $position = array_search(self::AWAITING_TRIAGE_LABEL, $labelsIssue, true);
+            if ($position !== false) {
+                unset($labelsIssue[$position]);
             }
 
             $labelsToNotCopy = ["🤖 bot", "good first issue", "help wanted"];
