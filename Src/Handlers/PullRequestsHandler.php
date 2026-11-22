@@ -714,7 +714,7 @@ class PullRequestsHandler implements IHandler
             return false;
         }
 
-        if (strtolower($review->user->type ?? "") === "bot") {
+        if (strtolower(($review->user->type ?? "")) === "bot") {
             return false;
         }
 
