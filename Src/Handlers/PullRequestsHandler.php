@@ -316,7 +316,7 @@ class PullRequestsHandler implements IHandler
             $labelsToAdd[] = "🤖 bot";
         }
 
-        $collaboratorsResponse = doRequestGitHub($metadata["token"], $metadata["collaboratorsUrl"], null, "GET");
+        $collaboratorsResponse = doRequestGitHub($metadata["token"], "{$metadata["collaboratorsUrl"]}?per_page=100", null, "GET");
         $collaboratorsLogins = array_column(json_decode($collaboratorsResponse->getBody()), "login");
 
         $reviews = $this->getReviews($metadata);
@@ -664,8 +664,8 @@ class PullRequestsHandler implements IHandler
 
     /**
      * Whether a collaborator other than the sender has approved the current head commit.
-     * Each reviewer's latest approving or blocking review counts (comments don't change it); a
-     * dismissed approval or a later "changes requested" doesn't count, and neither does an
+     * Each reviewer's latest approving or blocking review counts (comments don't change it); bots never
+     * count, a dismissed approval or a later "changes requested" doesn't count, and neither does an
      * approval of an older commit, since code was pushed after it.
      *
      * @param array  $reviews             The pull request reviews, oldest first.
@@ -681,7 +681,8 @@ class PullRequestsHandler implements IHandler
         foreach ($reviews as $review) {
             $login = ($review->user->login ?? "");
             $state = ($review->state ?? "");
-            if ($login === "" || $login === $sender || in_array($login, $collaboratorsLogins, true) === false) {
+            $isBot = strtolower($review->user->type ?? "") === "bot" || str_ends_with($login, "[bot]");
+            if ($login === "" || $login === $sender || $isBot || in_array($login, $collaboratorsLogins, true) === false) {
                 continue;
             }
 

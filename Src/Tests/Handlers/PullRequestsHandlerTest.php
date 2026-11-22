@@ -434,7 +434,9 @@ class PullRequestsHandlerTest extends TestCase
      */
     private static function review(string $login, string $state, string $commitId): object
     {
-        return json_decode(json_encode(["user" => ["login" => $login], "state" => $state, "commit_id" => $commitId]));
+        $type = str_ends_with($login, "[bot]") ? "Bot" : "User";
+
+        return json_decode(json_encode(["user" => ["login" => $login, "type" => $type], "state" => $state, "commit_id" => $commitId]));
     }
 
     /**
@@ -450,7 +452,7 @@ class PullRequestsHandlerTest extends TestCase
         $method = (new ReflectionClass($handler))->getMethod("isApprovedOnHead");
         $method->setAccessible(true);
 
-        return $method->invoke($handler, $reviews, ["gstraccini", "guibranco"], "head", "contributor");
+        return $method->invoke($handler, $reviews, ["gstraccini", "guibranco", "renovate[bot]"], "head", "contributor");
     }
 
     /**
@@ -473,24 +475,37 @@ class PullRequestsHandlerTest extends TestCase
      *
      * @return void
      */
-    public function testNotApprovedWhenApprovalIsOnAnOlderCommit(): void
+    public function testNotApprovedOnOlderCommit(): void
     {
         $this->assertFalse($this->approvedOnHead([self::review("guibranco", "APPROVED", "older")]));
     }
 
     /**
-     * A later "changes requested" or a dismissed approval does not count; bots and non-collaborators don't either.
+     * A later "changes requested" or a dismissed approval revokes the approval.
      *
      * @return void
      */
-    public function testNotApprovedWhenRevokedOrNotByACollaborator(): void
+    public function testNotApprovedWhenRevoked(): void
     {
         $revoked   = [];
         $revoked[] = self::review("guibranco", "APPROVED", "head");
         $revoked[] = self::review("guibranco", "CHANGES_REQUESTED", "head");
         $this->assertFalse($this->approvedOnHead($revoked));
-        $this->assertFalse($this->approvedOnHead([self::review("guibranco", "DISMISSED", "head")]));
-        $this->assertFalse($this->approvedOnHead([self::review("gstraccini[bot]", "APPROVED", "head")]));
+
+        $dismissed   = [];
+        $dismissed[] = self::review("guibranco", "APPROVED", "head");
+        $dismissed[] = self::review("guibranco", "DISMISSED", "head");
+        $this->assertFalse($this->approvedOnHead($dismissed));
+    }
+
+    /**
+     * Bots, even listed as collaborators, and non-collaborators don't triage a pull request.
+     *
+     * @return void
+     */
+    public function testNotApprovedByBotOrOutsider(): void
+    {
+        $this->assertFalse($this->approvedOnHead([self::review("renovate[bot]", "APPROVED", "head")]));
         $this->assertFalse($this->approvedOnHead([self::review("someone-else", "APPROVED", "head")]));
     }
 
