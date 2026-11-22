@@ -421,6 +421,102 @@ class PullRequestsHandlerTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $method->invoke($handler, ["token" => "fake-token", "reviewsUrl" => "repos/owner/repo/pulls/1/reviews"]);
     }
+
+    /**
+     * Builds a review as returned by the GitHub API.
+     *
+     * @param string $login    The reviewer login.
+     * @param string $state    The review state.
+     * @param string $commitId The reviewed commit.
+     *
+     * @return object The review.
+     */
+    private static function review(string $login, string $state, string $commitId): object
+    {
+        return json_decode(json_encode(["user" => ["login" => $login], "state" => $state, "commit_id" => $commitId]));
+    }
+
+    /**
+     * Invokes isApprovedOnHead() with a collaborator list of the owner and the bot's user account.
+     *
+     * @param array $reviews The reviews.
+     *
+     * @return bool The result.
+     */
+    private function approvedOnHead(array $reviews): bool
+    {
+        $handler = new PullRequestsHandler(null, new PendingConfirmationTracker($this->pendingConfirmations));
+        $method = (new ReflectionClass($handler))->getMethod("isApprovedOnHead");
+        $method->setAccessible(true);
+
+        return $method->invoke($handler, $reviews, ["gstraccini", "guibranco"], "head", "contributor");
+    }
+
+    /**
+     * One collaborator approving the head is enough, even when other collaborators never review.
+     *
+     * @return void
+     */
+    public function testApprovedOnHeadByOneCollaborator(): void
+    {
+        $reviews = [
+            self::review("gstraccini[bot]", "APPROVED", "head"),
+            self::review("guibranco", "APPROVED", "head"),
+            self::review("guibranco", "COMMENTED", "head"),
+        ];
+
+        $this->assertTrue($this->approvedOnHead($reviews));
+    }
+
+    /**
+     * Code pushed after the approval means the pull request needs triage again.
+     *
+     * @return void
+     */
+    public function testNotApprovedWhenApprovalIsOnAnOlderCommit(): void
+    {
+        $this->assertFalse($this->approvedOnHead([self::review("guibranco", "APPROVED", "older")]));
+    }
+
+    /**
+     * A later "changes requested" or a dismissed approval does not count; bots and non-collaborators don't either.
+     *
+     * @return void
+     */
+    public function testNotApprovedWhenRevokedOrNotByACollaborator(): void
+    {
+        $this->assertFalse($this->approvedOnHead([
+            self::review("guibranco", "APPROVED", "head"),
+            self::review("guibranco", "CHANGES_REQUESTED", "head"),
+        ]));
+        $this->assertFalse($this->approvedOnHead([self::review("guibranco", "DISMISSED", "head")]));
+        $this->assertFalse($this->approvedOnHead([self::review("gstraccini[bot]", "APPROVED", "head")]));
+        $this->assertFalse($this->approvedOnHead([self::review("someone-else", "APPROVED", "head")]));
+    }
+
+    /**
+     * The label is removed when the head is approved, and kept otherwise.
+     *
+     * @return void
+     */
+    public function testRemoveAwaitingTriageIfApproved(): void
+    {
+        self::$responses["DELETE /labels/"] = new Response(true, "[]", "", 200, "", []);
+        $handler = new PullRequestsHandler(null, new PendingConfirmationTracker($this->pendingConfirmations));
+        $method = (new ReflectionClass($handler))->getMethod("removeAwaitingTriageIfApproved");
+        $method->setAccessible(true);
+
+        $metadata = ["token" => "fake-token", "pullRequestUrl" => "repos/owner/repo/issues/1", "owner" => "owner", "repo" => "repo"];
+        $pullRequest = json_decode(json_encode(["number" => 1, "labels" => [["name" => "🚦 awaiting triage"]]]));
+
+        $method->invoke($handler, $metadata, $pullRequest, false);
+        $this->assertCount(0, self::$requestLog, "The label must stay until the head commit is approved.");
+
+        $method->invoke($handler, $metadata, $pullRequest, true);
+        $this->assertCount(1, self::$requestLog);
+        $this->assertSame("DELETE", self::$requestLog[0]["method"]);
+        $this->assertStringContainsString("/labels/🚦%20awaiting%20triage", self::$requestLog[0]["url"]);
+    }
 }
 
 /**
