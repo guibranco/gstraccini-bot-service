@@ -316,19 +316,26 @@ class PullRequestsHandler implements IHandler
             $labelsToAdd[] = "🤖 bot";
         }
 
-        $collaboratorsResponse = doRequestGitHub($metadata["token"], $metadata["collaboratorsUrl"], null, "GET");
-        $collaboratorsLogins = array_column(json_decode($collaboratorsResponse->getBody()), "login");
+        $collabResponse = doRequestGitHub($metadata["token"], "{$metadata["collaboratorsUrl"]}?per_page=100", null, "GET");
+        $collaboratorsLogins = array_column(json_decode($collabResponse->getBody()), "login");
 
-        $reviewsLogins = $this->getReviewsLogins($metadata);
+        $reviews = $this->getReviews($metadata);
+        $reviewsLogins = array_map(static fn ($review) => ($review->user->login ?? ""), $reviews);
+        $approvedOnHead = $this->isApprovedOnHead($reviews, $collaboratorsLogins, $pullRequestUpdated->head->sha, $pullRequest->Sender);
         $iAmTheOwner = $metadata["ownerLogin"] !== null && in_array($metadata["ownerLogin"], $collaboratorsLogins, true);
-        $this->trace('debug', 'PR {repo}#{pr}: step review and assign', ["collaborators_status" => $collaboratorsResponse->getStatusCode(), "owner_is_collaborator" => $iAmTheOwner]);
+        $this->trace('debug', 'PR {repo}#{pr}: step review and assign', ["collaborators_status" => $collabResponse->getStatusCode(), "owner_is_collaborator" => $iAmTheOwner]);
         $labelsToAdd = array_merge(
             $labelsToAdd,
             $this->reviewAndAssign($metadata, $pullRequest, $pullRequestUpdated, $config, $collaboratorsLogins, $reviewsLogins, $iAmTheOwner)
         );
 
+        if ($approvedOnHead === true) {
+            // A collaborator approved the current head: the pull request is triaged.
+            $labelsToAdd = array_values(array_diff($labelsToAdd, [self::AWAITING_TRIAGE_LABEL]));
+        }
+
         $this->trace('debug', 'PR {repo}#{pr}: step awaiting-triage cleanup', []);
-        $this->removeAwaitingTriageIfReviewed($metadata, $pullRequestUpdated, $collaboratorsLogins, $reviewsLogins, $pullRequest->Sender);
+        $this->removeAwaitingTriageIfApproved($metadata, $pullRequestUpdated, $approvedOnHead);
 
         if (empty($labelsToAdd) === false) {
             $body = ["labels" => $labelsToAdd];
@@ -609,137 +616,112 @@ class PullRequestsHandler implements IHandler
 
 
     /**
-     * Removes the 'awaiting triage' label if the PR has been reviewed by all required reviewers
-     * and the last review occurred after the last commit.
+     * Removes the 'awaiting triage' label once a collaborator has approved the current head commit,
+     * i.e. approved and no code was pushed after that approval.
      *
-     * @param array $metadata Metadata for the GitHub API request
-     * @param object $pullRequestUpdated The updated pull request data
-     * @param array $collaboratorsLogins Array of collaborator login names
-     * @param array $reviewsLogins Array of reviewer login names who have reviewed
-     * @param string $sender The PR sender's login
+     * @param array   $metadata           Metadata for the GitHub API requests.
+     * @param object  $pullRequestUpdated The pull request as returned by the GitHub API.
+     * @param boolean $approvedOnHead     Whether a collaborator approved the current head commit.
+     *
      * @return void
      */
-    private function removeAwaitingTriageIfReviewed($metadata, $pullRequestUpdated, $collaboratorsLogins, $reviewsLogins, $sender)
+    private function removeAwaitingTriageIfApproved(array $metadata, $pullRequestUpdated, bool $approvedOnHead): void
     {
         global $logStream;
 
         $currentLabels = array_column($pullRequestUpdated->labels, "name");
-        if (in_array(self::AWAITING_TRIAGE_LABEL, $currentLabels) === false) {
+        if (in_array(self::AWAITING_TRIAGE_LABEL, $currentLabels, true) === false) {
             $this->trace('debug', 'PR {repo}#{pr}: awaiting triage — label not present, nothing to do', []);
             return;
         }
 
-        if (in_array($sender, $collaboratorsLogins)) {
-            $this->trace('debug', 'PR {repo}#{pr}: awaiting triage — sender {sender} is a collaborator, keeping label', ["sender" => $sender]);
-            return;
-        }
-
-        $requiredReviewers = $collaboratorsLogins;
-        if (in_array($sender, $requiredReviewers)) {
-            $requiredReviewers = array_values(array_diff($requiredReviewers, array($sender)));
-        }
-
-        if (empty($requiredReviewers)) {
-            return;
-        }
-
-        $reviewedCollaborators = array_intersect($reviewsLogins, $collaboratorsLogins);
-        if (count($reviewedCollaborators) < count($requiredReviewers)) {
-            $logStream?->info(
-                'Awaiting triage on {repo}#{pr}: {reviewed}/{required} required reviewers have reviewed',
-                (new LogContext(repo: "{$metadata['owner']}/{$metadata['repo']}", pr: $pullRequestUpdated->number, reviewed: count($reviewedCollaborators), required: count($requiredReviewers)))->toArray(),
-                "pull_requests"
-            );
-            return;
-        }
-
-        $lastReviewTimestamp = $this->getLastReviewTimestamp($metadata);
-        if ($lastReviewTimestamp === null) {
-            return;
-        }
-
-        $lastCommitTimestamp = $this->getLastCommitTimestamp($metadata, $pullRequestUpdated);
-        if ($lastCommitTimestamp === null) {
-            return;
-        }
-
-        if (strtotime($lastReviewTimestamp) <= strtotime($lastCommitTimestamp)) {
-            $logStream?->info(
-                'Awaiting triage on {repo}#{pr}: last review ({lastReview}) is not after last commit ({lastCommit})',
-                (new LogContext(repo: "{$metadata['owner']}/{$metadata['repo']}", pr: $pullRequestUpdated->number, lastReview: $lastReviewTimestamp, lastCommit: $lastCommitTimestamp))->toArray(),
-                "pull_requests"
-            );
+        if ($approvedOnHead === false) {
+            $this->trace('debug', 'PR {repo}#{pr}: awaiting triage — no collaborator approval on the head commit, keeping label', []);
             return;
         }
 
         $labelToRemove = str_replace(" ", "%20", self::AWAITING_TRIAGE_LABEL);
-        $url = $metadata["pullRequestUrl"] . "/labels/{$labelToRemove}";
+        $url = "{$metadata["labelsUrl"]}/{$labelToRemove}";
         $response = doRequestGitHub($metadata["token"], $url, null, "DELETE");
 
         if ($response->getStatusCode() < 300) {
             $logStream?->info(
-                'Awaiting triage label removed from {repo}#{pr} — all reviewers have reviewed after the last commit',
+                'Awaiting triage label removed from {repo}#{pr} — a collaborator approved the head commit',
                 (new LogContext(repo: "{$metadata['owner']}/{$metadata['repo']}", pr: $pullRequestUpdated->number))->toArray(),
                 "pull_requests"
             );
-        } else {
-            $logStream?->error(
-                'Failed to remove the awaiting triage label from {repo}#{pr} (HTTP {status})',
-                (new LogContext(repo: "{$metadata['owner']}/{$metadata['repo']}", pr: $pullRequestUpdated->number, status: $response->getStatusCode(), body: $response->getBody()))->toArray(),
-                "pull_requests"
-            );
+            return;
         }
-    }
+
+        $logStream?->error(
+            'Failed to remove the awaiting triage label from {repo}#{pr} (HTTP {status})',
+            (new LogContext(repo: "{$metadata['owner']}/{$metadata['repo']}", pr: $pullRequestUpdated->number, status: $response->getStatusCode(), body: $response->getBody()))->toArray(),
+            "pull_requests"
+        );
+
+    }//end removeAwaitingTriageIfApproved()
+
 
     /**
-     * Gets the timestamp of the last review for the pull request
+     * Whether a collaborator other than the sender has approved the current head commit.
+     * Each reviewer's latest approving or blocking review counts (comments don't change it); bots never
+     * count, a dismissed approval or a later "changes requested" doesn't count, and neither does an
+     * approval of an older commit, since code was pushed after it.
      *
-     * @param array $metadata Metadata for the GitHub API request
-     * @return string|null The timestamp of the last review, or null if no reviews found
+     * @param array  $reviews             The pull request reviews, oldest first.
+     * @param array  $collaboratorsLogins The logins of the repository collaborators.
+     * @param string $headSha             The SHA of the pull request head commit.
+     * @param string $sender              The login of the pull request sender.
+     *
+     * @return bool True when the head commit is approved by a collaborator.
      */
-    private function getLastReviewTimestamp($metadata)
+    private function isApprovedOnHead(array $reviews, array $collaboratorsLogins, string $headSha, string $sender): bool
     {
-        $reviewsResponse = doRequestGitHub($metadata["token"], $metadata["reviewsUrl"], null, "GET");
-        if ($reviewsResponse->getStatusCode() >= 300) {
-            return null;
+        $latestByReviewer = [];
+        foreach ($reviews as $review) {
+            $state = ($review->state ?? "");
+            if ($this->isTriageReviewer($review, $collaboratorsLogins, $sender) === true
+                && in_array($state, ["APPROVED", "CHANGES_REQUESTED", "DISMISSED"], true) === true
+            ) {
+                $latestByReviewer[$review->user->login] = $review;
+            }
         }
 
-        $reviews = json_decode($reviewsResponse->getBody());
-        if (empty($reviews)) {
-            return null;
+        foreach ($latestByReviewer as $review) {
+            if ($review->state === "APPROVED" && ($review->commit_id ?? null) === $headSha) {
+                return true;
+            }
         }
 
-        usort($reviews, function ($a, $b) {
-            return strtotime($b->submitted_at) - strtotime($a->submitted_at);
-        });
+        return false;
 
-        return $reviews[0]->submitted_at;
-    }
+    }//end isApprovedOnHead()
+
 
     /**
-     * Gets the timestamp of the last commit in the pull request
+     * Whether a review's author can triage the pull request: a human collaborator other than the sender.
      *
-     * @param array $metadata Metadata for the GitHub API request
-     * @param object $pullRequestUpdated The updated pull request data
-     * @return string|null The timestamp of the last commit, or null if not found
+     * @param object $review              The review.
+     * @param array  $collaboratorsLogins The logins of the repository collaborators.
+     * @param string $sender              The login of the pull request sender.
+     *
+     * @return bool True when the reviewer can triage the pull request.
      */
-    private function getLastCommitTimestamp($metadata, $pullRequestUpdated)
+    private function isTriageReviewer(object $review, array $collaboratorsLogins, string $sender): bool
     {
-        $commitsUrl = $metadata["pullRequestUrl"] . "/commits";
-        $commitsResponse = doRequestGitHub($metadata["token"], $commitsUrl, null, "GET");
-
-        if ($commitsResponse->getStatusCode() >= 300) {
-            return isset($pullRequestUpdated->head->repo->pushed_at) ? $pullRequestUpdated->head->repo->pushed_at : null;
+        $login = ($review->user->login ?? "");
+        if ($login === "" || $login === $sender || str_ends_with($login, "[bot]") === true) {
+            return false;
         }
 
-        $commits = json_decode($commitsResponse->getBody());
-        if (empty($commits)) {
-            return null;
+        if (strtolower(($review->user->type ?? "")) === "bot") {
+            return false;
         }
 
-        $lastCommit = end($commits);
-        return $lastCommit->commit->committer->date;
-    }
+        return in_array($login, $collaboratorsLogins, true);
+
+    }//end isTriageReviewer()
+
 
     /**
      * Whether the pull request's head branch lives in another repository (a fork).
@@ -1198,7 +1180,7 @@ class PullRequestsHandler implements IHandler
 
         foreach ($intersect as $label) {
             $encoded = str_replace(" ", "%20", $label);
-            $url = "{$metadata["pullRequestUrl"]}/labels/{$encoded}";
+            $url = "{$metadata["labelsUrl"]}/{$encoded}";
             $response = doRequestGitHub($metadata["token"], $url, null, "DELETE");
             $this->trace('info', 'PR {repo}#{pr}: removed label {label} from closed pull request (HTTP {status})', ["label" => $label, "status" => $response->getStatusCode()]);
         }
@@ -1359,9 +1341,16 @@ class PullRequestsHandler implements IHandler
      *
      * @return string[] The reviewers' logins.
      */
-    private function getReviewsLogins($metadata)
+    /**
+     * Lists every review of the pull request, oldest first, reading all pages.
+     *
+     * @param array $metadata Metadata for the GitHub API requests.
+     *
+     * @return object[] The reviews.
+     */
+    private function getReviews($metadata): array
     {
-        $logins = [];
+        $reviews = [];
         $page = 1;
         do {
             $url = "{$metadata["reviewsUrl"]}?per_page=100&page={$page}";
@@ -1370,20 +1359,17 @@ class PullRequestsHandler implements IHandler
                 throw new RuntimeException("Could not list the reviews at '{$url}': HTTP status {$response->getStatusCode()}");
             }
 
-            $reviews = json_decode($response->getBody());
-            if (!is_array($reviews)) {
+            $pageReviews = json_decode($response->getBody());
+            if (!is_array($pageReviews)) {
                 throw new RuntimeException("Could not list the reviews at '{$url}': unexpected body");
             }
 
-            foreach ($reviews as $review) {
-                $logins[] = ($review->user->login ?? "");
-            }
-
+            array_push($reviews, ...$pageReviews);
             $page++;
-            $hasMorePages = count($reviews) === 100;
+            $hasMorePages = count($pageReviews) === 100;
         } while ($hasMorePages);
 
-        return $logins;
+        return $reviews;
     }
 
     private function getReferencedIssue($metadata, $pullRequest)
@@ -1436,6 +1422,12 @@ class PullRequestsHandler implements IHandler
                 $body = array("labels" => array("🛠 WIP"));
                 $response = doRequestGitHub($metadata["token"], "{$metadata["issuesUrl"]}/{$issueNumber}/labels", $body, "POST");
                 $this->trace('info', 'PR {repo}#{pr}: added WIP label to linked issue #{issue} (HTTP {status})', ["issue" => $issueNumber, "status" => $response->getStatusCode()]);
+            }
+
+            // The triage state belongs to each item: a linked issue awaiting triage doesn't make the pull request await it.
+            $position = array_search(self::AWAITING_TRIAGE_LABEL, $labelsIssue, true);
+            if ($position !== false) {
+                unset($labelsIssue[$position]);
             }
 
             $labelsToNotCopy = ["🤖 bot", "good first issue", "help wanted"];

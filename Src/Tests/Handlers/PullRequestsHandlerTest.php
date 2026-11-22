@@ -389,17 +389,18 @@ class PullRequestsHandlerTest extends TestCase
      *
      * @return void
      */
-    public function testGetReviewsLoginsReadsAllPages(): void
+    public function testGetReviewsReadsAllPages(): void
     {
         $otherReviews = array_fill(0, 100, ["user" => ["login" => "some-review-bot[bot]"]]);
         self::$responses["/reviews?per_page=100&page=1"] = new Response(true, json_encode($otherReviews), "", 200, "", []);
         self::$responses["/reviews?per_page=100&page=2"] = new Response(true, json_encode([["user" => ["login" => "gstraccini[bot]"]]]), "", 200, "", []);
 
         $handler = new PullRequestsHandler(null, new PendingConfirmationTracker($this->pendingConfirmations));
-        $method = (new ReflectionClass($handler))->getMethod("getReviewsLogins");
+        $method = (new ReflectionClass($handler))->getMethod("getReviews");
         $method->setAccessible(true);
 
-        $logins = $method->invoke($handler, ["token" => "fake-token", "reviewsUrl" => "repos/owner/repo/pulls/1/reviews"]);
+        $reviews = $method->invoke($handler, ["token" => "fake-token", "reviewsUrl" => "repos/owner/repo/pulls/1/reviews"]);
+        $logins = array_map(static fn ($review) => $review->user->login, $reviews);
 
         $this->assertCount(101, $logins);
         $this->assertContains("gstraccini[bot]", $logins);
@@ -410,16 +411,134 @@ class PullRequestsHandlerTest extends TestCase
      *
      * @return void
      */
-    public function testGetReviewsLoginsThrowsOnError(): void
+    public function testGetReviewsThrowsOnError(): void
     {
         self::$responses["/reviews"] = new Response(false, null, "boom", 500, "", null);
 
         $handler = new PullRequestsHandler(null, new PendingConfirmationTracker($this->pendingConfirmations));
-        $method = (new ReflectionClass($handler))->getMethod("getReviewsLogins");
+        $method = (new ReflectionClass($handler))->getMethod("getReviews");
         $method->setAccessible(true);
 
         $this->expectException(\RuntimeException::class);
         $method->invoke($handler, ["token" => "fake-token", "reviewsUrl" => "repos/owner/repo/pulls/1/reviews"]);
+    }
+
+    /**
+     * Builds a review as returned by the GitHub API.
+     *
+     * @param string $login    The reviewer login.
+     * @param string $state    The review state.
+     * @param string $commitId The reviewed commit.
+     *
+     * @return object The review.
+     */
+    private static function review(string $login, string $state, string $commitId): object
+    {
+        $type = "User";
+        if (str_ends_with($login, "[bot]") === true) {
+            $type = "Bot";
+        }
+
+        return json_decode(json_encode(["user" => ["login" => $login, "type" => $type], "state" => $state, "commit_id" => $commitId]));
+    }
+
+    /**
+     * Invokes isApprovedOnHead() with a collaborator list of the owner and the bot's user account.
+     *
+     * @param array $reviews The reviews.
+     *
+     * @return bool The result.
+     */
+    private function approvedOnHead(array $reviews): bool
+    {
+        $handler = new PullRequestsHandler(null, new PendingConfirmationTracker($this->pendingConfirmations));
+        $method = (new ReflectionClass($handler))->getMethod("isApprovedOnHead");
+        $method->setAccessible(true);
+
+        return $method->invoke($handler, $reviews, ["gstraccini", "guibranco", "renovate[bot]"], "head", "contributor");
+    }
+
+    /**
+     * One collaborator approving the head is enough, even when other collaborators never review.
+     *
+     * @return void
+     */
+    public function testApprovedOnHeadByOneCollaborator(): void
+    {
+        $reviews   = [];
+        $reviews[] = self::review("gstraccini[bot]", "APPROVED", "head");
+        $reviews[] = self::review("guibranco", "APPROVED", "head");
+        $reviews[] = self::review("guibranco", "COMMENTED", "head");
+
+        $this->assertTrue($this->approvedOnHead($reviews));
+    }
+
+    /**
+     * Code pushed after the approval means the pull request needs triage again.
+     *
+     * @return void
+     */
+    public function testNotApprovedOnOlderCommit(): void
+    {
+        $this->assertFalse($this->approvedOnHead([self::review("guibranco", "APPROVED", "older")]));
+    }
+
+    /**
+     * A later "changes requested" or a dismissed approval revokes the approval.
+     *
+     * @return void
+     */
+    public function testNotApprovedWhenRevoked(): void
+    {
+        $revoked   = [];
+        $revoked[] = self::review("guibranco", "APPROVED", "head");
+        $revoked[] = self::review("guibranco", "CHANGES_REQUESTED", "head");
+        $this->assertFalse($this->approvedOnHead($revoked));
+
+        $dismissed   = [];
+        $dismissed[] = self::review("guibranco", "APPROVED", "head");
+        $dismissed[] = self::review("guibranco", "DISMISSED", "head");
+        $this->assertFalse($this->approvedOnHead($dismissed));
+    }
+
+    /**
+     * Bots, even listed as collaborators, and non-collaborators don't triage a pull request.
+     *
+     * @return void
+     */
+    public function testNotApprovedByBotOrOutsider(): void
+    {
+        $this->assertFalse($this->approvedOnHead([self::review("renovate[bot]", "APPROVED", "head")]));
+        $this->assertFalse($this->approvedOnHead([self::review("someone-else", "APPROVED", "head")]));
+    }
+
+    /**
+     * The label is removed when the head is approved, and kept otherwise.
+     *
+     * @return void
+     */
+    public function testRemoveAwaitingTriageIfApproved(): void
+    {
+        self::$responses["DELETE /labels/"] = new Response(true, "[]", "", 200, "", []);
+        $handler = new PullRequestsHandler(null, new PendingConfirmationTracker($this->pendingConfirmations));
+        $method = (new ReflectionClass($handler))->getMethod("removeAwaitingTriageIfApproved");
+        $method->setAccessible(true);
+
+        $metadata                   = [];
+        $metadata["token"]          = "fake-token";
+        $metadata["pullRequestUrl"] = "repos/owner/repo/pulls/1";
+        $metadata["labelsUrl"]      = "repos/owner/repo/issues/1/labels";
+        $metadata["owner"]          = "owner";
+        $metadata["repo"]           = "repo";
+        $pullRequest = json_decode(json_encode(["number" => 1, "labels" => [["name" => "🚦 awaiting triage"]]]));
+
+        $method->invoke($handler, $metadata, $pullRequest, false);
+        $this->assertCount(0, self::$requestLog, "The label must stay until the head commit is approved.");
+
+        $method->invoke($handler, $metadata, $pullRequest, true);
+        $this->assertCount(1, self::$requestLog);
+        $this->assertSame("DELETE", self::$requestLog[0]["method"]);
+        $this->assertSame("repos/owner/repo/issues/1/labels/🚦%20awaiting%20triage", self::$requestLog[0]["url"]);
     }
 }
 
