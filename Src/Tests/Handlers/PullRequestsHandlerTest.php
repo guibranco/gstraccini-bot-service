@@ -389,17 +389,18 @@ class PullRequestsHandlerTest extends TestCase
      *
      * @return void
      */
-    public function testGetReviewsLoginsReadsAllPages(): void
+    public function testGetReviewsReadsAllPages(): void
     {
         $otherReviews = array_fill(0, 100, ["user" => ["login" => "some-review-bot[bot]"]]);
         self::$responses["/reviews?per_page=100&page=1"] = new Response(true, json_encode($otherReviews), "", 200, "", []);
         self::$responses["/reviews?per_page=100&page=2"] = new Response(true, json_encode([["user" => ["login" => "gstraccini[bot]"]]]), "", 200, "", []);
 
         $handler = new PullRequestsHandler(null, new PendingConfirmationTracker($this->pendingConfirmations));
-        $method = (new ReflectionClass($handler))->getMethod("getReviewsLogins");
+        $method = (new ReflectionClass($handler))->getMethod("getReviews");
         $method->setAccessible(true);
 
-        $logins = $method->invoke($handler, ["token" => "fake-token", "reviewsUrl" => "repos/owner/repo/pulls/1/reviews"]);
+        $reviews = $method->invoke($handler, ["token" => "fake-token", "reviewsUrl" => "repos/owner/repo/pulls/1/reviews"]);
+        $logins = array_map(static fn ($review) => $review->user->login, $reviews);
 
         $this->assertCount(101, $logins);
         $this->assertContains("gstraccini[bot]", $logins);
@@ -410,12 +411,12 @@ class PullRequestsHandlerTest extends TestCase
      *
      * @return void
      */
-    public function testGetReviewsLoginsThrowsOnError(): void
+    public function testGetReviewsThrowsOnError(): void
     {
         self::$responses["/reviews"] = new Response(false, null, "boom", 500, "", null);
 
         $handler = new PullRequestsHandler(null, new PendingConfirmationTracker($this->pendingConfirmations));
-        $method = (new ReflectionClass($handler))->getMethod("getReviewsLogins");
+        $method = (new ReflectionClass($handler))->getMethod("getReviews");
         $method->setAccessible(true);
 
         $this->expectException(\RuntimeException::class);
@@ -459,11 +460,10 @@ class PullRequestsHandlerTest extends TestCase
      */
     public function testApprovedOnHeadByOneCollaborator(): void
     {
-        $reviews = [
-            self::review("gstraccini[bot]", "APPROVED", "head"),
-            self::review("guibranco", "APPROVED", "head"),
-            self::review("guibranco", "COMMENTED", "head"),
-        ];
+        $reviews   = [];
+        $reviews[] = self::review("gstraccini[bot]", "APPROVED", "head");
+        $reviews[] = self::review("guibranco", "APPROVED", "head");
+        $reviews[] = self::review("guibranco", "COMMENTED", "head");
 
         $this->assertTrue($this->approvedOnHead($reviews));
     }
@@ -485,10 +485,10 @@ class PullRequestsHandlerTest extends TestCase
      */
     public function testNotApprovedWhenRevokedOrNotByACollaborator(): void
     {
-        $this->assertFalse($this->approvedOnHead([
-            self::review("guibranco", "APPROVED", "head"),
-            self::review("guibranco", "CHANGES_REQUESTED", "head"),
-        ]));
+        $revoked   = [];
+        $revoked[] = self::review("guibranco", "APPROVED", "head");
+        $revoked[] = self::review("guibranco", "CHANGES_REQUESTED", "head");
+        $this->assertFalse($this->approvedOnHead($revoked));
         $this->assertFalse($this->approvedOnHead([self::review("guibranco", "DISMISSED", "head")]));
         $this->assertFalse($this->approvedOnHead([self::review("gstraccini[bot]", "APPROVED", "head")]));
         $this->assertFalse($this->approvedOnHead([self::review("someone-else", "APPROVED", "head")]));
@@ -506,7 +506,12 @@ class PullRequestsHandlerTest extends TestCase
         $method = (new ReflectionClass($handler))->getMethod("removeAwaitingTriageIfApproved");
         $method->setAccessible(true);
 
-        $metadata = ["token" => "fake-token", "pullRequestUrl" => "repos/owner/repo/issues/1", "owner" => "owner", "repo" => "repo"];
+        $metadata = [
+            "token"          => "fake-token",
+            "pullRequestUrl" => "repos/owner/repo/issues/1",
+            "owner"          => "owner",
+            "repo"           => "repo",
+        ];
         $pullRequest = json_decode(json_encode(["number" => 1, "labels" => [["name" => "🚦 awaiting triage"]]]));
 
         $method->invoke($handler, $metadata, $pullRequest, false);

@@ -1350,11 +1350,6 @@ class PullRequestsHandler implements IHandler
         return $reviews;
     }
 
-    private function getReviewsLogins($metadata)
-    {
-        return array_map(static fn ($review) => ($review->user->login ?? ""), $this->getReviews($metadata));
-    }
-
     private function getReferencedIssue($metadata, $pullRequest)
     {
         $referencedIssueQuery = array(
