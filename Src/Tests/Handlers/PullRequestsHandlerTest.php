@@ -434,7 +434,10 @@ class PullRequestsHandlerTest extends TestCase
      */
     private static function review(string $login, string $state, string $commitId): object
     {
-        $type = str_ends_with($login, "[bot]") ? "Bot" : "User";
+        $type = "User";
+        if (str_ends_with($login, "[bot]") === true) {
+            $type = "Bot";
+        }
 
         return json_decode(json_encode(["user" => ["login" => $login, "type" => $type], "state" => $state, "commit_id" => $commitId]));
     }
@@ -521,12 +524,11 @@ class PullRequestsHandlerTest extends TestCase
         $method = (new ReflectionClass($handler))->getMethod("removeAwaitingTriageIfApproved");
         $method->setAccessible(true);
 
-        $metadata = [
-            "token"          => "fake-token",
-            "pullRequestUrl" => "repos/owner/repo/issues/1",
-            "owner"          => "owner",
-            "repo"           => "repo",
-        ];
+        $metadata                   = [];
+        $metadata["token"]          = "fake-token";
+        $metadata["pullRequestUrl"] = "repos/owner/repo/issues/1";
+        $metadata["owner"]          = "owner";
+        $metadata["repo"]           = "repo";
         $pullRequest = json_decode(json_encode(["number" => 1, "labels" => [["name" => "🚦 awaiting triage"]]]));
 
         $method->invoke($handler, $metadata, $pullRequest, false);

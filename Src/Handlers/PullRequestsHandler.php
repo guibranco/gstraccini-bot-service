@@ -679,15 +679,11 @@ class PullRequestsHandler implements IHandler
     {
         $latestByReviewer = [];
         foreach ($reviews as $review) {
-            $login = ($review->user->login ?? "");
             $state = ($review->state ?? "");
-            $isBot = strtolower($review->user->type ?? "") === "bot" || str_ends_with($login, "[bot]");
-            if ($login === "" || $login === $sender || $isBot || in_array($login, $collaboratorsLogins, true) === false) {
-                continue;
-            }
-
-            if (in_array($state, ["APPROVED", "CHANGES_REQUESTED", "DISMISSED"], true) === true) {
-                $latestByReviewer[$login] = $review;
+            if ($this->isTriageReviewer($review, $collaboratorsLogins, $sender) === true
+                && in_array($state, ["APPROVED", "CHANGES_REQUESTED", "DISMISSED"], true) === true
+            ) {
+                $latestByReviewer[$review->user->login] = $review;
             }
         }
 
@@ -700,6 +696,31 @@ class PullRequestsHandler implements IHandler
         return false;
 
     }//end isApprovedOnHead()
+
+
+    /**
+     * Whether a review's author can triage the pull request: a human collaborator other than the sender.
+     *
+     * @param object $review              The review.
+     * @param array  $collaboratorsLogins The logins of the repository collaborators.
+     * @param string $sender              The login of the pull request sender.
+     *
+     * @return bool True when the reviewer can triage the pull request.
+     */
+    private function isTriageReviewer(object $review, array $collaboratorsLogins, string $sender): bool
+    {
+        $login = ($review->user->login ?? "");
+        if ($login === "" || $login === $sender || str_ends_with($login, "[bot]") === true) {
+            return false;
+        }
+
+        if (strtolower($review->user->type ?? "") === "bot") {
+            return false;
+        }
+
+        return in_array($login, $collaboratorsLogins, true);
+
+    }//end isTriageReviewer()
 
 
     /**
