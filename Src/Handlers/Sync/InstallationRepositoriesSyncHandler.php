@@ -66,7 +66,7 @@ class InstallationRepositoriesSyncHandler
             );
         }
 
-        $token = decodeGitHubResponse($tokenResponse, "token");
+        $token = decodeGitHubResponse($tokenResponse, "token", "POST");
         $repositories = $this->fetcher->fetchAllPages($token, "installation/repositories", "repositories");
 
         $this->report = ["checked" => 0, "added" => 0, "updated" => 0, "renamed" => 0, "removed" => 0];

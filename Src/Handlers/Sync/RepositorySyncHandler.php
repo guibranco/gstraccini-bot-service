@@ -223,7 +223,7 @@ class RepositorySyncHandler
                 "HTTP status {$tokenStatus}. Body: " . ($tokenResponse->getBody() ?? $tokenResponse->getMessage())
             );
         }
-        $token = decodeGitHubResponse($tokenResponse, "token");
+        $token = decodeGitHubResponse($tokenResponse, "token", "POST");
 
         $response = doRequestGitHub($token, "repositories/{$repositoryId}", null, "GET");
         $this->fetcher->pace($response);
