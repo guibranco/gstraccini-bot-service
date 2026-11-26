@@ -42,22 +42,25 @@ function getGitHubApiBaseUrl(): string
 /**
  * Decodes a GitHub API JSON response body and returns the requested property.
  *
- * @param Response $response The response returned by `doRequestGitHub`.
- * @param string   $property The property to read from the decoded response body.
+ * @param Response    $response The response returned by `doRequestGitHub`.
+ * @param string      $property The property to read from the decoded response body.
+ * @param string|null $method   The HTTP method of the request, shown in the error message so the
+ *                              failing request can be identified; null when unknown.
  *
  * @return mixed The value of the requested property.
  *
  * @throws RuntimeException When the response body is not a JSON object or does not contain the
  * requested property (e.g. GitHub returned an error payload instead of the expected resource).
  */
-function decodeGitHubResponse(Response $response, string $property): mixed
+function decodeGitHubResponse(Response $response, string $property, ?string $method = null): mixed
 {
     $decoded = json_decode($response->getBody());
 
     if (!is_object($decoded) || !property_exists($decoded, $property)) {
+        $request = trim(($method ?? "") . " " . $response->getUrl());
         throw new RuntimeException(
             "Unexpected GitHub API response: missing '{$property}' property. " .
-            "HTTP status: {$response->getStatusCode()}. Body: {$response->getBody()}"
+            "Request: {$request}. HTTP status: {$response->getStatusCode()}. Body: {$response->getBody()}"
         );
     }
 
@@ -421,7 +424,7 @@ function mintInstallationToken(string $installationId, ?\stdClass $data): Instal
 {
     $response = doRequestGitHub(generateAppToken(), installationAccessTokensUrl($installationId), $data, "POST");
 
-    $token = decodeGitHubResponse($response, "token");
+    $token = decodeGitHubResponse($response, "token", "POST");
 
     // The body now holds a token, so it must never reach an exception message or a log.
     $decoded = json_decode($response->getBody());
@@ -553,7 +556,7 @@ function setCheckRunInProgress(array $metadata, string $commitId, string $type, 
 
     $checkRunBody["head_sha"] = $commitId;
     $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"], $checkRunBody, "POST");
-    return decodeGitHubResponse($response, "id");
+    return decodeGitHubResponse($response, "id", "POST");
 }
 
 /**
@@ -791,7 +794,7 @@ function setCheckRunQueued(array $metadata, string $commitId, string $type): int
     );
 
     $response = doRequestGitHub($metadata["token"], $metadata["checkRunUrl"], $checkRunBody, "POST");
-    return decodeGitHubResponse($response, "id");
+    return decodeGitHubResponse($response, "id", "POST");
 }
 
 /**

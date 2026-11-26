@@ -191,7 +191,7 @@ class RepositoriesHandler implements IHandler
             );
         }
 
-        return decodeGitHubResponse($response, "token");
+        return decodeGitHubResponse($response, "token", "POST");
     }
 
     private function createRepositoryLabels($metadata, $options)
