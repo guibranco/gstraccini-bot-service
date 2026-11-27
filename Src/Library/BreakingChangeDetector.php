@@ -26,31 +26,61 @@ class BreakingChangeDetector
      */
     public function detect(?string $body): ?bool
     {
-        if ($body === null || trim($body) === '') {
+        $group = null;
+        if ($body !== null && trim($body) !== '') {
+            $group = $this->findGroup($body);
+        }
+
+        if ($group === null) {
             return null;
         }
 
+        return $this->answerOf($group["checked"]);
+
+    }//end detect()
+
+
+    /**
+     * The breaking change checkbox group of a description.
+     *
+     * @param string $body The pull request description.
+     *
+     * @return array|null The group, as MarkdownGroupCheckboxValidator reports it, null when there is none.
+     */
+    private function findGroup(string $body): ?array
+    {
         $report = (new MarkdownGroupCheckboxValidator())->validateCheckboxes($body);
         foreach ($report["groups"] as $group) {
-            if (preg_match(self::GROUP_TITLE_PATTERN, $group["group"]) !== 1) {
-                continue;
+            if (preg_match(self::GROUP_TITLE_PATTERN, $group["group"]) === 1) {
+                return $group;
             }
-
-            $checked = array_map(static fn (string $text): string => strtolower(trim($text)), $group["checked"]);
-            if ($checked === ["yes"]) {
-                return true;
-            }
-
-            if ($checked === ["no"]) {
-                return false;
-            }
-
-            return null;
         }
 
         return null;
 
-    }//end detect()
+    }//end findGroup()
+
+
+    /**
+     * The answer given by the boxes ticked in the group.
+     *
+     * @param string[] $checked The labels of the boxes ticked.
+     *
+     * @return boolean|null True for "Yes" alone, false for "No" alone, null otherwise.
+     */
+    private function answerOf(array $checked): ?bool
+    {
+        if (count($checked) !== 1) {
+            return null;
+        }
+
+        return match (strtolower(trim($checked[0]))) {
+            "yes" => true,
+            "no" => false,
+            default => null,
+        };
+
+    }//end answerOf()
 
 
 }//end class

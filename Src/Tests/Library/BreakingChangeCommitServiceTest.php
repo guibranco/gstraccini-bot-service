@@ -2,10 +2,10 @@
 
 namespace GuiBranco\GStracciniBot\Tests\Library;
 
+use GuiBranco\GStracciniBot\Library\BreakingChangeCommitException;
 use GuiBranco\GStracciniBot\Library\BreakingChangeCommitService;
 use GuiBranco\GStracciniBot\Library\BreakingChangePlan;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
 
 /**
  * How BreakingChangeCommitService pushes the AppVeyor version bump.
@@ -91,7 +91,7 @@ class BreakingChangeCommitServiceTest extends TestCase
     {
         $this->gitHub->failWith(self::FILE_URL, 409, "conflict");
 
-        $this->expectException(RuntimeException::class);
+        $this->expectException(BreakingChangeCommitException::class);
         $this->expectExceptionMessage("Failed to update appveyor.yml: [409] conflict");
 
         (new BreakingChangeCommitService())->push($this->metadata(), "feature/x", "head-sha", $this->appVeyorPlan(true));

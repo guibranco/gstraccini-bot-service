@@ -5,6 +5,7 @@ namespace GuiBranco\GStracciniBot\Handlers;
 use GuiBranco\GStracciniBot\Library\AppVeyorCredentials;
 use GuiBranco\GStracciniBot\Library\AppVeyorErrorCommentBuilder;
 use GuiBranco\GStracciniBot\Library\BreakingChangeCommentBuilder;
+use GuiBranco\GStracciniBot\Library\BreakingChangeCommitException;
 use GuiBranco\GStracciniBot\Library\BreakingChangeCommitService;
 use GuiBranco\GStracciniBot\Library\BreakingChangePlan;
 use GuiBranco\GStracciniBot\Library\BreakingChangePlanner;
@@ -1641,61 +1642,80 @@ class CommentsHandler implements IHandler
      */
     private function execute_applyBreakingChangeDecision(array $metadata, $comment): void
     {
-        $commentUrl = "{$metadata['repoPrefix']}/issues/comments/{$comment->CommentId}";
-        $response = doRequestGitHub($metadata["token"], $commentUrl, null, "GET");
-        if ($response->getStatusCode() !== 200) {
+        $decision = $this->readBreakingChangeDecision($metadata, $comment);
+        if ($decision === null) {
             return;
         }
 
-        $body = json_decode($response->getBody())->body;
-        if (stripos($body, BreakingChangeCommentBuilder::MARKER) === false
-            || stripos($body, BreakingChangeCommentBuilder::COMPLETION_MARKER) !== false
-        ) {
-            return;
-        }
-
-        $builder = new BreakingChangeCommentBuilder();
-        $choice = $builder->extractChoice($body);
-        if ($choice === null) {
-            return;
-        }
-
-        if ($choice === "no") {
-            $completion = $builder->buildCompletion(["Keeping the current version."], null);
-            doRequestGitHub($metadata["token"], $commentUrl, array("body" => $body . $completion), "PATCH");
-            $this->resolvePendingConfirmation($comment, "none");
+        if ($decision["choice"] === "no") {
+            $this->completeBreakingChangeDecision($metadata, $comment, $decision, ["Keeping the current version."], null);
             return;
         }
 
         $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
-        if ($pullRequestResponse->getStatusCode() !== 200) {
-            return;
+        if ($pullRequestResponse->getStatusCode() === 200) {
+            $this->applyMajorBump($metadata, $comment, $decision, json_decode($pullRequestResponse->getBody()));
         }
-        $pullRequest = json_decode($pullRequestResponse->getBody());
+    }
 
+    /**
+     * Reads the breaking change decision comment the edit event is about.
+     *
+     * @param array  $metadata Metadata for the GitHub API requests.
+     * @param object $comment  The queued comment event.
+     *
+     * @return array|null The comment `url`, its `body` and the `choice` ("yes" or "no"),
+     *                    null when it isn't a decision comment waiting for a choice.
+     */
+    private function readBreakingChangeDecision(array $metadata, $comment): ?array
+    {
+        $commentUrl = "{$metadata['repoPrefix']}/issues/comments/{$comment->CommentId}";
+        $response = doRequestGitHub($metadata["token"], $commentUrl, null, "GET");
+        if ($response->getStatusCode() !== 200) {
+            return null;
+        }
+
+        $body = (string) (json_decode($response->getBody())->body ?? "");
+        $choice = (new BreakingChangeCommentBuilder())->extractChoice($body);
+        $isWaiting = stripos($body, BreakingChangeCommentBuilder::MARKER) !== false
+            && stripos($body, BreakingChangeCommentBuilder::COMPLETION_MARKER) === false;
+        if ($isWaiting === false || $choice === null) {
+            return null;
+        }
+
+        return ["url" => $commentUrl, "body" => $body, "choice" => $choice];
+    }
+
+    /**
+     * Bumps the major version of the pull request: resets the AppVeyor build number first,
+     * so the bump commit builds with it, then pushes that commit and queues the checks.
+     *
+     * @param array  $metadata    Metadata for the GitHub API requests.
+     * @param object $comment     The queued comment event.
+     * @param array  $decision    The decision comment (readBreakingChangeDecision()).
+     * @param object $pullRequest The pull request, as GitHub returns it.
+     *
+     * @return void
+     */
+    private function applyMajorBump(array $metadata, $comment, array $decision, object $pullRequest): void
+    {
         $plan = $this->planBreakingChange($metadata, $pullRequest);
         if ($plan->isNeeded() === false) {
-            $completion = $builder->buildCompletion(["The major version is already bumped on this branch."], null);
-            doRequestGitHub($metadata["token"], $commentUrl, array("body" => $body . $completion), "PATCH");
-            $this->resolvePendingConfirmation($comment, "major");
+            $this->completeBreakingChangeDecision($metadata, $comment, $decision, ["The major version is already bumped on this branch."], null);
             return;
         }
 
         $done = [];
         $notes = "";
         if ($plan->needsAppVeyorBump() === true) {
-            try {
-                $notes = $this->resetAppVeyorBuildNumber($metadata, $comment, $done);
-            } catch (\Throwable $e) {
-                $notes = "\n\n⚠️ Could not reset the AppVeyor build number: " . $e->getMessage() . "\n";
-            }
+            $notes = $this->resetAppVeyorBuildNumber($comment, $done);
         }
 
         try {
             $sha = (new BreakingChangeCommitService())->push($metadata, $pullRequest->head->ref, $pullRequest->head->sha, $plan);
-        } catch (RuntimeException $e) {
-            $failureBody = $body . $notes . "\n\n❌ Failed to apply the major version bump: " . $e->getMessage() . "\n";
-            doRequestGitHub($metadata["token"], $commentUrl, array("body" => $failureBody), "PATCH");
+        } catch (BreakingChangeCommitException $e) {
+            $failureBody = "{$decision["body"]}{$notes}\n\n❌ Failed to apply the major version bump: {$e->getMessage()}\n";
+            doRequestGitHub($metadata["token"], $decision["url"], array("body" => $failureBody), "PATCH");
             return;
         }
 
@@ -1704,14 +1724,36 @@ class CommentsHandler implements IHandler
         }
 
         if ($plan->needsGitVersionBump() === true) {
-            $done[] = "GitVersion `" . BreakingChangeCommitService::GITVERSION_DIRECTIVE . "` directive added.";
+            $done[] = sprintf("GitVersion `%s` directive added.", BreakingChangeCommitService::GITVERSION_DIRECTIVE);
         }
 
-        $completion = $builder->buildCompletion($done, $sha);
-        doRequestGitHub($metadata["token"], $commentUrl, array("body" => $body . $completion . $notes), "PATCH");
-        $this->resolvePendingConfirmation($comment, "major");
-
+        $decision["body"] .= $notes;
+        $this->completeBreakingChangeDecision($metadata, $comment, $decision, $done, $sha);
         $this->queueChecksForBotCommit($metadata, $comment, $pullRequest, $sha);
+    }
+
+    /**
+     * Appends the completion note to the decision comment and resolves its pending confirmation.
+     *
+     * @param array       $metadata  Metadata for the GitHub API requests.
+     * @param object      $comment   The queued comment event.
+     * @param array       $decision  The decision comment (readBreakingChangeDecision()).
+     * @param string[]    $done      What was done, one line each.
+     * @param string|null $commitSha The commit pushed, if any.
+     *
+     * @return void
+     */
+    private function completeBreakingChangeDecision(array $metadata, $comment, array $decision, array $done, ?string $commitSha): void
+    {
+        $completion = (new BreakingChangeCommentBuilder())->buildCompletion($done, $commitSha);
+        doRequestGitHub($metadata["token"], $decision["url"], array("body" => $decision["body"] . $completion), "PATCH");
+
+        $resolution = "major";
+        if ($decision["choice"] === "no") {
+            $resolution = "none";
+        }
+
+        $this->resolvePendingConfirmation($comment, $resolution);
     }
 
     /**
@@ -1747,39 +1789,56 @@ class CommentsHandler implements IHandler
     }
 
     /**
-     * Resets the AppVeyor build number of the repository for its new major version,
-     * before the bump commit gets built.
+     * Resets the AppVeyor build number of the repository for its new major version.
+     * Failures don't stop the bump: they are reported on the decision comment.
      *
-     * @param array    $metadata Metadata for the GitHub API requests.
-     * @param object   $comment  The queued comment event.
-     * @param string[] $done     What was done, appended to when the reset succeeds.
+     * @param object   $comment The queued comment event.
+     * @param string[] $done    What was done, appended to when the reset succeeds.
      *
      * @return string A note to append to the decision comment when the reset failed, else empty.
      */
-    private function resetAppVeyorBuildNumber(array $metadata, $comment, array &$done): string
+    private function resetAppVeyorBuildNumber($comment, array &$done): string
     {
-        $failure = "\n\n⚠️ Could not reset the AppVeyor build number: ";
+        $problem = null;
+        try {
+            $problem = $this->requestAppVeyorBuildNumberReset($comment);
+        } catch (\Throwable $e) {
+            $problem = $e->getMessage();
+        }
+
+        if ($problem === null) {
+            $done[] = "AppVeyor build number reset.";
+            return "";
+        }
+
+        return "\n\n⚠️ Could not reset the AppVeyor build number: {$problem}\n";
+    }
+
+    /**
+     * Asks AppVeyor to restart the repository's build numbers.
+     *
+     * @param object $comment The queued comment event.
+     *
+     * @return string|null Why it couldn't be done, null when it was.
+     */
+    private function requestAppVeyorBuildNumberReset($comment): ?string
+    {
         $appVeyorKey = findAppVeyorKey((int) $comment->InstallationId, (string) $comment->RepositoryOwner);
         if ($appVeyorKey === null) {
-            return $failure . "no AppVeyor API key is stored for this installation " .
+            return "no AppVeyor API key is stored for this installation " .
                 "(add one in the **Integrations** page of the GStraccini dashboard), then comment `@" .
-                loadConfig()->botName . " appveyor reset`.\n";
+                loadConfig()->botName . " appveyor reset`.";
         }
 
-        $project = findProjectByRepositorySlug($appVeyorKey, $comment->RepositoryOwner . "/" . $comment->RepositoryName);
+        $project = findProjectByRepositorySlug($appVeyorKey, "{$comment->RepositoryOwner}/{$comment->RepositoryName}");
         if (($project->error ?? true) === true) {
-            return $failure . ($project->message ?? "the AppVeyor project was not found.") . "\n";
+            return ($project->message ?? "the AppVeyor project was not found.");
         }
 
-        $url = "projects/" . $project->accountName . "/" . $project->slug . "/settings/build-number";
-        $updateResponse = requestAppVeyor($appVeyorKey, "PUT", $url, array("nextBuildNumber" => 0));
-        if ($updateResponse->getStatusCode() !== 204) {
-            return $failure . "AppVeyor answered HTTP " . $updateResponse->getStatusCode() . ".\n";
-        }
+        $url = sprintf("projects/%s/%s/settings/build-number", $project->accountName, $project->slug);
+        $status = requestAppVeyor($appVeyorKey, "PUT", $url, array("nextBuildNumber" => 0))->getStatusCode();
 
-        $done[] = "AppVeyor build number reset.";
-
-        return "";
+        return $status === 204 ? null : "AppVeyor answered HTTP {$status}.";
     }
 
     /**

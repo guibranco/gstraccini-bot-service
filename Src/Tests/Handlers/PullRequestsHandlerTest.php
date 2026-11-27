@@ -255,33 +255,43 @@ class PullRequestsHandlerTest extends TestCase
         $metadata = $this->buildMetadata();
         $metadata["labelsUrl"] = "repos/owner/repo/issues/1/labels";
         $method->invoke($handler, $metadata, $pullRequestUpdated);
-    }
+
+    }//end checkBreakingChanges()
 
     /**
      * A pull request whose description answers the breaking change question.
      *
-     * @param string   $yes    The mark of the "Yes" box.
-     * @param string   $no     The mark of the "No" box.
-     * @param string[] $labels The labels of the pull request.
+     * @param string   $yesMark The mark of the "Yes" box.
+     * @param string   $noMark  The mark of the "No" box.
+     * @param string[] $labels  The labels of the pull request.
      *
      * @return object
      */
-    private function buildBreakingChangePullRequest(string $yes, string $no, array $labels = []): object
+    private function buildBreakingChangePullRequest(string $yesMark, string $noMark, array $labels): object
     {
         $pullRequest = $this->buildFeaturePullRequest();
         $pullRequest->title = "Drop the v1 API";
-        $pullRequest->body = "## ☢️ Does this introduce a breaking change?\n" .
-            "<!-- If this introduces a breaking change, make sure to note it here -->\n" .
-            "- [{$yes}] Yes\n- [{$no}] No\n";
+        $pullRequest->body = <<<MARKDOWN
+            ## ☢️ Does this introduce a breaking change?
+            <!-- If this introduces a breaking change, make sure to note it here -->
+            - [{$yesMark}] Yes
+            - [{$noMark}] No
+
+            MARKDOWN;
         $pullRequest->labels = array_map(static fn (string $name): object => (object) ["name" => $name], $labels);
         $pullRequest->head->repo = (object) ["full_name" => "owner/repo"];
-        $pullRequest->base = (object) [
-            "ref" => "main",
-            "repo" => (object) ["id" => 2, "full_name" => "owner/repo", "owner" => (object) ["id" => 1]],
-        ];
+
+        $repository = new stdClass();
+        $repository->id = 2;
+        $repository->full_name = "owner/repo";
+        $repository->owner = (object) ["id" => 1];
+        $pullRequest->base = new stdClass();
+        $pullRequest->base->ref = "main";
+        $pullRequest->base->repo = $repository;
 
         return $pullRequest;
-    }
+
+    }//end buildBreakingChangePullRequest()
 
     /**
      * The requests of a method, as "METHOD url".
@@ -295,7 +305,8 @@ class PullRequestsHandlerTest extends TestCase
         $requests = array_filter(self::$requestLog, static fn (array $request): bool => $request["method"] === $method);
 
         return array_values(array_map(static fn (array $request): string => "{$request["method"]} {$request["url"]}", $requests));
-    }
+
+    }//end requestsOf()
 
     /**
      * "Yes" adds the plain label when the repository has no icon one.
@@ -306,12 +317,13 @@ class PullRequestsHandlerTest extends TestCase
     {
         self::$responses["GET repos/owner/repo/labels/"] = new Response(false, "{}", "", 404, "", []);
 
-        $this->checkBreakingChanges($this->buildBreakingChangePullRequest("x", " "), new FixedFeatureSettings(false));
+        $this->checkBreakingChanges($this->buildBreakingChangePullRequest("x", " ", []), new FixedFeatureSettings(false));
 
         $this->assertSame(["POST repos/owner/repo/issues/1/labels"], $this->requestsOf("POST"));
         $this->assertSame(["labels" => ["breaking-changes"]], self::$requestLog[1]["data"]);
         $this->assertSame(["resolveForPullRequest owner/repo#1 breaking_change superseded"], $this->pendingConfirmations->calls);
-    }
+
+    }//end testBreakingChangeAddsThePlainLabel()
 
     /**
      * "Yes" adds the icon label when the repository has it.
@@ -320,10 +332,11 @@ class PullRequestsHandlerTest extends TestCase
      */
     public function testBreakingChangeAddsTheIconLabelTheRepositoryHas(): void
     {
-        $this->checkBreakingChanges($this->buildBreakingChangePullRequest("x", " "), new FixedFeatureSettings(false));
+        $this->checkBreakingChanges($this->buildBreakingChangePullRequest("x", " ", []), new FixedFeatureSettings(false));
 
         $this->assertSame(["labels" => ["☢️ breaking-changes"]], self::$requestLog[1]["data"]);
-    }
+
+    }//end testBreakingChangeAddsTheIconLabelTheRepositoryHas()
 
     /**
      * Nothing is added when the pull request already has the label.
@@ -336,7 +349,8 @@ class PullRequestsHandlerTest extends TestCase
 
         $this->assertSame([], $this->requestsOf("POST"));
         $this->assertSame([], $this->requestsOf("GET"));
-    }
+
+    }//end testBreakingChangeKeepsAnExistingLabel()
 
     /**
      * "No" removes the label and closes a pending decision.
@@ -350,7 +364,8 @@ class PullRequestsHandlerTest extends TestCase
         $this->assertSame(["DELETE repos/owner/repo/issues/1/labels/breaking-changes"], $this->requestsOf("DELETE"));
         $this->assertSame([], $this->requestsOf("POST"));
         $this->assertSame(["resolveForPullRequest owner/repo#1 breaking_change superseded"], $this->pendingConfirmations->calls);
-    }
+
+    }//end testNoBreakingChangeRemovesTheLabel()
 
     /**
      * An unanswered question leaves the labels alone.
@@ -362,7 +377,8 @@ class PullRequestsHandlerTest extends TestCase
         $this->checkBreakingChanges($this->buildBreakingChangePullRequest(" ", " ", ["breaking-changes"]), new FixedFeatureSettings(true));
 
         $this->assertSame([], self::$requestLog);
-    }
+
+    }//end testUnansweredBreakingChangeLeavesTheLabels()
 
     /**
      * With the version bump requested and GitVersion in use, the major bump is asked for and tracked.
@@ -373,7 +389,10 @@ class PullRequestsHandlerTest extends TestCase
     {
         $gitHub = new FakeGitHub();
         $gitHub->answer("repos/owner/repo/contents/GitVersion.yml?ref=", json_encode(["type" => "file", "sha" => "s", "content" => base64_encode("mode: Mainline\n")]));
-        $created = (object) ["id" => 900, "html_url" => "u", "body" => ""];
+        $created = new stdClass();
+        $created->id = 900;
+        $created->html_url = "u";
+        $created->body = "";
         self::$responses["POST /issues/1/comments"] = new Response(true, json_encode($created), "", 201, "", []);
 
         $this->checkBreakingChanges($this->buildBreakingChangePullRequest("x", " ", ["breaking-changes"]), new FixedFeatureSettings(true));
@@ -383,7 +402,8 @@ class PullRequestsHandlerTest extends TestCase
         $this->assertStringContainsString(BreakingChangeCommentBuilder::MARKER, $posted[0]["data"]["body"]);
         $this->assertStringContainsString("+semver: major", $posted[0]["data"]["body"]);
         $this->assertSame(["record breaking_change 900"], $this->pendingConfirmations->calls);
-    }
+
+    }//end testBreakingChangeAsksForTheMajorBumpWithGitVersion()
 
     /**
      * Without GitVersion or AppVeyor, nothing is asked.
@@ -392,13 +412,15 @@ class PullRequestsHandlerTest extends TestCase
      */
     public function testBreakingChangeAsksNothingWithoutAVersioningSetup(): void
     {
-        new FakeGitHub();
+        $gitHub = new FakeGitHub();
 
         $this->checkBreakingChanges($this->buildBreakingChangePullRequest("x", " ", ["breaking-changes"]), new FixedFeatureSettings(true));
 
+        $this->assertCount(5, $gitHub->requests(), "Every GitVersion and AppVeyor file is looked up on the head branch.");
         $this->assertSame([], $this->requestsOf("POST"));
         $this->assertSame(["resolveForPullRequest owner/repo#1 breaking_change superseded"], $this->pendingConfirmations->calls);
-    }
+
+    }//end testBreakingChangeAsksNothingWithoutAVersioningSetup()
 
     /**
      * Invokes the private PullRequestsHandler::isFromFork() method.

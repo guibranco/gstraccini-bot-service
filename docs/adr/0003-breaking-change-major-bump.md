@@ -1,4 +1,4 @@
-# Bump the major version of breaking change pull requests
+ADR-0003: bump the major version of breaking change pull requests.
 
 The pull request template asks "☢️ Does this introduce a breaking change?"
 with a Yes/No checkbox pair. The description check already makes sure
@@ -7,9 +7,7 @@ exactly one of them is ticked, but nothing acted on the answer: the
 was bumped by hand in `appveyor.yml` or with a `+semver: major` commit, or
 forgotten.
 
-## Decision
-
-`PullRequestsHandler::checkBreakingChanges` reads the group
+Decision: `PullRequestsHandler::checkBreakingChanges` reads the group
 (`BreakingChangeDetector`, matching any heading that mentions a breaking
 change) on every pull request run:
 
@@ -37,7 +35,7 @@ change) on every pull request run:
   for GitVersion alone. The pull request is then re-queued like the version
   bump commit.
 
-## Consequences
+Consequences:
 
 - No new setting or table: the label is always managed, the question rides
   on "request version bump", and `pending_confirmations.Kind` is free text.

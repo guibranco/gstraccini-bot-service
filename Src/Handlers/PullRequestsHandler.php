@@ -695,31 +695,57 @@ class PullRequestsHandler implements IHandler
             $this->removeBreakingChangesLabel($metadata, $pullRequestUpdated);
         }
 
-        if ($breaking !== true) {
-            $this->supersedeBreakingChangeDecision($metadata, $pullRequestUpdated);
+        if ($breaking === true) {
+            $this->addBreakingChangesLabel($metadata, $pullRequestUpdated);
+        }
+
+        if ($breaking === true && $this->canAskForMajorBump($metadata, $pullRequestUpdated) === true) {
+            $this->askForMajorBump($metadata, $pullRequestUpdated);
             return;
         }
 
-        $this->addBreakingChangesLabel($metadata, $pullRequestUpdated);
+        $this->supersedeBreakingChangeDecision($metadata, $pullRequestUpdated);
 
+    }//end checkBreakingChanges()
+
+
+    /**
+     * Whether the major version bump of a breaking change can be asked for: the "request
+     * version bump" setting is on, the pull request isn't from a fork (the bot can't push
+     * there) and the question wasn't already answered.
+     *
+     * @param array  $metadata           Metadata for the GitHub API request.
+     * @param object $pullRequestUpdated The pull request.
+     *
+     * @return boolean
+     */
+    private function canAskForMajorBump(array $metadata, object $pullRequestUpdated): bool
+    {
         $repositoryId = (int) ($pullRequestUpdated->base->repo->id ?? 0);
         $accountId = (int) ($pullRequestUpdated->base->repo->owner->id ?? 0);
-        if ($this->featureSettings->isRequestVersionBumpEnabled($accountId, $repositoryId) === false) {
-            $this->trace('debug', 'PR {repo}#{pr}: breaking change — request version bump is not enabled, not asking for a major bump', []);
-            $this->supersedeBreakingChangeDecision($metadata, $pullRequestUpdated);
-            return;
+        $enabled = $this->featureSettings->isRequestVersionBumpEnabled($accountId, $repositoryId);
+        $fromFork = $this->isFromFork($pullRequestUpdated);
+        $this->trace('debug', 'PR {repo}#{pr}: breaking change — request version bump {enabled}, from a fork {fork}', ["enabled" => $enabled, "fork" => $fromFork]);
+        if ($enabled === false || $fromFork === true) {
+            return false;
         }
 
-        if ($this->isFromFork($pullRequestUpdated) === true) {
-            $this->trace('debug', 'PR {repo}#{pr}: breaking change — pull request from a fork, not asking for a major bump', []);
-            return;
-        }
+        return $this->findComment($metadata, BreakingChangeCommentBuilder::COMPLETION_MARKER) === null;
 
-        if ($this->findComment($metadata, BreakingChangeCommentBuilder::COMPLETION_MARKER) !== null) {
-            $this->trace('debug', 'PR {repo}#{pr}: breaking change — major bump decision already applied', []);
-            return;
-        }
+    }//end canAskForMajorBump()
 
+
+    /**
+     * Asks whether to bump the major version of a breaking change, when the repository
+     * versions with GitVersion and/or AppVeyor and the major isn't bumped yet.
+     *
+     * @param array  $metadata           Metadata for the GitHub API request.
+     * @param object $pullRequestUpdated The pull request.
+     *
+     * @return void
+     */
+    private function askForMajorBump(array $metadata, object $pullRequestUpdated): void
+    {
         $plan = (new BreakingChangePlanner())->plan(
             $metadata,
             (string) $pullRequestUpdated->head->ref,
@@ -747,16 +773,14 @@ class PullRequestsHandler implements IHandler
 
         $body = (new BreakingChangeCommentBuilder())->build((string) $pullRequestUpdated->title, $plan);
         $response = doRequestGitHub($metadata["token"], $metadata["commentsUrl"], ["body" => $body], "POST");
-        if ($response->getStatusCode() >= 300) {
-            $this->trace('warning', 'PR {repo}#{pr}: failed to post the breaking change decision comment (HTTP {status})', ["status" => $response->getStatusCode()]);
-            return;
+        $status = $response->getStatusCode();
+        $this->trace('info', 'PR {repo}#{pr}: posted the breaking change decision comment (HTTP {status})', ["status" => $status]);
+        $created = json_decode((string) $response->getBody());
+        if ($status < 300 && is_object($created) === true) {
+            $this->recordBreakingChangeDecision($metadata, $pullRequestUpdated, $created);
         }
 
-        $this->trace('info', 'PR {repo}#{pr}: posted the breaking change decision comment (HTTP {status})', ["status" => $response->getStatusCode()]);
-        $created = json_decode((string) $response->getBody());
-        $this->recordBreakingChangeDecision($metadata, $pullRequestUpdated, (is_object($created) === true ? $created : null));
-
-    }//end checkBreakingChanges()
+    }//end askForMajorBump()
 
 
     /**

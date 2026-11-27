@@ -27,7 +27,7 @@ class BreakingChangeCommitService
      *
      * @return string|null The sha of the commit pushed, null when the plan needs no commit.
      *
-     * @throws RuntimeException When GitHub refuses the commit.
+     * @throws BreakingChangeCommitException When GitHub refuses the commit.
      */
     public function push(array $metadata, string $branch, string $headSha, BreakingChangePlan $plan): ?string
     {
@@ -40,7 +40,11 @@ class BreakingChangeCommitService
         }
 
         $message = sprintf("Apply requested major version bump (breaking change)\n\n%s", self::GITVERSION_DIRECTIVE);
-        $result  = (new VersionBumpCommitService())->createDummyCommit($metadata, $branch, $headSha, $message);
+        try {
+            $result = (new VersionBumpCommitService())->createDummyCommit($metadata, $branch, $headSha, $message);
+        } catch (RuntimeException $exception) {
+            throw new BreakingChangeCommitException($exception->getMessage(), 0, $exception);
+        }
 
         return $result["sha"];
 
@@ -56,7 +60,7 @@ class BreakingChangeCommitService
      *
      * @return string The sha of the commit.
      *
-     * @throws RuntimeException When GitHub refuses the update.
+     * @throws BreakingChangeCommitException When GitHub refuses the update.
      */
     private function updateAppVeyorFile(array $metadata, string $branch, BreakingChangePlan $plan): string
     {
@@ -75,13 +79,13 @@ class BreakingChangeCommitService
         $response = doRequestGitHub($metadata["token"], $url, $body, "PUT");
         $status   = $response->getStatusCode();
         if ($status !== 200) {
-            throw new RuntimeException("Failed to update {$plan->appVeyorPath}: [{$status}] {$response->getBody()}");
+            throw new BreakingChangeCommitException("Failed to update {$plan->appVeyorPath}: [{$status}] {$response->getBody()}");
         }
 
         $result = json_decode((string) $response->getBody());
         $sha    = ($result->commit->sha ?? null);
         if (is_string($sha) === false) {
-            throw new RuntimeException("Failed to update {$plan->appVeyorPath}: no commit returned");
+            throw new BreakingChangeCommitException("Failed to update {$plan->appVeyorPath}: no commit returned");
         }
 
         return $sha;

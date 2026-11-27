@@ -22,7 +22,8 @@ Each such comment gets a row in `pending_confirmations`. The table is
 created by `Sql/0047` in the webhooks repository, which owns the shared
 schema until the database split (see webhooks ADR-0002), and mirrored in
 `Sql/0017` here. There is one row per bot comment (`CommentId` is unique),
-with a `Kind` (`version_bump`, `infisical_ignore`, `breaking_change`) and a `Status`:
+with a `Kind` (`version_bump`, `infisical_ignore`, `breaking_change`) and a
+`Status`:
 
 - **pending**: the comment was posted, or an older one was found still
   waiting (`PullRequestsHandler::checkVersionBump`,
