@@ -117,6 +117,24 @@ class ReviewEffortReportBuilderTest extends TestCase
 
 
     /**
+     * A path with a line break or a backtick stays on one row and in one code span.
+     *
+     * @return void
+     */
+    public function testReportKeepsOddPathsOnOneRow(): void
+    {
+        $diff  = "diff --git \"a/docs/line\\nbreak.md\" \"b/docs/line\\nbreak.md\"\n@@ -1,1 +1,1 @@\n+x\n";
+        $diff .= $this->fixtures->addedDiff("docs/back`tick.md", 1, "x");
+
+        $report = $this->reportOf($diff);
+
+        $this->assertStringContainsString("| `docs/line break.md` | docs |", $report);
+        $this->assertStringContainsString("| `` docs/back`tick.md `` | docs |", $report);
+
+    }//end testReportKeepsOddPathsOnOneRow()
+
+
+    /**
      * With no file counted, there is no files table and no note.
      *
      * @return void

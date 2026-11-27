@@ -115,8 +115,8 @@ class ReviewEffortReportBuilder
 
         $table = "\n**Heaviest files**\n\n| File | Kind | Status | +/- | Hunks | Score |\n|---|---|---|---|---|---|\n";
         foreach (array_slice($files, 0, self::MAX_FILES) as $file) {
-            $path   = str_replace("|", "\\|", mb_substr($file["path"], 0, self::MAX_PATH_LENGTH));
-            $table .= "| `{$path}` | {$file["kind"]} | {$file["status"]} | +{$file["additions"]}/-{$file["deletions"]} | {$file["hunks"]} | {$file["score"]} |\n";
+            $path   = str_replace("|", "\\|", $this->codeSpan($file["path"]));
+            $table .= "| {$path} | {$file["kind"]} | {$file["status"]} | +{$file["additions"]}/-{$file["deletions"]} | {$file["hunks"]} | {$file["score"]} |\n";
         }
 
         return $table;
@@ -168,8 +168,7 @@ class ReviewEffortReportBuilder
     {
         $listed = [];
         foreach (array_slice($paths, 0, self::MAX_LISTED) as $path) {
-            $short    = mb_substr($path, 0, self::MAX_PATH_LENGTH);
-            $listed[] = "`{$short}`";
+            $listed[] = $this->codeSpan($path);
         }
 
         $more = (count($paths) - self::MAX_LISTED);
@@ -180,6 +179,26 @@ class ReviewEffortReportBuilder
         return implode(", ", $listed);
 
     }//end listPaths()
+
+
+    /**
+     * A path as inline code, shortened, on one line, and fenced with two
+     * backticks when it holds one (Git quotes and decodes such paths).
+     *
+     * @param string $path The file path.
+     *
+     * @return string
+     */
+    private function codeSpan(string $path): string
+    {
+        $short = str_replace(["\r", "\n"], " ", mb_substr($path, 0, self::MAX_PATH_LENGTH));
+        if (str_contains($short, "`") === true) {
+            return "`` {$short} ``";
+        }
+
+        return "`{$short}`";
+
+    }//end codeSpan()
 
 
 }//end class
