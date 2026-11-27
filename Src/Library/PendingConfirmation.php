@@ -18,6 +18,11 @@ final class PendingConfirmation
      */
     public const KIND_INFISICAL_IGNORE = 'infisical_ignore';
 
+    /**
+     * The major version bump of a breaking change pull request (BreakingChangeCommentBuilder).
+     */
+    public const KIND_BREAKING_CHANGE = 'breaking_change';
+
     public const STATUS_PENDING   = 'pending';
     public const STATUS_RESOLVED  = 'resolved';
     public const STATUS_CANCELLED = 'cancelled';
@@ -91,6 +96,7 @@ final class PendingConfirmation
         return match ($this->kind) {
             self::KIND_VERSION_BUMP => 'a version bump choice',
             self::KIND_INFISICAL_IGNORE => 'an approval to apply the `.infisicalignore` suggestion',
+            self::KIND_BREAKING_CHANGE => 'a choice about the major version bump of this breaking change',
             default => 'a confirmation',
         };
 

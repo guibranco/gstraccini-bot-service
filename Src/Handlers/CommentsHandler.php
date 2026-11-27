@@ -4,6 +4,10 @@ namespace GuiBranco\GStracciniBot\Handlers;
 
 use GuiBranco\GStracciniBot\Library\AppVeyorCredentials;
 use GuiBranco\GStracciniBot\Library\AppVeyorErrorCommentBuilder;
+use GuiBranco\GStracciniBot\Library\BreakingChangeCommentBuilder;
+use GuiBranco\GStracciniBot\Library\BreakingChangeCommitService;
+use GuiBranco\GStracciniBot\Library\BreakingChangePlan;
+use GuiBranco\GStracciniBot\Library\BreakingChangePlanner;
 use GuiBranco\GStracciniBot\Library\Codacy;
 use GuiBranco\GStracciniBot\Library\CommandHelper;
 use GuiBranco\GStracciniBot\Library\HelpCommentBuilder;
@@ -149,6 +153,7 @@ class CommentsHandler implements IHandler
             $metadata = $this->buildMetadata($comment, $config);
             $this->execute_applyInfisicalIgnoreSuggestion($config, $metadata, $comment);
             $this->execute_applyVersionBumpDecision($config, $metadata, $comment);
+            $this->execute_applyBreakingChangeDecision($metadata, $comment);
             $this->execute_triggerHelpCommand($config, $metadata, $comment);
             return;
         }
@@ -1620,6 +1625,161 @@ class CommentsHandler implements IHandler
         $this->resolvePendingConfirmation($comment, $choice);
 
         $this->queueChecksForBotCommit($metadata, $comment, $pullRequest, $result["sha"]);
+    }
+
+    /**
+     * Handles an edit to the bot's own breaking change decision comment: once the user
+     * ticks "Yes", resets the AppVeyor build number and pushes the commit bumping the
+     * major version (the `appveyor.yml` version and/or the GitVersion `+semver: major`
+     * directive), then queues the pull request so the checks run for the new head;
+     * "No" just closes the decision.
+     *
+     * @param array  $metadata Metadata for the GitHub API requests.
+     * @param object $comment  The queued comment event.
+     *
+     * @return void
+     */
+    private function execute_applyBreakingChangeDecision(array $metadata, $comment): void
+    {
+        $commentUrl = "{$metadata['repoPrefix']}/issues/comments/{$comment->CommentId}";
+        $response = doRequestGitHub($metadata["token"], $commentUrl, null, "GET");
+        if ($response->getStatusCode() !== 200) {
+            return;
+        }
+
+        $body = json_decode($response->getBody())->body;
+        if (stripos($body, BreakingChangeCommentBuilder::MARKER) === false
+            || stripos($body, BreakingChangeCommentBuilder::COMPLETION_MARKER) !== false
+        ) {
+            return;
+        }
+
+        $builder = new BreakingChangeCommentBuilder();
+        $choice = $builder->extractChoice($body);
+        if ($choice === null) {
+            return;
+        }
+
+        if ($choice === "no") {
+            $completion = $builder->buildCompletion(["Keeping the current version."], null);
+            doRequestGitHub($metadata["token"], $commentUrl, array("body" => $body . $completion), "PATCH");
+            $this->resolvePendingConfirmation($comment, "none");
+            return;
+        }
+
+        $pullRequestResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"], null, "GET");
+        if ($pullRequestResponse->getStatusCode() !== 200) {
+            return;
+        }
+        $pullRequest = json_decode($pullRequestResponse->getBody());
+
+        $plan = $this->planBreakingChange($metadata, $pullRequest);
+        if ($plan->isNeeded() === false) {
+            $completion = $builder->buildCompletion(["The major version is already bumped on this branch."], null);
+            doRequestGitHub($metadata["token"], $commentUrl, array("body" => $body . $completion), "PATCH");
+            $this->resolvePendingConfirmation($comment, "major");
+            return;
+        }
+
+        $done = [];
+        $notes = "";
+        if ($plan->needsAppVeyorBump() === true) {
+            try {
+                $notes = $this->resetAppVeyorBuildNumber($metadata, $comment, $done);
+            } catch (\Throwable $e) {
+                $notes = "\n\n⚠️ Could not reset the AppVeyor build number: " . $e->getMessage() . "\n";
+            }
+        }
+
+        try {
+            $sha = (new BreakingChangeCommitService())->push($metadata, $pullRequest->head->ref, $pullRequest->head->sha, $plan);
+        } catch (RuntimeException $e) {
+            $failureBody = $body . $notes . "\n\n❌ Failed to apply the major version bump: " . $e->getMessage() . "\n";
+            doRequestGitHub($metadata["token"], $commentUrl, array("body" => $failureBody), "PATCH");
+            return;
+        }
+
+        if ($plan->needsAppVeyorBump() === true) {
+            $done[] = "Version in `{$plan->appVeyorPath}` bumped from `{$plan->appVeyorFrom}` to `{$plan->appVeyorTo}`.";
+        }
+
+        if ($plan->needsGitVersionBump() === true) {
+            $done[] = "GitVersion `" . BreakingChangeCommitService::GITVERSION_DIRECTIVE . "` directive added.";
+        }
+
+        $completion = $builder->buildCompletion($done, $sha);
+        doRequestGitHub($metadata["token"], $commentUrl, array("body" => $body . $completion . $notes), "PATCH");
+        $this->resolvePendingConfirmation($comment, "major");
+
+        $this->queueChecksForBotCommit($metadata, $comment, $pullRequest, $sha);
+    }
+
+    /**
+     * Works out what the pull request still needs to bump its major version.
+     *
+     * @param array  $metadata    Metadata for the GitHub API requests.
+     * @param object $pullRequest The pull request, as GitHub returns it.
+     *
+     * @return BreakingChangePlan
+     */
+    private function planBreakingChange(array $metadata, object $pullRequest): BreakingChangePlan
+    {
+        $messages = [(string) $pullRequest->title];
+        $commitsResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"] . "/commits?per_page=100", null, "GET");
+        if ($commitsResponse->getStatusCode() === 200) {
+            foreach (json_decode($commitsResponse->getBody()) as $commit) {
+                $messages[] = $commit->commit->message;
+            }
+        }
+
+        $plannerMetadata = [
+            "token" => $metadata["token"],
+            "owner" => $metadata["repositoryOwner"],
+            "repo" => $metadata["repositoryName"],
+        ];
+
+        return (new BreakingChangePlanner())->plan(
+            $plannerMetadata,
+            (string) $pullRequest->head->ref,
+            (string) ($pullRequest->base->ref ?? ""),
+            $messages
+        );
+    }
+
+    /**
+     * Resets the AppVeyor build number of the repository for its new major version,
+     * before the bump commit gets built.
+     *
+     * @param array    $metadata Metadata for the GitHub API requests.
+     * @param object   $comment  The queued comment event.
+     * @param string[] $done     What was done, appended to when the reset succeeds.
+     *
+     * @return string A note to append to the decision comment when the reset failed, else empty.
+     */
+    private function resetAppVeyorBuildNumber(array $metadata, $comment, array &$done): string
+    {
+        $failure = "\n\n⚠️ Could not reset the AppVeyor build number: ";
+        $appVeyorKey = findAppVeyorKey((int) $comment->InstallationId, (string) $comment->RepositoryOwner);
+        if ($appVeyorKey === null) {
+            return $failure . "no AppVeyor API key is stored for this installation " .
+                "(add one in the **Integrations** page of the GStraccini dashboard), then comment `@" .
+                loadConfig()->botName . " appveyor reset`.\n";
+        }
+
+        $project = findProjectByRepositorySlug($appVeyorKey, $comment->RepositoryOwner . "/" . $comment->RepositoryName);
+        if (($project->error ?? true) === true) {
+            return $failure . ($project->message ?? "the AppVeyor project was not found.") . "\n";
+        }
+
+        $url = "projects/" . $project->accountName . "/" . $project->slug . "/settings/build-number";
+        $updateResponse = requestAppVeyor($appVeyorKey, "PUT", $url, array("nextBuildNumber" => 0));
+        if ($updateResponse->getStatusCode() !== 204) {
+            return $failure . "AppVeyor answered HTTP " . $updateResponse->getStatusCode() . ".\n";
+        }
+
+        $done[] = "AppVeyor build number reset.";
+
+        return "";
     }
 
     /**

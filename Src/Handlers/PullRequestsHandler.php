@@ -4,6 +4,9 @@ namespace GuiBranco\GStracciniBot\Handlers;
 
 use DateTimeImmutable;
 use GuiBranco\GStracciniBot\Library\BranchUpdateGate;
+use GuiBranco\GStracciniBot\Library\BreakingChangeCommentBuilder;
+use GuiBranco\GStracciniBot\Library\BreakingChangeDetector;
+use GuiBranco\GStracciniBot\Library\BreakingChangePlanner;
 use GuiBranco\GStracciniBot\Library\DependencyFileLabelService;
 use GuiBranco\GStracciniBot\Library\FeatureSettings;
 use GuiBranco\GStracciniBot\Library\LogContext;
@@ -30,6 +33,12 @@ define("PULLS", "/pulls/");
 class PullRequestsHandler implements IHandler
 {
     private const AWAITING_TRIAGE_LABEL = "🚦 awaiting triage";
+
+    /** The label of a pull request whose description says it introduces a breaking change. */
+    private const BREAKING_CHANGES_LABEL = "breaking-changes";
+
+    /** The same label, for repositories whose labels were created with icons. */
+    private const BREAKING_CHANGES_LABEL_WITH_ICON = "☢️ breaking-changes";
 
     /** The category every entry of this handler is logged under. */
     private const LOG_CATEGORY = "pull_requests";
@@ -83,6 +92,13 @@ class PullRequestsHandler implements IHandler
      * @var Response|null
      */
     private ?Response $diffResponse = null;
+
+    /**
+     * The title and commit messages of the pull request being processed, fetched once and shared by the checks that read them.
+     *
+     * @var string[]|null
+     */
+    private ?array $commitMessages = null;
 
 
     /**
@@ -314,6 +330,7 @@ class PullRequestsHandler implements IHandler
         global $logStream;
 
         $this->diffResponse = null;
+        $this->commitMessages = null;
 
         $this->trace('debug', 'PR {repo}#{pr}: step enable auto-merge', []);
         $this->enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config);
@@ -367,6 +384,9 @@ class PullRequestsHandler implements IHandler
 
         $this->trace('debug', 'PR {repo}#{pr}: step version bump', []);
         $versionBumpResolved = $this->checkVersionBump($metadata, $pullRequestUpdated);
+
+        $this->trace('debug', 'PR {repo}#{pr}: step breaking changes', []);
+        $this->checkBreakingChanges($metadata, $pullRequestUpdated);
 
         $this->trace('debug', 'PR {repo}#{pr}: step description check', []);
         $this->checkPullRequestDescription($metadata, $pullRequestUpdated, $pullRequest->Sender);
@@ -525,13 +545,7 @@ class PullRequestsHandler implements IHandler
 
         $analyzer = new VersionBumpAnalyzer();
 
-        $messages = [$pullRequestUpdated->title];
-        $commitsResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"] . "/commits", null, "GET");
-        if ($commitsResponse->getStatusCode() < 300) {
-            foreach (json_decode($commitsResponse->getBody()) as $commit) {
-                $messages[] = $commit->commit->message;
-            }
-        }
+        $messages = $this->commitMessages($metadata, $pullRequestUpdated);
 
         if ($analyzer->hasSemverDirective($messages)) {
             $this->trace('debug', 'PR {repo}#{pr}: version bump resolved — +semver directive found in {messages} title/commit messages', ["messages" => count($messages)]);
@@ -626,6 +640,237 @@ class PullRequestsHandler implements IHandler
         );
 
     }//end supersedeVersionBumpDecision()
+
+
+    /**
+     * The pull request title followed by its commit messages, fetched once per run.
+     *
+     * @param array  $metadata           Metadata for the GitHub API request.
+     * @param object $pullRequestUpdated The pull request.
+     *
+     * @return string[]
+     */
+    private function commitMessages(array $metadata, object $pullRequestUpdated): array
+    {
+        if ($this->commitMessages !== null) {
+            return $this->commitMessages;
+        }
+
+        $messages = [$pullRequestUpdated->title];
+        $commitsResponse = doRequestGitHub($metadata["token"], $metadata["pullRequestUrl"] . "/commits", null, "GET");
+        if ($commitsResponse->getStatusCode() < 300) {
+            foreach (json_decode($commitsResponse->getBody()) as $commit) {
+                $messages[] = $commit->commit->message;
+            }
+        }
+
+        $this->commitMessages = $messages;
+
+        return $messages;
+
+    }//end commitMessages()
+
+
+    /**
+     * Handles the "breaking change" Yes/No group of the pull request description:
+     * labels the pull request `breaking-changes` when "Yes" is ticked (and removes
+     * the label when "No" is), then, when the repository versions with GitVersion
+     * and/or AppVeyor and the major version isn't bumped yet, posts a comment
+     * asking whether to bump it (applied by CommentsHandler once a box is ticked).
+     *
+     * The question is opt-in like the version bump decision (the "request version
+     * bump" setting); the label is not. It never holds the pull request check.
+     *
+     * @param array  $metadata           Metadata for the GitHub API request.
+     * @param object $pullRequestUpdated The pull request.
+     *
+     * @return void
+     */
+    private function checkBreakingChanges(array $metadata, object $pullRequestUpdated): void
+    {
+        $breaking = (new BreakingChangeDetector())->detect(($pullRequestUpdated->body ?? null));
+        $this->trace('debug', 'PR {repo}#{pr}: breaking change in description: {breaking}', ["breaking" => var_export($breaking, true)]);
+
+        if ($breaking === false) {
+            $this->removeBreakingChangesLabel($metadata, $pullRequestUpdated);
+        }
+
+        if ($breaking !== true) {
+            $this->supersedeBreakingChangeDecision($metadata, $pullRequestUpdated);
+            return;
+        }
+
+        $this->addBreakingChangesLabel($metadata, $pullRequestUpdated);
+
+        $repositoryId = (int) ($pullRequestUpdated->base->repo->id ?? 0);
+        $accountId = (int) ($pullRequestUpdated->base->repo->owner->id ?? 0);
+        if ($this->featureSettings->isRequestVersionBumpEnabled($accountId, $repositoryId) === false) {
+            $this->trace('debug', 'PR {repo}#{pr}: breaking change — request version bump is not enabled, not asking for a major bump', []);
+            $this->supersedeBreakingChangeDecision($metadata, $pullRequestUpdated);
+            return;
+        }
+
+        if ($this->isFromFork($pullRequestUpdated) === true) {
+            $this->trace('debug', 'PR {repo}#{pr}: breaking change — pull request from a fork, not asking for a major bump', []);
+            return;
+        }
+
+        if ($this->findComment($metadata, BreakingChangeCommentBuilder::COMPLETION_MARKER) !== null) {
+            $this->trace('debug', 'PR {repo}#{pr}: breaking change — major bump decision already applied', []);
+            return;
+        }
+
+        $plan = (new BreakingChangePlanner())->plan(
+            $metadata,
+            (string) $pullRequestUpdated->head->ref,
+            (string) ($pullRequestUpdated->base->ref ?? ""),
+            $this->commitMessages($metadata, $pullRequestUpdated)
+        );
+        $planContext = [];
+        $planContext["gitversion"] = $plan->usesGitVersion;
+        $planContext["major_directive"] = $plan->hasMajorDirective;
+        $planContext["appveyor"] = ($plan->appVeyorPath ?? "none");
+        $planContext["appveyor_to"] = $plan->appVeyorTo;
+        $this->trace('debug', 'PR {repo}#{pr}: breaking change plan — GitVersion {gitversion}, AppVeyor {appveyor}', $planContext);
+
+        if ($plan->isNeeded() === false) {
+            $this->supersedeBreakingChangeDecision($metadata, $pullRequestUpdated);
+            return;
+        }
+
+        $decisionComment = $this->findComment($metadata, BreakingChangeCommentBuilder::MARKER);
+        if ($decisionComment !== null) {
+            $this->trace('debug', 'PR {repo}#{pr}: breaking change decision comment already posted — waiting on the user', []);
+            $this->recordBreakingChangeDecision($metadata, $pullRequestUpdated, $decisionComment);
+            return;
+        }
+
+        $body = (new BreakingChangeCommentBuilder())->build((string) $pullRequestUpdated->title, $plan);
+        $response = doRequestGitHub($metadata["token"], $metadata["commentsUrl"], ["body" => $body], "POST");
+        if ($response->getStatusCode() >= 300) {
+            $this->trace('warning', 'PR {repo}#{pr}: failed to post the breaking change decision comment (HTTP {status})', ["status" => $response->getStatusCode()]);
+            return;
+        }
+
+        $this->trace('info', 'PR {repo}#{pr}: posted the breaking change decision comment (HTTP {status})', ["status" => $response->getStatusCode()]);
+        $created = json_decode((string) $response->getBody());
+        $this->recordBreakingChangeDecision($metadata, $pullRequestUpdated, (is_object($created) === true ? $created : null));
+
+    }//end checkBreakingChanges()
+
+
+    /**
+     * Adds the breaking changes label, in the style (with or without icon) the repository has it.
+     *
+     * @param array  $metadata           Metadata for the GitHub API request.
+     * @param object $pullRequestUpdated The pull request.
+     *
+     * @return void
+     */
+    private function addBreakingChangesLabel(array $metadata, object $pullRequestUpdated): void
+    {
+        if ($this->breakingChangesLabelsOn($pullRequestUpdated) !== []) {
+            return;
+        }
+
+        $label = self::BREAKING_CHANGES_LABEL;
+        $iconLabelUrl = "repos/{$metadata["owner"]}/{$metadata["repo"]}/labels/" . rawurlencode(self::BREAKING_CHANGES_LABEL_WITH_ICON);
+        if (doRequestGitHub($metadata["token"], $iconLabelUrl, null, "GET")->getStatusCode() === 200) {
+            $label = self::BREAKING_CHANGES_LABEL_WITH_ICON;
+        }
+
+        $status = doRequestGitHub($metadata["token"], $metadata["labelsUrl"], ["labels" => [$label]], "POST")->getStatusCode();
+        $level = ($status >= 200 && $status < 300) ? 'info' : 'warning';
+        $this->trace($level, 'PR {repo}#{pr}: added label {label} (HTTP {status})', ["label" => $label, "status" => $status]);
+
+    }//end addBreakingChangesLabel()
+
+
+    /**
+     * Removes the breaking changes label once the description says there is no breaking change.
+     *
+     * @param array  $metadata           Metadata for the GitHub API request.
+     * @param object $pullRequestUpdated The pull request.
+     *
+     * @return void
+     */
+    private function removeBreakingChangesLabel(array $metadata, object $pullRequestUpdated): void
+    {
+        foreach ($this->breakingChangesLabelsOn($pullRequestUpdated) as $label) {
+            $url = "{$metadata["labelsUrl"]}/" . rawurlencode($label);
+            $status = doRequestGitHub($metadata["token"], $url, null, "DELETE")->getStatusCode();
+            $this->trace('info', 'PR {repo}#{pr}: removed label {label} — no breaking change (HTTP {status})', ["label" => $label, "status" => $status]);
+        }
+
+    }//end removeBreakingChangesLabel()
+
+
+    /**
+     * The breaking changes labels the pull request has, with their exact names.
+     *
+     * @param object $pullRequestUpdated The pull request.
+     *
+     * @return string[]
+     */
+    private function breakingChangesLabelsOn(object $pullRequestUpdated): array
+    {
+        $wanted = [strtolower(self::BREAKING_CHANGES_LABEL), strtolower(self::BREAKING_CHANGES_LABEL_WITH_ICON)];
+        $found = [];
+        foreach (array_column(($pullRequestUpdated->labels ?? []), "name") as $name) {
+            if (in_array(strtolower($name), $wanted, true) === true) {
+                $found[] = $name;
+            }
+        }
+
+        return $found;
+
+    }//end breakingChangesLabelsOn()
+
+
+    /**
+     * Records the breaking change decision comment as a pending confirmation.
+     *
+     * @param array       $metadata           Metadata for the GitHub API request.
+     * @param object      $pullRequestUpdated The pull request.
+     * @param object|null $comment            The decision comment, as GitHub returns it.
+     *
+     * @return void
+     */
+    private function recordBreakingChangeDecision(array $metadata, object $pullRequestUpdated, ?object $comment): void
+    {
+        $this->pendingConfirmations()->record(
+            PendingConfirmation::KIND_BREAKING_CHANGE,
+            (string) ($metadata["owner"] ?? ""),
+            (string) ($metadata["repo"] ?? ""),
+            (int) ($metadata["installationId"] ?? 0),
+            (int) ($pullRequestUpdated->number ?? $this->prNumber),
+            $comment,
+            ($pullRequestUpdated->title ?? null),
+            ($pullRequestUpdated->user->login ?? null)
+        );
+
+    }//end recordBreakingChangeDecision()
+
+
+    /**
+     * Resolves a pending breaking change decision that no longer needs an answer
+     * (the description no longer says "Yes", or the major version was bumped by hand).
+     *
+     * @param array  $metadata           Metadata for the GitHub API request.
+     * @param object $pullRequestUpdated The pull request.
+     *
+     * @return void
+     */
+    private function supersedeBreakingChangeDecision(array $metadata, object $pullRequestUpdated): void
+    {
+        $this->pendingConfirmations()->supersede(
+            (string) ($metadata["owner"] ?? ""),
+            (string) ($metadata["repo"] ?? ""),
+            (int) ($pullRequestUpdated->number ?? $this->prNumber),
+            PendingConfirmation::KIND_BREAKING_CHANGE
+        );
+
+    }//end supersedeBreakingChangeDecision()
 
 
     /**

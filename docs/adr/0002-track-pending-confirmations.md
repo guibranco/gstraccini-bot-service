@@ -7,7 +7,10 @@ checkbox:
   the "GStraccini Checks: Pull Request" check run in progress until an
   option is picked;
 - the **`.infisicalignore` approval**
-  (`InfisicalIgnoreApprovalCommentBuilder`).
+  (`InfisicalIgnoreApprovalCommentBuilder`);
+- the **major version bump of a breaking change**
+  (`BreakingChangeCommentBuilder`, see ADR-0003), which doesn't hold any
+  check run.
 
 Their only record was the hidden marker in the comment, so nothing could
 list what is waiting on someone, remind them, or tell a forgotten decision
@@ -19,7 +22,7 @@ Each such comment gets a row in `pending_confirmations`. The table is
 created by `Sql/0047` in the webhooks repository, which owns the shared
 schema until the database split (see webhooks ADR-0002), and mirrored in
 `Sql/0017` here. There is one row per bot comment (`CommentId` is unique),
-with a `Kind` (`version_bump`, `infisical_ignore`) and a `Status`:
+with a `Kind` (`version_bump`, `infisical_ignore`, `breaking_change`) and a `Status`:
 
 - **pending**: the comment was posted, or an older one was found still
   waiting (`PullRequestsHandler::checkVersionBump`,
