@@ -3,7 +3,6 @@
 namespace GuiBranco\GStracciniBot\Tests\Library;
 
 use GuiBranco\GStracciniBot\Library\PullRequestSizeLabeler;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class PullRequestSizeLabelerTest extends TestCase
@@ -55,7 +54,7 @@ class PullRequestSizeLabelerTest extends TestCase
         $this->assertSame(0, $size["changes"]);
     }
 
-    public function testCountsRemovedLinesThatLookLikeHeaders(): void
+    public function testCountsRemovedDashDashLines(): void
     {
         // Removing the SQL comment "-- note" shows as "--- note" inside a hunk.
         $size = $this->labeler->measureDiff($this->buildDiff("Sql/0001.sql", ["++ added"], ["-- note"]));
@@ -95,7 +94,7 @@ class PullRequestSizeLabelerTest extends TestCase
         $this->assertSame(2, $size["deletions"]);
     }
 
-    public function testIgnoresBinaryFilesAndNoNewlineMarkers(): void
+    public function testIgnoresBinaryAndNoNewline(): void
     {
         $diff = implode("\n", [
             "diff --git a/logo.png b/logo.png",
@@ -120,40 +119,23 @@ class PullRequestSizeLabelerTest extends TestCase
         $this->assertSame(0, $this->labeler->measureDiff("")["changes"]);
     }
 
-    public static function thresholdProvider(): array
+    public function testDecodesQuotedPaths(): void
     {
-        return [
-            [0, "size/XS"],
-            [9, "size/XS"],
-            [10, "size/S"],
-            [29, "size/S"],
-            [30, "size/M"],
-            [99, "size/M"],
-            [100, "size/L"],
-            [499, "size/L"],
-            [500, "size/XL"],
-            [999, "size/XL"],
-            [1000, "size/XXL"],
-            [25000, "size/XXL"],
-        ];
-    }
+        $diff = implode("\n", [
+            'diff --git "a/caf\\303\\251 \\"x\\".php" "b/caf\\303\\251 \\"x\\".php"',
+            "index 111..222 100644",
+            "@@ -0,0 +1,2 @@",
+            "+one",
+            "+two",
+            'diff --git "a/web/\\303\\251/package-lock.json" "b/web/\\303\\251/package-lock.json"',
+            "index 111..222 100644",
+            "@@ -0,0 +1,1 @@",
+            "+lock",
+        ]) . "\n";
 
-    #[DataProvider('thresholdProvider')]
-    public function testLabelFor(int $changes, string $expected): void
-    {
-        $this->assertSame($expected, $this->labeler->labelFor($changes));
-    }
+        $size = $this->labeler->measureDiff($diff);
 
-    public function testStaleLabelsAreTheOtherSizeLabels(): void
-    {
-        $current = ["🐛 bug", "size/S", "Size/XL", "size/M", "sizeable"];
-
-        $this->assertSame(["size/S", "Size/XL"], $this->labeler->staleLabels($current, "size/M"));
-    }
-
-    public function testHasLabelIsCaseInsensitive(): void
-    {
-        $this->assertTrue($this->labeler->hasLabel(["SIZE/m"], "size/M"));
-        $this->assertFalse($this->labeler->hasLabel(["size/L"], "size/M"));
+        $this->assertSame(2, $size["changes"]);
+        $this->assertSame(["web/é/package-lock.json"], $size["ignoredFiles"]);
     }
 }

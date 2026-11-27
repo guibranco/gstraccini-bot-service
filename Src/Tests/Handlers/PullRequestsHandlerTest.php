@@ -608,6 +608,35 @@ class PullRequestsHandlerTest extends TestCase
 
         $this->assertCount(0, self::$requestLog);
     }
+
+    /**
+     * A stale label someone already removed (404) is fine.
+     *
+     * @return void
+     */
+    public function testApplySizeLabelToleratesGoneLabel(): void
+    {
+        self::$responses["DELETE /labels/"] = new Response(false, "{}", "", 404, "", []);
+
+        $this->applySizeLabel(["size/S"], "size/L");
+
+        $this->assertCount(2, self::$requestLog);
+    }
+
+    /**
+     * A refused label update fails the size check instead of reporting success.
+     *
+     * @return void
+     */
+    public function testApplySizeLabelThrowsWhenRefused(): void
+    {
+        self::$responses["POST /labels"] = new Response(false, "{}", "", 403, "", []);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("Could not add the size label size/L (HTTP 403)");
+
+        $this->applySizeLabel([], "size/L");
+    }
 }
 
 /**

@@ -1209,31 +1209,58 @@ class PullRequestsHandler implements IHandler
     {
         $labeler = new PullRequestSizeLabeler();
         $diffResponse = $this->pullRequestDiff($metadata);
-
-        if ($diffResponse->getStatusCode() === 200) {
-            $size = $labeler->measureDiff((string) $diffResponse->getBody());
-            $source = "diff";
-        } else {
-            $additions = (int) ($pullRequestUpdated->additions ?? 0);
-            $deletions = (int) ($pullRequestUpdated->deletions ?? 0);
-            $size = ["additions" => $additions, "deletions" => $deletions, "changes" => ($additions + $deletions), "ignoredFiles" => []];
-            $source = "pull request totals";
-        }
+        $fromDiff = $diffResponse->getStatusCode() === 200;
+        $size = $fromDiff
+            ? $labeler->measureDiff((string) $diffResponse->getBody())
+            : $this->sizeFromTotals($pullRequestUpdated);
 
         $label = $labeler->labelFor($size["changes"]);
         $this->applySizeLabel($metadata, $pullRequestUpdated, $label);
 
         $report = "Size: **{$label}** — {$size["changes"]} changed line(s) ({$size["additions"]} addition(s), {$size["deletions"]} deletion(s)).";
-        if (empty($size["ignoredFiles"]) === false) {
-            $report .= "\n\nGenerated files not counted: " . implode(", ", array_map(static fn ($file) => "`{$file}`", $size["ignoredFiles"])) . ".";
-        }
-
-        if ($source !== "diff") {
+        $report .= $this->describeIgnoredFiles($size["ignoredFiles"]);
+        if ($fromDiff === false) {
             $report .= "\n\nThe diff could not be read (HTTP {$diffResponse->getStatusCode()}), so every file was counted.";
         }
 
         setCheckRunSucceeded($metadata, $checkRunId, $type, $report);
-        $this->trace('info', 'PR {repo}#{pr}: size {label} ({changes} changed lines, from the {source})', ["label" => $label, "changes" => $size["changes"], "source" => $source, "ignored_files" => count($size["ignoredFiles"]), "check_run_id" => $checkRunId]);
+        $this->trace('info', 'PR {repo}#{pr}: size {label} ({changes} changed lines, from the {source})', ["label" => $label, "changes" => $size["changes"], "source" => ($fromDiff ? "diff" : "pull request totals"), "ignored_files" => count($size["ignoredFiles"]), "check_run_id" => $checkRunId]);
+    }
+
+    /**
+     * The size from the pull request's own totals, used when the diff can't be read.
+     *
+     * @param object $pullRequestUpdated The pull request as returned by the GitHub API
+     *
+     * @return array{additions: int, deletions: int, changes: int, ignoredFiles: string[]}
+     */
+    private function sizeFromTotals(object $pullRequestUpdated): array
+    {
+        $additions = (int) ($pullRequestUpdated->additions ?? 0);
+        $deletions = (int) ($pullRequestUpdated->deletions ?? 0);
+
+        return ["additions" => $additions, "deletions" => $deletions, "changes" => ($additions + $deletions), "ignoredFiles" => []];
+    }
+
+    /**
+     * Lists the generated files left out of the size, up to a few, so the check output stays small.
+     *
+     * @param string[] $ignoredFiles The generated files
+     *
+     * @return string The paragraph for the check output, empty when there are none
+     */
+    private function describeIgnoredFiles(array $ignoredFiles): string
+    {
+        $maxListed = 20;
+        $total = count($ignoredFiles);
+        if ($total === 0) {
+            return "";
+        }
+
+        $listed = array_map(static fn ($file) => "`" . mb_substr($file, 0, 200) . "`", array_slice($ignoredFiles, 0, $maxListed));
+        $more = $total > $maxListed ? " and " . ($total - $maxListed) . " more" : "";
+
+        return "\n\n{$total} generated file(s) not counted: " . implode(", ", $listed) . "{$more}.";
     }
 
     /**
@@ -1252,16 +1279,25 @@ class PullRequestsHandler implements IHandler
 
         foreach ($labeler->staleLabels($currentLabels, $label) as $staleLabel) {
             $url = "{$metadata["labelsUrl"]}/" . rawurlencode($staleLabel);
-            $response = doRequestGitHub($metadata["token"], $url, null, "DELETE");
-            $this->trace('debug', 'PR {repo}#{pr}: removed stale size label {label} (HTTP {status})', ["label" => $staleLabel, "status" => $response->getStatusCode()]);
+            $status = doRequestGitHub($metadata["token"], $url, null, "DELETE")->getStatusCode();
+            // 404: the label was already removed, which is what we want.
+            if (($status < 200 || $status >= 300) && $status !== 404) {
+                throw new RuntimeException("Could not remove the stale size label {$staleLabel} (HTTP {$status})");
+            }
+
+            $this->trace('debug', 'PR {repo}#{pr}: removed stale size label {label} (HTTP {status})', ["label" => $staleLabel, "status" => $status]);
         }
 
         if ($labeler->hasLabel($currentLabels, $label) === true) {
             return;
         }
 
-        $response = doRequestGitHub($metadata["token"], $metadata["labelsUrl"], ["labels" => [$label]], "POST");
-        $this->trace('debug', 'PR {repo}#{pr}: added size label {label} (HTTP {status})', ["label" => $label, "status" => $response->getStatusCode()]);
+        $status = doRequestGitHub($metadata["token"], $metadata["labelsUrl"], ["labels" => [$label]], "POST")->getStatusCode();
+        if ($status < 200 || $status >= 300) {
+            throw new RuntimeException("Could not add the size label {$label} (HTTP {$status})");
+        }
+
+        $this->trace('debug', 'PR {repo}#{pr}: added size label {label} (HTTP {status})', ["label" => $label, "status" => $status]);
     }
 
     /**
@@ -1558,6 +1594,9 @@ class PullRequestsHandler implements IHandler
                     unset($labelsIssue[$position]);
                 }
             }
+
+            // The size is the pull request's own, set by the size check.
+            $labelsIssue = array_filter($labelsIssue, static fn ($label) => (new PullRequestSizeLabeler())->isSizeLabel($label) === false);
 
             $labels = array_merge($labels, $labelsIssue);
         }

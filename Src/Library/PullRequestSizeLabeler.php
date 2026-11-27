@@ -29,6 +29,11 @@ class PullRequestSizeLabeler
     ];
 
     /**
+     * The prefix every size label starts with; any label with it is a size label.
+     */
+    public const SIZE_LABEL_PREFIX = "size/";
+
+    /**
      * Generated files whose changes don't count toward the size (matched against the file path).
      *
      * @var string[]
@@ -66,19 +71,13 @@ class PullRequestSizeLabeler
         $additions    = 0;
         $deletions    = 0;
         $ignoredFiles = [];
-        $currentFile  = null;
+        $counting     = false;
         $inHeader     = false;
-        $ignored      = false;
 
         foreach (explode("\n", str_replace("\r\n", "\n", $diff)) as $line) {
             if (str_starts_with($line, "diff --git ")) {
-                $inHeader    = true;
-                $currentFile = (preg_match('/ b\/(.+)$/', $line, $matches) === 1) ? $matches[1] : null;
-                $ignored     = $currentFile !== null && $this->isIgnored($currentFile);
-                if ($ignored === true) {
-                    $ignoredFiles[] = $currentFile;
-                }
-
+                $inHeader = true;
+                $counting = $this->startFile($line, $ignoredFiles);
                 continue;
             }
 
@@ -88,16 +87,11 @@ class PullRequestSizeLabeler
                 continue;
             }
 
-            if ($currentFile === null || $ignored === true) {
-                continue;
+            if ($counting === true) {
+                $additions += (int) str_starts_with($line, "+");
+                $deletions += (int) str_starts_with($line, "-");
             }
-
-            if (str_starts_with($line, "+")) {
-                $additions++;
-            } elseif (str_starts_with($line, "-")) {
-                $deletions++;
-            }
-        }//end foreach
+        }
 
         return [
             "additions"    => $additions,
@@ -107,6 +101,54 @@ class PullRequestSizeLabeler
         ];
 
     }//end measureDiff()
+
+
+    /**
+     * Reads the file of a "diff --git" line and whether its changes count.
+     *
+     * @param string   $line          The "diff --git a/<path> b/<path>" line.
+     * @param string[] &$ignoredFiles The generated files found so far.
+     *
+     * @return boolean Whether the lines of the file count toward the size.
+     */
+    private function startFile(string $line, array &$ignoredFiles): bool
+    {
+        $path = $this->destinationPath($line);
+        if ($path === null) {
+            return false;
+        }
+
+        if ($this->isIgnored($path) === true) {
+            $ignoredFiles[] = $path;
+            return false;
+        }
+
+        return true;
+
+    }//end startFile()
+
+
+    /**
+     * The destination path of a "diff --git" line, decoding the quoted form
+     * git uses for paths with special characters ("b/caf\303\251.php").
+     *
+     * @param string $line The "diff --git" line.
+     *
+     * @return string|null The path, or null when the line can't be read.
+     */
+    public function destinationPath(string $line): ?string
+    {
+        if (preg_match('/ "b\/((?:[^"\\\\]|\\\\.)*)"$/', $line, $matches) === 1) {
+            return stripcslashes($matches[1]);
+        }
+
+        if (preg_match('/ b\/(.+)$/', $line, $matches) === 1) {
+            return $matches[1];
+        }
+
+        return null;
+
+    }//end destinationPath()
 
 
     /**
@@ -133,6 +175,9 @@ class PullRequestSizeLabeler
     /**
      * The size labels of the pull request other than the target one, to be removed.
      *
+     * Any label starting with "size/" counts, so a size label not in SIZE_LABELS
+     * (from another tool, say) doesn't stay next to the computed one.
+     *
      * @param string[] $currentLabels The names of the labels the pull request has.
      * @param string   $target        The size label the pull request should have.
      *
@@ -140,16 +185,28 @@ class PullRequestSizeLabeler
      */
     public function staleLabels(array $currentLabels, string $target): array
     {
-        $sizeLabels = array_map("strtolower", array_keys(self::SIZE_LABELS));
-
         return array_values(
             array_filter(
                 $currentLabels,
-                static fn (string $label) => in_array(strtolower($label), $sizeLabels, true) && strcasecmp($label, $target) !== 0
+                fn (string $label) => $this->isSizeLabel($label) && strcasecmp($label, $target) !== 0
             )
         );
 
     }//end staleLabels()
+
+
+    /**
+     * Whether a label is a size label.
+     *
+     * @param string $label The label name.
+     *
+     * @return boolean
+     */
+    public function isSizeLabel(string $label): bool
+    {
+        return stripos($label, self::SIZE_LABEL_PREFIX) === 0;
+
+    }//end isSizeLabel()
 
 
     /**
