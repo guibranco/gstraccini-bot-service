@@ -182,8 +182,9 @@ class ReviewEffortReportBuilder
 
 
     /**
-     * A path as inline code, shortened, on one line, and fenced with two
-     * backticks when it holds one (Git quotes and decodes such paths).
+     * A path as inline code, shortened and on one line. A path holding
+     * backticks (Git quotes and decodes such paths) is fenced with one more
+     * backtick than its longest run, and padded with spaces.
      *
      * @param string $path The file path.
      *
@@ -192,11 +193,14 @@ class ReviewEffortReportBuilder
     private function codeSpan(string $path): string
     {
         $short = str_replace(["\r", "\n"], " ", mb_substr($path, 0, self::MAX_PATH_LENGTH));
-        if (str_contains($short, "`") === true) {
-            return "`` {$short} ``";
+        preg_match_all('/`+/', $short, $runs);
+        if (count($runs[0]) === 0) {
+            return "`{$short}`";
         }
 
-        return "`{$short}`";
+        $fence = str_repeat("`", (max(array_map("strlen", $runs[0])) + 1));
+
+        return "{$fence} {$short} {$fence}";
 
     }//end codeSpan()
 

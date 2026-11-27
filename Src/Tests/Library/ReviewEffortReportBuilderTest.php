@@ -135,6 +135,21 @@ class ReviewEffortReportBuilderTest extends TestCase
 
 
     /**
+     * A run of backticks in a path gets a longer fence, in the table and in the notes.
+     *
+     * @return void
+     */
+    public function testFencesBacktickRunsInPaths(): void
+    {
+        $report = $this->reportOf($this->fixtures->addedDiff("Src/Auth/back``tick.php", 1, ReviewEffortDiffFixtures::PLAIN_CODE));
+
+        $this->assertStringContainsString("| ``` Src/Auth/back``tick.php ``` | source |", $report);
+        $this->assertStringContainsString("(score × 1.3): ``` Src/Auth/back``tick.php ```.", $report);
+
+    }//end testFencesBacktickRunsInPaths()
+
+
+    /**
      * With no file counted, there is no files table and no note.
      *
      * @return void
