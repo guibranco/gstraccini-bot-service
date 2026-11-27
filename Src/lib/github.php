@@ -391,7 +391,7 @@ function installationTokenCache(): InstallationTokenCache
  *
  * @return string The installation access token.
  */
-function generateInstallationAccessToken(string $installationId, array $permissions = null): string
+function generateInstallationAccessToken(string $installationId, ?array $permissions = null): string
 {
     $cache = installationTokenCache();
 
@@ -811,7 +811,7 @@ function setCheckRunQueued(array $metadata, string $commitId, string $type): int
  * of check that was completed. It is used to customize the check run details and message based on the
  * specific type of check being performed.
  */
-function setCheckRunSucceeded(array $metadata, int $checkRunId, string $type, string $details = null): void
+function setCheckRunSucceeded(array $metadata, int $checkRunId, string $type, ?string $details = null): void
 {
     $checkRunBody = array(
         "name" => constant("BOT_CHECK_MESSAGE_PREFIX") . ucwords($type),
