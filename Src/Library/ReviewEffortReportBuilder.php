@@ -91,7 +91,7 @@ class ReviewEffortReportBuilder
      */
     private function languagesCell(array $languages): string
     {
-        if (count($languages) === 0) {
+        if (empty($languages) === true) {
             return "0";
         }
 
@@ -109,7 +109,7 @@ class ReviewEffortReportBuilder
      */
     private function filesTable(array $files): string
     {
-        if (count($files) === 0) {
+        if (empty($files) === true) {
             return "";
         }
 
@@ -148,7 +148,7 @@ class ReviewEffortReportBuilder
             $notes[] = "{$ignored} generated file(s) not counted.";
         }
 
-        if (count($notes) === 0) {
+        if (empty($notes) === true) {
             return "";
         }
 
