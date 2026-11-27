@@ -118,7 +118,7 @@ class PullRequestSizeLabeler
             return false;
         }
 
-        if ($this->isIgnored($path) === true) {
+        if ($this->isGenerated($path) === true) {
             $ignoredFiles[] = $path;
             return false;
         }
@@ -231,13 +231,13 @@ class PullRequestSizeLabeler
 
 
     /**
-     * Whether a file is generated, so its changes don't count.
+     * Whether a file is generated, so its changes count neither toward the size nor the review effort.
      *
      * @param string $path The file path in the repository.
      *
      * @return boolean
      */
-    private function isIgnored(string $path): bool
+    public function isGenerated(string $path): bool
     {
         foreach (self::IGNORED_FILE_PATTERNS as $pattern) {
             if (preg_match($pattern, $path) === 1) {
@@ -247,7 +247,7 @@ class PullRequestSizeLabeler
 
         return false;
 
-    }//end isIgnored()
+    }//end isGenerated()
 
 
 }//end class

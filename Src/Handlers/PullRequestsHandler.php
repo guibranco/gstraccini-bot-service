@@ -18,6 +18,8 @@ use GuiBranco\GStracciniBot\Library\PullRequestCodeScanner;
 use GuiBranco\GStracciniBot\Library\PullRequestHeadWatcher;
 use GuiBranco\GStracciniBot\Library\PullRequestSizeLabeler;
 use GuiBranco\GStracciniBot\Library\RecreateRequester;
+use GuiBranco\GStracciniBot\Library\ReviewEffortEstimator;
+use GuiBranco\GStracciniBot\Library\ReviewEffortReportBuilder;
 use GuiBranco\GStracciniBot\Library\VersionBumpAnalyzer;
 use GuiBranco\GStracciniBot\Library\VersionBumpCommentBuilder;
 use GuiBranco\Pancake\Response;
@@ -396,6 +398,8 @@ class PullRequestsHandler implements IHandler
         $this->checkDependencyChanges($metadata, $pullRequestUpdated);
         $this->trace('debug', 'PR {repo}#{pr}: step size label', []);
         $this->checkPullRequestSize($metadata, $pullRequestUpdated);
+        $this->trace('debug', 'PR {repo}#{pr}: step review effort', []);
+        $this->checkReviewEffort($metadata, $pullRequestUpdated);
 
         if ($versionBumpResolved === true) {
             setCheckRunSucceeded($metadata, ($checkRunId ?? $existingCheckRun->id), "pull request");
@@ -1567,6 +1571,61 @@ class PullRequestsHandler implements IHandler
         }
 
         $this->trace('debug', 'PR {repo}#{pr}: added size label {label} (HTTP {status})', ["label" => $label, "status" => $status]);
+    }
+
+    /**
+     * Estimates the effort of reviewing the pull request, in its own check run.
+     *
+     * @param array  $metadata           Metadata for the GitHub API request
+     * @param object $pullRequestUpdated The pull request as returned by the GitHub API
+     *
+     * @return void
+     */
+    private function checkReviewEffort(array $metadata, object $pullRequestUpdated): void
+    {
+        $type = "review effort";
+        $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, $type);
+        $this->runSubCheck(
+            $metadata,
+            $checkRunId,
+            $type,
+            fn () => $this->evaluateReviewEffort($metadata, $pullRequestUpdated, $checkRunId, $type)
+        );
+    }
+
+    /**
+     * Estimates the review effort from the diff, and completes its check run.
+     *
+     * The check is informational: it always succeeds. When the diff can't be read
+     * (GitHub refuses the diff of very large pull requests), a rough estimate is
+     * made from the pull request's own totals.
+     *
+     * @param array  $metadata           Metadata for the GitHub API request
+     * @param object $pullRequestUpdated The pull request as returned by the GitHub API
+     * @param int    $checkRunId         The check run in progress
+     * @param string $type               The check type
+     *
+     * @return void
+     */
+    private function evaluateReviewEffort(array $metadata, object $pullRequestUpdated, int $checkRunId, string $type): void
+    {
+        $estimator = new ReviewEffortEstimator();
+        $diffResponse = $this->pullRequestDiff($metadata);
+
+        if ($diffResponse->getStatusCode() !== 200) {
+            $estimate = $estimator->estimateTotals(
+                (int) ($pullRequestUpdated->changed_files ?? 0),
+                (int) ($pullRequestUpdated->additions ?? 0),
+                (int) ($pullRequestUpdated->deletions ?? 0)
+            );
+            setCheckRunSucceeded($metadata, $checkRunId, $type, (new ReviewEffortReportBuilder())->buildRough($estimate, $diffResponse->getStatusCode()));
+            $this->trace('info', 'PR {repo}#{pr}: review effort {bucket} (score {score}, from the pull request totals)', ["bucket" => $estimate["bucket"], "score" => $estimate["score"], "check_run_id" => $checkRunId]);
+            return;
+        }
+
+        $estimate = $estimator->estimateDiff((string) $diffResponse->getBody());
+        setCheckRunSucceeded($metadata, $checkRunId, $type, (new ReviewEffortReportBuilder())->build($estimate));
+        $this->trace('info', 'PR {repo}#{pr}: review effort {bucket} (score {score})', ["bucket" => $estimate["bucket"], "score" => $estimate["score"], "files" => count($estimate["files"]), "hunks" => $estimate["hunks"], "modules" => count($estimate["modules"]), "risky_files" => count($estimate["riskyFiles"]), "check_run_id" => $checkRunId]);
     }
 
     /**
