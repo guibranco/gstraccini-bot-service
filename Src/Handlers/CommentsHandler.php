@@ -266,17 +266,18 @@ class CommentsHandler implements IHandler
         );
         if (is_callable([$this, $method])) {
             $this->$method($config, $metadata, $comment);
-        } else {
-            $this->reactToComment($comment, "-1");
-            $this->postComment(
-                $metadata,
-                sprintf(
-                    "%s Command `%s` not implemented. :construction:",
-                    $metadata['errorMessages']['notImplemented'],
-                    $command->command
-                )
-            );
+            return;
         }
+
+        $this->reactToComment($comment, "-1");
+        $this->postComment(
+            $metadata,
+            sprintf(
+                "%s Command `%s` not implemented. :construction:",
+                $metadata['errorMessages']['notImplemented'],
+                $command->command
+            )
+        );
     }
 
     /**
@@ -426,25 +427,8 @@ class CommentsHandler implements IHandler
         }
 
         $body = (string) (json_decode($response->getBody())->body ?? "");
-        if (stripos($body, HelpCommentBuilder::MARKER) === false
-            || stripos($body, HelpCommentBuilder::COMPLETION_MARKER) !== false
-        ) {
-            return;
-        }
-
         $builder = new HelpCommentBuilder();
-        $ticked = $builder->findTickedCommand($body, $config->botName);
-        if ($ticked === null) {
-            return;
-        }
-
-        $command = null;
-        foreach ($config->commands as $candidate) {
-            if (strcasecmp($candidate->command, $ticked) === 0 && !isset($candidate->parameters)) {
-                $command = $candidate;
-                break;
-            }
-        }
+        $command = $this->findTickedHelpCommand($config, $builder, $body);
 
         $editor = (string) ($comment->SenderLogin ?? "");
         if ($command === null || $editor === "" || $editor === $config->botName . "[bot]") {
@@ -479,6 +463,37 @@ class CommentsHandler implements IHandler
         $this->dispatchCommand($config, $triggerMetadata, $trigger, $command, $this->checkIfPullRequestIsOpen($triggerMetadata));
     }
     
+    /**
+     * Finds the parameterless command ticked in a help comment that hasn't triggered anything yet.
+     *
+     * @param object             $config  The bot configuration.
+     * @param HelpCommentBuilder $builder The help comment builder.
+     * @param string             $body    The help comment body.
+     *
+     * @return object|null The command from the bot configuration, or null when there is none to trigger.
+     */
+    private function findTickedHelpCommand($config, HelpCommentBuilder $builder, string $body): ?object
+    {
+        if (stripos($body, HelpCommentBuilder::MARKER) === false
+            || stripos($body, HelpCommentBuilder::COMPLETION_MARKER) !== false
+        ) {
+            return null;
+        }
+
+        $ticked = $builder->findTickedCommand($body, $config->botName);
+        if ($ticked === null) {
+            return null;
+        }
+
+        foreach ($config->commands as $candidate) {
+            if (strcasecmp($candidate->command, $ticked) === 0 && !isset($candidate->parameters)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
     private function execute_addProject($config, $metadata, $comment): void
     {
         preg_match(

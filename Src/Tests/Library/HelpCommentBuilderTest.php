@@ -30,7 +30,7 @@ class HelpCommentBuilderTest extends TestCase
         ]));
     }
 
-    public function testBuildAddsMarkerAndCheckboxesOnlyForParameterlessCommands(): void
+    public function testBuildAddsMarkerAndCheckboxes(): void
     {
         $body = $this->builder->build("gstraccini", $this->commands());
 
@@ -41,14 +41,14 @@ class HelpCommentBuilderTest extends TestCase
         $this->assertStringContainsString("In development", $body);
     }
 
-    public function testFindTickedCommandReturnsNullWhenNothingIsTicked(): void
+    public function testFindTickedCommandWhenNoneTicked(): void
     {
         $body = $this->builder->build("gstraccini", $this->commands());
 
         $this->assertNull($this->builder->findTickedCommand($body, "gstraccini"));
     }
 
-    public function testFindTickedCommandReturnsTheTickedCommand(): void
+    public function testFindTickedCommand(): void
     {
         $body = $this->builder->build("gstraccini", $this->commands());
         $body = str_replace("- [ ] `@gstraccini update snapshot`", "- [x] `@gstraccini update snapshot`", $body);
@@ -56,7 +56,7 @@ class HelpCommentBuilderTest extends TestCase
         $this->assertSame("update snapshot", $this->builder->findTickedCommand($body, "gstraccini"));
     }
 
-    public function testDisableCheckboxesRemovesEveryCheckboxAndMarksTheTriggeredCommand(): void
+    public function testDisableCheckboxes(): void
     {
         $body = $this->builder->build("gstraccini", $this->commands());
         $body = str_replace("- [ ] `@gstraccini update snapshot`", "- [x] `@gstraccini update snapshot`", $body);
@@ -72,7 +72,7 @@ class HelpCommentBuilderTest extends TestCase
         $this->assertNull($this->builder->findTickedCommand($disabled, "gstraccini"));
     }
 
-    public function testUntickCheckboxesClearsEveryTick(): void
+    public function testUntickCheckboxes(): void
     {
         $body = $this->builder->build("gstraccini", $this->commands());
         $ticked = str_replace("- [ ] `@gstraccini help`", "- [X] `@gstraccini help`", $body);
