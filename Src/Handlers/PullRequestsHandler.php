@@ -13,9 +13,11 @@ use GuiBranco\GStracciniBot\Library\PendingConfirmation;
 use GuiBranco\GStracciniBot\Library\PendingConfirmationTracker;
 use GuiBranco\GStracciniBot\Library\PullRequestCodeScanner;
 use GuiBranco\GStracciniBot\Library\PullRequestHeadWatcher;
+use GuiBranco\GStracciniBot\Library\PullRequestSizeLabeler;
 use GuiBranco\GStracciniBot\Library\RecreateRequester;
 use GuiBranco\GStracciniBot\Library\VersionBumpAnalyzer;
 use GuiBranco\GStracciniBot\Library\VersionBumpCommentBuilder;
+use GuiBranco\Pancake\Response;
 use RuntimeException;
 
 define("ISSUES", "/issues/");
@@ -74,6 +76,13 @@ class PullRequestsHandler implements IHandler
      * @var PendingConfirmationTracker|null
      */
     private ?PendingConfirmationTracker $pendingConfirmations;
+
+    /**
+     * The diff of the pull request being processed, fetched once and shared by the checks that read it.
+     *
+     * @var Response|null
+     */
+    private ?Response $diffResponse = null;
 
 
     /**
@@ -304,6 +313,8 @@ class PullRequestsHandler implements IHandler
     {
         global $logStream;
 
+        $this->diffResponse = null;
+
         $this->trace('debug', 'PR {repo}#{pr}: step enable auto-merge', []);
         $this->enableAutoMerge($metadata, $pullRequest, $pullRequestUpdated, $config);
         $this->trace('debug', 'PR {repo}#{pr}: step add labels from linked issues', []);
@@ -363,6 +374,8 @@ class PullRequestsHandler implements IHandler
         $this->checkPullRequestContent($metadata, $pullRequestUpdated);
         $this->trace('debug', 'PR {repo}#{pr}: step dependency changes check', []);
         $this->checkDependencyChanges($metadata, $pullRequestUpdated);
+        $this->trace('debug', 'PR {repo}#{pr}: step size label', []);
+        $this->checkPullRequestSize($metadata, $pullRequestUpdated);
 
         if ($versionBumpResolved === true) {
             setCheckRunSucceeded($metadata, ($checkRunId ?? $existingCheckRun->id), "pull request");
@@ -1074,7 +1087,7 @@ class PullRequestsHandler implements IHandler
      */
     private function evaluatePullRequestContent($metadata, int $checkRunId, string $type): void
     {
-        $diffResponse = getPullRequestDiff($metadata);
+        $diffResponse = $this->pullRequestDiff($metadata);
         $diff = $diffResponse->getBody();
         $scanner = new PullRequestCodeScanner();
         $comments = $scanner->scanDiffForKeywords($diff);
@@ -1119,7 +1132,7 @@ class PullRequestsHandler implements IHandler
      */
     private function evaluateDependencyChanges($metadata, int $checkRunId, string $type): void
     {
-        $diffResponse = getPullRequestDiff($metadata);
+        $diffResponse = $this->pullRequestDiff($metadata);
         $diff = $diffResponse->getBody();
 
         $dependencyService = new DependencyFileLabelService();
@@ -1143,6 +1156,148 @@ class PullRequestsHandler implements IHandler
         $report = "Detected dependency changes for package managers: " . implode(", ", array_values($detectedDependencies));
         setCheckRunSucceeded($metadata, $checkRunId, $type, $report);
         $this->trace('info', 'PR {repo}#{pr}: dependency changes detected ({managers}) — labels added (HTTP {status})', ["managers" => implode(", ", array_values($detectedDependencies)), "labels" => implode(", ", $labelsToAdd), "status" => $response->getStatusCode(), "check_run_id" => $checkRunId]);
+    }
+
+    /**
+     * The diff of the pull request, fetched on first use in this run.
+     *
+     * @param array $metadata Metadata for the GitHub API request
+     *
+     * @return Response
+     */
+    private function pullRequestDiff(array $metadata): Response
+    {
+        $this->diffResponse ??= getPullRequestDiff($metadata);
+        return $this->diffResponse;
+    }
+
+    /**
+     * Labels the pull request with its size (size/XS to size/XXL).
+     *
+     * @param array  $metadata           Metadata for the GitHub API request
+     * @param object $pullRequestUpdated The pull request as returned by the GitHub API
+     *
+     * @return void
+     */
+    private function checkPullRequestSize(array $metadata, object $pullRequestUpdated): void
+    {
+        $type = "pull request size";
+        $checkRunId = setCheckRunInProgress($metadata, $pullRequestUpdated->head->sha, $type);
+        $this->runSubCheck(
+            $metadata,
+            $checkRunId,
+            $type,
+            fn () => $this->evaluatePullRequestSize($metadata, $pullRequestUpdated, $checkRunId, $type)
+        );
+    }
+
+    /**
+     * Measures the pull request, sets its size label, and completes its check run.
+     *
+     * The size is counted from the diff, without the generated files. When the
+     * diff can't be read (GitHub refuses the diff of very large pull requests),
+     * it falls back to the pull request's own additions and deletions.
+     *
+     * @param array  $metadata           Metadata for the GitHub API request
+     * @param object $pullRequestUpdated The pull request as returned by the GitHub API
+     * @param int    $checkRunId         The check run in progress
+     * @param string $type               The check type
+     *
+     * @return void
+     */
+    private function evaluatePullRequestSize(array $metadata, object $pullRequestUpdated, int $checkRunId, string $type): void
+    {
+        $labeler = new PullRequestSizeLabeler();
+        $diffResponse = $this->pullRequestDiff($metadata);
+        $fromDiff = $diffResponse->getStatusCode() === 200;
+        $size = $fromDiff
+            ? $labeler->measureDiff((string) $diffResponse->getBody())
+            : $this->sizeFromTotals($pullRequestUpdated);
+
+        $label = $labeler->labelFor($size["changes"]);
+        $this->applySizeLabel($metadata, $pullRequestUpdated, $label);
+
+        $report = "Size: **{$label}** — {$size["changes"]} changed line(s) ({$size["additions"]} addition(s), {$size["deletions"]} deletion(s)).";
+        $report .= $this->describeIgnoredFiles($size["ignoredFiles"]);
+        if ($fromDiff === false) {
+            $report .= "\n\nThe diff could not be read (HTTP {$diffResponse->getStatusCode()}), so every file was counted.";
+        }
+
+        setCheckRunSucceeded($metadata, $checkRunId, $type, $report);
+        $this->trace('info', 'PR {repo}#{pr}: size {label} ({changes} changed lines, from the {source})', ["label" => $label, "changes" => $size["changes"], "source" => ($fromDiff ? "diff" : "pull request totals"), "ignored_files" => count($size["ignoredFiles"]), "check_run_id" => $checkRunId]);
+    }
+
+    /**
+     * The size from the pull request's own totals, used when the diff can't be read.
+     *
+     * @param object $pullRequestUpdated The pull request as returned by the GitHub API
+     *
+     * @return array{additions: int, deletions: int, changes: int, ignoredFiles: string[]}
+     */
+    private function sizeFromTotals(object $pullRequestUpdated): array
+    {
+        $additions = (int) ($pullRequestUpdated->additions ?? 0);
+        $deletions = (int) ($pullRequestUpdated->deletions ?? 0);
+
+        return ["additions" => $additions, "deletions" => $deletions, "changes" => ($additions + $deletions), "ignoredFiles" => []];
+    }
+
+    /**
+     * Lists the generated files left out of the size, up to a few, so the check output stays small.
+     *
+     * @param string[] $ignoredFiles The generated files
+     *
+     * @return string The paragraph for the check output, empty when there are none
+     */
+    private function describeIgnoredFiles(array $ignoredFiles): string
+    {
+        $maxListed = 20;
+        $total = count($ignoredFiles);
+        if ($total === 0) {
+            return "";
+        }
+
+        $listed = array_map(static fn ($file) => "`" . mb_substr($file, 0, 200) . "`", array_slice($ignoredFiles, 0, $maxListed));
+        $more = $total > $maxListed ? " and " . ($total - $maxListed) . " more" : "";
+
+        return "\n\n{$total} generated file(s) not counted: " . implode(", ", $listed) . "{$more}.";
+    }
+
+    /**
+     * Sets the size label on the pull request: removes the other size labels, then adds it when missing.
+     *
+     * @param array  $metadata           Metadata for the GitHub API request
+     * @param object $pullRequestUpdated The pull request as returned by the GitHub API
+     * @param string $label              The size label the pull request should have
+     *
+     * @return void
+     */
+    private function applySizeLabel(array $metadata, object $pullRequestUpdated, string $label): void
+    {
+        $labeler = new PullRequestSizeLabeler();
+        $currentLabels = array_column(($pullRequestUpdated->labels ?? []), "name");
+
+        foreach ($labeler->staleLabels($currentLabels, $label) as $staleLabel) {
+            $url = "{$metadata["labelsUrl"]}/" . rawurlencode($staleLabel);
+            $status = doRequestGitHub($metadata["token"], $url, null, "DELETE")->getStatusCode();
+            // 404: the label was already removed, which is what we want.
+            if (($status < 200 || $status >= 300) && $status !== 404) {
+                throw new RuntimeException("Could not remove the stale size label {$staleLabel} (HTTP {$status})");
+            }
+
+            $this->trace('debug', 'PR {repo}#{pr}: removed stale size label {label} (HTTP {status})', ["label" => $staleLabel, "status" => $status]);
+        }
+
+        if ($labeler->hasLabel($currentLabels, $label) === true) {
+            return;
+        }
+
+        $status = doRequestGitHub($metadata["token"], $metadata["labelsUrl"], ["labels" => [$label]], "POST")->getStatusCode();
+        if ($status < 200 || $status >= 300) {
+            throw new RuntimeException("Could not add the size label {$label} (HTTP {$status})");
+        }
+
+        $this->trace('debug', 'PR {repo}#{pr}: added size label {label} (HTTP {status})', ["label" => $label, "status" => $status]);
     }
 
     /**
@@ -1439,6 +1594,9 @@ class PullRequestsHandler implements IHandler
                     unset($labelsIssue[$position]);
                 }
             }
+
+            // The size is the pull request's own, set by the size check.
+            $labelsIssue = array_filter($labelsIssue, static fn ($label) => (new PullRequestSizeLabeler())->isSizeLabel($label) === false);
 
             $labels = array_merge($labels, $labelsIssue);
         }
