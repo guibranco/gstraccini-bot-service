@@ -19,6 +19,7 @@ use GuiBranco\GStracciniBot\Library\PullRequestHeadWatcher;
 use GuiBranco\GStracciniBot\Library\PullRequestSizeLabeler;
 use GuiBranco\GStracciniBot\Library\RecreateRequester;
 use GuiBranco\GStracciniBot\Library\ReviewEffortEstimator;
+use GuiBranco\GStracciniBot\Library\ReviewEffortReportBuilder;
 use GuiBranco\GStracciniBot\Library\VersionBumpAnalyzer;
 use GuiBranco\GStracciniBot\Library\VersionBumpCommentBuilder;
 use GuiBranco\Pancake\Response;
@@ -1617,15 +1618,13 @@ class PullRequestsHandler implements IHandler
                 (int) ($pullRequestUpdated->additions ?? 0),
                 (int) ($pullRequestUpdated->deletions ?? 0)
             );
-            $report = "Review effort: **{$estimate["bucket"]}** — score {$estimate["score"]} (rough).\n\n";
-            $report .= "The diff could not be read (HTTP {$diffResponse->getStatusCode()}), so the estimate only uses the number of changed files and lines.";
-            setCheckRunSucceeded($metadata, $checkRunId, $type, $report);
+            setCheckRunSucceeded($metadata, $checkRunId, $type, (new ReviewEffortReportBuilder())->buildRough($estimate, $diffResponse->getStatusCode()));
             $this->trace('info', 'PR {repo}#{pr}: review effort {bucket} (score {score}, from the pull request totals)', ["bucket" => $estimate["bucket"], "score" => $estimate["score"], "check_run_id" => $checkRunId]);
             return;
         }
 
         $estimate = $estimator->estimateDiff((string) $diffResponse->getBody());
-        setCheckRunSucceeded($metadata, $checkRunId, $type, $estimator->buildReport($estimate));
+        setCheckRunSucceeded($metadata, $checkRunId, $type, (new ReviewEffortReportBuilder())->build($estimate));
         $this->trace('info', 'PR {repo}#{pr}: review effort {bucket} (score {score})', ["bucket" => $estimate["bucket"], "score" => $estimate["score"], "files" => count($estimate["files"]), "hunks" => $estimate["hunks"], "modules" => count($estimate["modules"]), "risky_files" => count($estimate["riskyFiles"]), "check_run_id" => $checkRunId]);
     }
 

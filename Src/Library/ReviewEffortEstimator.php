@@ -20,83 +20,52 @@ namespace GuiBranco\GStracciniBot\Library;
  */
 class ReviewEffortEstimator
 {
-    /** The weight of each kind of file. */
-    public const KIND_WEIGHTS = [
-        "docs"   => 0.3,
-        "test"   => 0.5,
-        "config" => 0.6,
-        "source" => 1.0,
-        "infra"  => 1.3,
-        "sql"    => 1.5,
-    ];
-
-    /**
-     * The effort buckets, from the lightest, with the minimum score of each.
-     *
-     * @var array<string, float>
-     */
-    public const BUCKETS = [
-        "⚡ Trivial (~5 min)"           => 0.0,
-        "☕ Light (~15 min)"            => 5.0,
-        "🧠 Moderate (~30 min)"         => 15.0,
-        "🔍 Heavy (~1 h)"               => 35.0,
-        "🪓 Very heavy (consider splitting)" => 70.0,
-    ];
-
     /** The points per hunk of a file. */
-    private const HUNK_POINTS = 0.5;
+    public const HUNK_POINTS = 0.5;
 
-    /** The points per branching token added in a code file. */
-    private const COMPLEXITY_POINTS = 0.3;
+    /** The points per branching token added in a code file, times the weight of the file. */
+    public const BRANCHING_POINTS = 0.3;
 
     /** The points per extra module touched. */
-    private const MODULE_POINTS = 1.5;
+    public const MODULE_POINTS = 1.5;
 
     /** The points per extra language touched. */
-    private const LANGUAGE_POINTS = 1.0;
+    public const LANGUAGE_POINTS = 1.0;
 
     /** The points for a binary file, which has no lines to count. */
-    private const BINARY_POINTS = 1.0;
+    public const BINARY_POINTS = 1.0;
 
     /** The multiplier when a sensitive path changes. */
-    private const RISK_MULTIPLIER = 1.3;
+    public const RISK_MULTIPLIER = 1.3;
 
     /** The weight of the deleted lines of a file, against its added lines. */
-    private const DELETION_WEIGHT = 0.3;
+    public const DELETION_WEIGHT = 0.3;
 
     /** The weight of the lines of a deleted file. */
-    private const DELETED_FILE_WEIGHT = 0.1;
+    public const DELETED_FILE_WEIGHT = 0.1;
 
-    /** The weight of the lines of a new file (read once, without a before to compare). */
-    private const NEW_FILE_WEIGHT = 0.8;
+    /** The weight of the lines of a new file, read once, with no before to compare. */
+    public const NEW_FILE_WEIGHT = 0.8;
 
     /** The changed source lines from which a pull request without test changes is flagged. */
-    private const MISSING_TESTS_MIN_LINES = 10;
-
-    /** The kinds whose added lines are scanned for branching. */
-    private const CODE_KINDS = ["source", "test", "infra", "sql"];
-
-    /** Sensitive paths: a change to any of them makes the review heavier. */
-    private const RISK_PATTERNS = [
-        '/(^|\/)(auth|authentication|authorization|security|crypto|oauth|sso|permissions?)(\/|\.|_|$)/i',
-        '/(token|secret|password|credential|encrypt|decrypt)[^\/]*$/i',
-        '/(^|\/)migrations?\//i',
-        '/\.sql$/i',
-        '/^\.github\/workflows\//i',
-        '/(^|\/)Dockerfile[^\/]*$/i',
-        '/(^|\/)docker-compose[^\/]*\.ya?ml$/i',
-        '/(^|\/)\.env[^\/]*$/i',
-        '/(^|\/)\.htaccess$/i',
-    ];
-
-    /** Branching tokens counted in the added lines of code files. */
-    private const COMPLEXITY_PATTERN = '/\b(if|elseif|elif|for|foreach|while|case|catch|except|when)\b|&&|\|\|/';
-
-    /** Lines that are comments only, whose words aren't branching. */
-    private const COMMENT_PATTERN = '/^\s*(\/\/|#|\*|\/\*|--|<!--)/';
+    public const MISSING_TESTS_LINES = 10;
 
     /**
-     * Detects the generated files and reads the paths of the diff.
+     * Reads the files of the diff.
+     *
+     * @var ReviewEffortDiffParser
+     */
+    private ReviewEffortDiffParser $parser;
+
+    /**
+     * Weighs the files and tells code from the rest.
+     *
+     * @var ReviewEffortFileClassifier
+     */
+    private ReviewEffortFileClassifier $classifier;
+
+    /**
+     * Detects the generated files, left out as for the size label.
      *
      * @var PullRequestSizeLabeler
      */
@@ -104,11 +73,13 @@ class ReviewEffortEstimator
 
 
     /**
-     * @param PullRequestSizeLabeler|null $sizeLabeler Detects the generated files (shared with the size label).
+     * Creates the estimator.
      */
-    public function __construct(?PullRequestSizeLabeler $sizeLabeler=null)
+    public function __construct()
     {
-        $this->sizeLabeler = ($sizeLabeler ?? new PullRequestSizeLabeler());
+        $this->parser      = new ReviewEffortDiffParser();
+        $this->classifier  = new ReviewEffortFileClassifier();
+        $this->sizeLabeler = new PullRequestSizeLabeler();
 
     }//end __construct()
 
@@ -118,28 +89,23 @@ class ReviewEffortEstimator
      *
      * @param string $diff The pull request diff (application/vnd.github.v3.diff).
      *
-     * @return array{score: float, bucket: string, files: array<int, array<string, mixed>>, modules: string[], languages: string[], riskyFiles: string[], ignoredFiles: string[], hunks: int, complexity: int, missingTests: bool}
+     * @return array<string, mixed> The score, bucket, files (heaviest first), modules, languages,
+     *                              riskyFiles, ignoredFiles, hunks, complexity and missingTests.
      */
     public function estimateDiff(string $diff): array
     {
-        $files        = [];
-        $ignoredFiles = [];
-
-        foreach ($this->splitFiles($diff) as $lines) {
-            $file = $this->parseFile($lines);
-            if ($file === null) {
-                continue;
-            }
-
+        $summary = $this->emptySummary();
+        foreach ($this->parser->parse($diff) as $file) {
             if ($this->sizeLabeler->isGenerated($file["path"]) === true) {
-                $ignoredFiles[] = $file["path"];
+                $summary["ignoredFiles"][] = $file["path"];
                 continue;
             }
 
-            $files[] = $file;
+            $file["score"] = $this->scoreFile($file);
+            $this->addFile($summary, $file);
         }
 
-        return $this->summarise($files, array_values(array_unique($ignoredFiles)));
+        return $this->finishSummary($summary);
 
     }//end estimateDiff()
 
@@ -147,88 +113,37 @@ class ReviewEffortEstimator
     /**
      * A rough estimate from the pull request's own totals, for when the diff can't be read.
      *
-     * @param int $changedFiles The number of changed files.
-     * @param int $additions    The added lines.
-     * @param int $deletions    The deleted lines.
+     * @param integer $changedFiles The number of changed files.
+     * @param integer $additions    The added lines.
+     * @param integer $deletions    The deleted lines.
      *
-     * @return array{score: float, bucket: string}
+     * @return array<string, mixed> The score and bucket.
      */
     public function estimateTotals(int $changedFiles, int $additions, int $deletions): array
     {
-        $score = sqrt($additions + (self::DELETION_WEIGHT * $deletions)) + (self::HUNK_POINTS * $changedFiles);
-        $score = round($score, 1);
+        $lines = ($additions + (self::DELETION_WEIGHT * $deletions));
+        $score = round((sqrt($lines) + (self::HUNK_POINTS * $changedFiles)), 1);
 
-        return ["score" => $score, "bucket" => $this->bucketFor($score)];
+        $estimate           = [];
+        $estimate["score"]  = $score;
+        $estimate["bucket"] = $this->bucketFor($score);
+
+        return $estimate;
 
     }//end estimateTotals()
 
 
     /**
-     * The check run output for an estimate from the diff.
-     *
-     * @param array $estimate The result of estimateDiff().
-     *
-     * @return string Markdown.
-     */
-    public function buildReport(array $estimate): string
-    {
-        $maxFiles  = 10;
-        $maxListed = 10;
-
-        $report  = "Review effort: **{$estimate["bucket"]}** — score {$estimate["score"]}.\n\n";
-        $report .= "| Signal | Value |\n|---|---|\n";
-        $report .= "| Files counted | " . count($estimate["files"]) . " |\n";
-        $report .= "| Hunks | {$estimate["hunks"]} |\n";
-        $report .= "| Branching added | {$estimate["complexity"]} |\n";
-        $report .= "| Modules | " . count($estimate["modules"]) . " |\n";
-        $report .= "| Languages | " . (count($estimate["languages"]) === 0 ? "0" : count($estimate["languages"]) . " (" . implode(", ", $estimate["languages"]) . ")") . " |\n";
-        $report .= "| Sensitive files | " . count($estimate["riskyFiles"]) . " |\n";
-
-        if (count($estimate["files"]) > 0) {
-            $report .= "\n**Heaviest files**\n\n| File | Kind | Status | +/- | Hunks | Score |\n|---|---|---|---|---|---|\n";
-            foreach (array_slice($estimate["files"], 0, $maxFiles) as $file) {
-                $path    = str_replace("|", "\\|", mb_substr($file["path"], 0, 120));
-                $report .= "| `{$path}` | {$file["kind"]} | {$file["status"]} | +{$file["additions"]}/-{$file["deletions"]} | {$file["hunks"]} | {$file["score"]} |\n";
-            }
-        }
-
-        $notes = [];
-        if (count($estimate["riskyFiles"]) > 0) {
-            $listed  = array_map(static fn ($f) => "`" . mb_substr($f, 0, 120) . "`", array_slice($estimate["riskyFiles"], 0, $maxListed));
-            $more    = count($estimate["riskyFiles"]) > $maxListed ? " and " . (count($estimate["riskyFiles"]) - $maxListed) . " more" : "";
-            $notes[] = "🔐 Sensitive paths changed (score × " . self::RISK_MULTIPLIER . "): " . implode(", ", $listed) . "{$more}.";
-        }
-
-        if ($estimate["missingTests"] === true) {
-            $notes[] = "🧪 Source code changed without any test changes.";
-        }
-
-        if (count($estimate["ignoredFiles"]) > 0) {
-            $notes[] = count($estimate["ignoredFiles"]) . " generated file(s) not counted.";
-        }
-
-        if (count($notes) > 0) {
-            $report .= "\n" . implode("\n\n", $notes) . "\n";
-        }
-
-        $report .= "\n<sub>The estimate weighs each file by its kind, the square root of its lines, its hunks and the branching it adds, plus the modules and languages the change spans. It is a heuristic, not a measure.</sub>";
-
-        return $report;
-
-    }//end buildReport()
-
-
-    /**
-     * The bucket of a score.
+     * The bucket of a score: the heaviest whose minimum the score reaches.
      *
      * @param float $score The effort score.
      *
-     * @return string One of the BUCKETS.
+     * @return string
      */
     public function bucketFor(float $score): string
     {
-        $bucket = array_key_first(self::BUCKETS);
-        foreach (self::BUCKETS as $name => $minimum) {
+        $bucket = "";
+        foreach ($this->buckets() as $name => $minimum) {
             if ($score >= $minimum) {
                 $bucket = $name;
             }
@@ -240,203 +155,22 @@ class ReviewEffortEstimator
 
 
     /**
-     * The kind of a file, which sets its weight.
+     * The effort buckets, from the lightest, with the minimum score of each.
      *
-     * @param string $path The file path in the repository.
-     *
-     * @return string One of the keys of KIND_WEIGHTS.
+     * @return array<string, float>
      */
-    public function kindOf(string $path): string
+    private function buckets(): array
     {
-        $name      = strtolower(basename($path));
-        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        $buckets = [];
+        $buckets["⚡ Trivial (~5 min)"]   = 0.0;
+        $buckets["☕ Light (~15 min)"]    = 5.0;
+        $buckets["🧠 Moderate (~30 min)"] = 15.0;
+        $buckets["🔍 Heavy (~1 h)"]       = 35.0;
+        $buckets["🪓 Very heavy (consider splitting)"] = 70.0;
 
-        if (preg_match('/(^|\/)(tests?|__tests__|spec|specs)\//i', $path) === 1
-            || preg_match('/(Test|Tests|Spec)\.[a-z]+$|\.(test|spec)\.[a-z]+$|^test_.*\.py$|_test\.(go|py)$/i', basename($path)) === 1
-        ) {
-            return "test";
-        }
+        return $buckets;
 
-        if ($extension === "sql" || preg_match('/(^|\/)migrations?\//i', $path) === 1) {
-            return "sql";
-        }
-
-        if (preg_match('/^\.github\/workflows\//i', $path) === 1
-            || str_starts_with($name, "dockerfile")
-            || preg_match('/^docker-compose.*\.ya?ml$/', $name) === 1
-            || in_array($extension, ["tf", "tfvars", "hcl", "sh", "bash", "ps1"], true)
-            || $name === ".htaccess"
-            || $name === "makefile"
-        ) {
-            return "infra";
-        }
-
-        if (in_array($extension, ["md", "markdown", "rst", "txt", "adoc"], true)
-            || preg_match('/(^|\/)docs?\//i', $path) === 1
-            || in_array($name, ["license", "changelog", "authors", "contributors"], true)
-        ) {
-            return "docs";
-        }
-
-        if (in_array($extension, ["json", "yml", "yaml", "xml", "ini", "toml", "cfg", "conf", "config", "properties", "editorconfig", "gitignore", "gitattributes", "csv", "lock", "svg"], true)
-            || str_starts_with($name, ".")
-        ) {
-            return "config";
-        }
-
-        return "source";
-
-    }//end kindOf()
-
-
-    /**
-     * Whether a path is sensitive.
-     *
-     * @param string $path The file path in the repository.
-     *
-     * @return boolean
-     */
-    public function isRisky(string $path): bool
-    {
-        foreach (self::RISK_PATTERNS as $pattern) {
-            if (preg_match($pattern, $path) === 1) {
-                return true;
-            }
-        }
-
-        return false;
-
-    }//end isRisky()
-
-
-    /**
-     * Splits a diff into the lines of each file, from its "diff --git" line.
-     *
-     * @param string $diff The unified diff.
-     *
-     * @return array<int, string[]>
-     */
-    private function splitFiles(string $diff): array
-    {
-        $files   = [];
-        $current = null;
-
-        foreach (explode("\n", str_replace("\r\n", "\n", $diff)) as $line) {
-            if (str_starts_with($line, "diff --git ")) {
-                if ($current !== null) {
-                    $files[] = $current;
-                }
-
-                $current = [$line];
-                continue;
-            }
-
-            if ($current !== null) {
-                $current[] = $line;
-            }
-        }
-
-        if ($current !== null) {
-            $files[] = $current;
-        }
-
-        return $files;
-
-    }//end splitFiles()
-
-
-    /**
-     * Reads one file of the diff: its path, status, lines, hunks and branching added.
-     *
-     * @param string[] $lines The lines of the file, from its "diff --git" line.
-     *
-     * @return array<string, mixed>|null The file, or null when its path can't be read.
-     */
-    private function parseFile(array $lines): ?array
-    {
-        $path = $this->sizeLabeler->destinationPath($lines[0]);
-        if ($path === null) {
-            return null;
-        }
-
-        $file = [
-            "path"       => $path,
-            "kind"       => $this->kindOf($path),
-            "status"     => "modified",
-            "additions"  => 0,
-            "deletions"  => 0,
-            "hunks"      => 0,
-            "complexity" => 0,
-            "risky"      => $this->isRisky($path),
-            "score"      => 0.0,
-        ];
-
-        $inHeader = true;
-        $isCode   = in_array($file["kind"], self::CODE_KINDS, true);
-
-        foreach (array_slice($lines, 1) as $line) {
-            if (str_starts_with($line, "@@")) {
-                $inHeader = false;
-                $file["hunks"]++;
-                continue;
-            }
-
-            if ($inHeader === true) {
-                $file["status"] = $this->statusFromHeader($line, $file["status"]);
-                continue;
-            }
-
-            if (str_starts_with($line, "+")) {
-                $file["additions"]++;
-                $added = substr($line, 1);
-                if ($isCode === true && preg_match(self::COMMENT_PATTERN, $added) !== 1) {
-                    $file["complexity"] += preg_match_all(self::COMPLEXITY_PATTERN, $added);
-                }
-
-                continue;
-            }
-
-            if (str_starts_with($line, "-")) {
-                $file["deletions"]++;
-            }
-        }//end foreach
-
-        $file["score"] = $this->scoreFile($file);
-
-        return $file;
-
-    }//end parseFile()
-
-
-    /**
-     * The status a header line of a file sets, or the current status.
-     *
-     * @param string $line    A header line ("new file mode", "rename from", "Binary files ...").
-     * @param string $current The status so far.
-     *
-     * @return string added, deleted, renamed, binary or modified.
-     */
-    private function statusFromHeader(string $line, string $current): string
-    {
-        if (str_starts_with($line, "new file mode")) {
-            return "added";
-        }
-
-        if (str_starts_with($line, "deleted file mode")) {
-            return "deleted";
-        }
-
-        if (str_starts_with($line, "rename from") && $current === "modified") {
-            return "renamed";
-        }
-
-        if (str_starts_with($line, "Binary files") || str_starts_with($line, "GIT binary patch")) {
-            return "binary";
-        }
-
-        return $current;
-
-    }//end statusFromHeader()
+    }//end buckets()
 
 
     /**
@@ -452,22 +186,20 @@ class ReviewEffortEstimator
             return self::BINARY_POINTS;
         }
 
-        $weight = self::KIND_WEIGHTS[$file["kind"]];
-        $lines  = $file["additions"] + (self::DELETION_WEIGHT * $file["deletions"]);
-
+        $weight = $this->classifier->weightOf($file["kind"]);
+        $lines  = ($file["additions"] + (self::DELETION_WEIGHT * $file["deletions"]));
+        $hunks  = $file["hunks"];
         if ($file["status"] === "deleted") {
             $lines = (self::DELETED_FILE_WEIGHT * $file["deletions"]);
+            $hunks = 0;
         }
 
         if ($file["status"] === "added") {
-            $lines *= self::NEW_FILE_WEIGHT;
+            $lines = (self::NEW_FILE_WEIGHT * $lines);
         }
 
-        $hunks = $file["status"] === "deleted" ? 0 : $file["hunks"];
-
-        $score  = $weight * sqrt($lines);
-        $score += self::HUNK_POINTS * $hunks;
-        $score += self::COMPLEXITY_POINTS * $weight * $file["complexity"];
+        $score = (($weight * sqrt($lines)) + (self::HUNK_POINTS * $hunks));
+        $score = ($score + (self::BRANCHING_POINTS * $weight * $file["complexity"]));
 
         return round($score, 2);
 
@@ -475,71 +207,99 @@ class ReviewEffortEstimator
 
 
     /**
-     * Adds up the files, the spread across modules and languages, and the risk.
+     * The summary before any file is added.
      *
-     * @param array<int, array<string, mixed>> $files        The counted files.
-     * @param string[]                         $ignoredFiles The generated files left out.
-     *
-     * @return array{score: float, bucket: string, files: array<int, array<string, mixed>>, modules: string[], languages: string[], riskyFiles: string[], ignoredFiles: string[], hunks: int, complexity: int, missingTests: bool}
+     * @return array<string, mixed>
      */
-    private function summarise(array $files, array $ignoredFiles): array
+    private function emptySummary(): array
     {
-        $score        = 0.0;
-        $modules      = [];
-        $languages    = [];
-        $riskyFiles   = [];
-        $hunks        = 0;
-        $complexity   = 0;
-        $sourceLines  = 0;
-        $testsChanged = false;
+        $summary = [];
+        $summary["score"]        = 0.0;
+        $summary["files"]        = [];
+        $summary["modules"]      = [];
+        $summary["languages"]    = [];
+        $summary["riskyFiles"]   = [];
+        $summary["ignoredFiles"] = [];
+        $summary["hunks"]        = 0;
+        $summary["complexity"]   = 0;
+        $summary["sourceLines"]  = 0;
+        $summary["testsChanged"] = false;
 
-        foreach ($files as $file) {
-            $score      += $file["score"];
-            $hunks      += $file["hunks"];
-            $complexity += $file["complexity"];
-            $modules[$this->moduleOf($file["path"])] = true;
+        return $summary;
 
-            $extension = strtolower(pathinfo($file["path"], PATHINFO_EXTENSION));
-            if (in_array($file["kind"], self::CODE_KINDS, true) && $extension !== "") {
-                $languages[$extension] = true;
-            }
+    }//end emptySummary()
 
-            if ($file["risky"] === true) {
-                $riskyFiles[] = $file["path"];
-            }
 
-            if ($file["kind"] === "test") {
-                $testsChanged = true;
-            }
+    /**
+     * Adds a counted file to the summary.
+     *
+     * @param array<string, mixed> $summary The summary so far.
+     * @param array<string, mixed> $file    The scored file.
+     *
+     * @return void
+     */
+    private function addFile(array &$summary, array $file): void
+    {
+        $summary["files"][] = $file;
+        $summary["score"]  += $file["score"];
+        $summary["hunks"]  += $file["hunks"];
+        $summary["complexity"] += $file["complexity"];
+        $summary["modules"][$this->moduleOf($file["path"])] = true;
 
-            if ($file["kind"] === "source" && $file["status"] !== "deleted") {
-                $sourceLines += $file["additions"] + $file["deletions"];
-            }
-        }//end foreach
-
-        $score += self::MODULE_POINTS * max(0, count($modules) - 1);
-        $score += self::LANGUAGE_POINTS * max(0, count($languages) - 1);
-        if (count($riskyFiles) > 0) {
-            $score *= self::RISK_MULTIPLIER;
+        $extension = strtolower(pathinfo($file["path"], PATHINFO_EXTENSION));
+        if ($this->classifier->isCode($file["kind"]) === true && $extension !== "") {
+            $summary["languages"][$extension] = true;
         }
 
-        $score = round($score, 1);
-        usort($files, static fn (array $a, array $b) => $b["score"] <=> $a["score"]);
+        if ($file["risky"] === true) {
+            $summary["riskyFiles"][] = $file["path"];
+        }
 
-        return [
-            "score"        => $score,
-            "bucket"       => $this->bucketFor($score),
-            "files"        => $files,
-            "modules"      => array_keys($modules),
-            "languages"    => array_keys($languages),
-            "riskyFiles"   => $riskyFiles,
-            "ignoredFiles" => $ignoredFiles,
-            "hunks"        => $hunks,
-            "complexity"   => $complexity,
-            "missingTests" => ($testsChanged === false && $sourceLines >= self::MISSING_TESTS_MIN_LINES),
-        ];
+        if ($file["kind"] === ReviewEffortFileClassifier::KIND_TEST) {
+            $summary["testsChanged"] = true;
+        }
 
-    }//end summarise()
+        if ($file["kind"] === ReviewEffortFileClassifier::KIND_SOURCE && $file["status"] !== "deleted") {
+            $summary["sourceLines"] += ($file["additions"] + $file["deletions"]);
+        }
+
+    }//end addFile()
+
+
+    /**
+     * Adds the spread and the risk to the score of the files, and sorts the files from the heaviest.
+     *
+     * @param array<string, mixed> $summary The summary with every file added.
+     *
+     * @return array<string, mixed>
+     */
+    private function finishSummary(array $summary): array
+    {
+        $extraModules   = max(0, (count($summary["modules"]) - 1));
+        $extraLanguages = max(0, (count($summary["languages"]) - 1));
+        $score          = ($summary["score"] + (self::MODULE_POINTS * $extraModules) + (self::LANGUAGE_POINTS * $extraLanguages));
+        if (count($summary["riskyFiles"]) > 0) {
+            $score = ($score * self::RISK_MULTIPLIER);
+        }
+
+        $files = $summary["files"];
+        usort($files, static fn (array $first, array $second) => ($second["score"] <=> $first["score"]));
+
+        $estimate                 = [];
+        $estimate["score"]        = round($score, 1);
+        $estimate["bucket"]       = $this->bucketFor($estimate["score"]);
+        $estimate["files"]        = $files;
+        $estimate["modules"]      = array_keys($summary["modules"]);
+        $estimate["languages"]    = array_keys($summary["languages"]);
+        $estimate["riskyFiles"]   = $summary["riskyFiles"];
+        $estimate["ignoredFiles"] = array_values(array_unique($summary["ignoredFiles"]));
+        $estimate["hunks"]        = $summary["hunks"];
+        $estimate["complexity"]   = $summary["complexity"];
+        $estimate["missingTests"] = ($summary["testsChanged"] === false && $summary["sourceLines"] >= self::MISSING_TESTS_LINES);
+
+        return $estimate;
+
+    }//end finishSummary()
 
 
     /**
