@@ -270,6 +270,10 @@ class PendingConfirmationReminder
             return true;
         }
 
+        if (str_contains($body, BreakingChangeCommentBuilder::COMPLETION_MARKER) === true) {
+            return true;
+        }
+
         return str_contains($body, InfisicalIgnoreApprovalCommentBuilder::COMPLETION_MARKER);
 
     }//end isApplied()

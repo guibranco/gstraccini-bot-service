@@ -273,6 +273,12 @@
       "textWithIcon": "🚦 awaiting triage"
     },
     {
+      "color": "#B60205",
+      "description": "Introduces a breaking change",
+      "text": "breaking-changes",
+      "textWithIcon": "☢️ breaking-changes"
+    },
+    {
       "color": "#D93F0B",
       "description": "Participation in the Hacktoberfest event",
       "text": "hacktoberfest",
