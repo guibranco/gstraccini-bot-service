@@ -11,6 +11,7 @@ class HelpCommentBuilder
 {
     public const MARKER = "<!-- gstraccini-bot:help -->";
     public const COMPLETION_MARKER = "<!-- gstraccini-bot:help:triggered -->";
+    private const IN_DEVELOPMENT = " :warning: (In development, it may not work as expected!)";
 
 
     /**
@@ -23,43 +24,63 @@ class HelpCommentBuilder
      */
     public function build(string $botName, array $commands): string
     {
-        $helpComment = self::MARKER . "\r\n";
-        $helpComment .= "That's what I can do :neckbeard::\r\n";
+        $lines   = [self::MARKER];
+        $lines[] = "That's what I can do :neckbeard::";
         foreach ($commands as $command) {
-            $parameters = "";
-            $parametersHelp = "";
-            $prefix = "[ ] ";
-            $inDevelopment = isset($command->dev) && $command->dev
-                ? " :warning: (In development, it may not work as expected!)"
-                : "";
-            if (isset($command->parameters)) {
-                $prefix = "";
-                foreach ($command->parameters as $parameter) {
-                    $parameters .= " <" . $parameter->parameter . ">";
-                    $parametersHelp .= "\t- `" . $parameter->parameter . "` - `[" .
-                        ($parameter->required ? "required" : "optional") . "]` " .
-                        $parameter->description . "\r\n";
-                }
-            }
-
-            $helpComment .= "- {$prefix}`@{$botName} {$command->command}{$parameters}` - ";
-            $helpComment .= $command->description . $inDevelopment . "\r\n";
-            $helpComment .= $parametersHelp;
+            $lines[] = $this->buildCommandLine($botName, $command);
         }
 
-        $helpComment .= "\n\nMultiple commands can be issued simultaneously. " .
-            "Just respect each command pattern (with bot name prefix + command).\n\n" .
-            "> [!NOTE]\n" .
-            "> \n" .
-            "> If you aren't allowed to use this bot, a reaction with a thumbs down will be added to your comment.\r\n" .
-            "\n\n" .
-            "> [!TIP]\n" .
-            "> \n" .
-            "> You can tick (✅) one item from the above list, and it will be triggered! " .
-            "(Only parameterless commands). Once one is ticked, the other checkboxes are disabled.\n";
+        $lines[] = "";
+        $lines[] = "Multiple commands can be issued simultaneously. Just respect each command pattern (with bot name prefix + command).";
+        $lines[] = "";
+        $lines[] = "> [!NOTE]";
+        $lines[] = "> ";
+        $lines[] = "> If you aren't allowed to use this bot, a reaction with a thumbs down will be added to your comment.";
+        $lines[] = "";
+        $lines[] = "> [!TIP]";
+        $lines[] = "> ";
+        $lines[] = "> You can tick (✅) one item from the above list, and it will be triggered! (Only parameterless commands). Once one is ticked, the other checkboxes are disabled.";
 
-        return $helpComment;
-    }
+        return sprintf("%s\r\n", implode("\r\n", $lines));
+
+    }//end build()
+
+
+    /**
+     * Builds the list item of one command, with its parameters below it.
+     * Only a parameterless command gets a checkbox.
+     *
+     * @param string $botName The bot name (without the `[bot]` suffix).
+     * @param object $command The command from the bot configuration.
+     *
+     * @return string
+     */
+    private function buildCommandLine(string $botName, object $command): string
+    {
+        $suffix = "";
+        if (isset($command->dev) === true && $command->dev === true) {
+            $suffix = self::IN_DEVELOPMENT;
+        }
+
+        if (isset($command->parameters) === false) {
+            return "- [ ] `@{$botName} {$command->command}` - {$command->description}{$suffix}";
+        }
+
+        $names = "";
+        $help  = "";
+        foreach ($command->parameters as $parameter) {
+            $required = "optional";
+            if ($parameter->required === true) {
+                $required = "required";
+            }
+
+            $names .= " <{$parameter->parameter}>";
+            $help  .= "\r\n\t- `{$parameter->parameter}` - `[{$required}]` {$parameter->description}";
+        }
+
+        return "- `@{$botName} {$command->command}{$names}` - {$command->description}{$suffix}{$help}";
+
+    }//end buildCommandLine()
 
 
     /**
@@ -72,13 +93,15 @@ class HelpCommentBuilder
      */
     public function findTickedCommand(string $body, string $botName): ?string
     {
-        $pattern = "/^-\s\[[xX]\]\s`@" . preg_quote($botName, "/") . "\s([^`]+)`/m";
+        $name    = preg_quote($botName, "/");
+        $pattern = "/^-\s\[[xX]\]\s`@{$name}\s([^`]+)`/m";
         if (preg_match($pattern, $body, $matches) !== 1) {
             return null;
         }
 
         return trim($matches[1]);
-    }
+
+    }//end findTickedCommand()
 
 
     /**
@@ -95,16 +118,17 @@ class HelpCommentBuilder
      */
     public function disableCheckboxes(string $body, string $botName, string $command, string $user): string
     {
-        $ticked = "/^-\s\[[xX]\]\s(`@" . preg_quote($botName, "/") . "\s" . preg_quote($command, "/") . "`)/m";
-        $body = preg_replace($ticked, "- ✅ $1", $body, 1);
-        $body = preg_replace("/^-\s\[[ xX]\]\s/m", "- ", $body);
+        $name    = preg_quote($botName, "/");
+        $quoted  = preg_quote($command, "/");
+        $ticked  = "/^-\s\[[xX]\]\s(`@{$name}\s{$quoted}`)/m";
+        $body    = preg_replace($ticked, "- ✅ $1", $body, 1);
+        $body    = preg_replace("/^-\s\[[ xX]\]\s/m", "- ", $body);
+        $marker  = self::COMPLETION_MARKER;
+        $trigger = "▶️ `@{$botName} {$command}` triggered by @{$user}. Comment `@{$botName} help` to get a new list.";
 
-        $completion = "\n\n" . self::COMPLETION_MARKER . "\n";
-        $completion .= "▶️ `@{$botName} {$command}` triggered by @{$user}. " .
-            "Comment `@{$botName} help` to get a new list.\n";
+        return "{$body}\n\n{$marker}\n{$trigger}\n";
 
-        return $body . $completion;
-    }
+    }//end disableCheckboxes()
 
 
     /**
@@ -118,5 +142,8 @@ class HelpCommentBuilder
     public function untickCheckboxes(string $body): string
     {
         return preg_replace("/^-\s\[[xX]\]\s/m", "- [ ] ", $body);
-    }
-}
+
+    }//end untickCheckboxes()
+
+
+}//end class
