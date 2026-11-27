@@ -6,6 +6,7 @@ use GuiBranco\GStracciniBot\Library\AppVeyorCredentials;
 use GuiBranco\GStracciniBot\Library\AppVeyorErrorCommentBuilder;
 use GuiBranco\GStracciniBot\Library\Codacy;
 use GuiBranco\GStracciniBot\Library\CommandHelper;
+use GuiBranco\GStracciniBot\Library\HelpCommentBuilder;
 use GuiBranco\GStracciniBot\Library\InfisicalIgnoreApprovalCommentBuilder;
 use GuiBranco\GStracciniBot\Library\InfisicalIgnoreCommitService;
 use GuiBranco\GStracciniBot\Library\InfisicalIgnoreSuggestionParser;
@@ -148,6 +149,7 @@ class CommentsHandler implements IHandler
             $metadata = $this->buildMetadata($comment, $config);
             $this->execute_applyInfisicalIgnoreSuggestion($config, $metadata, $comment);
             $this->execute_applyVersionBumpDecision($config, $metadata, $comment);
+            $this->execute_triggerHelpCommand($config, $metadata, $comment);
             return;
         }
 
@@ -213,39 +215,7 @@ class CommentsHandler implements IHandler
             }
     
             $executedAtLeastOne = true;
-    
-            if (!empty($command->requiresPullRequestOpen) && !$pullRequestIsOpen) {
-                $logStream?->warning(
-                    'Command {command} requires an open PR, {repo}#{pr} is not one',
-                    (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", pr: $comment->PullRequestNumber, command: $command->command))->toArray(),
-                    "comments",
-                    $comment->DeliveryIdText
-                );
-                $this->reactToComment($comment, "-1");
-                $this->postComment($metadata, $metadata["errorMessages"]["notOpen"]);
-                continue;
-            }
-    
-            $method = "execute_" . $this->toCamelCase($command->command);
-            $logStream?->info(
-                'Executing command {command} from {sender} on {repo}',
-                (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", sender: $sender, command: $command->command, callable: is_callable([$this, $method])))->toArray(),
-                "comments",
-                $comment->DeliveryIdText
-            );
-            if (is_callable([$this, $method])) {
-                $this->$method($config, $metadata, $comment);
-            } else {
-                $this->reactToComment($comment, "-1");
-                $this->postComment(
-                    $metadata,
-                    sprintf(
-                        "%s Command `%s` not implemented. :construction:",
-                        $metadata['errorMessages']['notImplemented'],
-                        $command->command
-                    )
-                );
-            }
+            $this->dispatchCommand($config, $metadata, $comment, $command, $pullRequestIsOpen);
         }
     
         if (!$executedAtLeastOne) {
@@ -260,6 +230,55 @@ class CommentsHandler implements IHandler
         }
     }
     
+    /**
+     * Runs one bot command for a comment, refusing it when it needs an open pull request.
+     *
+     * @param object $config            The bot configuration.
+     * @param array  $metadata          Metadata for the GitHub API requests.
+     * @param object $comment           The comment the command comes from.
+     * @param object $command           The command from the bot configuration.
+     * @param bool   $pullRequestIsOpen Whether the pull request is open.
+     *
+     * @return void
+     */
+    private function dispatchCommand($config, array $metadata, $comment, $command, bool $pullRequestIsOpen): void
+    {
+        global $logStream;
+
+        if (!empty($command->requiresPullRequestOpen) && !$pullRequestIsOpen) {
+            $logStream?->warning(
+                'Command {command} requires an open PR, {repo}#{pr} is not one',
+                (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", pr: $comment->PullRequestNumber, command: $command->command))->toArray(),
+                "comments",
+                $comment->DeliveryIdText
+            );
+            $this->reactToComment($comment, "-1");
+            $this->postComment($metadata, $metadata["errorMessages"]["notOpen"]);
+            return;
+        }
+
+        $method = "execute_" . $this->toCamelCase($command->command);
+        $logStream?->info(
+            'Executing command {command} from {sender} on {repo}',
+            (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", sender: $comment->CommentSender, command: $command->command, callable: is_callable([$this, $method])))->toArray(),
+            "comments",
+            $comment->DeliveryIdText
+        );
+        if (is_callable([$this, $method])) {
+            $this->$method($config, $metadata, $comment);
+        } else {
+            $this->reactToComment($comment, "-1");
+            $this->postComment(
+                $metadata,
+                sprintf(
+                    "%s Command `%s` not implemented. :construction:",
+                    $metadata['errorMessages']['notImplemented'],
+                    $command->command
+                )
+            );
+        }
+    }
+
     /**
      * Sends a reaction emoji to a GitHub comment.
      *
@@ -381,38 +400,83 @@ class CommentsHandler implements IHandler
     private function execute_help($config, $metadata, $comment): void
     {
         doRequestGitHub($metadata["token"], $metadata["reactionUrl"], array("content" => "rocket"), "POST");
-        $helpComment = "That's what I can do :neckbeard::\r\n";
-        foreach ($config->commands as $command) {
-            $parameters = "";
-            $parametersHelp = "";
-            $prefix = "[ ] ";
-            $inDevelopment = isset($command->dev) && $command->dev
-                ? " :warning: (In development, it may not work as expected!)"
-                : "";
-            if (isset($command->parameters)) {
-                $prefix = "";
-                foreach ($command->parameters as $parameter) {
-                    $parameters .= " <" . $parameter->parameter . ">";
-                    $parametersHelp .= "\t- `" . $parameter->parameter . "` - `[" .
-                        ($parameter->required ? "required" : "optional") . "]` " .
-                        $parameter->description . "\r\n";
-                }
-            }
-    
-            $helpComment .= "- {$prefix}`@{$config->botName} {$command->command}{$parameters}` - ";
-            $helpComment .= $command->description . $inDevelopment . "\r\n";
-            $helpComment .= $parametersHelp;
-        }
-        $helpComment .= "\n\nMultiple commands can be issued simultaneously. " .
-            "Just respect each command pattern (with bot name prefix + command).\n\n" .
-            "> [!NOTE]\n" .
-            "> \n" .
-            "> If you aren't allowed to use this bot, a reaction with a thumbs down will be added to your comment.\r\n" .
-            "\n\n" .
-            "> [!TIP]\n" .
-            "> \n" .
-            "> You can tick (✅) one item from the above list, and it will be triggered! (In beta) (Only parameterless commands).\n";
+        $helpComment = (new HelpCommentBuilder())->build($config->botName, $config->commands);
         doRequestGitHub($metadata["token"], $metadata["commentUrl"], array("body" => $helpComment), "POST");
+    }
+
+    /**
+     * Handles an edit to the bot's own help comment: once someone ticks one of the
+     * listed commands, every checkbox of the comment is disabled and the ticked
+     * command is run on behalf of whoever ticked it, as if they had commented it.
+     *
+     * @param object $config   The bot configuration.
+     * @param array  $metadata Metadata for the GitHub API requests.
+     * @param object $comment  The queued edit of the help comment.
+     *
+     * @return void
+     */
+    private function execute_triggerHelpCommand($config, $metadata, $comment): void
+    {
+        global $logStream;
+
+        $commentUrl = "{$metadata['repoPrefix']}/issues/comments/{$comment->CommentId}";
+        $response = doRequestGitHub($metadata["token"], $commentUrl, null, "GET");
+        if ($response->getStatusCode() !== 200) {
+            return;
+        }
+
+        $body = (string) (json_decode($response->getBody())->body ?? "");
+        if (stripos($body, HelpCommentBuilder::MARKER) === false
+            || stripos($body, HelpCommentBuilder::COMPLETION_MARKER) !== false
+        ) {
+            return;
+        }
+
+        $builder = new HelpCommentBuilder();
+        $ticked = $builder->findTickedCommand($body, $config->botName);
+        if ($ticked === null) {
+            return;
+        }
+
+        $command = null;
+        foreach ($config->commands as $candidate) {
+            if (strcasecmp($candidate->command, $ticked) === 0 && !isset($candidate->parameters)) {
+                $command = $candidate;
+                break;
+            }
+        }
+
+        $editor = (string) ($comment->SenderLogin ?? "");
+        if ($command === null || $editor === "" || $editor === $config->botName . "[bot]") {
+            return;
+        }
+
+        $trigger = clone $comment;
+        $trigger->CommentSender = $editor;
+        $trigger->CommentBody = "@{$config->botName} {$command->command}";
+        $triggerMetadata = $this->buildMetadata($trigger, $config);
+
+        if (!$this->isCollaborator($trigger, $triggerMetadata)) {
+            $logStream?->warning(
+                'Help checkbox ticked by {sender}, who is not a collaborator of {repo}',
+                (new LogContext(repo: "{$comment->RepositoryOwner}/{$comment->RepositoryName}", sender: $editor))->toArray(),
+                "comments",
+                $comment->DeliveryIdText
+            );
+            doRequestGitHub($metadata["token"], $commentUrl, array("body" => $builder->untickCheckboxes($body)), "PATCH");
+            $this->postComment($triggerMetadata, $triggerMetadata["errorMessages"]["notCollaborator"]);
+            return;
+        }
+
+        // Disable every checkbox before running the command, so ticking another one
+        // (or re-ticking the same one) can't trigger anything else.
+        $disabled = $builder->disableCheckboxes($body, $config->botName, $command->command, $editor);
+        $patch = doRequestGitHub($metadata["token"], $commentUrl, array("body" => $disabled), "PATCH");
+        if ($patch->getStatusCode() >= 300) {
+            return;
+        }
+
+        $this->dispatchCommand($config, $triggerMetadata, $trigger, $command, $this->checkIfPullRequestIsOpen($triggerMetadata));
     }
     
     private function execute_addProject($config, $metadata, $comment): void
