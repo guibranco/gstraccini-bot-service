@@ -46,9 +46,11 @@ class ReviewEffortFileClassifier
     public function weightOf(string $kind): float
     {
         $weights = $this->kindWeights();
-        $weight  = ($weights[$kind] ?? 1.0);
+        if (array_key_exists($kind, $weights) === false) {
+            return 1.0;
+        }
 
-        return $weight;
+        return $weights[$kind];
 
     }//end weightOf()
 
