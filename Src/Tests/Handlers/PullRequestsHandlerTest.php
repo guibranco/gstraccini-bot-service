@@ -540,6 +540,74 @@ class PullRequestsHandlerTest extends TestCase
         $this->assertSame("DELETE", self::$requestLog[0]["method"]);
         $this->assertSame("repos/owner/repo/issues/1/labels/🚦%20awaiting%20triage", self::$requestLog[0]["url"]);
     }
+
+    /**
+     * Invokes the private PullRequestsHandler::applySizeLabel() method.
+     *
+     * @param string[] $currentLabels The labels the pull request has.
+     * @param string   $label         The size label it should have.
+     *
+     * @return void
+     */
+    private function applySizeLabel(array $currentLabels, string $label): void
+    {
+        $handler = new PullRequestsHandler(null, new PendingConfirmationTracker($this->pendingConfirmations));
+        $method = (new ReflectionClass($handler))->getMethod("applySizeLabel");
+        $method->setAccessible(true);
+
+        $metadata              = [];
+        $metadata["token"]     = "fake-token";
+        $metadata["labelsUrl"] = "repos/owner/repo/issues/1/labels";
+        $metadata["owner"]     = "owner";
+        $metadata["repo"]      = "repo";
+        $labels = array_map(static fn ($name) => ["name" => $name], $currentLabels);
+        $pullRequest = json_decode(json_encode(["number" => 1, "labels" => $labels]));
+
+        $method->invoke($handler, $metadata, $pullRequest, $label);
+    }
+
+    /**
+     * A pull request without a size label gets one.
+     *
+     * @return void
+     */
+    public function testApplySizeLabelAddsTheLabel(): void
+    {
+        $this->applySizeLabel(["🐛 bug"], "size/M");
+
+        $this->assertCount(1, self::$requestLog);
+        $this->assertSame("POST", self::$requestLog[0]["method"]);
+        $this->assertSame("repos/owner/repo/issues/1/labels", self::$requestLog[0]["url"]);
+        $this->assertSame(["labels" => ["size/M"]], self::$requestLog[0]["data"]);
+    }
+
+    /**
+     * A pull request that grew loses its old size label, whose slash is encoded in the URL.
+     *
+     * @return void
+     */
+    public function testApplySizeLabelReplacesTheStaleLabel(): void
+    {
+        $this->applySizeLabel(["size/S"], "size/L");
+
+        $this->assertCount(2, self::$requestLog);
+        $this->assertSame("DELETE", self::$requestLog[0]["method"]);
+        $this->assertSame("repos/owner/repo/issues/1/labels/size%2FS", self::$requestLog[0]["url"]);
+        $this->assertSame("POST", self::$requestLog[1]["method"]);
+        $this->assertSame(["labels" => ["size/L"]], self::$requestLog[1]["data"]);
+    }
+
+    /**
+     * Nothing is sent when the pull request already has the right size label.
+     *
+     * @return void
+     */
+    public function testApplySizeLabelKeepsTheCurrentLabel(): void
+    {
+        $this->applySizeLabel(["size/M", "🐛 bug"], "size/M");
+
+        $this->assertCount(0, self::$requestLog);
+    }
 }
 
 /**
