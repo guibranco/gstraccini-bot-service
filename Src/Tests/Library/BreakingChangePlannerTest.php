@@ -76,7 +76,7 @@ class BreakingChangePlannerTest extends TestCase
      *
      * @return void
      */
-    public function testNothingToDoWithoutGitVersionOrAppVeyor(): void
+    public function testNothingToDoWithoutVersioning(): void
     {
         $plan = $this->plan(["Drop the v1 API"]);
 
@@ -84,7 +84,7 @@ class BreakingChangePlannerTest extends TestCase
         $this->assertNull($plan->appVeyorPath);
         $this->assertFalse($plan->isNeeded());
 
-    }//end testNothingToDoWithoutGitVersionOrAppVeyor()
+    }//end testNothingToDoWithoutVersioning()
 
 
     /**
@@ -169,7 +169,7 @@ class BreakingChangePlannerTest extends TestCase
      *
      * @return void
      */
-    public function testAppVeyorWithoutANumericVersionIsLeftAlone(): void
+    public function testAppVeyorWithoutNumericVersion(): void
     {
         $this->file("appveyor.yml", self::HEAD, "image: Ubuntu\n");
 
@@ -178,7 +178,7 @@ class BreakingChangePlannerTest extends TestCase
         $this->assertSame("appveyor.yml", $plan->appVeyorPath);
         $this->assertFalse($plan->isNeeded());
 
-    }//end testAppVeyorWithoutANumericVersionIsLeftAlone()
+    }//end testAppVeyorWithoutNumericVersion()
 
 
 }//end class

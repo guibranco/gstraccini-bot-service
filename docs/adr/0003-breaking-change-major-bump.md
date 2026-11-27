@@ -1,4 +1,6 @@
-ADR-0003: bump the major version of breaking change pull requests.
+---
+title: Bump the major version of breaking change pull requests
+---
 
 The pull request template asks "☢️ Does this introduce a breaking change?"
 with a Yes/No checkbox pair. The description check already makes sure

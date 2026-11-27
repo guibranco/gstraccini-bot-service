@@ -258,6 +258,7 @@ class PullRequestsHandlerTest extends TestCase
 
     }//end checkBreakingChanges()
 
+
     /**
      * A pull request whose description answers the breaking change question.
      *
@@ -293,6 +294,7 @@ class PullRequestsHandlerTest extends TestCase
 
     }//end buildBreakingChangePullRequest()
 
+
     /**
      * The requests of a method, as "METHOD url".
      *
@@ -307,6 +309,7 @@ class PullRequestsHandlerTest extends TestCase
         return array_values(array_map(static fn (array $request): string => "{$request["method"]} {$request["url"]}", $requests));
 
     }//end requestsOf()
+
 
     /**
      * "Yes" adds the plain label when the repository has no icon one.
@@ -325,18 +328,20 @@ class PullRequestsHandlerTest extends TestCase
 
     }//end testBreakingChangeAddsThePlainLabel()
 
+
     /**
      * "Yes" adds the icon label when the repository has it.
      *
      * @return void
      */
-    public function testBreakingChangeAddsTheIconLabelTheRepositoryHas(): void
+    public function testBreakingChangeUsesTheIconLabel(): void
     {
         $this->checkBreakingChanges($this->buildBreakingChangePullRequest("x", " ", []), new FixedFeatureSettings(false));
 
         $this->assertSame(["labels" => ["☢️ breaking-changes"]], self::$requestLog[1]["data"]);
 
-    }//end testBreakingChangeAddsTheIconLabelTheRepositoryHas()
+    }//end testBreakingChangeUsesTheIconLabel()
+
 
     /**
      * Nothing is added when the pull request already has the label.
@@ -351,6 +356,7 @@ class PullRequestsHandlerTest extends TestCase
         $this->assertSame([], $this->requestsOf("GET"));
 
     }//end testBreakingChangeKeepsAnExistingLabel()
+
 
     /**
      * "No" removes the label and closes a pending decision.
@@ -367,25 +373,27 @@ class PullRequestsHandlerTest extends TestCase
 
     }//end testNoBreakingChangeRemovesTheLabel()
 
+
     /**
      * An unanswered question leaves the labels alone.
      *
      * @return void
      */
-    public function testUnansweredBreakingChangeLeavesTheLabels(): void
+    public function testUnansweredBreakingChangeKeepsLabels(): void
     {
         $this->checkBreakingChanges($this->buildBreakingChangePullRequest(" ", " ", ["breaking-changes"]), new FixedFeatureSettings(true));
 
         $this->assertSame([], self::$requestLog);
 
-    }//end testUnansweredBreakingChangeLeavesTheLabels()
+    }//end testUnansweredBreakingChangeKeepsLabels()
+
 
     /**
      * With the version bump requested and GitVersion in use, the major bump is asked for and tracked.
      *
      * @return void
      */
-    public function testBreakingChangeAsksForTheMajorBumpWithGitVersion(): void
+    public function testBreakingChangeAsksForMajorBump(): void
     {
         $gitHub = new FakeGitHub();
         $gitHub->answer("repos/owner/repo/contents/GitVersion.yml?ref=", json_encode(["type" => "file", "sha" => "s", "content" => base64_encode("mode: Mainline\n")]));
@@ -403,14 +411,15 @@ class PullRequestsHandlerTest extends TestCase
         $this->assertStringContainsString("+semver: major", $posted[0]["data"]["body"]);
         $this->assertSame(["record breaking_change 900"], $this->pendingConfirmations->calls);
 
-    }//end testBreakingChangeAsksForTheMajorBumpWithGitVersion()
+    }//end testBreakingChangeAsksForMajorBump()
+
 
     /**
      * Without GitVersion or AppVeyor, nothing is asked.
      *
      * @return void
      */
-    public function testBreakingChangeAsksNothingWithoutAVersioningSetup(): void
+    public function testBreakingChangeWithoutVersioning(): void
     {
         $gitHub = new FakeGitHub();
 
@@ -420,7 +429,8 @@ class PullRequestsHandlerTest extends TestCase
         $this->assertSame([], $this->requestsOf("POST"));
         $this->assertSame(["resolveForPullRequest owner/repo#1 breaking_change superseded"], $this->pendingConfirmations->calls);
 
-    }//end testBreakingChangeAsksNothingWithoutAVersioningSetup()
+    }//end testBreakingChangeWithoutVersioning()
+
 
     /**
      * Invokes the private PullRequestsHandler::isFromFork() method.

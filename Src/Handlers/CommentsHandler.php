@@ -154,7 +154,7 @@ class CommentsHandler implements IHandler
             $metadata = $this->buildMetadata($comment, $config);
             $this->execute_applyInfisicalIgnoreSuggestion($config, $metadata, $comment);
             $this->execute_applyVersionBumpDecision($config, $metadata, $comment);
-            $this->execute_applyBreakingChangeDecision($metadata, $comment);
+            $this->applyBreakingChangeDecision($metadata, $comment);
             $this->execute_triggerHelpCommand($config, $metadata, $comment);
             return;
         }
@@ -1640,7 +1640,7 @@ class CommentsHandler implements IHandler
      *
      * @return void
      */
-    private function execute_applyBreakingChangeDecision(array $metadata, $comment): void
+    private function applyBreakingChangeDecision(array $metadata, $comment): void
     {
         $decision = $this->readBreakingChangeDecision($metadata, $comment);
         if ($decision === null) {
